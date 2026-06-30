@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { userHasProfileForClient } from "@/lib/onboarding/status";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
@@ -34,17 +35,35 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
 
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && (pathname === "/login" || pathname === "/signup")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    return NextResponse.redirect(url);
+  if (user) {
+    const hasProfile = await userHasProfileForClient(supabase, user.id);
+
+    if (pathname === "/login" || pathname === "/signup") {
+      const url = request.nextUrl.clone();
+      url.pathname = hasProfile ? "/dashboard" : "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/dashboard") && !hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/onboarding") && hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   return supabaseResponse;

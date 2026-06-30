@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { getPostAuthRedirectPath } from "@/lib/onboarding/status";
 import { redirect } from "next/navigation";
 
 export type AuthActionState = {
@@ -29,7 +30,7 @@ export async function login(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect(await getPostAuthRedirectPath());
 }
 
 export async function signup(
@@ -61,7 +62,7 @@ export async function signup(
   }
 
   if (data.session) {
-    redirect("/dashboard");
+    redirect(await getPostAuthRedirectPath());
   }
 
   return {

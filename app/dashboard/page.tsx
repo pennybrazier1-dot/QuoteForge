@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { userHasProfile } from "@/lib/onboarding/status";
 import { DashboardTopBar } from "@/components/dashboard/top-bar";
 import { QuoteComposer } from "@/components/dashboard/quote-composer";
 import { TodaysAdmin } from "@/components/dashboard/todays-admin";
@@ -19,6 +20,10 @@ export default async function DashboardPage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    redirect("/onboarding");
   }
 
   return (
