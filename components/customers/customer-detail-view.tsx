@@ -2,6 +2,7 @@ import {
   formatCustomerAddress,
   formatCustomerCreatedAt,
 } from "@/lib/customers/format";
+import { CustomerNotesSection } from "@/components/customers/customer-notes-section";
 
 export type CustomerDetailData = {
   id: string;
@@ -75,16 +76,7 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
         )}
       </section>
 
-      <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
-        <h3 className="text-lg font-semibold">Notes</h3>
-        {customer.notes ? (
-          <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-            {customer.notes}
-          </p>
-        ) : (
-          <p className="mt-4 text-sm text-muted">No notes yet.</p>
-        )}
-      </section>
+      <CustomerNotesSection customerId={customer.id} notes={customer.notes} />
     </div>
   );
 }
