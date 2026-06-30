@@ -1,9 +1,9 @@
 -- QuoteForge database foundation:
 -- - UUID generation
 -- - updated_at trigger helper
--- - current_workspace_id() RLS helper
 -- - workspaces (the business)
 -- - profiles (people inside a workspace)
+-- - current_workspace_id() RLS helper (after profiles exists)
 -- - Row Level Security
 
 create extension if not exists "pgcrypto";
@@ -18,20 +18,6 @@ begin
   return new;
 end;
 $$;
-
--- Returns the workspace_id for the currently authenticated user.
-create or replace function public.current_workspace_id()
-returns uuid
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select workspace_id from public.profiles where id = auth.uid()
-$$;
-
-comment on function public.current_workspace_id() is
-  'Used by RLS policies to scope data to the logged-in user''s workspace.';
 
 create table public.workspaces (
   id uuid primary key default gen_random_uuid(),
@@ -78,6 +64,20 @@ create trigger set_profiles_updated_at
 before update on public.profiles
 for each row
 execute function public.set_updated_at();
+
+-- Returns the workspace_id for the currently authenticated user.
+create or replace function public.current_workspace_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select workspace_id from public.profiles where id = auth.uid()
+$$;
+
+comment on function public.current_workspace_id() is
+  'Used by RLS policies to scope data to the logged-in user''s workspace.';
 
 alter table public.workspaces enable row level security;
 alter table public.profiles enable row level security;
