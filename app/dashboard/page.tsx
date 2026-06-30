@@ -26,6 +26,16 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
+  const { data: proposalsData } = await supabase
+    .from("proposals")
+    .select(
+      "id, proposal_number, customer_name, title, rough_notes, status, total_amount, created_at"
+    )
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  const recentProposals = proposalsData ?? [];
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DashboardTopBar email={user.email} />
@@ -45,7 +55,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mt-6">
-          <RecentProposals />
+          <RecentProposals proposals={recentProposals} />
         </div>
       </main>
     </div>

@@ -1,6 +1,7 @@
 export function ProposalField({
   label,
   id,
+  name,
   type = "text",
   value,
   onChange,
@@ -10,6 +11,7 @@ export function ProposalField({
 }: {
   label: string;
   id: string;
+  name: string;
   type?: string;
   value: string;
   onChange: (value: string) => void;
@@ -24,7 +26,7 @@ export function ProposalField({
       </label>
       <input
         id={id}
-        name={id}
+        name={name}
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -40,17 +42,21 @@ export function ProposalField({
 export function ProposalTextarea({
   label,
   id,
+  name,
   value,
   onChange,
   rows = 6,
   placeholder,
+  required = false,
 }: {
   label: string;
   id: string;
+  name: string;
   value: string;
   onChange: (value: string) => void;
   rows?: number;
   placeholder?: string;
+  required?: boolean;
 }) {
   return (
     <div>
@@ -59,11 +65,12 @@ export function ProposalTextarea({
       </label>
       <textarea
         id={id}
-        name={id}
+        name={name}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
         placeholder={placeholder}
+        required={required}
         className="mt-2 w-full resize-y rounded-xl border border-border-subtle bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
       />
     </div>
