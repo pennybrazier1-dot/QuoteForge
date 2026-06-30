@@ -38,7 +38,8 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/onboarding") ||
-    pathname.startsWith("/proposals");
+    pathname.startsWith("/proposals") ||
+    pathname.startsWith("/customers");
 
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone();
@@ -62,6 +63,12 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (pathname.startsWith("/proposals") && !hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/customers") && !hasProfile) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);
