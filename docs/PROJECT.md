@@ -99,14 +99,72 @@ QuoteForge should avoid making users enter the same information repeatedly.
 The first version should allow a tradesperson to:
 
 1. Sign up
-2. Log in
-3. Describe a job
-4. Generate a professional proposal using AI
-5. Save the proposal
-6. View previous proposals
-7. Download or print a sharp PDF
-8. Send the proposal to a customer manually by email
-9. Mark the proposal as draft, sent, accepted, declined, or expired
+2. Complete onboarding
+3. Log in
+4. Describe a job
+5. Generate a professional proposal using AI
+6. Save the proposal
+7. View previous proposals
+8. Download or print a sharp PDF
+9. Send the proposal to a customer manually by email
+10. Mark the proposal as draft, sent, accepted, declined, or expired
+
+## Version 1 Onboarding
+
+After signup, before the dashboard, the user completes a short onboarding form.
+
+This is required for new accounts. It creates the workspace and profile with real business details instead of placeholders.
+
+### Fields the user must enter
+
+| Field | Required | Notes |
+|-------|----------|-------|
+| Full name | Yes | The person's name |
+| Business name | Yes | The trade business name |
+| Business email | Yes | Main business email |
+| Phone number | Yes | Business phone number |
+| Trade type | Yes | Selected from the list below |
+| VAT number | No | Optional |
+| Default payment terms | Yes | Used on new proposals |
+| How they heard about QuoteForge | Yes | Selected from the list below |
+
+### Trade type options
+
+- Plumber
+- Electrician
+- Carpenter
+- Bricklayer
+- Kitchen Fitter
+- Builder
+- Landscaper
+- Painter and Decorator
+- Fencing Contractor
+- Roofer
+- Heating Engineer
+- Plasterer
+- Tiler
+- Window and Door Installer
+- Driveway and Paving Contractor
+- Drainage Specialist
+- General Handyman
+- Other
+
+### How they heard about QuoteForge options
+
+- Google
+- Facebook
+- TikTok
+- YouTube
+- Recommendation
+- Local business group
+- Other
+
+### Onboarding rules
+
+- Keep the form short and plain English.
+- Do not ask for information QuoteForge does not need yet.
+- After onboarding completes, redirect to the dashboard.
+- Do not make the user enter the same details again later unless they choose to update settings.
 
 ## Version 1 Proposal Contents
 
@@ -153,6 +211,7 @@ A workspace should contain:
 - Business name
 - Contact email
 - Phone number
+- Trade type
 - Address
 - VAT number if applicable
 - Default payment terms
@@ -161,12 +220,19 @@ A workspace should contain:
 - Notes
 - Later: logo and branding
 
+Each profile should contain:
+
+- Full name
+- How they heard about QuoteForge (collected at onboarding)
+- Role inside the workspace
+
 ## Version 1 Scope
 
 Build now:
 
 - Landing page
 - Authentication
+- Onboarding form
 - Dashboard
 - AI proposal generator
 - Proposal saving
