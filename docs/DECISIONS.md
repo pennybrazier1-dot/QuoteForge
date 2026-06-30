@@ -101,3 +101,5 @@ Every feature must satisfy at least one of these:
 We are building a business.
 
 Not just software.
+
+The dashboard should reduce stress, not create it.
