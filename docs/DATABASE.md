@@ -26,12 +26,12 @@ After signup, new users must complete onboarding before they can use the dashboa
 | Business name | `workspaces` | `business_name` (exists) |
 | Business email | `workspaces` | `contact_email` (exists) |
 | Phone number | `workspaces` | `phone` (exists) |
-| Trade type | `workspaces` | `trade_type` (**planned migration**) |
+| Trade type | `workspaces` | `trade_type` (exists) |
 | VAT number (optional) | `workspaces` | `vat_number` (exists) |
 | Default payment terms | `workspaces` | `default_payment_terms` (exists) |
-| How they heard about QuoteForge | `profiles` | `heard_about` (**planned migration**) |
+| How they heard about QuoteForge | `profiles` | `heard_about` (exists) |
 
-Most onboarding fields already exist on `workspaces` and `profiles`. A future migration will add `workspaces.trade_type` and `profiles.heard_about`.
+All onboarding fields are now stored on `workspaces` and `profiles`.
 
 ### App flow
 
@@ -40,13 +40,11 @@ Most onboarding fields already exist on `workspaces` and `profiles`. A future mi
 3. If not, show the onboarding form and collect the fields above.
 4. Create a `workspaces` row:
    - `owner_id` = the authenticated user's ID
-   - `business_name`, `contact_email`, `phone`, `vat_number`, `default_payment_terms` from the form
-   - `trade_type` from the form (once the column exists)
+   - `business_name`, `contact_email`, `phone`, `trade_type`, `vat_number`, `default_payment_terms` from the form
 5. Create a `profiles` row:
    - `id` = the authenticated user's ID
    - `workspace_id` = the new workspace ID
-   - `full_name` from the form
-   - `heard_about` from the form (once the column exists)
+   - `full_name`, `heard_about` from the form
    - `role` = `owner`
 6. Redirect the user to the dashboard.
 
@@ -63,14 +61,7 @@ Onboarding also captures the business details needed for professional proposals 
 - A unique index on `workspaces.owner_id` enforces one founding workspace per user in v1.
 - Profile insert policy only allows a user to create their own profile in a workspace they founded.
 
-### Planned onboarding columns (not in SQL yet)
-
-```text
-workspaces.trade_type   — selected trade, e.g. Plumber, Electrician, Other
-profiles.heard_about    — how the user found QuoteForge, e.g. Google, Recommendation
-```
-
-Both should use the option lists defined in `docs/PROJECT.md`. Validation can live in the app until the migration is added.
+Allowed values for `trade_type` and `heard_about` are defined in `docs/PROJECT.md`. The app validates these on the onboarding form.
 
 ---
 
@@ -132,7 +123,7 @@ For v1, each founding user creates one workspace. Later, multiple profiles (peop
 | `business_name` | Trade business name |
 | `contact_email` | Main business email |
 | `phone` | Business phone number |
-| `trade_type` | **Planned.** Trade selected during onboarding, e.g. Plumber, Electrician |
+| `trade_type` | Trade selected during onboarding, e.g. Plumber, Electrician |
 | `address_line_1`, `address_line_2`, `town`, `county`, `postcode`, `country` | Business address |
 | `vat_number` | Optional VAT number |
 | `default_payment_terms` | Default wording used on proposals |
@@ -178,7 +169,7 @@ Supabase Auth stores login credentials. Profiles connect an authenticated person
 | `id` | UUID primary key, same as Supabase Auth user ID |
 | `workspace_id` | Workspace this person belongs to |
 | `full_name` | Person's full name, collected during onboarding |
-| `heard_about` | **Planned.** How the user found QuoteForge, e.g. Google, Recommendation |
+| `heard_about` | How the user found QuoteForge, e.g. Google, Recommendation |
 | `role` | `owner`, `admin`, or `member` (v1: `owner` only) |
 | `created_at` | When the profile was created |
 | `updated_at` | When the profile was last updated |
@@ -360,6 +351,7 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 |------|---------|
 | `supabase/migrations/20260630122600_create_workspace_and_profiles.sql` | `set_updated_at()`, `current_workspace_id()`, `workspaces`, `profiles`, RLS |
 | `supabase/migrations/20260630122700_create_customers_and_proposals.sql` | `customers`, `proposals`, `allocate_proposal_number()`, RLS |
+| `supabase/migrations/20260630130000_add_onboarding_fields.sql` | `workspaces.trade_type`, `profiles.heard_about` |
 
 ### Implemented now
 
@@ -372,12 +364,10 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 - Proposal statuses: `draft`, `sent`, `accepted`, `declined`, `expired`
 - Proposal dates: `created_at`, `updated_at`, `sent_at`, `accepted_at`, `expires_at`
 - Signup bootstrap and onboarding requirement in app code
-- Onboarding fields mapped to `workspaces` and `profiles`
+- Onboarding fields: `workspaces.trade_type`, `profiles.heard_about`
 
 ### Planned in future migrations
 
-- `workspaces.trade_type` for onboarding trade selection
-- `profiles.heard_about` for onboarding attribution
 - Profile roles `admin` and `member`
 - `is_workspace_member()` and `has_workspace_role()`
 - Additional proposal statuses: `ready`, `cancelled`, `completed`
