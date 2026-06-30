@@ -329,7 +329,7 @@ Users can only access data in their own workspace.
 
 | Table | Access rule |
 |-------|-------------|
-| `workspaces` | `id = current_workspace_id()` for select/update; insert when `owner_id = auth.uid()`; delete when `owner_id = auth.uid()` |
+| `workspaces` | select when `owner_id = auth.uid()` or `id = current_workspace_id()` (owner can read their workspace during onboarding); update when `id = current_workspace_id()`; insert when `owner_id = auth.uid()`; delete when `owner_id = auth.uid()` |
 | `profiles` | `workspace_id = current_workspace_id()` for select; users create/update their own profile |
 | `customers` | `workspace_id = current_workspace_id()` |
 | `proposals` | `workspace_id = current_workspace_id()`; linked `customer_id` must belong to the same workspace |
