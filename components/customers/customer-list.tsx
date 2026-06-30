@@ -59,7 +59,7 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
         <span className="text-xs text-muted">{customers.length} saved</span>
       </div>
 
-      <ul className="space-y-3">
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {customers.map((customer) => {
           const address = formatCustomerAddress(customer);
 
@@ -67,10 +67,10 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
             <li key={customer.id}>
               <Link
                 href={`/customers/${customer.id}`}
-                className="group block rounded-2xl border border-border-subtle bg-background-elevated p-5 transition-colors hover:border-accent/40 hover:bg-white/[0.02] sm:p-6"
+                className="group flex h-full flex-col rounded-2xl border border-border-subtle bg-background-elevated p-5 transition-colors hover:border-accent/40 hover:bg-white/[0.02] sm:p-6"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <p className="text-base font-semibold tracking-tight">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 break-words text-base font-semibold tracking-tight">
                     {customer.name}
                   </p>
                   <svg
@@ -97,7 +97,7 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
                   </div>
                 )}
 
-                <p className="mt-4 text-xs text-muted">
+                <p className="mt-auto pt-4 text-xs text-muted">
                   Added {formatCustomerCreatedAt(customer.created_at)}
                 </p>
               </Link>
