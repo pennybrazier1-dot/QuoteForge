@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 
 export type ProposalDetailData = {
@@ -106,6 +107,15 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
           {formatPenceAsGbp(proposal.total_amount)}
         </p>
       </section>
+
+      {isDraft ? (
+        <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+          <DeleteDraftSection
+            proposalId={proposal.id}
+            proposalNumber={proposal.proposal_number}
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

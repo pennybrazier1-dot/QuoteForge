@@ -347,3 +347,58 @@ export async function updateDraftProposal(
 
   redirect(`/proposals/${proposalId}`);
 }
+
+export type DeleteDraftProposalState = {
+  error?: string;
+};
+
+export async function deleteDraftProposal(
+  _prevState: DeleteDraftProposalState,
+  formData: FormData
+): Promise<DeleteDraftProposalState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to delete a proposal." };
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding before deleting proposals." };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const { data: proposal, error: loadError } = await supabase
+    .from("proposals")
+    .select("id, status")
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (loadError || !proposal) {
+    return { error: "Proposal not found." };
+  }
+
+  if (proposal.status !== "draft") {
+    return { error: "Only draft proposals can be deleted." };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("proposals")
+    .delete()
+    .eq("id", proposalId);
+
+  if (deleteError) {
+    return {
+      error: deleteError.message ?? "Could not delete this proposal.",
+    };
+  }
+
+  redirect("/dashboard");
+}
