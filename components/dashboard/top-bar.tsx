@@ -6,8 +6,8 @@ import { DashboardNavLinks } from "@/components/dashboard/nav-links";
 export function DashboardTopBar({ email }: { email?: string | null }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-4 px-6">
-        <div className="flex min-w-0 items-center gap-6">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-3 px-4 sm:gap-4 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-6">
           <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-black">
               <svg
@@ -32,9 +32,11 @@ export function DashboardTopBar({ email }: { email?: string | null }) {
           <DashboardNavLinks />
         </div>
 
-        <div className="flex shrink-0 items-center gap-4">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           {email ? (
-            <span className="hidden text-sm text-muted md:block">{email}</span>
+            <span className="hidden max-w-[12rem] truncate text-sm text-muted lg:block">
+              {email}
+            </span>
           ) : null}
           <form action={logout}>
             <LogoutButton />
