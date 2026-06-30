@@ -12,6 +12,7 @@ QuoteForge is built first for self-employed tradespeople and small trade busines
 
 Initial target trades:
 
+
 - Plumbers
 - Electricians
 - Carpenters
