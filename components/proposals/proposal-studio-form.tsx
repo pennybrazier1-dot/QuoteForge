@@ -3,27 +3,70 @@
 import { useActionState, useState } from "react";
 import {
   saveDraftProposal,
+  updateDraftProposal,
   type SaveDraftProposalState,
 } from "@/app/proposals/actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import { ProposalField, ProposalTextarea } from "@/components/proposals/field";
 import { SaveDraftButton } from "@/components/proposals/save-draft-button";
 import { ProposalSection } from "@/components/proposals/section";
+import type { ProposalFormValues } from "@/lib/proposals/form-values";
 
 const initialState: SaveDraftProposalState = {};
 
-export function ProposalStudioForm() {
-  const [state, formAction] = useActionState(saveDraftProposal, initialState);
-  const [customerName, setCustomerName] = useState("");
-  const [propertyAddress, setPropertyAddress] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [emailAddress, setEmailAddress] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [estimatedPrice, setEstimatedPrice] = useState("");
-  const [estimatedDuration, setEstimatedDuration] = useState("");
+const JOB_DESCRIPTION_EXAMPLE =
+  "Example: Replace 12 metres of timber fencing with concrete posts and gravel boards. Remove old fencing and dispose of all waste.";
+
+type ProposalStudioFormProps = {
+  mode?: "create" | "edit";
+  proposalId?: string;
+  initialValues?: ProposalFormValues;
+  showJobExample?: boolean;
+};
+
+export function ProposalStudioForm({
+  mode = "create",
+  proposalId,
+  initialValues,
+  showJobExample = false,
+}: ProposalStudioFormProps) {
+  const action = mode === "edit" ? updateDraftProposal : saveDraftProposal;
+  const [state, formAction] = useActionState(action, initialState);
+
+  const [customerName, setCustomerName] = useState(
+    initialValues?.customerName ?? ""
+  );
+  const [propertyAddress, setPropertyAddress] = useState(
+    initialValues?.propertyAddress ?? ""
+  );
+  const [phoneNumber, setPhoneNumber] = useState(
+    initialValues?.phoneNumber ?? ""
+  );
+  const [emailAddress, setEmailAddress] = useState(
+    initialValues?.emailAddress ?? ""
+  );
+  const [jobDescription, setJobDescription] = useState(
+    initialValues?.jobDescription ?? ""
+  );
+  const [estimatedPrice, setEstimatedPrice] = useState(
+    initialValues?.estimatedPrice ?? ""
+  );
+  const [estimatedDuration, setEstimatedDuration] = useState(
+    initialValues?.estimatedDuration ?? ""
+  );
+
+  const submitLabel = "Save Draft";
+  const helperText =
+    mode === "edit"
+      ? "Updates your draft. You can review it on the proposal page when you are done."
+      : "Saves a draft you can review and finish later. AI generation is coming soon.";
 
   return (
     <form action={formAction} className="space-y-6">
+      {mode === "edit" && proposalId ? (
+        <input type="hidden" name="proposalId" value={proposalId} />
+      ) : null}
+
       {state.error ? <AuthError message={state.error} /> : null}
 
       <ProposalSection title="Customer Information">
@@ -67,10 +110,14 @@ export function ProposalStudioForm() {
       </ProposalSection>
 
       <ProposalSection title="Job Information">
-        <p className="text-sm text-muted">
-          Tip: Don&apos;t worry about spelling or grammar. Just describe the work
-          in your own words.
-        </p>
+        {showJobExample ? (
+          <p className="text-sm text-muted">{JOB_DESCRIPTION_EXAMPLE}</p>
+        ) : (
+          <p className="text-sm text-muted">
+            Tip: Don&apos;t worry about spelling or grammar. Just describe the
+            work in your own words.
+          </p>
+        )}
         <ProposalTextarea
           label="Tell us about today's job"
           id="jobDescription"
@@ -105,11 +152,8 @@ export function ProposalStudioForm() {
       </ProposalSection>
 
       <div className="pt-2">
-        <SaveDraftButton />
-        <p className="mt-3 text-center text-xs text-muted">
-          Saves a draft you can review and finish later. AI generation is coming
-          soon.
-        </p>
+        <SaveDraftButton label={submitLabel} />
+        <p className="mt-3 text-center text-xs text-muted">{helperText}</p>
       </div>
     </form>
   );

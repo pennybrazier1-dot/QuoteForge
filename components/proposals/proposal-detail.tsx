@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 
 export type ProposalDetailData = {
@@ -38,6 +39,8 @@ function DetailRow({
 }
 
 export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
+  const isDraft = proposal.status === "draft";
+
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
@@ -48,9 +51,19 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
               {proposal.title}
             </h2>
           </div>
-          <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-medium capitalize text-muted">
-            {proposal.status}
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            {isDraft ? (
+              <Link
+                href={`/proposals/${proposal.id}/edit`}
+                className="inline-flex h-9 items-center justify-center rounded-full border border-border-subtle bg-white/5 px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
+              >
+                Edit Draft
+              </Link>
+            ) : null}
+            <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-medium capitalize text-muted">
+              {proposal.status}
+            </span>
+          </div>
         </div>
         <p className="mt-4 text-sm text-muted">
           Saved on{" "}

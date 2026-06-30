@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { buildEstimatedDurationNote } from "@/lib/proposals/duration";
 import { parsePriceToPence } from "@/lib/proposals/money";
 import { redirect } from "next/navigation";
 
@@ -15,6 +16,147 @@ function getString(formData: FormData, key: string): string {
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+type ParsedProposalForm = {
+  customerName: string;
+  propertyAddress: string;
+  phoneNumber: string;
+  emailAddress: string;
+  jobDescription: string;
+  estimatedPrice: string;
+  estimatedDuration: string;
+};
+
+function parseProposalForm(formData: FormData): ParsedProposalForm {
+  return {
+    customerName: getString(formData, "customerName"),
+    propertyAddress: getString(formData, "propertyAddress"),
+    phoneNumber: getString(formData, "phoneNumber"),
+    emailAddress: getString(formData, "emailAddress"),
+    jobDescription: getString(formData, "jobDescription"),
+    estimatedPrice: getString(formData, "estimatedPrice"),
+    estimatedDuration: getString(formData, "estimatedDuration"),
+  };
+}
+
+function validateProposalForm(
+  form: ParsedProposalForm
+): SaveDraftProposalState | { ok: true; totalPence: number } {
+  if (!form.customerName) {
+    return { error: "Customer name is required." };
+  }
+
+  if (!form.jobDescription) {
+    return { error: "Please describe today's job before saving." };
+  }
+
+  if (form.emailAddress && !isValidEmail(form.emailAddress)) {
+    return { error: "Please enter a valid email address." };
+  }
+
+  const totalPence = parsePriceToPence(form.estimatedPrice);
+  if (totalPence === null) {
+    return { error: "Please enter a valid estimated price." };
+  }
+
+  return { ok: true, totalPence };
+}
+
+async function resolveCustomerId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  form: ParsedProposalForm,
+  existingCustomerId: string | null
+): Promise<{ customerId: string | null; error?: string }> {
+  if (existingCustomerId) {
+    const { error: updateError } = await supabase
+      .from("customers")
+      .update({
+        name: form.customerName,
+        email: form.emailAddress || null,
+        phone: form.phoneNumber || null,
+        address_line_1: form.propertyAddress || null,
+      })
+      .eq("id", existingCustomerId)
+      .eq("workspace_id", workspaceId);
+
+    if (updateError) {
+      return {
+        customerId: null,
+        error: updateError.message ?? "Could not update customer details.",
+      };
+    }
+
+    return { customerId: existingCustomerId };
+  }
+
+  let customerId: string | null = null;
+
+  if (form.emailAddress) {
+    const { data: existingByEmail } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .ilike("email", form.emailAddress)
+      .maybeSingle();
+
+    customerId = existingByEmail?.id ?? null;
+  }
+
+  if (!customerId) {
+    const { data: existingByName } = await supabase
+      .from("customers")
+      .select("id")
+      .eq("workspace_id", workspaceId)
+      .ilike("name", form.customerName)
+      .maybeSingle();
+
+    customerId = existingByName?.id ?? null;
+  }
+
+  if (!customerId) {
+    const { data: newCustomer, error: customerError } = await supabase
+      .from("customers")
+      .insert({
+        workspace_id: workspaceId,
+        name: form.customerName,
+        email: form.emailAddress || null,
+        phone: form.phoneNumber || null,
+        address_line_1: form.propertyAddress || null,
+      })
+      .select("id")
+      .single();
+
+    if (customerError || !newCustomer) {
+      return {
+        customerId: null,
+        error: customerError?.message ?? "Could not save customer details.",
+      };
+    }
+
+    customerId = newCustomer.id;
+  } else {
+    const { error: updateError } = await supabase
+      .from("customers")
+      .update({
+        name: form.customerName,
+        email: form.emailAddress || null,
+        phone: form.phoneNumber || null,
+        address_line_1: form.propertyAddress || null,
+      })
+      .eq("id", customerId)
+      .eq("workspace_id", workspaceId);
+
+    if (updateError) {
+      return {
+        customerId: null,
+        error: updateError.message ?? "Could not update customer details.",
+      };
+    }
+  }
+
+  return { customerId };
 }
 
 export async function saveDraftProposal(
@@ -34,30 +176,14 @@ export async function saveDraftProposal(
     return { error: "Please complete onboarding before saving proposals." };
   }
 
-  const customerName = getString(formData, "customerName");
-  const propertyAddress = getString(formData, "propertyAddress");
-  const phoneNumber = getString(formData, "phoneNumber");
-  const emailAddress = getString(formData, "emailAddress");
-  const jobDescription = getString(formData, "jobDescription");
-  const estimatedPrice = getString(formData, "estimatedPrice");
-  const estimatedDuration = getString(formData, "estimatedDuration");
+  const form = parseProposalForm(formData);
+  const validation = validateProposalForm(form);
 
-  if (!customerName) {
-    return { error: "Customer name is required." };
+  if (!("ok" in validation)) {
+    return validation;
   }
 
-  if (!jobDescription) {
-    return { error: "Please describe today's job before saving." };
-  }
-
-  if (emailAddress && !isValidEmail(emailAddress)) {
-    return { error: "Please enter a valid email address." };
-  }
-
-  const totalPence = parsePriceToPence(estimatedPrice);
-  if (totalPence === null) {
-    return { error: "Please enter a valid estimated price." };
-  }
+  const { totalPence } = validation;
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
@@ -71,50 +197,15 @@ export async function saveDraftProposal(
 
   const workspaceId = profile.workspace_id;
 
-  let customerId: string | null = null;
+  const { customerId, error: customerError } = await resolveCustomerId(
+    supabase,
+    workspaceId,
+    form,
+    null
+  );
 
-  if (emailAddress) {
-    const { data: existingByEmail } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .ilike("email", emailAddress)
-      .maybeSingle();
-
-    customerId = existingByEmail?.id ?? null;
-  }
-
-  if (!customerId) {
-    const { data: existingByName } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .ilike("name", customerName)
-      .maybeSingle();
-
-    customerId = existingByName?.id ?? null;
-  }
-
-  if (!customerId) {
-    const { data: newCustomer, error: customerError } = await supabase
-      .from("customers")
-      .insert({
-        workspace_id: workspaceId,
-        name: customerName,
-        email: emailAddress || null,
-        phone: phoneNumber || null,
-        address_line_1: propertyAddress || null,
-      })
-      .select("id")
-      .single();
-
-    if (customerError || !newCustomer) {
-      return {
-        error: customerError?.message ?? "Could not save customer details.",
-      };
-    }
-
-    customerId = newCustomer.id;
+  if (customerError || !customerId) {
+    return { error: customerError ?? "Could not save customer details." };
   }
 
   const { data: proposalNumber, error: numberError } = await supabase.rpc(
@@ -128,9 +219,7 @@ export async function saveDraftProposal(
     };
   }
 
-  const thingsToConfirm = estimatedDuration
-    ? `Estimated duration: ${estimatedDuration}`
-    : null;
+  const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
 
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
@@ -139,14 +228,14 @@ export async function saveDraftProposal(
       customer_id: customerId,
       proposal_number: proposalNumber,
       status: "draft",
-      title: `Proposal for ${customerName}`,
-      job_address: propertyAddress || null,
-      rough_notes: jobDescription,
+      title: `Proposal for ${form.customerName}`,
+      job_address: form.propertyAddress || null,
+      rough_notes: form.jobDescription,
       things_to_confirm: thingsToConfirm,
-      customer_name: customerName,
-      customer_email: emailAddress || null,
-      customer_phone: phoneNumber || null,
-      customer_address: propertyAddress || null,
+      customer_name: form.customerName,
+      customer_email: form.emailAddress || null,
+      customer_phone: form.phoneNumber || null,
+      customer_address: form.propertyAddress || null,
       subtotal_amount: totalPence,
       vat_amount: 0,
       total_amount: totalPence,
@@ -161,4 +250,100 @@ export async function saveDraftProposal(
   }
 
   redirect(`/proposals/${proposal.id}`);
+}
+
+export async function updateDraftProposal(
+  _prevState: SaveDraftProposalState,
+  formData: FormData
+): Promise<SaveDraftProposalState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to save a proposal." };
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding before saving proposals." };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const form = parseProposalForm(formData);
+  const validation = validateProposalForm(form);
+
+  if (!("ok" in validation)) {
+    return validation;
+  }
+
+  const { totalPence } = validation;
+
+  const { data: existingProposal, error: loadError } = await supabase
+    .from("proposals")
+    .select("id, status, customer_id")
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (loadError || !existingProposal) {
+    return { error: "Proposal not found." };
+  }
+
+  if (existingProposal.status !== "draft") {
+    return { error: "Only draft proposals can be edited." };
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("workspace_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: "Could not find your workspace. Please try again." };
+  }
+
+  const { customerId, error: customerError } = await resolveCustomerId(
+    supabase,
+    profile.workspace_id,
+    form,
+    existingProposal.customer_id
+  );
+
+  if (customerError || !customerId) {
+    return { error: customerError ?? "Could not save customer details." };
+  }
+
+  const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
+
+  const { error: proposalError } = await supabase
+    .from("proposals")
+    .update({
+      customer_id: customerId,
+      title: `Proposal for ${form.customerName}`,
+      job_address: form.propertyAddress || null,
+      rough_notes: form.jobDescription,
+      things_to_confirm: thingsToConfirm,
+      customer_name: form.customerName,
+      customer_email: form.emailAddress || null,
+      customer_phone: form.phoneNumber || null,
+      customer_address: form.propertyAddress || null,
+      subtotal_amount: totalPence,
+      vat_amount: 0,
+      total_amount: totalPence,
+    })
+    .eq("id", proposalId);
+
+  if (proposalError) {
+    return {
+      error: proposalError.message ?? "Could not save your proposal.",
+    };
+  }
+
+  redirect(`/proposals/${proposalId}`);
 }

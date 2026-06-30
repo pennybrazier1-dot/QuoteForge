@@ -2,20 +2,23 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DashboardTopBar } from "@/components/dashboard/top-bar";
-import { ProposalDetail } from "@/components/proposals/proposal-detail";
+import { ProposalStudioForm } from "@/components/proposals/proposal-studio-form";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { parseEstimatedDuration } from "@/lib/proposals/duration";
+import type { ProposalFormValues } from "@/lib/proposals/form-values";
+import { formatPenceForInput } from "@/lib/proposals/money";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Proposal — QuoteForge",
-  description: "View your saved QuoteForge proposal.",
+  title: "Edit Draft Proposal — QuoteForge",
+  description: "Edit your draft QuoteForge proposal.",
 };
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function ProposalPage({ params }: PageProps) {
+export default async function EditProposalPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
   const {
@@ -33,7 +36,7 @@ export default async function ProposalPage({ params }: PageProps) {
   const { data: proposal, error } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, status, title, job_address, rough_notes, things_to_confirm, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at"
+      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, things_to_confirm, total_amount"
     )
     .eq("id", id)
     .maybeSingle();
@@ -42,13 +45,28 @@ export default async function ProposalPage({ params }: PageProps) {
     notFound();
   }
 
+  if (proposal.status !== "draft") {
+    redirect(`/proposals/${id}`);
+  }
+
+  const initialValues: ProposalFormValues = {
+    customerName: proposal.customer_name ?? "",
+    propertyAddress:
+      proposal.customer_address ?? proposal.job_address ?? "",
+    phoneNumber: proposal.customer_phone ?? "",
+    emailAddress: proposal.customer_email ?? "",
+    jobDescription: proposal.rough_notes ?? "",
+    estimatedPrice: formatPenceForInput(proposal.total_amount),
+    estimatedDuration: parseEstimatedDuration(proposal.things_to_confirm),
+  };
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DashboardTopBar email={user.email} />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
         <Link
-          href="/dashboard"
+          href={`/proposals/${id}`}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
         >
           <svg
@@ -64,15 +82,24 @@ export default async function ProposalPage({ params }: PageProps) {
           >
             <path d="m15 18-6-6 6-6" />
           </svg>
-          Back to Dashboard
+          Back to Proposal
         </Link>
 
         <h1 className="mt-6 text-2xl font-semibold tracking-tight sm:text-3xl">
-          {proposal.status === "draft" ? "Draft Proposal" : "Proposal"}
+          Edit Draft Proposal
         </h1>
+        <p className="mt-2 text-sm text-muted">
+          Update the customer details, job description, or estimate. Your changes
+          are saved when you tap Save Draft.
+        </p>
 
         <div className="mt-8">
-          <ProposalDetail proposal={proposal} />
+          <ProposalStudioForm
+            mode="edit"
+            proposalId={id}
+            initialValues={initialValues}
+            showJobExample
+          />
         </div>
       </main>
     </div>

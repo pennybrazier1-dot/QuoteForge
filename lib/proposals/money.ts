@@ -18,3 +18,11 @@ export function formatPenceAsGbp(pence: number): string {
     currency: "GBP",
   }).format(pence / 100);
 }
+
+export function formatPenceForInput(pence: number): string {
+  if (pence % 100 === 0) {
+    return String(pence / 100);
+  }
+
+  return (pence / 100).toFixed(2);
+}
