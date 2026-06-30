@@ -1,26 +1,54 @@
 @import "tailwindcss";
 
+/*
+  QuoteForge global design system.
+  All theme colours live here so the whole app stays consistent.
+  Premium dark theme + orange accent.
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Core surfaces */
+  --background: #08080a;
+  --background-elevated: #0f0f12;
+  --foreground: #f5f5f7;
+  --muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.08);
+
+  /* Brand accent (orange) */
+  --accent: #ff6a1a;
+  --accent-hover: #ff7d36;
+  --accent-soft: rgba(255, 106, 26, 0.12);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-elevated: var(--background-elevated);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border-subtle: var(--border);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle ambient glow used behind the hero */
+.bg-hero-glow {
+  background:
+    radial-gradient(60% 60% at 50% 0%, rgba(255, 106, 26, 0.18) 0%, rgba(255, 106, 26, 0) 70%),
+    radial-gradient(40% 40% at 80% 20%, rgba(255, 106, 26, 0.08) 0%, rgba(255, 106, 26, 0) 70%);
 }
