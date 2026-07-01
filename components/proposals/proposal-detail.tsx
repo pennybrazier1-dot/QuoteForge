@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
+import { StructuredProposalView } from "@/components/proposals/structured-proposal-view";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
+import {
+  hasStructuredProposal,
+  mapDbRowToStructuredProposal,
+} from "@/lib/proposals/structured-proposal";
 
 export type ProposalDetailData = {
   id: string;
@@ -18,6 +23,14 @@ export type ProposalDetailData = {
   customer_address: string | null;
   total_amount: number;
   created_at: string;
+  job_summary: string | null;
+  scope_of_work: string | null;
+  materials: unknown;
+  labour_description: string | null;
+  estimated_duration: string | null;
+  things_to_confirm_items: unknown;
+  ai_optional_extras: unknown;
+  payment_terms: string | null;
 };
 
 function DetailRow({
@@ -44,6 +57,8 @@ function DetailRow({
 export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
   const isDraft = proposal.status === "draft";
   const optionalExtras = formatOptionalExtrasForDisplay(proposal.optional_extras);
+  const structuredProposal = mapDbRowToStructuredProposal(proposal);
+  const showStructuredProposal = hasStructuredProposal(proposal);
 
   return (
     <div className="space-y-6">
@@ -95,8 +110,15 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
         </dl>
       </section>
 
+      {showStructuredProposal && structuredProposal ? (
+        <StructuredProposalView proposal={structuredProposal} />
+      ) : null}
+
       <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
-        <h3 className="text-lg font-semibold">Job</h3>
+        <h3 className="text-lg font-semibold">Site visit record</h3>
+        <p className="mt-1 text-sm text-muted">
+          Your original site notes, kept separate from the accepted proposal.
+        </p>
         <div className="mt-6 space-y-5">
           <DetailRow label="Job address" value={proposal.job_address} />
           <div>
@@ -109,7 +131,7 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wider text-muted">
-              Optional extras
+              Optional extras (your notes)
             </dt>
             <dd className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
               {optionalExtras ?? (
@@ -121,7 +143,9 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
               accepted.
             </p>
           </div>
-          <DetailRow label="Estimate notes" value={proposal.things_to_confirm} />
+          {!showStructuredProposal ? (
+            <DetailRow label="Estimate notes" value={proposal.things_to_confirm} />
+          ) : null}
         </div>
       </section>
 
@@ -130,6 +154,11 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
         <p className="mt-4 text-2xl font-semibold tracking-tight">
           {formatPenceAsGbp(proposal.total_amount)}
         </p>
+        {proposal.estimated_duration ? (
+          <p className="mt-2 text-sm text-muted">
+            Estimated duration: {proposal.estimated_duration}
+          </p>
+        ) : null}
       </section>
 
       {isDraft ? (

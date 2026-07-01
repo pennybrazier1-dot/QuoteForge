@@ -1,5 +1,12 @@
 import OpenAI from "openai";
 import {
+  addQualifierConfirmations,
+  enrichWithSourceQualifiers,
+  preserveQualifiedDuration,
+  preserveQualifiedLabour,
+  preserveQualifiedStringList,
+} from "./qualifiers";
+import {
   buildProposalUserPrompt,
   DURATION_CANNOT_DETERMINE_MESSAGE,
   PROPOSAL_SYSTEM_PROMPT,
@@ -70,10 +77,56 @@ function normalizeEstimatedDuration(
   };
 }
 
-function normalizeGeneratedProposal(
-  proposal: GeneratedProposal
+function preserveQualifiedLanguage(
+  proposal: GeneratedProposal,
+  input: GenerateProposalInput
 ): GeneratedProposal {
-  return normalizeEstimatedDuration(proposal);
+  const siteNotes = input.siteNotes;
+
+  const jobSummary = enrichWithSourceQualifiers(proposal.jobSummary, siteNotes);
+  const scopeOfWork = preserveQualifiedStringList(proposal.scopeOfWork, siteNotes);
+  const materials = preserveQualifiedStringList(proposal.materials, siteNotes);
+  const labour = preserveQualifiedLabour(
+    proposal.labour,
+    siteNotes,
+    input.estimatedPrice
+  );
+  const estimatedDuration = preserveQualifiedDuration(
+    proposal.estimatedDuration,
+    siteNotes,
+    input.estimatedDuration
+  );
+
+  const proposalText = [
+    jobSummary,
+    ...scopeOfWork,
+    ...materials,
+    labour,
+    estimatedDuration,
+  ].join(" ");
+
+  const thingsToConfirm = addQualifierConfirmations(
+    proposal.thingsToConfirm,
+    siteNotes,
+    proposalText
+  );
+
+  return {
+    ...proposal,
+    jobSummary,
+    scopeOfWork,
+    materials,
+    labour,
+    estimatedDuration,
+    thingsToConfirm,
+  };
+}
+
+function normalizeGeneratedProposal(
+  proposal: GeneratedProposal,
+  input: GenerateProposalInput
+): GeneratedProposal {
+  return normalizeEstimatedDuration(preserveQualifiedLanguage(proposal, input));
 }
 
 export async function generateProposal(
@@ -105,5 +158,5 @@ export async function generateProposal(
     throw new Error("AI did not return a proposal. Please try again.");
   }
 
-  return normalizeGeneratedProposal(parseGeneratedProposal(content));
+  return normalizeGeneratedProposal(parseGeneratedProposal(content), input);
 }

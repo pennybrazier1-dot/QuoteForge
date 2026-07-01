@@ -29,7 +29,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, created_at, customer_name, customer_address, rough_notes, optional_extras, things_to_confirm, payment_terms, total_amount"
+      "id, proposal_number, created_at, customer_name, customer_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, payment_terms, total_amount"
     )
     .eq("id", id)
     .maybeSingle();

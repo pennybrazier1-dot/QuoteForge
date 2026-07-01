@@ -2,14 +2,17 @@
 
 import { useActionState, useState } from "react";
 import {
+  acceptAiDraftProposal,
   saveDraftProposal,
   updateDraftProposal,
+  type AcceptAiDraftProposalState,
   type SaveDraftProposalState,
 } from "@/app/proposals/actions";
 import {
   generateProposalDraft,
   type GenerateProposalState,
 } from "@/app/proposals/generate-actions";
+import { AcceptAiDraftButton } from "@/components/proposals/accept-ai-draft-button";
 import { AuthError } from "@/components/auth/auth-shell";
 import { ProposalField, ProposalTextarea } from "@/components/proposals/field";
 import { GenerateProposalButton } from "@/components/proposals/generate-proposal-button";
@@ -20,6 +23,7 @@ import type { ProposalFormValues } from "@/lib/proposals/form-values";
 
 const saveInitialState: SaveDraftProposalState = {};
 const generateInitialState: GenerateProposalState = {};
+const acceptInitialState: AcceptAiDraftProposalState = {};
 
 const SITE_NOTES_HELPER =
   "Write your site notes just as you would on paper. Include the work required, any materials or products discussed, measurements, customer requests, access issues, estimated price or duration if you already know them, and anything that still needs confirming.";
@@ -43,6 +47,10 @@ export function ProposalStudioForm({
   const [generateState, generateAction] = useActionState(
     generateProposalDraft,
     generateInitialState
+  );
+  const [acceptState, acceptAction] = useActionState(
+    acceptAiDraftProposal,
+    acceptInitialState
   );
 
   const [customerName, setCustomerName] = useState(
@@ -152,7 +160,24 @@ export function ProposalStudioForm({
         ) : null}
 
         {generateState.proposal ? (
-          <GeneratedProposalPreview proposal={generateState.proposal} />
+          <>
+            <GeneratedProposalPreview proposal={generateState.proposal} />
+            <input
+              type="hidden"
+              name="generatedProposal"
+              value={JSON.stringify(generateState.proposal)}
+            />
+            <div className="space-y-3 border-t border-accent/20 pt-6">
+              {acceptState.error ? (
+                <AuthError message={acceptState.error} />
+              ) : null}
+              <AcceptAiDraftButton formAction={acceptAction} />
+              <p className="text-center text-xs text-muted">
+                Saves the AI draft as your official proposal. Your site notes
+                stay as your original visit record.
+              </p>
+            </div>
+          </>
         ) : null}
       </ProposalSection>
 

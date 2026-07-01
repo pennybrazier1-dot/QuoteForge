@@ -40,6 +40,23 @@ PRICE AND DURATION RULES:
 - Never invent price or duration.
 - Do not add £ amounts to labour unless a manual price was provided or a price is clearly stated in Site Notes.
 
+QUALIFIED LANGUAGE RULES (CRITICAL):
+- Preserve important qualifying language from Site Notes. Never strengthen a qualified statement into a definite one.
+- Always keep words and phrases such as: approximately, around, about, may, might, subject to, depending on, if suitable, where possible, assuming, pending, unless, once confirmed.
+- Examples:
+  - Site Notes: "Approximately two days depending on ground conditions."
+    CORRECT estimatedDuration: "Approximately two days depending on ground conditions."
+    WRONG estimatedDuration: "Two days." or "Approximately two days."
+  - Site Notes: "Around £850 if access is straightforward."
+    CORRECT labour mention: "Around £850 if access is straightforward."
+    WRONG labour mention: "£850."
+  - Site Notes: "Brick repair where possible on the south wall."
+    CORRECT scope item: "Brick repair where possible on the south wall."
+    WRONG scope item: "Brick repair on the south wall."
+- Apply this rule to duration, price references, materials, and scope of work.
+- If a qualifier affects the work, keep it in the relevant section and also add a helpful confirmation item to thingsToConfirm.
+- Do not remove conditions, caveats, or uncertainty that the tradesperson recorded on site.
+
 MATERIALS RULES:
 - Extract materials explicitly named in Site Notes.
 - Also include core materials clearly named or strongly implied by the work described.
@@ -65,9 +82,10 @@ OPTIONAL EXTRAS RULES:
 ESTIMATED DURATION RULES:
 - Use the manual Estimated Duration when provided.
 - Otherwise, use duration only if clearly stated in Site Notes.
+- Preserve the full qualified wording from Site Notes, including conditions such as "depending on ground conditions".
 - If duration cannot be estimated safely, set estimatedDuration to exactly: "${DURATION_CANNOT_DETERMINE_MESSAGE}"
 - Never write "needs confirming", "to be confirmed", "TBC", or similar phrasing in estimatedDuration.
-- Move duration uncertainty into thingsToConfirm.
+- Move duration uncertainty into thingsToConfirm, but do not remove qualifying conditions from estimatedDuration when they were stated in Site Notes.
 
 If scope details are missing, do not guess — list them in thingsToConfirm.
 
@@ -123,11 +141,12 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "",
     "Return JSON matching the required schema.",
     "- Organise Site Notes into jobSummary, scopeOfWork, materials, labour, and thingsToConfirm.",
-    "- materials: extract from Site Notes; include clearly implied core materials; do not invent specifications.",
-    "- thingsToConfirm: include missing details, access issues, measurements to confirm, and material specifications.",
+    "- materials: extract from Site Notes; include clearly implied core materials; preserve qualifying language; do not invent specifications.",
+    "- thingsToConfirm: include missing details, access issues, measurements to confirm, material specifications, and helpful confirmations for any qualified conditions from Site Notes.",
     "- optionalExtras: use only the Optional Extras field; keep separate from main scope and main price.",
-    "- estimatedDuration: use manual duration when provided; otherwise extract from Site Notes only if clear; otherwise use the safe fallback message.",
-    "- Never invent price or duration."
+    "- estimatedDuration: use manual duration when provided; otherwise preserve the full qualified duration wording from Site Notes; otherwise use the safe fallback message.",
+    "- Never invent price or duration.",
+    "- Never remove qualifiers such as approximately, around, depending on, subject to, if suitable, or where possible."
   );
 
   return lines.join("\n");

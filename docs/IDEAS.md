@@ -87,3 +87,15 @@ Features:
 - Accepted optional extras are added to the proposal total.
 - Tradesperson is notified of customer comments or requested changes.
 - Tradesperson stays in control and approves any changes before the proposal is final.
+
+## Proposal Sending
+
+Allow tradespeople to send proposals directly from QuoteForge.
+
+Possible options:
+- Email proposal PDF to customer
+- Generate shareable customer proposal link
+- Track when proposal was sent
+- Track when proposal was viewed
+- Allow customer to accept proposal online
+- Allow customer to approve optional extras

@@ -37,7 +37,7 @@ export default async function EditProposalPage({ params }: PageProps) {
   const { data: proposal, error } = await supabase
     .from("proposals")
     .select(
-      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, total_amount"
+      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, total_amount"
     )
     .eq("id", id)
     .maybeSingle();
@@ -59,7 +59,10 @@ export default async function EditProposalPage({ params }: PageProps) {
     jobDescription: proposal.rough_notes ?? "",
     optionalExtras: formatOptionalExtrasForForm(proposal.optional_extras),
     estimatedPrice: formatPenceForInput(proposal.total_amount),
-    estimatedDuration: parseEstimatedDuration(proposal.things_to_confirm),
+    estimatedDuration: parseEstimatedDuration(
+      proposal.estimated_duration,
+      proposal.things_to_confirm
+    ),
   };
 
   return (

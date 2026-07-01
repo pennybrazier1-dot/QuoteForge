@@ -1,6 +1,11 @@
 export function parseEstimatedDuration(
-  thingsToConfirm: string | null | undefined
+  estimatedDuration: string | null | undefined,
+  thingsToConfirm?: string | null
 ): string {
+  if (estimatedDuration?.trim()) {
+    return estimatedDuration.trim();
+  }
+
   if (!thingsToConfirm) {
     return "";
   }

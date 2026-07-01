@@ -5,9 +5,17 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import { buildEstimatedDurationNote } from "@/lib/proposals/duration";
 import { parseOptionalExtrasForStorage } from "@/lib/proposals/optional-extras";
 import { parsePriceToPence } from "@/lib/proposals/money";
+import {
+  mapGeneratedProposalToDbFields,
+  parseGeneratedProposalJson,
+} from "@/lib/proposals/structured-proposal";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
+  error?: string;
+};
+
+export type AcceptAiDraftProposalState = {
   error?: string;
 };
 
@@ -224,6 +232,7 @@ export async function saveDraftProposal(
 
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
+  const estimatedDuration = form.estimatedDuration || null;
 
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
@@ -236,6 +245,7 @@ export async function saveDraftProposal(
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
       optional_extras: optionalExtras,
+      estimated_duration: estimatedDuration,
       things_to_confirm: thingsToConfirm,
       customer_name: form.customerName,
       customer_email: form.emailAddress || null,
@@ -326,6 +336,7 @@ export async function updateDraftProposal(
 
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
+  const estimatedDuration = form.estimatedDuration || null;
 
   const { error: proposalError } = await supabase
     .from("proposals")
@@ -335,6 +346,7 @@ export async function updateDraftProposal(
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
       optional_extras: optionalExtras,
+      estimated_duration: estimatedDuration,
       things_to_confirm: thingsToConfirm,
       customer_name: form.customerName,
       customer_email: form.emailAddress || null,
@@ -353,6 +365,168 @@ export async function updateDraftProposal(
   }
 
   redirect(`/proposals/${proposalId}`);
+}
+
+export async function acceptAiDraftProposal(
+  _prevState: AcceptAiDraftProposalState,
+  formData: FormData
+): Promise<AcceptAiDraftProposalState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to accept a proposal draft." };
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding before saving proposals." };
+  }
+
+  const generatedProposal = parseGeneratedProposalJson(
+    String(formData.get("generatedProposal") ?? "")
+  );
+
+  if (!generatedProposal) {
+    return { error: "No AI draft was found. Generate a proposal first." };
+  }
+
+  const form = parseProposalForm(formData);
+  const validation = validateProposalForm(form);
+
+  if (!("ok" in validation)) {
+    return validation;
+  }
+
+  const { totalPence } = validation;
+  const proposalId = getString(formData, "proposalId");
+  const structuredFields = mapGeneratedProposalToDbFields(generatedProposal);
+  const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
+  const manualDuration = form.estimatedDuration || null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("workspace_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: "Could not find your workspace. Please try again." };
+  }
+
+  const workspaceId = profile.workspace_id;
+
+  if (proposalId) {
+    const { data: existingProposal, error: loadError } = await supabase
+      .from("proposals")
+      .select("id, status, customer_id")
+      .eq("id", proposalId)
+      .maybeSingle();
+
+    if (loadError || !existingProposal) {
+      return { error: "Proposal not found." };
+    }
+
+    if (existingProposal.status !== "draft") {
+      return { error: "Only draft proposals can be updated." };
+    }
+
+    const { customerId, error: customerError } = await resolveCustomerId(
+      supabase,
+      workspaceId,
+      form,
+      existingProposal.customer_id
+    );
+
+    if (customerError || !customerId) {
+      return { error: customerError ?? "Could not save customer details." };
+    }
+
+    const { error: proposalError } = await supabase
+      .from("proposals")
+      .update({
+        customer_id: customerId,
+        title: `Proposal for ${form.customerName}`,
+        job_address: form.propertyAddress || null,
+        rough_notes: form.jobDescription,
+        optional_extras: optionalExtras,
+        customer_name: form.customerName,
+        customer_email: form.emailAddress || null,
+        customer_phone: form.phoneNumber || null,
+        customer_address: form.propertyAddress || null,
+        subtotal_amount: totalPence,
+        vat_amount: 0,
+        total_amount: totalPence,
+        ...structuredFields,
+        estimated_duration: manualDuration ?? structuredFields.estimated_duration,
+        things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
+      })
+      .eq("id", proposalId);
+
+    if (proposalError) {
+      return {
+        error: proposalError.message ?? "Could not accept the AI draft.",
+      };
+    }
+
+    redirect(`/proposals/${proposalId}`);
+  }
+
+  const { customerId, error: customerError } = await resolveCustomerId(
+    supabase,
+    workspaceId,
+    form,
+    null
+  );
+
+  if (customerError || !customerId) {
+    return { error: customerError ?? "Could not save customer details." };
+  }
+
+  const { data: proposalNumber, error: numberError } = await supabase.rpc(
+    "allocate_proposal_number",
+    { target_workspace_id: workspaceId }
+  );
+
+  if (numberError || !proposalNumber) {
+    return {
+      error: numberError?.message ?? "Could not allocate a proposal number.",
+    };
+  }
+
+  const { data: proposal, error: proposalError } = await supabase
+    .from("proposals")
+    .insert({
+      workspace_id: workspaceId,
+      customer_id: customerId,
+      proposal_number: proposalNumber,
+      status: "draft",
+      title: `Proposal for ${form.customerName}`,
+      job_address: form.propertyAddress || null,
+      rough_notes: form.jobDescription,
+      optional_extras: optionalExtras,
+      customer_name: form.customerName,
+      customer_email: form.emailAddress || null,
+      customer_phone: form.phoneNumber || null,
+      customer_address: form.propertyAddress || null,
+      subtotal_amount: totalPence,
+      vat_amount: 0,
+      total_amount: totalPence,
+      ...structuredFields,
+      estimated_duration: manualDuration ?? structuredFields.estimated_duration,
+      things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
+    })
+    .select("id")
+    .single();
+
+  if (proposalError || !proposal) {
+    return {
+      error: proposalError?.message ?? "Could not accept the AI draft.",
+    };
+  }
+
+  redirect(`/proposals/${proposal.id}`);
 }
 
 export type DeleteDraftProposalState = {

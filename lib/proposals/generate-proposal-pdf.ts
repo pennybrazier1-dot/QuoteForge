@@ -228,6 +228,7 @@ export function buildProposalPdfData(proposal: {
   rough_notes: string | null;
   optional_extras: unknown;
   things_to_confirm: string | null;
+  estimated_duration: string | null;
   payment_terms: string | null;
   total_amount: number;
 }, workspace: {
@@ -243,7 +244,10 @@ export function buildProposalPdfData(proposal: {
     siteNotes: proposal.rough_notes,
     optionalExtras: proposal.optional_extras,
     estimatedPrice: proposal.total_amount,
-    estimatedDuration: parseEstimatedDuration(proposal.things_to_confirm),
+    estimatedDuration: parseEstimatedDuration(
+      proposal.estimated_duration,
+      proposal.things_to_confirm
+    ),
     paymentTerms:
       proposal.payment_terms?.trim() || workspace.default_payment_terms,
   };

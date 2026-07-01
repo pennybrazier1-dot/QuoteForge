@@ -33,7 +33,7 @@ export default async function ProposalPage({ params }: PageProps) {
   const { data: proposal, error } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, status, title, job_address, rough_notes, optional_extras, things_to_confirm, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at"
+      "id, proposal_number, status, title, job_address, rough_notes, optional_extras, things_to_confirm, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at, job_summary, scope_of_work, materials, labour_description, estimated_duration, things_to_confirm_items, ai_optional_extras, payment_terms"
     )
     .eq("id", id)
     .maybeSingle();
