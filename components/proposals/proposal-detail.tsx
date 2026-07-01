@@ -56,6 +56,13 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
             </h2>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <a
+              href={`/proposals/${proposal.id}/pdf`}
+              download={`${proposal.proposal_number.replace(/\s+/g, "-")}.pdf`}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-accent/40 bg-accent-soft px-4 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
+            >
+              Download PDF
+            </a>
             {isDraft ? (
               <Link
                 href={`/proposals/${proposal.id}/edit`}
