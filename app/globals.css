@@ -1465,3 +1465,123 @@ a.qf-card-inset:hover {
 .qf-workspace-pdf-cta:hover {
   color: var(--accent-hover);
 }
+
+.qf-workspace-next-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qf-workspace-next-list {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qf-workspace-next-list > li {
+  border-top: 1px solid var(--border);
+}
+
+.qf-workspace-next-list > li:first-child {
+  border-top: none;
+}
+
+.qf-workspace-next-form {
+  margin: 0;
+}
+
+.qf-workspace-next-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 0;
+  text-align: left;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+a.qf-workspace-next-row:hover,
+button.qf-workspace-next-row:hover:not(:disabled) {
+  opacity: 0.92;
+}
+
+.qf-workspace-next-row-primary {
+  padding: 0.875rem;
+  margin-inline: -0.25rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--border-card-accent);
+  background: rgba(255, 106, 26, 0.06);
+}
+
+.qf-workspace-next-row-primary + li,
+li + .qf-workspace-next-form .qf-workspace-next-row-primary {
+  margin-top: 0.25rem;
+}
+
+.qf-workspace-next-row-disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.qf-workspace-next-icon {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+}
+
+.qf-workspace-next-icon-accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.qf-workspace-next-icon-blue {
+  background: rgba(96, 165, 250, 0.14);
+  color: #60a5fa;
+}
+
+.qf-workspace-next-icon-emerald {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+}
+
+.qf-workspace-next-icon-amber {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+.qf-workspace-next-icon-purple {
+  background: rgba(167, 139, 250, 0.14);
+  color: #a78bfa;
+}
+
+.qf-workspace-next-icon-muted {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+}
+
+.qf-workspace-next-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--foreground);
+}
+
+.qf-workspace-next-description {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.qf-workspace-next-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}

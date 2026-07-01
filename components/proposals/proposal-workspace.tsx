@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
-import { ProposalStatusActions } from "@/components/proposals/proposal-status-actions";
+import { ProposalNextActions } from "@/components/proposals/proposal-next-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
@@ -25,6 +25,7 @@ export type ProposalWorkspaceData = {
   job_address: string | null;
   rough_notes: string | null;
   customer_name: string | null;
+  customer_id: string | null;
   customer_email: string | null;
   customer_phone: string | null;
   customer_address: string | null;
@@ -253,20 +254,26 @@ function ProposalWorkspaceRight({
         </dl>
       </SectionCard>
 
-      <SectionCard className="qf-card-form">
-        <WorkspaceCardHeading title="Proposal Timeline" icon={CLOCK_ICON} />
-        <div className="mt-4">
-          <ProposalTimeline proposal={proposal} />
-        </div>
-      </SectionCard>
+      <div id="proposal-timeline">
+        <SectionCard className="qf-card-form">
+          <WorkspaceCardHeading title="Proposal Timeline" icon={CLOCK_ICON} />
+          <div className="mt-4">
+            <ProposalTimeline proposal={proposal} />
+          </div>
+        </SectionCard>
+      </div>
 
       <SectionCard className="qf-card-form">
-        <WorkspaceCardHeading title="Quick Actions" icon={BOLT_ICON} />
+        <WorkspaceCardHeading title="Actions" icon={BOLT_ICON} />
         <div className="mt-4">
-          <ProposalStatusActions
-            proposalId={proposal.id}
-            proposalNumber={proposal.proposal_number}
-            status={proposal.status}
+          <ProposalNextActions
+            proposal={{
+              id: proposal.id,
+              proposal_number: proposal.proposal_number,
+              status: proposal.status,
+              customer_id: proposal.customer_id,
+              hasStructured: canPreview,
+            }}
           />
         </div>
       </SectionCard>

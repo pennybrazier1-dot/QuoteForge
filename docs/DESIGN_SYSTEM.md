@@ -189,3 +189,29 @@ Do not invent new layouts or styling for individual pages unless there is a clea
 The application should feel like one cohesive product, not a collection of separate screens.
 
 When redesigning existing pages, use the New Proposal page as the benchmark for quality and consistency.
+
+## Headings
+
+Use short, clear section headings.
+
+Prefer one or two words wherever possible.
+
+Examples:
+
+Dashboard
+
+Customers
+
+Proposals
+
+Actions
+
+Timeline
+
+Estimate
+
+Site Notes
+
+Avoid long descriptive headings when a simple label is sufficient.
+
+The interface should be easy to scan at a glance.
