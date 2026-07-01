@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Card, CardHeading } from "@/components/dashboard/card";
+import { Card, CardHeading } from "@/components/ui/section-card";
 import {
   formatCustomerAddress,
   formatCustomerCreatedAt,
@@ -42,7 +42,7 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
     return (
       <Card>
         <CardHeading title="Customers" />
-        <div className="mt-6 rounded-xl border border-dashed border-border-subtle bg-background px-6 py-12 text-center">
+        <div className="qf-card-inset mt-6 border-dashed px-6 py-12 text-center">
           <p className="text-sm text-muted">
             No customers yet. Create a proposal and the customer will appear
             here.
@@ -53,13 +53,13 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
   }
 
   return (
-    <div className="space-y-4">
+    <Card>
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-lg font-semibold">All customers</h2>
         <span className="text-xs text-muted">{customers.length} saved</span>
       </div>
 
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {customers.map((customer) => {
           const address = formatCustomerAddress(customer);
 
@@ -67,7 +67,7 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
             <li key={customer.id}>
               <Link
                 href={`/customers/${customer.id}`}
-                className="group flex h-full flex-col rounded-2xl border border-border-subtle bg-background-elevated p-5 transition-colors hover:border-accent/40 hover:bg-white/[0.02] sm:p-6"
+                className="group qf-card flex h-full flex-col"
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 break-words text-base font-semibold tracking-tight">
@@ -105,6 +105,6 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
           );
         })}
       </ul>
-    </div>
+    </Card>
   );
 }

@@ -4,35 +4,63 @@
   QuoteForge global design system.
   All theme colours live here so the whole app stays consistent.
   Premium dark theme + orange accent.
+
+  IMPORTANT: Keep :root tokens as plain values in one block.
+  Do not use color-mix() or var() chains in :root — Tailwind splits
+  those into multiple :root rules and breaks variables during client navigation.
 */
 
-:root {
-  /* Core surfaces */
-  --background: #08080a;
-  --background-elevated: #0f0f12;
-  --foreground: #f5f5f7;
-  --muted: #a1a1aa;
-  --border: rgba(255, 255, 255, 0.08);
-
-  /* Brand accent (orange) */
-  --accent: #ff6a1a;
-  --accent-hover: #ff7d36;
-  --accent-soft: rgba(255, 106, 26, 0.12);
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-background-elevated: var(--background-elevated);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-border-subtle: var(--border);
-
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
-
+  --color-background: #08080a;
+  --color-background-elevated: #1f1f28;
+  --color-background-card: #1f1f28;
+  --color-background-card-inset: #16161e;
+  --color-foreground: #f5f5f7;
+  --color-muted: #a1a1aa;
+  --color-border-subtle: rgba(255, 255, 255, 0.12);
+  --color-border-card: rgba(255, 255, 255, 0.26);
+  --color-border-card-accent: rgba(255, 106, 26, 0.5);
+  --color-accent: #ff6a1a;
+  --color-accent-hover: #ff7d36;
+  --color-accent-soft: rgba(255, 106, 26, 0.16);
+  --color-border-field: rgba(255, 160, 110, 0.45);
+  --color-border-field-hover: rgba(255, 170, 120, 0.55);
+  --color-background-field: #0c0c12;
+  --color-background-field-hover: #101016;
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #08080a;
+  --background-elevated: #1f1f28;
+  --background-card: #1f1f28;
+  --background-card-inset: #16161e;
+  --foreground: #f5f5f7;
+  --muted: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.12);
+  --border-card: rgba(255, 255, 255, 0.26);
+  --border-card-accent: rgba(255, 106, 26, 0.5);
+  --card-border-color: rgba(255, 130, 70, 0.55);
+  --card-shadow:
+    0 0 0 1px rgba(255, 106, 26, 0.24),
+    0 0 24px rgba(255, 106, 26, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 48px rgba(0, 0, 0, 0.5);
+  --radius-card: 1rem;
+  --radius-card-inset: 0.75rem;
+  --accent: #ff6a1a;
+  --accent-hover: #ff7d36;
+  --accent-soft: rgba(255, 106, 26, 0.16);
+  --background-card-accent: #221e1a;
+  --border-field: rgba(255, 160, 110, 0.45);
+  --border-field-hover: rgba(255, 170, 120, 0.55);
+  --background-field: #0c0c12;
+  --background-field-hover: #101016;
+  --ring-field-focus: rgba(255, 106, 26, 0.42);
+  --field-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 html {
@@ -51,4 +79,184 @@ body {
   background:
     radial-gradient(60% 60% at 50% 0%, rgba(255, 106, 26, 0.18) 0%, rgba(255, 106, 26, 0) 70%),
     radial-gradient(40% 40% at 80% 20%, rgba(255, 106, 26, 0.08) 0%, rgba(255, 106, 26, 0) 70%);
+}
+
+/*
+  Shared card and layout styles (unlayered so they always beat Tailwind reset).
+*/
+.qf-card {
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background-color: var(--background-card);
+  padding: 1.75rem;
+  box-shadow: var(--card-shadow);
+}
+
+.qf-card-inset {
+  border-radius: var(--radius-card-inset);
+  border: 1.5px solid var(--border-card);
+  background-color: var(--background-card-inset);
+  padding: 1rem 1.25rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 106, 26, 0.08);
+}
+
+.qf-card-accent {
+  border-radius: var(--radius-card);
+  border: 2px solid var(--border-card-accent);
+  background-color: var(--background-card-accent);
+  padding: 1.75rem;
+  box-shadow:
+    0 0 0 1px rgba(255, 106, 26, 0.28),
+    0 0 32px rgba(255, 106, 26, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 16px 48px rgba(0, 0, 0, 0.5);
+}
+
+.qf-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.qf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Work home — centred workspace (1240px max). Cards use shared qf-card tokens. */
+.qf-workspace {
+  width: 100%;
+  max-width: 77.5rem;
+  margin-inline: auto;
+  padding: 2rem 1.5rem 3rem;
+}
+
+.qf-workspace-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-stack {
+    gap: 2.5rem;
+  }
+}
+
+.qf-workspace-hero {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-hero {
+    grid-template-columns: minmax(0, 13fr) minmax(0, 7fr);
+  }
+}
+
+.qf-workspace-proposals-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .qf-workspace-proposals-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-proposals-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.qf-card-compact {
+  padding: 1.125rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .qf-card-compact {
+    padding: 1.25rem 1.375rem;
+  }
+}
+
+a.qf-card:hover,
+button.qf-card:hover {
+  border-color: var(--border-card-accent);
+}
+
+a.qf-card-inset:hover {
+  border-color: rgba(255, 140, 80, 0.55);
+}
+
+@media (min-width: 640px) {
+  .qf-card,
+  .qf-card-accent {
+    padding: 2rem;
+  }
+
+  .qf-card-inset {
+    padding: 1.25rem;
+  }
+}
+
+/*
+  Shared form field styles (unlayered).
+*/
+.form-input,
+.form-textarea,
+.form-select {
+  width: 100%;
+  border: 2px solid var(--border-field);
+  background-color: var(--background-field);
+  color: var(--foreground);
+  outline: none;
+  box-shadow: var(--field-shadow);
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.form-input,
+.form-select {
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.form-textarea {
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.625;
+  resize: vertical;
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: var(--muted);
+}
+
+.form-input:hover,
+.form-textarea:hover,
+.form-select:hover {
+  border-color: var(--border-field-hover);
+  background-color: var(--background-field-hover);
+}
+
+.form-input:focus,
+.form-textarea:focus,
+.form-select:focus {
+  border-color: var(--accent);
+  box-shadow:
+    var(--field-shadow),
+    0 0 0 3px var(--ring-field-focus);
 }

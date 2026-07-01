@@ -33,7 +33,7 @@ export function ProposalField({
         autoComplete={autoComplete}
         placeholder={placeholder}
         required={required}
-        className="mt-2 w-full rounded-lg border border-border-subtle bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
+        className="form-input mt-2"
       />
     </div>
   );
@@ -71,7 +71,7 @@ export function ProposalTextarea({
         rows={rows}
         placeholder={placeholder}
         required={required}
-        className="mt-2 w-full resize-y rounded-xl border border-border-subtle bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
+        className="form-textarea mt-2"
       />
     </div>
   );

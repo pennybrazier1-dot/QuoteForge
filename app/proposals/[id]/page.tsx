@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { DashboardTopBar } from "@/components/dashboard/top-bar";
 import { ProposalDetail } from "@/components/proposals/proposal-detail";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { getProposalPageTitle } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -68,7 +69,7 @@ export default async function ProposalPage({ params }: PageProps) {
         </Link>
 
         <h1 className="mt-6 text-2xl font-semibold tracking-tight sm:text-3xl">
-          {proposal.status === "draft" ? "Draft Proposal" : "Proposal"}
+          {getProposalPageTitle(proposal.status)}
         </h1>
 
         <div className="mt-8">

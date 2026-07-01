@@ -1,6 +1,8 @@
-import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
+import { ProposalStatusActions } from "@/components/proposals/proposal-status-actions";
+import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { StructuredProposalView } from "@/components/proposals/structured-proposal-view";
+import { SectionCard, SectionStack } from "@/components/ui/section-card";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
 import {
@@ -61,8 +63,8 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
   const showStructuredProposal = hasStructuredProposal(proposal);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+    <SectionStack>
+      <SectionCard as="div">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="text-sm font-medium text-accent">{proposal.proposal_number}</p>
@@ -70,26 +72,7 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
               {proposal.title}
             </h2>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <a
-              href={`/proposals/${proposal.id}/pdf`}
-              download={`${proposal.proposal_number.replace(/\s+/g, "-")}.pdf`}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-accent/40 bg-accent-soft px-4 text-sm font-medium text-accent transition-colors hover:bg-accent/20"
-            >
-              Download PDF
-            </a>
-            {isDraft ? (
-              <Link
-                href={`/proposals/${proposal.id}/edit`}
-                className="inline-flex h-9 items-center justify-center rounded-full border border-border-subtle bg-white/5 px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
-              >
-                Edit Draft
-              </Link>
-            ) : null}
-            <span className="rounded-full bg-white/5 px-3 py-1 text-xs font-medium capitalize text-muted">
-              {proposal.status}
-            </span>
-          </div>
+          <ProposalStatusBadge status={proposal.status} />
         </div>
         <p className="mt-4 text-sm text-muted">
           Saved on{" "}
@@ -98,9 +81,23 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
             timeStyle: "short",
           }).format(new Date(proposal.created_at))}
         </p>
-      </div>
+      </SectionCard>
 
-      <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+      <SectionCard>
+        <h3 className="text-lg font-semibold">Next steps</h3>
+        <p className="mt-1 text-sm text-muted">
+          Move this proposal through your workflow when you are ready.
+        </p>
+        <div className="mt-6">
+          <ProposalStatusActions
+            proposalId={proposal.id}
+            proposalNumber={proposal.proposal_number}
+            status={proposal.status}
+          />
+        </div>
+      </SectionCard>
+
+      <SectionCard>
         <h3 className="text-lg font-semibold">Customer</h3>
         <dl className="mt-6 grid gap-5 sm:grid-cols-2">
           <DetailRow label="Name" value={proposal.customer_name} />
@@ -108,13 +105,13 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
           <DetailRow label="Email" value={proposal.customer_email} />
           <DetailRow label="Property address" value={proposal.customer_address} />
         </dl>
-      </section>
+      </SectionCard>
 
       {showStructuredProposal && structuredProposal ? (
         <StructuredProposalView proposal={structuredProposal} />
       ) : null}
 
-      <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+      <SectionCard>
         <h3 className="text-lg font-semibold">Site visit record</h3>
         <p className="mt-1 text-sm text-muted">
           Your original site notes, kept separate from the accepted proposal.
@@ -147,9 +144,9 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
             <DetailRow label="Estimate notes" value={proposal.things_to_confirm} />
           ) : null}
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+      <SectionCard>
         <h3 className="text-lg font-semibold">Estimate</h3>
         <p className="mt-4 text-2xl font-semibold tracking-tight">
           {formatPenceAsGbp(proposal.total_amount)}
@@ -159,16 +156,16 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
             Estimated duration: {proposal.estimated_duration}
           </p>
         ) : null}
-      </section>
+      </SectionCard>
 
       {isDraft ? (
-        <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+        <SectionCard>
           <DeleteDraftSection
             proposalId={proposal.id}
             proposalNumber={proposal.proposal_number}
           />
-        </section>
+        </SectionCard>
       ) : null}
-    </div>
+    </SectionStack>
   );
 }

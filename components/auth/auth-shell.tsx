@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SectionCard } from "@/components/ui/section-card";
 
 type AuthShellProps = {
   title: string;
@@ -36,12 +37,12 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
 
       <main className="flex flex-1 items-center justify-center px-6 py-12">
         <div className="w-full max-w-md">
-          <div className="rounded-2xl border border-border-subtle bg-background-elevated p-8 shadow-2xl shadow-black/40">
+          <SectionCard as="div" className="shadow-2xl shadow-black/40">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             <p className="mt-2 text-sm text-muted">{subtitle}</p>
             <div className="mt-8">{children}</div>
             <div className="mt-6 text-center text-sm text-muted">{footer}</div>
-          </div>
+          </SectionCard>
         </div>
       </main>
     </div>
@@ -77,7 +78,7 @@ export function AuthField({
         autoComplete={autoComplete}
         required={required}
         minLength={minLength}
-        className="mt-2 w-full rounded-lg border border-border-subtle bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
+        className="form-input mt-2"
       />
     </div>
   );

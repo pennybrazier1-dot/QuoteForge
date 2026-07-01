@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { SectionCard } from "@/components/ui/section-card";
 
 export function OnboardingShell({
   step,
@@ -57,11 +58,11 @@ export function OnboardingShell({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border-subtle bg-background-elevated p-8 shadow-2xl shadow-black/40">
+          <SectionCard as="div" className="shadow-2xl shadow-black/40">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
             <p className="mt-2 text-sm text-muted">{subtitle}</p>
             <div className="mt-8">{children}</div>
-          </div>
+          </SectionCard>
         </div>
       </main>
     </div>

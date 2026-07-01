@@ -1,5 +1,6 @@
 import type { GeneratedProposal } from "@/lib/ai";
 import { StructuredProposalContent } from "@/components/proposals/structured-proposal-content";
+import { SectionCard } from "@/components/ui/section-card";
 
 export function GeneratedProposalPreview({
   proposal,
@@ -7,7 +8,7 @@ export function GeneratedProposalPreview({
   proposal: GeneratedProposal;
 }) {
   return (
-    <div className="rounded-2xl border border-accent/30 bg-accent-soft/30 p-5 sm:p-6">
+    <SectionCard variant="accent">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold">Generated proposal draft</h3>
@@ -24,6 +25,6 @@ export function GeneratedProposalPreview({
       <div className="mt-6">
         <StructuredProposalContent proposal={proposal} />
       </div>
-    </div>
+    </SectionCard>
   );
 }

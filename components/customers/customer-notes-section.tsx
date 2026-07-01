@@ -7,6 +7,7 @@ import {
   type UpdateCustomerNotesState,
 } from "@/app/customers/actions";
 import { AuthError } from "@/components/auth/auth-shell";
+import { SectionCard } from "@/components/ui/section-card";
 
 const initialState: UpdateCustomerNotesState = {};
 
@@ -43,7 +44,7 @@ export function CustomerNotesSection({
   }
 
   return (
-    <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+    <SectionCard>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-semibold">Notes</h3>
@@ -76,7 +77,7 @@ export function CustomerNotesSection({
             onChange={(event) => setDraftNotes(event.target.value)}
             rows={6}
             placeholder="e.g. Prefers morning visits. Has a dog in the back garden. Gate code 4521."
-            className="mt-2 w-full resize-y rounded-xl border border-border-subtle bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20"
+            className="form-textarea mt-2"
           />
 
           {state.error ? (
@@ -103,6 +104,6 @@ export function CustomerNotesSection({
       ) : (
         <p className="mt-4 text-sm text-muted">No notes yet.</p>
       )}
-    </section>
+    </SectionCard>
   );
 }

@@ -29,7 +29,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, created_at, customer_name, customer_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, payment_terms, total_amount"
+      "id, proposal_number, created_at, customer_name, customer_address, customer_email, customer_phone, rough_notes, optional_extras, things_to_confirm, estimated_duration, payment_terms, total_amount, job_summary, scope_of_work, materials, labour_description, ai_optional_extras, things_to_confirm_items"
     )
     .eq("id", id)
     .maybeSingle();
@@ -50,7 +50,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
-    .select("business_name, default_payment_terms")
+    .select("business_name, trade_type, contact_email, phone, default_payment_terms")
     .eq("id", profile.workspace_id)
     .single();
 

@@ -1,5 +1,6 @@
 import { StructuredProposalContent } from "@/components/proposals/structured-proposal-content";
 import type { StructuredProposalData } from "@/lib/proposals/structured-proposal";
+import { SectionCard } from "@/components/ui/section-card";
 
 export function StructuredProposalView({
   proposal,
@@ -7,7 +8,7 @@ export function StructuredProposalView({
   proposal: StructuredProposalData;
 }) {
   return (
-    <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+    <SectionCard>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold">Proposal</h3>
@@ -23,6 +24,6 @@ export function StructuredProposalView({
       <div className="mt-6">
         <StructuredProposalContent proposal={proposal} />
       </div>
-    </section>
+    </SectionCard>
   );
 }

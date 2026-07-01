@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { formatDashboardGreeting } from "@/lib/dashboard/greeting";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { RecentProposalsPanel } from "@/components/dashboard/recent-proposals-panel";
+import { StartProposalPanel } from "@/components/dashboard/start-proposal-panel";
+import { TodaysAdminPanel } from "@/components/dashboard/todays-admin-panel";
+import {
+  WorkHomeHeroRow,
+  WorkHomeShell,
+} from "@/components/dashboard/work-home-shell";
 import { DashboardTopBar } from "@/components/dashboard/top-bar";
-import { QuoteComposer } from "@/components/dashboard/quote-composer";
-import { TodaysAdmin } from "@/components/dashboard/todays-admin";
-import { RecentProposals } from "@/components/dashboard/recent-proposals";
 
 export const metadata: Metadata = {
   title: "Dashboard — QuoteForge",
@@ -26,38 +31,39 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const { data: proposalsData } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, customer_name, title, rough_notes, status, total_amount, created_at"
+      "id, proposal_number, customer_name, title, job_summary, rough_notes, status, total_amount, created_at"
     )
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(50);
 
-  const recentProposals = proposalsData ?? [];
+  const allProposals = proposalsData ?? [];
+  const recentProposals = allProposals.slice(0, 6);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DashboardTopBar email={user.email} />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Let&apos;s get today&apos;s paperwork finished.
-        </h1>
+      <WorkHomeShell
+        greeting={formatDashboardGreeting(profile?.full_name)}
+        headline="Let's get today's paperwork finished."
+        supporting="Start a proposal, clear today's tasks, or pick up a recent job."
+      >
+        <WorkHomeHeroRow>
+          <StartProposalPanel />
+          <TodaysAdminPanel proposals={allProposals} />
+        </WorkHomeHeroRow>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <QuoteComposer />
-          </div>
-          <div className="lg:col-span-1">
-            <TodaysAdmin />
-          </div>
-        </div>
-
-        <div className="mt-6">
-          <RecentProposals proposals={recentProposals} />
-        </div>
-      </main>
+        <RecentProposalsPanel proposals={recentProposals} />
+      </WorkHomeShell>
     </div>
   );
 }

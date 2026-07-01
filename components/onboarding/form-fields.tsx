@@ -1,5 +1,6 @@
-const fieldClassName =
-  "mt-2 w-full rounded-lg border border-border-subtle bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted focus:border-accent/50 focus:ring-2 focus:ring-accent/20";
+const fieldClassName = "form-input mt-2";
+const selectClassName = "form-select mt-2";
+const textareaClassName = "form-textarea mt-2";
 
 export function OnboardingField({
   label,
@@ -75,7 +76,7 @@ export function OnboardingSelect({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required={required}
-        className={fieldClassName}
+        className={selectClassName}
       >
         <option value="" disabled>
           {placeholder}
@@ -119,7 +120,7 @@ export function OnboardingTextarea({
         onChange={(event) => onChange(event.target.value)}
         rows={rows}
         required={required}
-        className={`${fieldClassName} resize-y`}
+        className={textareaClassName}
       />
     </div>
   );

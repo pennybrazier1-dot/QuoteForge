@@ -9,6 +9,7 @@ import {
   mapGeneratedProposalToDbFields,
   parseGeneratedProposalJson,
 } from "@/lib/proposals/structured-proposal";
+import { formatPersonName } from "@/lib/text/format-name";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
@@ -40,7 +41,7 @@ type ParsedProposalForm = {
 
 function parseProposalForm(formData: FormData): ParsedProposalForm {
   return {
-    customerName: getString(formData, "customerName"),
+    customerName: formatPersonName(getString(formData, "customerName")),
     propertyAddress: getString(formData, "propertyAddress"),
     phoneNumber: getString(formData, "phoneNumber"),
     emailAddress: getString(formData, "emailAddress"),

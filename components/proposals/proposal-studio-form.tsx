@@ -84,7 +84,7 @@ export function ProposalStudioForm({
       : "Saves your site notes as a draft. The AI draft above is not saved yet.";
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form action={formAction} className="qf-stack">
       {mode === "edit" && proposalId ? (
         <input type="hidden" name="proposalId" value={proposalId} />
       ) : null}
@@ -214,7 +214,7 @@ export function ProposalStudioForm({
         </p>
       </div>
 
-      <div className="space-y-3 border-t border-border-subtle pt-6">
+      <div className="space-y-3 border-t border-border-card pt-6">
         <SaveDraftButton label="Save Draft" />
         <p className="text-center text-xs text-muted">{saveHelperText}</p>
       </div>

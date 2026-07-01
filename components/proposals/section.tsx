@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SectionCard } from "@/components/ui/section-card";
 
 export function ProposalSection({
   title,
@@ -8,9 +9,9 @@ export function ProposalSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+    <SectionCard>
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="mt-6 space-y-5">{children}</div>
-    </section>
+    </SectionCard>
   );
 }

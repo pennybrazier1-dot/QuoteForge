@@ -7,6 +7,7 @@ import {
   isTradeType,
 } from "@/lib/onboarding/constants";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { formatBusinessName, formatPersonName } from "@/lib/text/format-name";
 import { redirect } from "next/navigation";
 
 export type OnboardingActionState = {
@@ -34,8 +35,8 @@ export async function completeOnboarding(
     redirect("/dashboard");
   }
 
-  const fullName = getRequiredString(formData, "fullName");
-  const businessName = getRequiredString(formData, "businessName");
+  const fullName = formatPersonName(getRequiredString(formData, "fullName"));
+  const businessName = formatBusinessName(getRequiredString(formData, "businessName"));
   const tradeType = getRequiredString(formData, "tradeType");
   const businessEmail = getRequiredString(formData, "businessEmail");
   const phone = getRequiredString(formData, "phone");

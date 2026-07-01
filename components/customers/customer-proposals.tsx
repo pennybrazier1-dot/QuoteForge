@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { formatCustomerCreatedAt } from "@/lib/customers/format";
+import {
+  formatProposalStatus,
+  getStatusBadgeClass,
+} from "@/lib/proposals/status";
+import { SectionCard } from "@/components/ui/section-card";
 
 export type CustomerProposalItem = {
   id: string;
@@ -11,25 +16,13 @@ export type CustomerProposalItem = {
   created_at: string;
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  draft: "bg-white/5 text-muted",
-  sent: "bg-accent-soft text-accent",
-  accepted: "bg-emerald-500/10 text-emerald-400",
-  declined: "bg-red-500/10 text-red-400",
-  expired: "bg-white/5 text-muted",
-};
-
-function formatStatus(status: string): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
 export function CustomerProposals({
   proposals,
 }: {
   proposals: CustomerProposalItem[];
 }) {
   return (
-    <section className="rounded-2xl border border-border-subtle bg-background-elevated p-6 sm:p-8">
+    <SectionCard>
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-lg font-semibold">Proposals</h3>
         {proposals.length > 0 ? (
@@ -38,18 +31,18 @@ export function CustomerProposals({
       </div>
 
       {proposals.length === 0 ? (
-        <div className="mt-6 rounded-xl border border-dashed border-border-subtle bg-background px-6 py-10 text-center">
+        <div className="qf-card-inset mt-6 border-dashed px-6 py-10 text-center">
           <p className="text-sm text-muted">
             No proposals linked to this customer yet.
           </p>
         </div>
       ) : (
-        <ul className="mt-6 space-y-3">
+        <ul className="qf-list mt-6">
           {proposals.map((proposal) => (
             <li key={proposal.id}>
               <Link
                 href={`/proposals/${proposal.id}`}
-                className="group flex items-center justify-between gap-4 rounded-xl border border-border-subtle bg-background p-4 transition-colors hover:border-accent/40 sm:p-5"
+                className="group qf-card-inset flex items-center justify-between gap-4"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-accent">
@@ -67,11 +60,9 @@ export function CustomerProposals({
                     {formatPenceAsGbp(proposal.total_amount)}
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                      STATUS_STYLES[proposal.status] ?? STATUS_STYLES.draft
-                    }`}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClass(proposal.status)}`}
                   >
-                    {formatStatus(proposal.status)}
+                    {formatProposalStatus(proposal.status)}
                   </span>
                 </div>
               </Link>
@@ -79,6 +70,6 @@ export function CustomerProposals({
           ))}
         </ul>
       )}
-    </section>
+    </SectionCard>
   );
 }

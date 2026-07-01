@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { StructuredProposalData } from "@/lib/proposals/structured-proposal";
+import { SectionCard } from "@/components/ui/section-card";
 
 export const OPTIONAL_EXTRAS_EMPTY_MESSAGE =
   "No optional extras have been identified from the information provided.";
@@ -15,12 +16,12 @@ export function ProposalSectionBlock({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border-subtle bg-background p-4 sm:p-5">
+    <SectionCard as="div" variant="inset">
       <h4 className="text-sm font-semibold text-accent">{title}</h4>
       <div className="mt-3 text-sm leading-relaxed text-foreground/90">
         {children}
       </div>
-    </div>
+    </SectionCard>
   );
 }
 

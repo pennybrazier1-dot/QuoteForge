@@ -3,6 +3,7 @@
 import { generateProposal } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { formatPersonName } from "@/lib/text/format-name";
 import type { GeneratedProposal } from "@/lib/ai";
 
 export type GenerateProposalState = {
@@ -31,7 +32,7 @@ export async function generateProposalDraft(
     return { error: "Please complete onboarding before generating proposals." };
   }
 
-  const customerName = getString(formData, "customerName");
+  const customerName = formatPersonName(getString(formData, "customerName"));
   const siteNotes = getString(formData, "jobDescription");
   const optionalExtras = String(formData.get("optionalExtras") ?? "").trim();
   const estimatedPrice = getString(formData, "estimatedPrice");

@@ -76,7 +76,7 @@ export default async function CustomerPage({ params }: PageProps) {
           Back to Customers
         </Link>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 qf-stack">
           <CustomerDetailView customer={customer} />
           <CustomerProposals proposals={proposals} />
         </div>

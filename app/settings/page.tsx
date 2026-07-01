@@ -60,7 +60,7 @@ export default async function SettingsPage() {
           View your business and account details. Editing will be added soon.
         </p>
 
-        <div className="mt-8 space-y-6">
+        <div className="mt-8 qf-stack">
           <BusinessSettings workspace={workspace} />
           <MyAccountSettings
             account={{

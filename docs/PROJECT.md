@@ -324,3 +324,26 @@ QuoteForge is useful enough when a tradesperson can:
 - Find previous proposals easily
 - Use it again for another job
 - See clear value in paying monthly
+
+## Version 1 Checklist
+
+### Core Platform
+- [x] Authentication
+- [x] Onboarding
+- [x] Dashboard
+- [x] Settings
+- [x] Customers
+- [x] Customer Notes
+
+### Proposal Workflow
+- [x] Proposal Studio
+- [x] AI Proposal Generation
+- [x] Accept AI Draft
+- [x] Edit Draft
+- [x] Delete Draft
+- [x] Proposal Status Workflow
+- [x] PDF Export
+
+### Still to Complete
+- [ ] Proposal List
+- [ ] Send Proposal by Email

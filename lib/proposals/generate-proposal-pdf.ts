@@ -1,99 +1,165 @@
 import { createRequire } from "node:module";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
-import { formatPenceAsGbp } from "@/lib/proposals/money";
+import { resolveProposalPricePence } from "@/lib/proposals/money";
 import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
+import { FONT, registerPdfFonts } from "@/lib/proposals/pdf/fonts";
+import { PdfFlow } from "@/lib/proposals/pdf/layout";
+import { renderProposalPdfDocument } from "@/lib/proposals/pdf/render";
+import type { ProposalPdfData } from "@/lib/proposals/pdf/types";
+import { PDF_PAGE } from "@/lib/proposals/pdf/tokens";
+import {
+  hasStructuredProposal,
+  mapDbRowToStructuredProposal,
+} from "@/lib/proposals/structured-proposal";
 
 const require = createRequire(import.meta.url);
 const PDFDocument = require("pdfkit") as typeof import("pdfkit");
 
-export type ProposalPdfData = {
-  businessName: string;
-  proposalNumber: string;
-  createdAt: string;
-  customerName: string | null;
-  customerAddress: string | null;
-  siteNotes: string | null;
-  optionalExtras: unknown;
-  estimatedPrice: number;
-  estimatedDuration: string | null;
-  paymentTerms: string;
-};
+export type { ProposalPdfData };
 
-const ACCENT = "#FF6A1A";
-const TEXT = "#1A1A1A";
-const MUTED = "#666666";
-
-function formatCreatedDate(value: string): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "long",
-  }).format(new Date(value));
-}
-
-function drawSectionTitle(doc: PDFKit.PDFDocument, title: string) {
-  doc.moveDown(0.8);
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(11)
-    .fillColor(TEXT)
-    .text(title.toUpperCase(), { characterSpacing: 0.5 });
-  doc
-    .moveTo(doc.page.margins.left, doc.y + 4)
-    .lineTo(doc.page.width - doc.page.margins.right, doc.y + 4)
-    .strokeColor(ACCENT)
-    .lineWidth(1)
-    .stroke();
-  doc.moveDown(0.6);
-}
-
-function drawBodyText(doc: PDFKit.PDFDocument, text: string) {
-  doc
-    .font("Helvetica")
-    .fontSize(10)
-    .fillColor(TEXT)
-    .text(text, {
-      width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-      lineGap: 3,
-    });
-}
-
-function drawMutedText(doc: PDFKit.PDFDocument, text: string) {
-  doc
-    .font("Helvetica")
-    .fontSize(9)
-    .fillColor(MUTED)
-    .text(text, {
-      width: doc.page.width - doc.page.margins.left - doc.page.margins.right,
-      lineGap: 2,
-    });
-}
-
-function drawLabelValue(
-  doc: PDFKit.PDFDocument,
-  label: string,
-  value: string | null | undefined
-) {
-  if (!value?.trim()) {
-    return;
+function formatStructuredOptionalExtras(items: string[]): string {
+  if (items.length === 0) {
+    return "No optional extras have been identified from the information provided.";
   }
-
-  doc.font("Helvetica-Bold").fontSize(9).fillColor(MUTED).text(label);
-  doc.moveDown(0.15);
-  drawBodyText(doc, value);
-  doc.moveDown(0.4);
+  return items.map((item) => `• ${item}`).join("\n");
 }
 
-function ensureSpace(doc: PDFKit.PDFDocument, height = 120) {
-  const bottom = doc.page.height - doc.page.margins.bottom;
-  if (doc.y + height > bottom) {
-    doc.addPage();
+function buildProjectSummary(
+  hasStructuredContent: boolean,
+  jobSummary: string | null,
+  siteNotes: string | null
+): string {
+  if (hasStructuredContent && jobSummary?.trim()) {
+    return jobSummary.trim();
   }
+  if (siteNotes?.trim()) {
+    return siteNotes.trim();
+  }
+  return "Project details will be confirmed following site review.";
+}
+
+function buildDurationNote(
+  duration: string,
+  thingsToConfirm: string[],
+  thingsText: string | null
+): string | null {
+  const combined = [...thingsToConfirm, thingsText ?? ""].join(" ").toLowerCase();
+  if (combined.includes("ground")) {
+    return "Depending on ground conditions";
+  }
+  if (combined.includes("access")) {
+    return "Depending on site access";
+  }
+  if (duration !== "Not specified") {
+    return "Depending on ground conditions and weather";
+  }
+  return null;
+}
+
+export function buildProposalPdfData(
+  proposal: {
+    proposal_number: string;
+    created_at: string;
+    customer_name: string | null;
+    customer_address: string | null;
+    customer_email?: string | null;
+    customer_phone?: string | null;
+    rough_notes: string | null;
+    optional_extras: unknown;
+    things_to_confirm: string | null;
+    estimated_duration: string | null;
+    payment_terms: string | null;
+    total_amount: number;
+    job_summary?: string | null;
+    scope_of_work?: string | null;
+    materials?: unknown;
+    labour_description?: string | null;
+    ai_optional_extras?: unknown;
+    things_to_confirm_items?: unknown;
+  },
+  workspace: {
+    business_name: string;
+    trade_type: string | null;
+    contact_email: string | null;
+    phone: string | null;
+    default_payment_terms: string;
+  }
+): ProposalPdfData {
+  const structured = mapDbRowToStructuredProposal({
+    job_summary: proposal.job_summary ?? null,
+    scope_of_work: proposal.scope_of_work ?? null,
+    materials: proposal.materials ?? [],
+    labour_description: proposal.labour_description ?? null,
+    estimated_duration: proposal.estimated_duration ?? null,
+    things_to_confirm_items: proposal.things_to_confirm_items ?? [],
+    ai_optional_extras: proposal.ai_optional_extras ?? [],
+    payment_terms: proposal.payment_terms ?? null,
+  });
+  const hasStructuredContent = hasStructuredProposal({
+    job_summary: proposal.job_summary ?? null,
+  });
+  const estimatedDuration =
+    parseEstimatedDuration(
+      proposal.estimated_duration,
+      proposal.things_to_confirm
+    ) || "Not specified";
+
+  return {
+    businessName: workspace.business_name,
+    tradeType: workspace.trade_type,
+    contactEmail: workspace.contact_email,
+    phone: workspace.phone,
+    website: null,
+    proposalNumber: proposal.proposal_number,
+    createdAt: proposal.created_at,
+    customerName: proposal.customer_name,
+    customerAddress: proposal.customer_address,
+    customerEmail: proposal.customer_email ?? null,
+    customerPhone: proposal.customer_phone ?? null,
+    projectSummary: buildProjectSummary(
+      hasStructuredContent,
+      structured?.jobSummary ?? null,
+      proposal.rough_notes
+    ),
+    scopeOfWork: structured?.scopeOfWork ?? [],
+    materials: structured?.materials ?? [],
+    labour: structured?.labour ?? proposal.rough_notes,
+    thingsToConfirm: structured?.thingsToConfirm ?? [],
+    thingsToConfirmText: proposal.things_to_confirm,
+    optionalExtras: hasStructuredContent
+      ? formatStructuredOptionalExtras(structured?.optionalExtras ?? [])
+      : formatOptionalExtrasForDisplay(proposal.optional_extras) ??
+        "No optional extras included.",
+    estimatedPrice: resolveProposalPricePence(
+      proposal.total_amount,
+      proposal.rough_notes,
+      proposal.job_summary,
+      proposal.labour_description,
+      proposal.things_to_confirm,
+      structured?.labour
+    ),
+    estimatedDuration,
+    durationNote: buildDurationNote(
+      estimatedDuration,
+      structured?.thingsToConfirm ?? [],
+      proposal.things_to_confirm
+    ),
+    paymentTerms:
+      proposal.payment_terms?.trim() || workspace.default_payment_terms,
+  };
 }
 
 export function generateProposalPdf(data: ProposalPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
-      size: "A4",
-      margins: { top: 50, bottom: 50, left: 50, right: 50 },
+      size: PDF_PAGE.size,
+      margins: {
+        top: PDF_PAGE.margin,
+        bottom: PDF_PAGE.margin,
+        left: PDF_PAGE.margin,
+        right: PDF_PAGE.margin,
+      },
+      bufferPages: true,
       info: {
         Title: `Proposal ${data.proposalNumber}`,
         Author: data.businessName,
@@ -105,150 +171,16 @@ export function generateProposalPdf(data: ProposalPdfData): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const optionalExtras =
-      formatOptionalExtrasForDisplay(data.optionalExtras) ??
-      "No optional extras included.";
-    const duration =
-      data.estimatedDuration?.trim() || "Not specified";
-
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(22)
-      .fillColor(TEXT)
-      .text(data.businessName);
-    doc
-      .font("Helvetica")
-      .fontSize(11)
-      .fillColor(MUTED)
-      .text("Proposal prepared with QuoteForge");
-    doc.moveDown(0.3);
-    doc
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .strokeColor(ACCENT)
-      .lineWidth(2)
-      .stroke();
-    doc.moveDown(0.8);
-
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(TEXT).text("Proposal");
-    doc.moveDown(0.2);
-    drawLabelValue(doc, "Proposal number", data.proposalNumber);
-    drawLabelValue(doc, "Date created", formatCreatedDate(data.createdAt));
-
-    drawSectionTitle(doc, "Customer");
-    drawLabelValue(doc, "Name", data.customerName ?? "Not specified");
-    drawLabelValue(
-      doc,
-      "Address",
-      data.customerAddress ?? "Not specified"
-    );
-
-    drawSectionTitle(doc, "Site Notes");
-    drawBodyText(doc, data.siteNotes?.trim() || "No site notes recorded.");
-
-    drawSectionTitle(doc, "Optional Extras");
-    drawBodyText(doc, optionalExtras);
-    drawMutedText(
-      doc,
-      "Optional extras are separate from the main quote and are not included in the total unless accepted."
-    );
-
-    drawSectionTitle(doc, "Estimate");
-    drawLabelValue(doc, "Estimated price", formatPenceAsGbp(data.estimatedPrice));
-    drawLabelValue(doc, "Estimated duration", duration);
-
-    drawSectionTitle(doc, "Payment Terms");
-    drawBodyText(doc, data.paymentTerms);
-
-    ensureSpace(doc, 180);
-    drawSectionTitle(doc, "Acceptance");
-    drawBodyText(
-      doc,
-      "By signing below, the customer accepts this proposal and agrees to the work, price, and payment terms described above. Acceptance may also be given through QuoteForge or by another method agreed with the tradesperson."
-    );
-
-    ensureSpace(doc, 120);
-    doc.moveDown(1);
-    const signatureWidth =
-      (doc.page.width - doc.page.margins.left - doc.page.margins.right - 30) /
-      2;
-    const leftX = doc.page.margins.left;
-    const rightX = leftX + signatureWidth + 30;
-    const signatureY = doc.y;
-
-    doc.font("Helvetica-Bold").fontSize(9).fillColor(TEXT);
-    doc.text("Customer", leftX, signatureY, { width: signatureWidth });
-    doc.text("Tradesperson", rightX, signatureY, { width: signatureWidth });
-
-    const lineY = signatureY + 36;
-    doc
-      .moveTo(leftX, lineY)
-      .lineTo(leftX + signatureWidth, lineY)
-      .strokeColor("#CCCCCC")
-      .lineWidth(1)
-      .stroke();
-    doc
-      .moveTo(rightX, lineY)
-      .lineTo(rightX + signatureWidth, lineY)
-      .strokeColor("#CCCCCC")
-      .lineWidth(1)
-      .stroke();
-
-    doc.font("Helvetica").fontSize(8).fillColor(MUTED);
-    doc.text("Signature", leftX, lineY + 6, { width: signatureWidth });
-    doc.text("Signature", rightX, lineY + 6, { width: signatureWidth });
-    doc.text("Date", leftX, lineY + 22, { width: signatureWidth });
-    doc.text("Date", rightX, lineY + 22, { width: signatureWidth });
-
-    const footerY = doc.page.height - doc.page.margins.bottom - 20;
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .fillColor(MUTED)
-      .text(
-        `${data.proposalNumber} · ${data.businessName} · QuoteForge`,
-        doc.page.margins.left,
-        footerY,
-        {
-          width:
-            doc.page.width - doc.page.margins.left - doc.page.margins.right,
-          align: "center",
-        }
-      );
+    try {
+      registerPdfFonts(doc);
+      doc.font(FONT.sans);
+      const flow = new PdfFlow(doc);
+      renderProposalPdfDocument(flow, data);
+    } catch (error) {
+      reject(error);
+      return;
+    }
 
     doc.end();
   });
-}
-
-export function buildProposalPdfData(proposal: {
-  proposal_number: string;
-  created_at: string;
-  customer_name: string | null;
-  customer_address: string | null;
-  rough_notes: string | null;
-  optional_extras: unknown;
-  things_to_confirm: string | null;
-  estimated_duration: string | null;
-  payment_terms: string | null;
-  total_amount: number;
-}, workspace: {
-  business_name: string;
-  default_payment_terms: string;
-}): ProposalPdfData {
-  return {
-    businessName: workspace.business_name,
-    proposalNumber: proposal.proposal_number,
-    createdAt: proposal.created_at,
-    customerName: proposal.customer_name,
-    customerAddress: proposal.customer_address,
-    siteNotes: proposal.rough_notes,
-    optionalExtras: proposal.optional_extras,
-    estimatedPrice: proposal.total_amount,
-    estimatedDuration: parseEstimatedDuration(
-      proposal.estimated_duration,
-      proposal.things_to_confirm
-    ),
-    paymentTerms:
-      proposal.payment_terms?.trim() || workspace.default_payment_terms,
-  };
 }
