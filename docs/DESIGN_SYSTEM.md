@@ -162,3 +162,30 @@ The proposal is often the customer's first impression of the business.
 The design should build confidence, trust and professionalism before the customer reads a single word.
 
 QuoteForge should make every tradesperson, from sole traders to established businesses, look organised, credible and premium.
+
+## Primary UI Reference
+
+The **New Proposal** page is the visual reference for QuoteForge.
+
+All new pages and major redesigns should follow the same design language.
+
+This includes:
+
+- Card layouts
+- Typography
+- Spacing
+- Padding
+- Borders
+- Colours
+- Icons
+- Form layouts
+- Button styles
+- Section hierarchy
+
+New pages should reuse the existing QuoteForge components wherever possible.
+
+Do not invent new layouts or styling for individual pages unless there is a clear functional reason.
+
+The application should feel like one cohesive product, not a collection of separate screens.
+
+When redesigning existing pages, use the New Proposal page as the benchmark for quality and consistency.

@@ -3,8 +3,6 @@ import { redirect } from "next/navigation";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { ComingSoonSettings } from "@/components/settings/coming-soon-settings";
 import { MyAccountSettings } from "@/components/settings/my-account-settings";
-import { DashboardTopBar } from "@/components/dashboard/top-bar";
-import { userHasProfile } from "@/lib/onboarding/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -18,18 +16,10 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  if (!(await userHasProfile(user.id))) {
-    redirect("/onboarding");
-  }
-
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("full_name, workspace_id")
-    .eq("id", user.id)
+    .eq("id", user!.id)
     .single();
 
   if (profileError || !profile) {
@@ -49,28 +39,24 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <DashboardTopBar email={user.email} />
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        Settings
+      </h1>
+      <p className="mt-2 text-sm text-muted">
+        View your business and account details. Editing will be added soon.
+      </p>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Settings
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          View your business and account details. Editing will be added soon.
-        </p>
-
-        <div className="mt-8 qf-stack">
-          <BusinessSettings workspace={workspace} />
-          <MyAccountSettings
-            account={{
-              full_name: profile.full_name,
-              email: user.email ?? null,
-            }}
-          />
-          <ComingSoonSettings />
-        </div>
-      </main>
-    </div>
+      <div className="mt-8 qf-stack">
+        <BusinessSettings workspace={workspace} />
+        <MyAccountSettings
+          account={{
+            full_name: profile.full_name,
+            email: user?.email ?? null,
+          }}
+        />
+        <ComingSoonSettings />
+      </div>
+    </main>
   );
 }

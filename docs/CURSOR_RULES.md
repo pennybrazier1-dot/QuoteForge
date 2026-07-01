@@ -39,3 +39,16 @@ Fix the layout system itself.
 When a layout issue exists, identify the root cause before changing styling.
 
 A correct layout engine is always preferred over visual workarounds.
+
+## Existing Component Rule
+
+Before creating new components or layouts, identify which component is actually being rendered.
+
+Prefer replacing or refactoring the existing implementation rather than creating parallel components that are never used.
+
+When redesigning a page:
+
+1. Identify the rendered component.
+2. Replace the existing JSX within that component.
+3. Reuse the existing business logic.
+4. Avoid leaving unused components or dead code in the project.
