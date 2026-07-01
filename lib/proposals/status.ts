@@ -9,6 +9,18 @@ export const PROPOSAL_STATUSES = [
 
 export type ProposalStatus = (typeof PROPOSAL_STATUSES)[number];
 
+export const EDITABLE_PROPOSAL_STATUSES = [
+  "draft",
+  "ready_to_send",
+] as const satisfies readonly ProposalStatus[];
+
+export type EditableProposalStatus =
+  (typeof EDITABLE_PROPOSAL_STATUSES)[number];
+
+export function canEditProposal(status: string): status is EditableProposalStatus {
+  return (EDITABLE_PROPOSAL_STATUSES as readonly string[]).includes(status);
+}
+
 const VALID_TRANSITIONS: Record<ProposalStatus, ProposalStatus[]> = {
   draft: ["ready_to_send"],
   ready_to_send: ["sent"],

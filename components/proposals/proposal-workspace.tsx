@@ -5,6 +5,7 @@ import { ProposalNextActions } from "@/components/proposals/proposal-next-action
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
+import { SendProposalProvider } from "@/components/proposals/send-proposal-provider";
 import {
   BulletList,
   MATERIALS_REVIEW_NOTE,
@@ -353,14 +354,29 @@ function ProposalWorkspaceRight({
 
 export function ProposalWorkspace({
   proposal,
+  businessName,
+  senderName,
 }: {
   proposal: ProposalWorkspaceData;
+  businessName: string;
+  senderName: string;
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const hasStructured = hasStructuredProposal(proposal);
 
   return (
-    <div className="qf-proposal-page qf-workspace-page">
+    <SendProposalProvider
+      data={{
+        proposalId: proposal.id,
+        proposalNumber: proposal.proposal_number,
+        customerName: proposal.customer_name ?? "Customer",
+        customerEmail: proposal.customer_email,
+        customerId: proposal.customer_id,
+        businessName,
+        senderName,
+      }}
+    >
+      <div className="qf-proposal-page qf-workspace-page">
       <header className="qf-workspace-header">
         <div className="qf-workspace-header-main">
           <div className="qf-workspace-header-top">
@@ -410,5 +426,6 @@ export function ProposalWorkspace({
         <ProposalWorkspaceRight proposal={proposal} />
       </div>
     </div>
+    </SendProposalProvider>
   );
 }

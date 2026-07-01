@@ -184,10 +184,12 @@ function CountedTextarea({
 export function NewProposalForm({
   mode = "create",
   proposalId,
+  proposalStatus,
   initialValues,
 }: {
   mode?: "create" | "edit";
   proposalId?: string;
+  proposalStatus?: string;
   initialValues?: ProposalFormValues;
 }) {
   const saveAction = mode === "edit" ? updateDraftProposal : saveDraftProposal;
@@ -234,11 +236,22 @@ export function NewProposalForm({
     .filter(Boolean)
     .join(" ");
 
-  const pageTitle = mode === "edit" ? "Edit Draft Proposal" : "New Proposal";
+  const pageTitle =
+    mode === "edit"
+      ? proposalStatus === "ready_to_send"
+        ? "Edit Proposal"
+        : "Edit Draft Proposal"
+      : "New Proposal";
   const pageSubtitle =
     mode === "edit"
-      ? "Update the customer details, site notes, or estimate. Your changes are saved when you tap Save Draft."
+      ? proposalStatus === "ready_to_send"
+        ? "Update customer details, site notes, or your estimate before sending."
+        : "Update the customer details, site notes, or estimate. Your changes are saved when you tap Save Draft."
       : "Write your site notes and let AI create a professional proposal for you.";
+  const saveLabel =
+    mode === "edit" && proposalStatus === "ready_to_send"
+      ? "Save Changes"
+      : "Save Draft";
 
   return (
     <form action={formAction} className="qf-proposal-page">
@@ -471,7 +484,7 @@ export function NewProposalForm({
               ) : null}
 
               <GenerateButton formAction={generateAction} />
-              <SaveDraftButton />
+              <SaveDraftButton label={saveLabel} />
               <p className="qf-actions-helper">
                 <svg
                   width="14"
@@ -560,8 +573,10 @@ function GenerateButton({
   );
 }
 
-function SaveDraftButton() {
+function SaveDraftButton({ label = "Save Draft" }: { label?: string }) {
   const { pending } = useFormStatus();
+  const pendingLabel =
+    label === "Save Changes" ? "Saving changes…" : "Saving draft…";
 
   return (
     <button
@@ -583,7 +598,7 @@ function SaveDraftButton() {
         <path d="M21 12a9 9 0 1 1-3-6.7" />
         <path d="M21 3v6h-6" />
       </svg>
-      {pending ? "Saving draft…" : "Save Draft"}
+      {pending ? pendingLabel : label}
     </button>
   );
 }

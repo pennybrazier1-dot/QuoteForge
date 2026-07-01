@@ -5,11 +5,12 @@ import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import { formatPenceForInput } from "@/lib/proposals/money";
 import { formatOptionalExtrasForForm } from "@/lib/proposals/optional-extras";
+import { canEditProposal } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Edit Draft Proposal — QuoteForge",
-  description: "Edit your draft QuoteForge proposal.",
+  title: "Edit Proposal — QuoteForge",
+  description: "Edit your QuoteForge proposal.",
 };
 
 type PageProps = {
@@ -32,7 +33,7 @@ export default async function EditProposalPage({ params }: PageProps) {
     notFound();
   }
 
-  if (proposal.status !== "draft") {
+  if (!canEditProposal(proposal.status)) {
     redirect(`/proposals/${id}`);
   }
 
@@ -55,6 +56,7 @@ export default async function EditProposalPage({ params }: PageProps) {
     <NewProposalForm
       mode="edit"
       proposalId={id}
+      proposalStatus={proposal.status}
       initialValues={initialValues}
     />
   );

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { canEditProposal } from "@/lib/proposals/status";
 import { buildEstimatedDurationNote } from "@/lib/proposals/duration";
 import { parseOptionalExtrasForStorage } from "@/lib/proposals/optional-extras";
 import { parsePriceToPence } from "@/lib/proposals/money";
@@ -310,8 +311,10 @@ export async function updateDraftProposal(
     return { error: "Proposal not found." };
   }
 
-  if (existingProposal.status !== "draft") {
-    return { error: "Only draft proposals can be edited." };
+  if (!canEditProposal(existingProposal.status)) {
+    return {
+      error: "Only draft and ready-to-send proposals can be edited.",
+    };
   }
 
   const { data: profile, error: profileError } = await supabase

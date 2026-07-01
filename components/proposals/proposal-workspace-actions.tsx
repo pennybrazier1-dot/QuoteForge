@@ -8,7 +8,9 @@ import {
   type UpdateProposalStatusState,
 } from "@/app/proposals/status-actions";
 import { AuthError } from "@/components/auth/auth-shell";
+import { useSendProposalDialog } from "@/components/proposals/send-proposal-provider";
 import {
+  canEditProposal,
   isProposalStatus,
   type ProposalStatus,
 } from "@/lib/proposals/status";
@@ -71,7 +73,8 @@ export function ProposalWorkspaceActions({
   hasStructured,
 }: ProposalWorkspaceActionsProps) {
   const [state, formAction] = useActionState(updateProposalStatus, initialState);
-  const canEdit = status === "draft";
+  const { openSendDialog } = useSendProposalDialog();
+  const canEdit = canEditProposal(status);
   const canPreview =
     hasStructured ||
     status === "ready_to_send" ||
@@ -79,7 +82,7 @@ export function ProposalWorkspaceActions({
     status === "accepted" ||
     status === "declined";
 
-  let sendAction: {
+  let markReadyAction: {
     newStatus: ProposalStatus;
     label: string;
     pendingLabel: string;
@@ -87,19 +90,15 @@ export function ProposalWorkspaceActions({
 
   if (isProposalStatus(status)) {
     if (status === "draft" && hasStructured) {
-      sendAction = {
+      markReadyAction = {
         newStatus: "ready_to_send",
         label: "Send",
         pendingLabel: "Preparing…",
       };
-    } else if (status === "ready_to_send") {
-      sendAction = {
-        newStatus: "sent",
-        label: "Send",
-        pendingLabel: "Sending…",
-      };
     }
   }
+
+  const showSendDialog = status === "ready_to_send";
 
   return (
     <div className="qf-workspace-actions">
@@ -196,13 +195,35 @@ export function ProposalWorkspaceActions({
           </span>
         )}
 
-        {sendAction ? (
+        {showSendDialog ? (
+          <button
+            type="button"
+            onClick={openSendDialog}
+            className="qf-workspace-btn qf-workspace-btn-primary"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
+            </svg>
+            Send by Email
+          </button>
+        ) : markReadyAction ? (
           <SendButton
             formAction={formAction}
             proposalId={proposalId}
-            newStatus={sendAction.newStatus}
-            label={sendAction.label}
-            pendingLabel={sendAction.pendingLabel}
+            newStatus={markReadyAction.newStatus}
+            label={markReadyAction.label}
+            pendingLabel={markReadyAction.pendingLabel}
           />
         ) : (
           <span
@@ -223,7 +244,7 @@ export function ProposalWorkspaceActions({
               <path d="m22 2-7 20-4-9-9-4Z" />
               <path d="M22 2 11 13" />
             </svg>
-            Send
+            Send by Email
           </span>
         )}
       </div>

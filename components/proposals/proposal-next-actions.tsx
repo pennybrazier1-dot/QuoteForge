@@ -2,16 +2,9 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import {
-  updateProposalStatus,
-  type UpdateProposalStatusState,
-} from "@/app/proposals/status-actions";
-import { AuthError } from "@/components/auth/auth-shell";
+import { useSendProposalDialog } from "@/components/proposals/send-proposal-provider";
 import {
   isProposalStatus,
-  type ProposalStatus,
 } from "@/lib/proposals/status";
 
 export type NextActionsProposal = {
@@ -33,10 +26,8 @@ type NextAction = {
   href?: string;
   external?: boolean;
   download?: boolean;
-  sendStatus?: ProposalStatus;
+  opensSendDialog?: boolean;
 };
-
-const initialState: UpdateProposalStatusState = {};
 
 const ICONS = {
   sparkle: (
@@ -209,12 +200,12 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
       return [
         {
           id: "send-proposal",
-          title: "Send Proposal",
-          description: "Email this proposal to the customer.",
+          title: "Send by Email",
+          description: "Prepare and send this proposal by email.",
           icon: ICONS.send,
           tone: "accent",
           primary: true,
-          sendStatus: "sent",
+          opensSendDialog: true,
         },
         pdfPreview,
         downloadPdf,
@@ -296,70 +287,37 @@ function ActionRowContent({ action }: { action: NextAction }) {
   );
 }
 
-function SendActionRow({
-  action,
-  proposalId,
-  formAction,
-}: {
-  action: NextAction;
-  proposalId: string;
-  formAction: (payload: FormData) => void;
-}) {
-  const { pending } = useFormStatus();
+function OpenSendDialogRow({ action }: { action: NextAction }) {
+  const { openSendDialog } = useSendProposalDialog();
 
   return (
-    <form action={formAction} className="qf-workspace-next-form">
-      <input type="hidden" name="proposalId" value={proposalId} />
-      <input type="hidden" name="newStatus" value={action.sendStatus} />
+    <li>
       <button
-        type="submit"
-        disabled={pending}
+        type="button"
+        onClick={openSendDialog}
         className={`qf-workspace-next-row ${
           action.primary ? "qf-workspace-next-row-primary" : ""
         }`}
       >
-        <span
-          className={`qf-workspace-next-icon qf-workspace-next-icon-${action.tone}`}
-        >
-          {action.icon}
-        </span>
-        <div className="min-w-0 flex-1 text-left">
-          <p className="qf-workspace-next-title">
-            {pending ? "Sending…" : action.title}
-          </p>
-          <p className="qf-workspace-next-description">{action.description}</p>
-        </div>
-        <Chevron />
+        <ActionRowContent action={action} />
       </button>
-    </form>
+    </li>
   );
 }
 
 function NextActionRow({
   action,
-  proposalId,
   proposalNumber,
-  formAction,
 }: {
   action: NextAction;
-  proposalId: string;
   proposalNumber: string;
-  formAction: (payload: FormData) => void;
 }) {
   const rowClass = `qf-workspace-next-row ${
     action.primary ? "qf-workspace-next-row-primary" : ""
   }`;
 
-  if (action.sendStatus) {
-    return (
-      <li>
-        <SendActionRow
-          action={action}
-          proposalId={proposalId}
-          formAction={formAction}
-        />
-      </li>
-    );
+  if (action.opensSendDialog) {
+    return <OpenSendDialogRow action={action} />;
   }
 
   if (action.disabled) {
@@ -408,7 +366,6 @@ export function ProposalNextActions({
 }: {
   proposal: NextActionsProposal;
 }) {
-  const [state, formAction] = useActionState(updateProposalStatus, initialState);
   const actions = buildNextActions(proposal);
 
   if (actions.length === 0) {
@@ -421,15 +378,12 @@ export function ProposalNextActions({
 
   return (
     <div className="qf-workspace-next-actions">
-      {state.error ? <AuthError message={state.error} /> : null}
       <ul className="qf-workspace-next-list">
         {actions.map((action) => (
           <NextActionRow
             key={action.id}
             action={action}
-            proposalId={proposal.id}
             proposalNumber={proposal.proposal_number}
-            formAction={formAction}
           />
         ))}
       </ul>
