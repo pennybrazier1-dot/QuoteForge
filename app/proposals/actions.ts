@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { buildEstimatedDurationNote } from "@/lib/proposals/duration";
+import { parseOptionalExtrasForStorage } from "@/lib/proposals/optional-extras";
 import { parsePriceToPence } from "@/lib/proposals/money";
 import { redirect } from "next/navigation";
 
@@ -24,6 +25,7 @@ type ParsedProposalForm = {
   phoneNumber: string;
   emailAddress: string;
   jobDescription: string;
+  optionalExtras: string;
   estimatedPrice: string;
   estimatedDuration: string;
 };
@@ -35,6 +37,7 @@ function parseProposalForm(formData: FormData): ParsedProposalForm {
     phoneNumber: getString(formData, "phoneNumber"),
     emailAddress: getString(formData, "emailAddress"),
     jobDescription: getString(formData, "jobDescription"),
+    optionalExtras: String(formData.get("optionalExtras") ?? "").trim(),
     estimatedPrice: getString(formData, "estimatedPrice"),
     estimatedDuration: getString(formData, "estimatedDuration"),
   };
@@ -48,7 +51,7 @@ function validateProposalForm(
   }
 
   if (!form.jobDescription) {
-    return { error: "Please describe today's job before saving." };
+    return { error: "Please add site notes before saving." };
   }
 
   if (form.emailAddress && !isValidEmail(form.emailAddress)) {
@@ -220,6 +223,7 @@ export async function saveDraftProposal(
   }
 
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
+  const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
 
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
@@ -231,6 +235,7 @@ export async function saveDraftProposal(
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
+      optional_extras: optionalExtras,
       things_to_confirm: thingsToConfirm,
       customer_name: form.customerName,
       customer_email: form.emailAddress || null,
@@ -320,6 +325,7 @@ export async function updateDraftProposal(
   }
 
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
+  const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
 
   const { error: proposalError } = await supabase
     .from("proposals")
@@ -328,6 +334,7 @@ export async function updateDraftProposal(
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
+      optional_extras: optionalExtras,
       things_to_confirm: thingsToConfirm,
       customer_name: form.customerName,
       customer_email: form.emailAddress || null,

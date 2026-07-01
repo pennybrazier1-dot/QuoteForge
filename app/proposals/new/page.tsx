@@ -55,7 +55,7 @@ export default async function NewProposalPage() {
         </h1>
 
         <div className="mt-8">
-          <ProposalStudioForm showJobExample />
+          <ProposalStudioForm />
         </div>
       </main>
     </div>

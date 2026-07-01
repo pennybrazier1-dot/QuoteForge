@@ -74,3 +74,16 @@ If an idea does not help us get the first 10 paying customers, it goes here.
 - Quote-to-job-to-invoice workflow
 - Business health dashboard
 - AI business assistant for sole traders
+
+## Customer Proposal Review
+
+Allow customers to review a proposal online.
+
+Features:
+- Customer can view the proposal from a secure link.
+- Customer can add notes or questions.
+- Customer can request extra work.
+- Customer can accept optional extras.
+- Accepted optional extras are added to the proposal total.
+- Tradesperson is notified of customer comments or requested changes.
+- Tradesperson stays in control and approves any changes before the proposal is final.

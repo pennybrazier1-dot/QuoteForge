@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
+import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
 
 export type ProposalDetailData = {
   id: string;
@@ -9,6 +10,7 @@ export type ProposalDetailData = {
   title: string;
   job_address: string | null;
   rough_notes: string | null;
+  optional_extras: unknown;
   things_to_confirm: string | null;
   customer_name: string | null;
   customer_email: string | null;
@@ -41,6 +43,7 @@ function DetailRow({
 
 export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
   const isDraft = proposal.status === "draft";
+  const optionalExtras = formatOptionalExtrasForDisplay(proposal.optional_extras);
 
   return (
     <div className="space-y-6">
@@ -91,11 +94,25 @@ export function ProposalDetail({ proposal }: { proposal: ProposalDetailData }) {
           <DetailRow label="Job address" value={proposal.job_address} />
           <div>
             <dt className="text-xs font-medium uppercase tracking-wider text-muted">
-              Job description
+              Site notes
             </dt>
             <dd className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
               {proposal.rough_notes}
             </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-medium uppercase tracking-wider text-muted">
+              Optional extras
+            </dt>
+            <dd className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+              {optionalExtras ?? (
+                <span className="text-muted">No optional extras added.</span>
+              )}
+            </dd>
+            <p className="mt-2 text-xs text-muted">
+              Separate from the main quote and not included in the total unless
+              accepted.
+            </p>
           </div>
           <DetailRow label="Estimate notes" value={proposal.things_to_confirm} />
         </div>

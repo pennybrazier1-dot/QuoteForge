@@ -7,6 +7,7 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import { formatPenceForInput } from "@/lib/proposals/money";
+import { formatOptionalExtrasForForm } from "@/lib/proposals/optional-extras";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -36,7 +37,7 @@ export default async function EditProposalPage({ params }: PageProps) {
   const { data: proposal, error } = await supabase
     .from("proposals")
     .select(
-      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, things_to_confirm, total_amount"
+      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, total_amount"
     )
     .eq("id", id)
     .maybeSingle();
@@ -56,6 +57,7 @@ export default async function EditProposalPage({ params }: PageProps) {
     phoneNumber: proposal.customer_phone ?? "",
     emailAddress: proposal.customer_email ?? "",
     jobDescription: proposal.rough_notes ?? "",
+    optionalExtras: formatOptionalExtrasForForm(proposal.optional_extras),
     estimatedPrice: formatPenceForInput(proposal.total_amount),
     estimatedDuration: parseEstimatedDuration(proposal.things_to_confirm),
   };
@@ -89,7 +91,7 @@ export default async function EditProposalPage({ params }: PageProps) {
           Edit Draft Proposal
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Update the customer details, job description, or estimate. Your changes
+          Update the customer details, site notes, or estimate. Your changes
           are saved when you tap Save Draft.
         </p>
 
@@ -98,7 +100,6 @@ export default async function EditProposalPage({ params }: PageProps) {
             mode="edit"
             proposalId={id}
             initialValues={initialValues}
-            showJobExample
           />
         </div>
       </main>
