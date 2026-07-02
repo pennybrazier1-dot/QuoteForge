@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatPlannedStartExact } from "@/lib/proposals/planned-start-date";
 
 export function PlannedStartDateFields({
@@ -17,6 +18,8 @@ export function PlannedStartDateFields({
   textInputName?: string;
   exactInputName?: string;
 }) {
+  const [showExactDate, setShowExactDate] = useState(Boolean(exactValue));
+
   const handleExactChange = (isoDate: string) => {
     onExactChange(isoDate);
 
@@ -44,24 +47,34 @@ export function PlannedStartDateFields({
           className="form-input mt-2"
         />
         <p className="mt-2 text-xs text-muted">
-          Use flexible wording from your site notes, or pick an exact date below.
+          Use flexible wording from your site notes.
         </p>
       </div>
 
-      <div>
-        <label htmlFor="plannedStartDateExact" className="qf-field-label">
-          Exact date
-          <span className="ml-1 font-normal text-muted">(optional)</span>
-        </label>
-        <input
-          id="plannedStartDateExact"
-          name={exactInputName}
-          type="date"
-          value={exactValue}
-          onChange={(event) => handleExactChange(event.target.value)}
-          className="form-input mt-2"
-        />
-      </div>
+      {showExactDate ? (
+        <div>
+          <label htmlFor="plannedStartDateExact" className="qf-field-label">
+            Exact Calendar Date
+            <span className="ml-1 font-normal text-muted">(optional)</span>
+          </label>
+          <input
+            id="plannedStartDateExact"
+            name={exactInputName}
+            type="date"
+            value={exactValue}
+            onChange={(event) => handleExactChange(event.target.value)}
+            className="form-input form-input-date mt-2"
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowExactDate(true)}
+          className="text-sm font-medium text-accent"
+        >
+          Add exact calendar date
+        </button>
+      )}
     </div>
   );
 }

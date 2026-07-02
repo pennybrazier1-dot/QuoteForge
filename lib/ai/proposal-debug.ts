@@ -1,0 +1,35 @@
+import type { GeneratedProposal } from "./types";
+
+const DEBUG_ENABLED =
+  process.env.NODE_ENV === "development" ||
+  process.env.QF_DEBUG_PROPOSAL === "1";
+
+type ProposalDebugSlice = Pick<
+  GeneratedProposal,
+  | "labour"
+  | "optionalExtras"
+  | "estimatedDuration"
+  | "extractedEstimatedPrice"
+  | "scopeOfWork"
+>;
+
+function sliceForDebug(proposal: GeneratedProposal): ProposalDebugSlice {
+  return {
+    labour: proposal.labour,
+    optionalExtras: proposal.optionalExtras,
+    estimatedDuration: proposal.estimatedDuration,
+    extractedEstimatedPrice: proposal.extractedEstimatedPrice,
+    scopeOfWork: proposal.scopeOfWork,
+  };
+}
+
+export function logProposalPipelineStage(
+  stage: string,
+  proposal: GeneratedProposal
+): void {
+  if (!DEBUG_ENABLED) {
+    return;
+  }
+
+  console.log(`[QuoteForge proposal] ${stage}`, sliceForDebug(proposal));
+}

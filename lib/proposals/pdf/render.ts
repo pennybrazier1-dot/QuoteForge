@@ -57,7 +57,8 @@ const TYPE = {
   footer: 8,
 } as const;
 
-const LINE_GAP = 5;
+const LINE_GAP = 4;
+const BULLET_GAP = 2;
 
 type IconFn = (doc: PdfFlow["doc"], x: number, y: number, size: number) => void;
 
@@ -194,7 +195,7 @@ function measureBullets(flow: PdfFlow, items: string[], width: number, fallback:
   const indent = 10;
   let height = 0;
   for (const item of items) {
-    height += measureText(flow, item, width - indent, FONT.sans, TYPE.bullet) + 4;
+    height += measureText(flow, item, width - indent, FONT.sans, TYPE.bullet) + BULLET_GAP;
   }
   return height;
 }
@@ -247,9 +248,72 @@ function drawBulletsFitted(
       lineGap: LINE_GAP,
       height: itemH,
     });
-    cursor += itemH + 4;
+    cursor += itemH + BULLET_GAP;
   }
   return cursor;
+}
+
+function drawBulletsFlowing(
+  flow: PdfFlow,
+  items: string[],
+  x: number,
+  cursor: ColumnCursor,
+  width: number,
+  fallback: string
+): ColumnCursor {
+  if (items.length === 0) {
+    const blockH = measureText(flow, fallback, width, FONT.sans, TYPE.bullet);
+    const next = breakColumnIfNeeded(flow, cursor, blockH);
+    flow.doc.switchToPage(next.page);
+    const endY = bodyTextFitted(flow, fallback, x, next.y, width, {
+      size: TYPE.bullet,
+      color: PDF_COLORS.muted,
+    });
+    return { page: next.page, y: endY };
+  }
+
+  let current = cursor;
+  const indent = 10;
+
+  for (const item of items) {
+    const itemH = measureText(flow, item, width - indent, FONT.sans, TYPE.bullet);
+    current = breakColumnIfNeeded(flow, current, itemH + BULLET_GAP);
+    flow.doc.switchToPage(current.page);
+    flow.doc
+      .font(FONT.sans)
+      .fontSize(TYPE.bullet)
+      .fillColor(PDF_COLORS.text)
+      .text("•", x, current.y, { width: indent, lineBreak: false });
+    flow.doc.text(item, x + indent, current.y, {
+      width: width - indent,
+      lineGap: LINE_GAP,
+      height: itemH,
+    });
+    current = { page: current.page, y: current.y + itemH + BULLET_GAP };
+  }
+
+  return current;
+}
+
+function drawBodyFlowing(
+  flow: PdfFlow,
+  text: string,
+  x: number,
+  cursor: ColumnCursor,
+  width: number,
+  options?: { size?: number; color?: string; lineGap?: number }
+): ColumnCursor {
+  const size = options?.size ?? TYPE.body;
+  const lineGap = options?.lineGap ?? LINE_GAP;
+  const blockH = measureText(flow, text, width, FONT.sans, size, lineGap);
+  const next = breakColumnIfNeeded(flow, cursor, blockH);
+  flow.doc.switchToPage(next.page);
+  const endY = bodyTextFitted(flow, text, x, next.y, width, {
+    size,
+    color: options?.color,
+    lineGap,
+  });
+  return { page: next.page, y: endY };
 }
 
 function columnLayout(flow: PdfFlow) {
@@ -647,84 +711,48 @@ function renderHeroColumns(flow: PdfFlow, data: ProposalPdfData) {
 type TechSection = {
   title: string;
   drawIcon: IconFn;
-  measure: (width: number) => number;
-  render: (x: number, y: number, width: number) => number;
+  renderContent: (
+    flow: PdfFlow,
+    x: number,
+    cursor: ColumnCursor,
+    width: number
+  ) => ColumnCursor;
 };
 
-function measureTechBlock(
-  section: TechSection,
-  colWidth: number,
-  withSeparator: boolean
-): number {
-  const separator = withSeparator ? TECH_SEPARATOR_HEIGHT + TECH_SECTION_GAP : 0;
-  return TECH_HEADER_HEIGHT + section.measure(colWidth) + separator;
-}
-
-function drawTechCell(
-  flow: PdfFlow,
-  section: TechSection,
-  x: number,
-  y: number,
-  width: number,
-  drawSeparator: boolean
-): number {
-  section.drawIcon(flow.doc, x, y, ICON_SIZE);
-  flow.doc
-    .font(FONT.sans)
-    .fontSize(TYPE.section)
-    .fillColor(PDF_COLORS.orange)
-    .text(section.title.toUpperCase(), x + 20, y + 1, {
-      width: width - 20,
-      characterSpacing: 0.9,
-      lineGap: 0,
-    });
-
-  const contentY = y + TECH_TITLE_HEIGHT + SP.xs;
-  let endY = section.render(x, contentY, width);
-
-  if (drawSeparator) {
-    endY += SP.xs;
-    drawThinRule(flow, x, endY, width, PDF_COLORS.orange, 0.5);
-  }
-
-  return endY;
-}
+const TECH_TITLE_HEIGHT = 13;
+const TECH_HEADER_HEIGHT = TECH_TITLE_HEIGHT + 3;
+const TECH_SECTION_GAP = 3;
+const TECH_SEPARATOR_HEIGHT = 3;
 
 function acceptanceSection(flow: PdfFlow, data: ProposalPdfData): TechSection {
   return {
     title: "Acceptance",
     drawIcon: iconShield,
-    measure: (w) => {
-      const intro = measureText(
-        flow,
-        "By signing below, the customer confirms acceptance of this proposal, including the scope of work, materials, labour, price, and payment terms set out above. Acceptance may also be recorded through QuoteForge or by another method agreed in writing with the tradesperson.",
-        w,
-        FONT.sans,
-        TYPE.bullet
-      );
-      return intro + SP.sm + 3 * 24;
-    },
-    render: (x, y, w) => {
+    renderContent: (pdfFlow, x, cursor, w) => {
       const intro =
         "By signing below, the customer confirms acceptance of this proposal, including the scope of work, materials, labour, price, and payment terms set out above. Acceptance may also be recorded through QuoteForge or by another method agreed in writing with the tradesperson.";
-      let cy = bodyTextFitted(flow, intro, x, y, w, {
+      let current = drawBodyFlowing(pdfFlow, intro, x, cursor, w, {
         size: TYPE.bullet,
         lineGap: LINE_GAP,
       });
-      cy += SP.sm;
+      current = { page: current.page, y: current.y + SP.xs };
+
       for (const label of ["Signature", "Printed Name", "Date"]) {
-        labelCaps(flow, label, x, cy, w);
+        current = breakColumnIfNeeded(pdfFlow, current, 24);
+        pdfFlow.doc.switchToPage(current.page);
+        labelCaps(pdfFlow, label, x, current.y, w);
         drawThinRule(
-          flow,
+          pdfFlow,
           x,
-          cy + 12,
+          current.y + 12,
           label === "Date" ? w * 0.55 : w,
           PDF_COLORS.rule,
           0.5
         );
-        cy += 24;
+        current = { page: current.page, y: current.y + 24 };
       }
-      return cy;
+
+      return current;
     },
   };
 }
@@ -733,27 +761,23 @@ function thingsToConfirmSection(flow: PdfFlow, data: ProposalPdfData): TechSecti
   return {
     title: "Things to Confirm",
     drawIcon: iconInfo,
-    measure: (w) => {
+    renderContent: (pdfFlow, x, cursor, w) => {
       if (data.thingsToConfirm.length > 0) {
-        return measureBullets(flow, data.thingsToConfirm, w, "None listed.");
+        return drawBulletsFlowing(
+          pdfFlow,
+          data.thingsToConfirm,
+          x,
+          cursor,
+          w,
+          "None listed."
+        );
       }
-      return measureText(
-        flow,
-        data.thingsToConfirmText?.trim() || "None listed.",
-        w,
-        FONT.sans,
-        TYPE.bullet
-      );
-    },
-    render: (x, y, w) => {
-      if (data.thingsToConfirm.length > 0) {
-        return drawBulletsFitted(flow, data.thingsToConfirm, x, y, w, "None listed.");
-      }
-      return bodyTextFitted(
-        flow,
+
+      return drawBodyFlowing(
+        pdfFlow,
         data.thingsToConfirmText?.trim() || "None listed.",
         x,
-        y,
+        cursor,
         w,
         { size: TYPE.bullet, color: PDF_COLORS.muted }
       );
@@ -771,10 +795,26 @@ function technicalColumnLayout(flow: PdfFlow) {
   return { leftX, rightX, colWidth, dividerX };
 }
 
-const TECH_TITLE_HEIGHT = 14;
-const TECH_HEADER_HEIGHT = TECH_TITLE_HEIGHT + SP.xs;
-const TECH_SECTION_GAP = SP.xs;
-const TECH_SEPARATOR_HEIGHT = SP.xs + 1;
+function drawSectionHeader(
+  flow: PdfFlow,
+  section: TechSection,
+  x: number,
+  y: number,
+  width: number
+): number {
+  section.drawIcon(flow.doc, x, y, ICON_SIZE);
+  flow.doc
+    .font(FONT.sans)
+    .fontSize(TYPE.section)
+    .fillColor(PDF_COLORS.orange)
+    .text(section.title.toUpperCase(), x + 20, y + 1, {
+      width: width - 20,
+      characterSpacing: 0.9,
+      lineGap: 0,
+    });
+
+  return y + TECH_HEADER_HEIGHT;
+}
 
 function renderFlowingColumn(
   flow: PdfFlow,
@@ -788,16 +828,28 @@ function renderFlowingColumn(
   for (let i = 0; i < sections.length; i += 1) {
     const section = sections[i];
     const isLast = i === sections.length - 1;
-    const blockH = measureTechBlock(section, colWidth, !isLast);
 
-    cursor = breakColumnIfNeeded(flow, cursor, blockH);
+    cursor = breakColumnIfNeeded(flow, cursor, TECH_HEADER_HEIGHT);
     flow.doc.switchToPage(cursor.page);
 
-    const endY = drawTechCell(flow, section, colX, cursor.y, colWidth, !isLast);
-    cursor = {
+    const contentStartY = drawSectionHeader(flow, section, colX, cursor.y, colWidth);
+    cursor = section.renderContent(flow, colX, {
       page: cursor.page,
-      y: endY + (isLast ? 0 : TECH_SECTION_GAP),
-    };
+      y: contentStartY,
+    }, colWidth);
+
+    if (!isLast) {
+      cursor = {
+        page: cursor.page,
+        y: cursor.y + TECH_SEPARATOR_HEIGHT,
+      };
+      flow.doc.switchToPage(cursor.page);
+      drawThinRule(flow, colX, cursor.y, colWidth, PDF_COLORS.orange, 0.5);
+      cursor = {
+        page: cursor.page,
+        y: cursor.y + TECH_SECTION_GAP,
+      };
+    }
   }
 
   return cursor;
@@ -843,26 +895,41 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
     {
       title: "Scope of Work",
       drawIcon: iconClipboard,
-      measure: (w) => measureBullets(flow, data.scopeOfWork, w, "None listed."),
-      render: (x, y, w) =>
-        drawBulletsFitted(flow, data.scopeOfWork, x, y, w, "None listed."),
+      renderContent: (pdfFlow, x, cursor, w) =>
+        drawBulletsFlowing(
+          pdfFlow,
+          data.scopeOfWork,
+          x,
+          cursor,
+          w,
+          "None listed."
+        ),
     },
     {
       title: "Materials",
       drawIcon: iconBricks,
-      measure: (w) => measureBullets(flow, data.materials, w, "None listed."),
-      render: (x, y, w) =>
-        drawBulletsFitted(flow, data.materials, x, y, w, "None listed."),
+      renderContent: (pdfFlow, x, cursor, w) =>
+        drawBulletsFlowing(
+          pdfFlow,
+          data.materials,
+          x,
+          cursor,
+          w,
+          "None listed."
+        ),
     },
     {
       title: "Labour",
       drawIcon: iconPerson,
-      measure: (w) =>
-        measureText(flow, data.labour?.trim() || "Not specified.", w, FONT.sans, TYPE.body),
-      render: (x, y, w) =>
-        bodyTextFitted(flow, data.labour?.trim() || "Not specified.", x, y, w, {
-          size: TYPE.body,
-        }),
+      renderContent: (pdfFlow, x, cursor, w) =>
+        drawBodyFlowing(
+          pdfFlow,
+          data.labour?.trim() || "Not specified.",
+          x,
+          cursor,
+          w,
+          { size: TYPE.body }
+        ),
     },
     thingsToConfirmSection(flow, data),
   ];
@@ -871,9 +938,8 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
     {
       title: "Optional Extras",
       drawIcon: iconStar,
-      measure: (w) => measureText(flow, data.optionalExtras, w, FONT.sans, TYPE.bullet),
-      render: (x, y, w) =>
-        bodyTextFitted(flow, data.optionalExtras, x, y, w, {
+      renderContent: (pdfFlow, x, cursor, w) =>
+        drawBodyFlowing(pdfFlow, data.optionalExtras, x, cursor, w, {
           size: TYPE.bullet,
           lineGap: LINE_GAP,
         }),
@@ -881,9 +947,8 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
     {
       title: "Payment Terms",
       drawIcon: iconDocument,
-      measure: (w) => measureText(flow, data.paymentTerms, w, FONT.sans, TYPE.body),
-      render: (x, y, w) =>
-        bodyTextFitted(flow, data.paymentTerms, x, y, w, {
+      renderContent: (pdfFlow, x, cursor, w) =>
+        drawBodyFlowing(pdfFlow, data.paymentTerms, x, cursor, w, {
           size: TYPE.body,
           lineGap: LINE_GAP,
         }),

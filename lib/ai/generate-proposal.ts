@@ -3,9 +3,10 @@ import {
   addQualifierConfirmations,
   enrichWithSourceQualifiers,
   preserveQualifiedDuration,
-  preserveQualifiedLabour,
-  preserveQualifiedStringList,
+  preserveQualifiedScopeItems,
 } from "./qualifiers";
+import { sanitizeGeneratedProposal } from "./sanitize-proposal";
+import { logProposalPipelineStage } from "./proposal-debug";
 import {
   buildProposalUserPrompt,
   DURATION_CANNOT_DETERMINE_MESSAGE,
@@ -89,13 +90,9 @@ function preserveQualifiedLanguage(
   const siteNotes = input.siteNotes;
 
   const jobSummary = enrichWithSourceQualifiers(proposal.jobSummary, siteNotes);
-  const scopeOfWork = preserveQualifiedStringList(proposal.scopeOfWork, siteNotes);
-  const materials = preserveQualifiedStringList(proposal.materials, siteNotes);
-  const labour = preserveQualifiedLabour(
-    proposal.labour,
-    siteNotes,
-    input.estimatedPrice
-  );
+  const scopeOfWork = preserveQualifiedScopeItems(proposal.scopeOfWork, siteNotes);
+  const materials = proposal.materials.map((item) => item.trim()).filter(Boolean);
+  const labour = proposal.labour.trim();
   const estimatedDuration = preserveQualifiedDuration(
     proposal.estimatedDuration,
     siteNotes,
@@ -173,9 +170,17 @@ function normalizeGeneratedProposal(
   proposal: GeneratedProposal,
   input: GenerateProposalInput
 ): GeneratedProposal {
-  return normalizePlannedStartDate(
+  logProposalPipelineStage("raw AI response", proposal);
+
+  const afterQualifiers = normalizePlannedStartDate(
     normalizeEstimatedDuration(preserveQualifiedLanguage(proposal, input))
   );
+  logProposalPipelineStage("after qualifier preservation", afterQualifiers);
+
+  const sanitized = sanitizeGeneratedProposal(afterQualifiers, input.siteNotes);
+  logProposalPipelineStage("after sanitization", sanitized);
+
+  return sanitized;
 }
 
 export async function generateProposal(

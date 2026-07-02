@@ -19,9 +19,9 @@ SITE NOTES RULES:
   - customer name, property address, phone number, email address (only when clearly written)
   - scope of work
   - materials
+  - labour (work effort only — never price)
   - things to confirm
   - estimated duration (only if clearly stated)
-  - price references (only if clearly stated, and only in labour when appropriate)
   - optional extras (when clearly marked as optional, extra, separate quote, or add-on work)
 - Write naturally scribbled notes into professional proposal language.
 - Do not move optional extras into the main scope or main price.
@@ -30,8 +30,19 @@ CUSTOMER DETAILS RULES:
 - Extract customer name, property address, phone number, and email from Site Notes only when clearly stated.
 - Put extracted values in extractedCustomerName, extractedPropertyAddress, extractedPhoneNumber, extractedEmailAddress.
 - Do not invent or guess customer details.
-- If customer name is missing, leave extractedCustomerName as an empty string and add a confirmation item to thingsToConfirm.
-- If address, phone, or email are missing, leave the corresponding extracted field empty and add helpful confirmation items to thingsToConfirm when useful.
+- Never put customer name, address, phone, or email in thingsToConfirm when that detail is already clearly stated in Site Notes.
+- Only add customer-related confirmation items when a detail is genuinely missing or unclear — not when it was already written on site.
+
+SCOPE OF WORK RULES:
+- Rewrite Site Notes into professional quotation language for homeowners.
+- Do not copy Site Notes verbatim into scopeOfWork.
+- Each bullet should read like a line from a professional quote.
+- Example:
+  - Site Notes: "install island with sink hole cutout"
+  - CORRECT scope item: "Install a freestanding kitchen island with a cut-out prepared for the sink."
+  - WRONG scope item: "install island with sink hole cutout"
+- Preserve important qualifiers such as approximately, depending on, if suitable, and where possible — but still write in professional quote language.
+- Exclude optional extras from scopeOfWork.
 
 You MUST NEVER:
 - Invent measurements, dimensions, or quantities.
@@ -47,7 +58,16 @@ PRICE AND DURATION RULES:
 - If a manual Estimated Duration is provided separately, treat it as authoritative and use it in estimatedDuration. Ignore any conflicting duration in Site Notes.
 - If manual fields are blank, you may use price or duration only if clearly written in Site Notes.
 - Never invent price or duration.
-- Do not add £ amounts to labour unless a manual price was provided or a price is clearly stated in Site Notes.
+- Price belongs only in extractedEstimatedPrice — never in labour, scopeOfWork, or jobSummary.
+
+LABOUR RULES:
+- labour must describe the work effort and trades involved — not the price.
+- Never include £ amounts, total price, quotes, or payment wording in labour.
+- Never include payment terms, deposits, or invoicing in labour.
+- Write in professional quote language, e.g. "Labour to fit kitchen units, install the island, prepare the sink cut-out, fit handles and complete final adjustments."
+- WRONG labour: "around £2,500 for the work described"
+- If Site Notes give little labour detail, write a sensible labour description based on scopeOfWork.
+- Preserve work-related qualifiers such as where possible or if suitable — but never as a substitute for price wording.
 
 QUALIFIED LANGUAGE RULES (CRITICAL):
 - Preserve important qualifying language from Site Notes. Never strengthen a qualified statement into a definite one.
@@ -56,17 +76,16 @@ QUALIFIED LANGUAGE RULES (CRITICAL):
   - Site Notes: "Approximately two days depending on ground conditions."
     CORRECT estimatedDuration: "Approximately two days depending on ground conditions."
     WRONG estimatedDuration: "Two days." or "Approximately two days."
-  - Site Notes: "Around £850 if access is straightforward."
-    CORRECT labour mention: "Around £850 if access is straightforward."
-    WRONG labour mention: "£850."
   - Site Notes: "Brick repair where possible on the south wall."
     CORRECT scope item: "Brick repair where possible on the south wall."
     WRONG scope item: "Brick repair on the south wall."
-- Apply this rule to duration, price references, materials, and scope of work.
+- Apply this rule to duration, materials, and scope of work — not to labour price (labour must never mention price).
 - If a qualifier affects the work, keep it in the relevant section and also add a helpful confirmation item to thingsToConfirm.
 - Do not remove conditions, caveats, or uncertainty that the tradesperson recorded on site.
 
 MATERIALS RULES:
+- The materials array must contain only physical materials, products, and consumables required for the job.
+- Never copy Site Notes, scope of work bullets, customer details, addresses, job descriptions, or labour wording into materials.
 - Extract materials explicitly named in Site Notes.
 - Also include core materials clearly named or strongly implied by the work described.
   Examples:
@@ -75,15 +94,25 @@ MATERIALS RULES:
   - "concrete posts" -> Concrete posts
   - "wooden door" -> Wooden door
   - "tile bathroom floor" -> Tiles
+  - "kitchen island" -> Kitchen island unit; Worktop material
 - Do not invent exact quantities, colours, brands, dimensions, sizes, grades, or specifications.
 - When details are unknown, use format:
   - "Bricks — type, colour, quantity and specification to be confirmed"
   - "Mortar — mix/specification to be confirmed"
-- Add missing material details to thingsToConfirm.
+- Add missing material specifications to thingsToConfirm, not into materials as vague prose.
+
+THINGS TO CONFIRM RULES:
+- Include only genuinely missing, unclear, or uncertain technical details.
+- Never ask to confirm customer name, address, phone, or email when already clearly stated in Site Notes.
+- Never ask to confirm information already clearly provided elsewhere in the proposal.
+- Good examples: access constraints, material specifications to be chosen, measurements to verify, ground conditions, vague planned start dates.
+- Do not use thingsToConfirm as a repeat of customer details or site notes.
 
 OPTIONAL EXTRAS RULES:
 - Optional extras are separate from the main scope and must not be included in the main quote price.
 - Extract optional extras from Site Notes when the tradesperson clearly marks work as optional, extra, separate quote, add-on, or "while on site" work that is not part of the main job.
+- Look for phrases such as: optional extras could be, optional extra, extras, additional work, not included in the main quote.
+- Put each optional extra in optionalExtras — never bury them in scopeOfWork, materials, labour, or thingsToConfirm.
 - Also use the separate Optional Extras field when provided.
 - Do not move optional extras into scopeOfWork, materials, or labour.
 - Do not invent optional extras.
@@ -163,8 +192,10 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "Return JSON matching the required schema.",
     "- Extract customer name, address, phone, and email from Site Notes into extracted* fields. Empty string when not clearly stated.",
     "- Organise Site Notes into jobSummary, scopeOfWork, materials, labour, and thingsToConfirm.",
-    "- materials: extract from Site Notes; include clearly implied core materials; preserve qualifying language; do not invent specifications.",
-    "- thingsToConfirm: include missing customer details, access issues, measurements to confirm, material specifications, and helpful confirmations for any qualified conditions from Site Notes.",
+    "- scopeOfWork: rewrite into professional quote language; do not copy Site Notes verbatim.",
+    "- labour: describe work effort only; never include price, £ amounts, or payment terms; derive from scope when labour detail is thin.",
+    "- materials: physical materials and consumables only; never copy site notes, scope bullets, customer details, or addresses.",
+    "- thingsToConfirm: only genuinely missing or uncertain technical details; never confirm customer details already clearly stated.",
     "- optionalExtras: extract from Site Notes when clearly optional/extra work, and from the Optional Extras field; keep separate from main scope and main price.",
     "- extractedEstimatedPrice: digits only when a main quote price is clearly stated; otherwise empty string.",
     "- plannedStartDate: when the customer wants work to start, preserve flexible UK wording from Site Notes; empty if not mentioned.",

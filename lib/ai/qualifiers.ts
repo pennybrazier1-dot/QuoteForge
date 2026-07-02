@@ -147,9 +147,11 @@ function appendClauses(text: string, clauses: string[]): string {
 
 export function enrichWithSourceQualifiers(
   output: string,
-  sourceText: string
+  sourceText: string,
+  options?: { allowSegmentReplace?: boolean }
 ): string {
   const trimmedOutput = output.trim();
+  const allowSegmentReplace = options?.allowSegmentReplace ?? true;
 
   if (!trimmedOutput || !sourceText.trim()) {
     return trimmedOutput;
@@ -171,6 +173,7 @@ export function enrichWithSourceQualifiers(
       }
 
       if (
+        allowSegmentReplace &&
         segment.length > enriched.length &&
         stripQualifierWords(normalizeForComparison(segment)).includes(
           stripQualifierWords(normalizeForComparison(enriched))
@@ -257,9 +260,21 @@ export function preserveQualifiedLabour(
 
 export function preserveQualifiedStringList(
   items: string[],
+  siteNotes: string,
+  options?: { allowSegmentReplace?: boolean }
+): string[] {
+  return items.map((item) =>
+    enrichWithSourceQualifiers(item, siteNotes, options)
+  );
+}
+
+export function preserveQualifiedScopeItems(
+  items: string[],
   siteNotes: string
 ): string[] {
-  return items.map((item) => enrichWithSourceQualifiers(item, siteNotes));
+  return preserveQualifiedStringList(items, siteNotes, {
+    allowSegmentReplace: false,
+  });
 }
 
 function qualifierClauseToConfirmItem(clause: string): string | null {
