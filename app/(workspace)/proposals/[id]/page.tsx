@@ -11,12 +11,10 @@ export const metadata: Metadata = {
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
 };
 
-export default async function ProposalPage({ params, searchParams }: PageProps) {
+export default async function ProposalPage({ params }: PageProps) {
   const { id } = await params;
-  const { saved } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -67,7 +65,6 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
       businessName={workspace?.business_name ?? "Your business"}
       senderName={profile?.full_name ?? "Your team"}
       statusEvents={(statusEvents ?? []) as ProposalStatusEventRecord[]}
-      justSaved={saved === "1"}
     />
   );
 }

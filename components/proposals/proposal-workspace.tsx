@@ -1,8 +1,5 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
-import { ProposalNextActions } from "@/components/proposals/proposal-next-actions";
-import { ProposalPostSavePrompt } from "@/components/proposals/proposal-post-save-prompt";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
@@ -15,11 +12,6 @@ import {
 import { SectionCard } from "@/components/ui/section-card";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
-import {
-  canOpenSendProposalDialog,
-  canPreviewProposalPdf,
-  getSendDisabledReason,
-} from "@/lib/proposals/proposal-action-eligibility";
 import {
   mapDbRowToStructuredProposal,
 } from "@/lib/proposals/structured-proposal";
@@ -122,12 +114,6 @@ const CLOCK_ICON = (
 const SPARKLE_ICON = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="m12 3-1.9 5.8H4l4.9 3.6-1.9 5.8L12 14.6l5 3.8-1.9-5.8L20 8.8h-6.1L12 3z" />
-  </svg>
-);
-
-const BOLT_ICON = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
   </svg>
 );
 
@@ -237,15 +223,6 @@ function ProposalWorkspaceRight({
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
 }) {
-  const actionContext = {
-    status: proposal.status,
-    job_summary: proposal.job_summary,
-    rough_notes: proposal.rough_notes,
-    customer_name: proposal.customer_name,
-    customer_email: proposal.customer_email,
-    total_amount: proposal.total_amount,
-  };
-  const canPreview = canPreviewProposalPdf(actionContext);
   const isDraft = proposal.status === "draft";
 
   return (
@@ -272,83 +249,6 @@ function ProposalWorkspaceRight({
         </SectionCard>
       </div>
 
-      <SectionCard className="qf-card-form">
-        <WorkspaceCardHeading title="Actions" icon={BOLT_ICON} />
-        <div className="mt-4">
-          <ProposalNextActions
-            proposal={{
-              id: proposal.id,
-              proposal_number: proposal.proposal_number,
-              status: proposal.status,
-              customer_id: proposal.customer_id,
-              customer_email: proposal.customer_email,
-              actionContext,
-            }}
-          />
-        </div>
-      </SectionCard>
-
-      <SectionCard className="qf-card-form qf-workspace-pdf-card">
-        <WorkspaceCardHeading title="PDF Preview" icon={DOC_ICON} />
-        <div className="mt-4">
-          {canPreview ? (
-            <div className="qf-workspace-pdf-preview">
-              <div className="qf-workspace-pdf-frame" aria-hidden="true">
-                <svg
-                  width="40"
-                  height="40"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                  <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                </svg>
-                <p className="qf-workspace-pdf-label">{proposal.proposal_number}</p>
-              </div>
-              <a
-                href={`/proposals/${proposal.id}/pdf`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="qf-workspace-pdf-link"
-              >
-                Open PDF preview
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                </svg>
-              </a>
-            </div>
-          ) : (
-            <div className="qf-workspace-pdf-empty">
-              <p className="text-sm text-muted">
-                Accept an AI draft to generate a customer-ready PDF preview.
-              </p>
-              {isDraft ? (
-                <Link
-                  href={`/proposals/${proposal.id}/edit`}
-                  className="qf-workspace-pdf-cta"
-                >
-                  Continue editing draft
-                </Link>
-              ) : null}
-            </div>
-          )}
-        </div>
-      </SectionCard>
-
       {isDraft ? (
         <SectionCard className="qf-card-form">
           <DeleteDraftSection
@@ -366,13 +266,11 @@ export function ProposalWorkspace({
   businessName,
   senderName,
   statusEvents,
-  justSaved = false,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
   senderName: string;
   statusEvents: ProposalStatusEventRecord[];
-  justSaved?: boolean;
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const actionContext = {
@@ -383,8 +281,6 @@ export function ProposalWorkspace({
     customer_email: proposal.customer_email,
     total_amount: proposal.total_amount,
   };
-  const canPreview = canPreviewProposalPdf(actionContext);
-  const sendDisabledReason = getSendDisabledReason(actionContext);
 
   return (
     <SendProposalProvider
@@ -400,57 +296,44 @@ export function ProposalWorkspace({
     >
       <div className="qf-proposal-page qf-workspace-page qf-mobile-safe">
       <header className="qf-workspace-header">
-        <div className="qf-workspace-header-main">
-          <div className="qf-workspace-header-top">
-            <p className="qf-workspace-number">{proposal.proposal_number}</p>
-            <ProposalStatusBadge status={proposal.status} />
-          </div>
-
-          <h1 className="qf-workspace-customer">
-            {proposal.customer_name ?? "Unknown customer"}
-          </h1>
-
-          <p className="qf-workspace-title">{proposal.title}</p>
-
-          <div className="qf-workspace-meta">
-            <div className="qf-workspace-meta-item">
-              <span className="qf-workspace-meta-label">Price</span>
-              <span className="qf-workspace-meta-value">
-                {formatPenceAsGbp(proposal.total_amount)}
-              </span>
-            </div>
-            {proposal.estimated_duration ? (
-              <div className="qf-workspace-meta-item">
-                <span className="qf-workspace-meta-label">Duration</span>
-                <span className="qf-workspace-meta-value">
-                  {proposal.estimated_duration}
-                </span>
-              </div>
-            ) : null}
-            <div className="qf-workspace-meta-item">
-              <span className="qf-workspace-meta-label">Last updated</span>
-              <span className="qf-workspace-meta-value">
-                {formatLastUpdated(proposal.updated_at, proposal.created_at)}
-              </span>
-            </div>
-          </div>
+        <div className="qf-workspace-header-top">
+          <p className="qf-workspace-number">{proposal.proposal_number}</p>
+          <ProposalStatusBadge status={proposal.status} />
         </div>
 
-        <ProposalWorkspaceActions
-          proposalId={proposal.id}
-          status={proposal.status}
-          actionContext={actionContext}
-        />
+        <h1 className="qf-workspace-customer">
+          {proposal.customer_name ?? "Unknown customer"}
+        </h1>
+
+        <div className="qf-workspace-meta">
+          <div className="qf-workspace-meta-item">
+            <span className="qf-workspace-meta-label">Price</span>
+            <span className="qf-workspace-meta-value">
+              {formatPenceAsGbp(proposal.total_amount)}
+            </span>
+          </div>
+          {proposal.estimated_duration ? (
+            <div className="qf-workspace-meta-item">
+              <span className="qf-workspace-meta-label">Duration</span>
+              <span className="qf-workspace-meta-value">
+                {proposal.estimated_duration}
+              </span>
+            </div>
+          ) : null}
+          <div className="qf-workspace-meta-item">
+            <span className="qf-workspace-meta-label">Last updated</span>
+            <span className="qf-workspace-meta-value">
+              {formatLastUpdated(proposal.updated_at, proposal.created_at)}
+            </span>
+          </div>
+        </div>
       </header>
 
-      {justSaved ? (
-        <ProposalPostSavePrompt
-          proposalId={proposal.id}
-          canPreviewPdf={canPreview}
-          canSend={canOpenSendProposalDialog(actionContext)}
-          sendDisabledReason={sendDisabledReason}
-        />
-      ) : null}
+      <ProposalWorkspaceActions
+        proposalId={proposal.id}
+        status={proposal.status}
+        actionContext={actionContext}
+      />
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />

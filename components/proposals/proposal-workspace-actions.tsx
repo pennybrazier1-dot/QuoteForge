@@ -18,7 +18,7 @@ import {
   getSendDisabledReason,
   type ProposalActionContext,
 } from "@/lib/proposals/proposal-action-eligibility";
-import { isProposalStatus, type ProposalStatus } from "@/lib/proposals/status";
+import { isProposalStatus } from "@/lib/proposals/status";
 
 const initialState: UpdateProposalStatusState = {};
 
@@ -28,98 +28,81 @@ type ProposalWorkspaceActionsProps = {
   actionContext: ProposalActionContext;
 };
 
-function SendButton({
+const SEND_ICON = (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="m22 2-7 20-4-9-9-4Z" />
+    <path d="M22 2 11 13" />
+  </svg>
+);
+
+const PDF_ICON = (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+  </svg>
+);
+
+const EDIT_ICON = (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+
+function MarkReadyButton({
   formAction,
   proposalId,
-  newStatus,
-  label,
   pendingLabel,
 }: {
   formAction: (payload: FormData) => void;
   proposalId: string;
-  newStatus: ProposalStatus;
-  label: string;
   pendingLabel: string;
 }) {
   const { pending } = useFormStatus();
 
   return (
-    <form action={formAction} className="qf-workspace-actions-send-form">
+    <form action={formAction} className="qf-workspace-actions-item">
       <input type="hidden" name="proposalId" value={proposalId} />
-      <input type="hidden" name="newStatus" value={newStatus} />
+      <input type="hidden" name="newStatus" value="ready_to_send" />
       <button
         type="submit"
         disabled={pending}
-        className="qf-workspace-btn qf-workspace-btn-primary"
+        className="qf-workspace-action qf-workspace-action-primary"
       >
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m22 2-7 20-4-9-9-4Z" />
-          <path d="M22 2 11 13" />
-        </svg>
-        {pending ? pendingLabel : label}
+        {SEND_ICON}
+        {pending ? pendingLabel : "Send to Customer"}
       </button>
     </form>
-  );
-}
-
-function PdfButton({
-  proposalId,
-  enabled,
-}: {
-  proposalId: string;
-  enabled: boolean;
-}) {
-  const content = (
-    <>
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-        <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-      </svg>
-      <span className="qf-workspace-btn-label-short">PDF</span>
-      <span className="qf-workspace-btn-label-long">Preview PDF</span>
-    </>
-  );
-
-  if (enabled) {
-    return (
-      <a
-        href={`/proposals/${proposalId}/pdf`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="qf-workspace-btn qf-workspace-btn-secondary qf-workspace-btn-pdf"
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <span
-      className="qf-workspace-btn qf-workspace-btn-secondary qf-workspace-btn-disabled qf-workspace-btn-pdf"
-      aria-disabled="true"
-    >
-      {content}
-    </span>
   );
 }
 
@@ -141,107 +124,71 @@ export function ProposalWorkspaceActions({
     canMarkProposalReadyToSend(actionContext);
 
   return (
-    <div className="qf-workspace-actions">
+    <section className="qf-workspace-actions" aria-label="Proposal actions">
       {state.error ? <AuthError message={state.error} /> : null}
 
-      <div className="qf-workspace-actions-row">
-        {canEdit ? (
-          <Link
-            href={`/proposals/${proposalId}/edit`}
-            className="qf-workspace-btn qf-workspace-btn-secondary"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-            Edit
-          </Link>
-        ) : (
-          <span
-            className="qf-workspace-btn qf-workspace-btn-secondary qf-workspace-btn-disabled"
-            aria-disabled="true"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-            </svg>
-            Edit
-          </span>
-        )}
-
-        <PdfButton proposalId={proposalId} enabled={canPreview} />
-
+      <div className="qf-workspace-actions-list">
         {canOpenSend ? (
           <button
             type="button"
             onClick={openSendDialog}
-            className="qf-workspace-btn qf-workspace-btn-primary"
+            className="qf-workspace-action qf-workspace-action-primary"
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m22 2-7 20-4-9-9-4Z" />
-              <path d="M22 2 11 13" />
-            </svg>
-            Send
+            {SEND_ICON}
+            Send to Customer
           </button>
         ) : showMarkReady ? (
-          <SendButton
+          <MarkReadyButton
             formAction={formAction}
             proposalId={proposalId}
-            newStatus="ready_to_send"
-            label="Send"
             pendingLabel="Preparing…"
           />
         ) : (
           <span
-            className="qf-workspace-btn qf-workspace-btn-primary qf-workspace-btn-disabled"
+            className="qf-workspace-action qf-workspace-action-primary qf-workspace-action-disabled"
             aria-disabled="true"
             title={sendDisabledReason ?? undefined}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m22 2-7 20-4-9-9-4Z" />
-              <path d="M22 2 11 13" />
-            </svg>
-            Send
+            {SEND_ICON}
+            Send to Customer
+          </span>
+        )}
+
+        {canPreview ? (
+          <a
+            href={`/proposals/${proposalId}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="qf-workspace-action qf-workspace-action-secondary"
+          >
+            {PDF_ICON}
+            PDF
+          </a>
+        ) : (
+          <span
+            className="qf-workspace-action qf-workspace-action-secondary qf-workspace-action-disabled"
+            aria-disabled="true"
+          >
+            {PDF_ICON}
+            PDF
+          </span>
+        )}
+
+        {canEdit ? (
+          <Link
+            href={`/proposals/${proposalId}/edit`}
+            className="qf-workspace-action qf-workspace-action-secondary"
+          >
+            {EDIT_ICON}
+            Edit Proposal
+          </Link>
+        ) : (
+          <span
+            className="qf-workspace-action qf-workspace-action-secondary qf-workspace-action-disabled"
+            aria-disabled="true"
+          >
+            {EDIT_ICON}
+            Edit Proposal
           </span>
         )}
       </div>
@@ -249,6 +196,6 @@ export function ProposalWorkspaceActions({
       {!canSend && sendDisabledReason ? (
         <p className="qf-workspace-actions-hint">{sendDisabledReason}</p>
       ) : null}
-    </div>
+    </section>
   );
 }
