@@ -27,7 +27,7 @@ const PRICE_CAPTURE_PATTERNS = [
 
 const OPTIONAL_EXTRA_PATTERNS = [
   /\boptional extras?\s+(?:could be|could include|include|are|might be)\s+(.+?)(?:[.!?]|$)/i,
-  /\bextras?\s+could\s+(?:be|include)\s+(.+?)(?:[.!?]|$)/i,
+  /\bextras?\s+(?:could be|could include|include)\s+(.+?)(?:[.!?]|$)/i,
   /\badditional work\s+(?:could be|would be|could include|includes?)\s+(.+?)(?:[.!?]|$)/i,
   /\bnot included(?:\s+in\s+(?:the\s+)?(?:main\s+)?quote)?\s+but\s+(?:could\s+)?(?:add|include)\s+(.+?)(?:[.!?]|$)/i,
   /\bcustomer may also want\s+(.+?)(?:[.!?]|$)/i,
@@ -217,7 +217,7 @@ export function priceDigitsToPence(digits: string): number | null {
   return Math.round(amount * 100);
 }
 
-function splitOptionalExtraItems(text: string): string[] {
+export function splitOptionalExtraItems(text: string): string[] {
   return text
     .split(/\s*,\s*|\s+and\s+|\s*;\s*|\s+or\s+/i)
     .map((item) => item.trim().replace(/^[-•]\s*/, ""))
@@ -265,7 +265,23 @@ export function extractOptionalExtrasFromSiteNotes(
 }
 
 export function looksLikeOptionalExtraTrigger(text: string): boolean {
-  return /\b(optional extras?|extras could|additional work|not included|customer may also want)\b/i.test(
+  return /\b(optional extras?|extras could|extras include|additional work|not included|customer may also want)\b/i.test(
     text
   );
+}
+
+export function expandOptionalExtraCandidates(items: string[]): string[] {
+  const expanded: string[] = [];
+
+  for (const item of items.map((entry) => entry.trim()).filter(Boolean)) {
+    if (looksLikeOptionalExtraTrigger(item)) {
+      expanded.push(...extractOptionalExtrasFromSiteNotes(item, []));
+      continue;
+    }
+
+    const parts = splitOptionalExtraItems(item);
+    expanded.push(...(parts.length > 1 ? parts : [item]));
+  }
+
+  return expanded;
 }

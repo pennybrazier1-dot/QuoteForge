@@ -2,6 +2,7 @@ import type { GeneratedProposal } from "./types";
 import { DURATION_CANNOT_DETERMINE_MESSAGE } from "./prompts";
 import {
   CONFIRM_ESTIMATED_DURATION,
+  expandOptionalExtraCandidates,
   extractDurationFromSiteNotes,
   extractEstimatedPriceDigits,
   extractOptionalExtrasFromSiteNotes,
@@ -412,7 +413,8 @@ export function sanitizeOptionalExtras(
   optionalExtras: string[],
   siteNotes: string
 ): string[] {
-  const merged = extractOptionalExtrasFromSiteNotes(siteNotes, optionalExtras);
+  const expandedAiItems = expandOptionalExtraCandidates(optionalExtras);
+  const merged = extractOptionalExtrasFromSiteNotes(siteNotes, expandedAiItems);
   return refineOptionalExtras(merged);
 }
 

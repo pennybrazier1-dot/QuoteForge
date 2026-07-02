@@ -15,8 +15,9 @@
 @media (max-width: 1023px) {
   html:has(.qf-app) {
     height: auto;
-    overflow-x: clip;
+    overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior-x: none;
     width: 100%;
     max-width: 100%;
   }
@@ -25,8 +26,10 @@
     display: block;
     height: auto;
     min-height: 100dvh;
-    overflow-x: clip;
+    overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
     width: 100%;
     max-width: 100%;
   }
@@ -38,8 +41,10 @@
     min-height: 100dvh;
     width: 100%;
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
     overflow-y: visible;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
   }
 
   .qf-app-frame {
@@ -48,8 +53,9 @@
     height: auto;
     width: 100%;
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
     overflow-y: visible;
+    overscroll-behavior-x: none;
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
 
@@ -58,8 +64,11 @@
     width: 100%;
     max-width: 100%;
     height: auto;
-    overflow-x: clip;
+    overflow-x: hidden;
     overflow-y: visible;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

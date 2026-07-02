@@ -113,6 +113,8 @@ body {
   background-color: var(--background-card);
   padding: 1.75rem;
   box-shadow: var(--card-shadow);
+  box-sizing: border-box;
+  max-width: 100%;
 }
 
 .qf-card-inset {
@@ -789,11 +791,14 @@ a.qf-card-inset:hover {
   .qf-mobile-quote-capture,
   .qf-editable-proposal-review,
   .qf-workspace-page,
-  .qf-dash {
+  .qf-dash,
+  form.qf-proposal-page {
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow-x: clip;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
   }
 
   .qf-card,
@@ -804,11 +809,22 @@ a.qf-card-inset:hover {
   .qf-mobile-quote-capture-body,
   .qf-proposal-layout,
   .qf-proposal-col-left,
-  .qf-proposal-col-right {
+  .qf-proposal-col-right,
+  .qf-editable-proposal-review > *,
+  .qf-send-panel,
+  .qf-send-body {
     width: 100%;
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
+  }
+
+  .qf-app-frame {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+
+  .qf-editable-proposal-review {
+    padding-bottom: 0.5rem;
   }
 
   .form-input,
@@ -938,6 +954,13 @@ a.qf-card-inset:hover {
   flex: 1;
   margin-inline: auto;
   padding-top: 3.5rem;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1023px) {
+  .qf-app-frame {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
 }
 
 @media (min-width: 1024px) {

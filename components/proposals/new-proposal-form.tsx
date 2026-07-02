@@ -23,6 +23,7 @@ import { PlannedStartDateFields } from "@/components/proposals/planned-start-dat
 import { SectionCard } from "@/components/ui/section-card";
 import type { GeneratedProposal } from "@/lib/ai";
 import { logProposalFormMapping } from "@/lib/ai/proposal-debug";
+import { logMobileOverflowElements } from "@/lib/dev/mobile-overflow-debug";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import {
@@ -277,6 +278,20 @@ export function NewProposalForm({
 
   const showMobileCapture = mode === "create" && isMobile && !reviewProposal;
   const showMobileReview = mode === "create" && isMobile && Boolean(reviewProposal);
+
+  useEffect(() => {
+    if (!showMobileCapture && !showMobileReview) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      logMobileOverflowElements(
+        showMobileCapture ? "new-quote-capture" : "new-quote-review"
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [showMobileCapture, showMobileReview, reviewProposal]);
 
   const estimatedDuration =
     showMobileReview && reviewProposal

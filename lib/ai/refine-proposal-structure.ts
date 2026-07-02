@@ -1,3 +1,7 @@
+import {
+  splitOptionalExtraItems,
+} from "./extract-from-site-notes";
+
 const CONVERSATIONAL_PATTERN =
   /\b(?:please|thanks|thank you|asap|a\.s\.a\.p|hurry|urgently|urgent|cheers|ta)\b/gi;
 
@@ -141,7 +145,16 @@ function inferSupplyAndFitPhrase(text: string): string | null {
       : "Supply and fit a replacement door.";
   }
 
-  if (/\b(?:socket|sockets|lighting|light|switch|tap|radiator|towel rail)\b/.test(lower)) {
+  if (/\bheated towel rail\b/.test(lower)) {
+    return "Supply and install a heated towel rail.";
+  }
+
+  if (/\btowel rail\b/.test(lower)) {
+    const remainder = text.charAt(0).toLowerCase() + text.slice(1);
+    return ensureSentence(`Supply and install a ${remainder}`);
+  }
+
+  if (/\b(?:socket|sockets|lighting|light|switch|tap|radiator)\b/.test(lower)) {
     if (/^supply\b|^install\b|^fit\b|^replace\b/.test(lower)) {
       return ensureSentence(text);
     }
@@ -165,7 +178,7 @@ export function professionalizeOptionalExtra(item: string): string {
     .trim();
 
   if (!text) {
-    return item.trim();
+    return "";
   }
 
   const inferred = inferSupplyAndFitPhrase(text);
@@ -178,8 +191,14 @@ export function professionalizeOptionalExtra(item: string): string {
 
 export function refineOptionalExtras(optionalExtras: string[]): string[] {
   const seen = new Set<string>();
+  const expanded: string[] = [];
 
-  return optionalExtras
+  for (const item of optionalExtras) {
+    const parts = splitOptionalExtraItems(item);
+    expanded.push(...(parts.length > 1 ? parts : [item]));
+  }
+
+  return expanded
     .map((item) => professionalizeOptionalExtra(item))
     .filter((item) => {
       const key = normalizeKey(item);
