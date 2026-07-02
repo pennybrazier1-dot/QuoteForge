@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   useActionState,
   useCallback,
@@ -17,6 +16,7 @@ import {
   type ProposalManagementState,
 } from "@/app/proposals/management-actions";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
+import { RearrangeProposalDialog } from "@/components/proposals/rearrange-proposal-dialog";
 import {
   HomeCardContent,
   homeCardClassName,
@@ -28,7 +28,7 @@ const initialState: ProposalManagementState = {};
 const ACTION_WIDTH = 76;
 const SWIPE_OPEN_THRESHOLD = 48;
 
-type ActiveDialog = "cancel" | "delete" | null;
+type ActiveDialog = "cancel" | "delete" | "rearrange" | null;
 
 function useIsMobileHome(): boolean {
   const [isMobile, setIsMobile] = useState(false);
@@ -51,7 +51,6 @@ export function HomeSwipeableCard({
   card: HomeCard;
   sectionTone: HomeSectionTone;
 }) {
-  const router = useRouter();
   const isMobile = useIsMobileHome();
   const [offset, setOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -120,7 +119,7 @@ export function HomeSwipeableCard({
 
   function handleRearrange() {
     closeSwipe();
-    router.push(`/proposals/${card.id}?rearrange=1`);
+    setActiveDialog("rearrange");
   }
 
   return (
@@ -203,6 +202,15 @@ export function HomeSwipeableCard({
           onClose={() => setActiveDialog(null)}
         />
       ) : null}
+
+      <RearrangeProposalDialog
+        open={activeDialog === "rearrange"}
+        onClose={() => setActiveDialog(null)}
+        proposalId={card.id}
+        plannedStartDateText={card.plannedStartDateText}
+        plannedStartDate={card.plannedStartDate}
+        estimatedDuration={card.estimatedDuration}
+      />
     </>
   );
 }

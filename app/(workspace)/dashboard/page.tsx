@@ -28,7 +28,7 @@ export default async function HomePage() {
     supabase
       .from("proposals")
       .select(
-        "id, proposal_number, customer_name, title, job_summary, rough_notes, scope_of_work, job_address, status, total_amount, created_at, updated_at, accepted_at, sent_at"
+        "id, proposal_number, customer_name, title, job_summary, rough_notes, scope_of_work, job_address, status, total_amount, created_at, updated_at, accepted_at, sent_at, planned_start_date_text, planned_start_date, estimated_duration"
       )
       .order("updated_at", { ascending: false })
       .limit(100),

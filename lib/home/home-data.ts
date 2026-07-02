@@ -16,6 +16,9 @@ export type HomeProposal = {
   updated_at: string;
   accepted_at: string | null;
   sent_at: string | null;
+  planned_start_date_text: string | null;
+  planned_start_date: string | null;
+  estimated_duration: string | null;
 };
 
 export type HomeCardStatusTone = "green" | "orange" | "blue" | "purple";
@@ -31,6 +34,9 @@ export type HomeCard = {
   addressLine?: string;
   status: { label: string; tone: HomeCardStatusTone };
   attentionNote?: string;
+  plannedStartDateText: string | null;
+  plannedStartDate: string | null;
+  estimatedDuration: string | null;
 };
 
 export type HomeSectionTone = "green" | "orange" | "blue" | "purple";
@@ -145,6 +151,9 @@ function buildCard(
     addressLine: address || undefined,
     status: options.status,
     attentionNote: options.attentionNote,
+    plannedStartDateText: proposal.planned_start_date_text,
+    plannedStartDate: proposal.planned_start_date,
+    estimatedDuration: proposal.estimated_duration,
   };
 }
 
