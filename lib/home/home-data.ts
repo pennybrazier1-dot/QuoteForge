@@ -66,6 +66,7 @@ export type HomeSection = {
 
 export const HOME_SWIPE_SECTION_IDS = new Set([
   "todays-jobs",
+  "bookings-to-confirm",
   "jobs-needing-attention",
   "waiting-for-customer",
   "quotes-to-finish",
@@ -155,7 +156,9 @@ export function getHomeNotificationCount(proposals: HomeProposal[]): number {
 
     return (
       isActiveHomeProposal(status) &&
-      (status === "needs_attention" || status === "waiting_for_customer")
+      (status === "needs_attention" ||
+        status === "waiting_for_customer" ||
+        isProvisionalBooking(proposal.status, proposal.booking_confirmation))
     );
   }).length;
 }
@@ -238,14 +241,26 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       })
     );
 
+  const bookingsToConfirm = activeProposals
+    .filter((proposal) =>
+      isProvisionalBooking(proposal.status, proposal.booking_confirmation)
+    )
+    .slice(0, 8)
+    .map((proposal) =>
+      buildCard(proposal, {
+        jobTitle: getProposalSummaryLabel(proposal),
+        status: { label: "Confirm", tone: "orange" },
+        timeLabel: formatScheduleLabel(proposal),
+        attentionNote: "Confirm the booking date and duration",
+      })
+    );
+
   const bookedJobs = activeProposals
     .filter((proposal) => {
       const status = normalizeProposalStatus(proposal.status);
 
       return (
-        status === "booked" &&
-        (isConfirmedBooking(status, proposal.booking_confirmation) ||
-          isProvisionalBooking(status, proposal.booking_confirmation)) &&
+        isConfirmedBooking(status, proposal.booking_confirmation) &&
         isPlannedStartInFuture(proposal.planned_start_date)
       );
     })
@@ -253,22 +268,9 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
     .map((proposal) =>
       buildCard(proposal, {
         jobTitle: getProposalSummaryLabel(proposal),
-        status: {
-          label: isProvisionalBooking(
-            proposal.status,
-            proposal.booking_confirmation
-          )
-            ? "Provisional"
-            : "Booked",
-          tone: "green",
-        },
+        status: { label: "Booked", tone: "green" },
         timeLabel: formatScheduleLabel(proposal),
-        attentionNote: isProvisionalBooking(
-          proposal.status,
-          proposal.booking_confirmation
-        )
-          ? "Confirm this booking"
-          : "Confirmed on your calendar",
+        attentionNote: "Confirmed on your calendar",
       })
     );
 
@@ -292,6 +294,14 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       viewAllHref: "/calendar",
       cards: todaysJobCards,
       emptyMessage: "No confirmed jobs for today.",
+    },
+    {
+      id: "bookings-to-confirm",
+      title: "Confirm Bookings",
+      tone: "orange",
+      viewAllHref: "/proposals",
+      cards: bookingsToConfirm,
+      emptyMessage: "No bookings waiting to be confirmed.",
     },
     {
       id: "jobs-needing-attention",

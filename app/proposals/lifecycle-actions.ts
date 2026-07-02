@@ -10,7 +10,10 @@ import {
   normalizePlannedStartExact,
 } from "@/lib/proposals/planned-start-date";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
-import { isProvisionalBooking } from "@/lib/proposals/booking";
+import {
+  isBookingConfirmation,
+  isProvisionalBooking,
+} from "@/lib/proposals/booking";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -54,18 +57,23 @@ export async function confirmBooking(
     getString(formData, "plannedStartDateExact")
   );
   const estimatedDuration = getString(formData, "estimatedDuration");
+  const bookingConfirmation = getString(formData, "bookingConfirmation");
 
   if (!proposalId) {
     return { error: "Proposal not found." };
   }
 
   if (!plannedStartDateText && !plannedStartDateExact) {
-    return { error: "Choose a confirmed start date." };
+    return { error: "Choose a start date for the calendar." };
+  }
+
+  if (!isBookingConfirmation(bookingConfirmation)) {
+    return { error: "Choose a booking status." };
   }
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, workspace_id, booking_confirmation")
+    .select("id, status, workspace_id, booking_confirmation, accepted_at")
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -74,12 +82,19 @@ export async function confirmBooking(
   }
 
   const currentStatus = normalizeProposalStatus(proposal.status);
+  const isAwaitingAcceptance = currentStatus === "waiting_for_customer";
+  const isProvisional = isProvisionalBooking(
+    currentStatus,
+    proposal.booking_confirmation
+  );
 
   if (
     !isProposalStatus(currentStatus) ||
-    !isProvisionalBooking(currentStatus, proposal.booking_confirmation)
+    (!isAwaitingAcceptance && !isProvisional)
   ) {
-    return { error: "Only provisional bookings can be confirmed." };
+    return {
+      error: "Only accepted quotes or provisional bookings can be confirmed.",
+    };
   }
 
   const plannedFields = plannedStartToDbFields({
@@ -87,14 +102,24 @@ export async function confirmBooking(
     plannedStartDateExact: plannedStartDateExact ?? "",
   });
 
+  const now = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    status: "booked",
+    booking_confirmation: bookingConfirmation,
+    estimated_duration: estimatedDuration || null,
+    things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+    attention_reason: null,
+    ...plannedFields,
+  };
+
+  if (isAwaitingAcceptance) {
+    updatePayload.accepted_at = now;
+    updatePayload.booked_at = now;
+  }
+
   const { error: updateError } = await supabase
     .from("proposals")
-    .update({
-      booking_confirmation: "confirmed",
-      estimated_duration: estimatedDuration || null,
-      things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
-      ...plannedFields,
-    })
+    .update(updatePayload)
     .eq("id", proposalId);
 
   if (updateError) {
@@ -103,16 +128,24 @@ export async function confirmBooking(
     };
   }
 
+  const eventNote = isAwaitingAcceptance
+    ? bookingConfirmation === "confirmed"
+      ? "Quote accepted — booking confirmed on calendar"
+      : "Quote accepted — provisional booking on calendar"
+    : bookingConfirmation === "confirmed"
+      ? "Booking confirmed"
+      : "Booking details updated";
+
   await recordProposalEvent(supabase, {
     workspaceId: proposal.workspace_id,
     proposalId: proposal.id,
     userId: user.id,
     eventType: "status_change",
     fromStatus: currentStatus,
-    toStatus: currentStatus,
-    note: "Booking confirmed",
+    toStatus: "booked",
+    note: eventNote,
     metadata: {
-      booking_confirmation: "confirmed",
+      booking_confirmation: bookingConfirmation,
       ...plannedFields,
       estimated_duration: estimatedDuration || null,
     },

@@ -234,12 +234,21 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
     case "waiting_for_customer":
       return [
         {
-          id: "view-timeline",
-          title: "View Timeline",
-          description: "Waiting for the customer to accept this quote.",
-          icon: ICONS.timeline,
+          id: "mark-accepted",
+          title: "Mark Accepted",
+          description:
+            "Customer accepted this quote — confirm the booking date and add it to your calendar.",
+          icon: ICONS.job,
           tone: "accent",
           primary: true,
+          href: "#proposal-lifecycle",
+        },
+        {
+          id: "view-timeline",
+          title: "View Timeline",
+          description: "See when this quote was sent and what happens next.",
+          icon: ICONS.timeline,
+          tone: "muted",
           href: "#proposal-timeline",
         },
         openPdf,
@@ -267,7 +276,7 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         {
           id: "manage-booking",
           title: "Manage Booking",
-          description: "Confirm the date or mark this job complete.",
+          description: "Confirm the booking or mark this job complete.",
           icon: ICONS.job,
           tone: "accent",
           primary: true,

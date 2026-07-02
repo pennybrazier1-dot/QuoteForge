@@ -132,7 +132,7 @@ export function ProposalLifecycleActions({
               className="qf-btn-primary"
               onClick={() => setAcceptDialogOpen(true)}
             >
-              Customer accepted
+              Mark accepted
             </button>
             {ATTENTION_REASONS.map((reason) => (
               <form key={reason} action={responseAction} className="w-full">
@@ -183,7 +183,7 @@ export function ProposalLifecycleActions({
       {showProvisional ? (
         <div className="qf-workspace-lifecycle-block">
           <p className="qf-workspace-lifecycle-label">
-            Provisional booking — confirm the start date
+            Provisional booking — confirm the start date, duration, and status
           </p>
           <div className="qf-workspace-lifecycle-actions">
             <button
@@ -230,6 +230,7 @@ export function ProposalLifecycleActions({
         plannedStartDateText={plannedStartDateText}
         plannedStartDate={plannedStartDate}
         estimatedDuration={estimatedDuration}
+        bookingConfirmation="confirmed"
       />
     </section>
   );

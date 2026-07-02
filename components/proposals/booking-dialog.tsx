@@ -4,18 +4,18 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import {
-  recordCustomerAcceptance,
-  type CustomerResponseState,
-} from "@/app/proposals/customer-response-actions";
-import {
   confirmBooking,
   type LifecycleActionState,
 } from "@/app/proposals/lifecycle-actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
+import {
+  BOOKING_CONFIRMATIONS,
+  formatBookingConfirmation,
+  type BookingConfirmation,
+} from "@/lib/proposals/booking";
 import { plannedStartFromDb } from "@/lib/proposals/planned-start-date";
 
-const acceptInitialState: CustomerResponseState = {};
 const confirmInitialState: LifecycleActionState = {};
 
 function SubmitButton({
@@ -46,6 +46,7 @@ type BookingDialogProps = {
   plannedStartDateText: string | null;
   plannedStartDate: string | null;
   estimatedDuration: string | null;
+  bookingConfirmation?: BookingConfirmation | null;
 };
 
 export function BookingDialog({
@@ -56,11 +57,8 @@ export function BookingDialog({
   plannedStartDateText,
   plannedStartDate,
   estimatedDuration,
+  bookingConfirmation = "confirmed",
 }: BookingDialogProps) {
-  const [acceptState, acceptAction] = useActionState(
-    recordCustomerAcceptance,
-    acceptInitialState
-  );
   const [confirmState, confirmAction] = useActionState(
     confirmBooking,
     confirmInitialState
@@ -73,10 +71,11 @@ export function BookingDialog({
   const [startText, setStartText] = useState(plannedStart.plannedStartDate);
   const [startExact, setStartExact] = useState(plannedStart.plannedStartDateExact);
   const [duration, setDuration] = useState(estimatedDuration ?? "");
+  const [bookingStatus, setBookingStatus] = useState<BookingConfirmation>(
+    bookingConfirmation ?? "confirmed"
+  );
 
   const isAccept = mode === "accept";
-  const state = isAccept ? acceptState : confirmState;
-  const formAction = isAccept ? acceptAction : confirmAction;
 
   useEffect(() => {
     setMounted(true);
@@ -95,7 +94,14 @@ export function BookingDialog({
     setStartText(planned.plannedStartDate);
     setStartExact(planned.plannedStartDateExact);
     setDuration(estimatedDuration ?? "");
-  }, [open, plannedStartDateText, plannedStartDate, estimatedDuration]);
+    setBookingStatus(bookingConfirmation ?? "confirmed");
+  }, [
+    open,
+    plannedStartDateText,
+    plannedStartDate,
+    estimatedDuration,
+    bookingConfirmation,
+  ]);
 
   useEffect(() => {
     if (!open) {
@@ -140,12 +146,12 @@ export function BookingDialog({
         <header className="qf-mgmt-dialog-sheet-header">
           <div>
             <h2 id="qf-booking-title" className="qf-mgmt-dialog-title">
-              {isAccept ? "Customer accepted" : "Confirm booking"}
+              {isAccept ? "Mark accepted — confirm booking" : "Confirm booking"}
             </h2>
             <p className="qf-mgmt-dialog-subtitle">
               {isAccept
-                ? "Confirm the start date and duration. A provisional calendar booking will be created."
-                : "Confirm the start date and duration to turn this into a firm booking."}
+                ? "The customer accepted this quote. Check the start date, duration, and booking status before adding it to your calendar."
+                : "Check the start date, duration, and booking status to firm up this job on your calendar."}
             </p>
           </div>
           <button
@@ -170,11 +176,11 @@ export function BookingDialog({
           </button>
         </header>
 
-        <form action={formAction} className="qf-mgmt-dialog-sheet-form">
+        <form action={confirmAction} className="qf-mgmt-dialog-sheet-form">
           <input type="hidden" name="proposalId" value={proposalId} />
 
           <div className="qf-mgmt-dialog-sheet-body">
-            {state.error ? <AuthError message={state.error} /> : null}
+            {confirmState.error ? <AuthError message={confirmState.error} /> : null}
 
             <PlannedStartDateFields
               textValue={startText}
@@ -185,7 +191,7 @@ export function BookingDialog({
 
             <div>
               <label htmlFor="booking-duration" className="qf-field-label">
-                Estimated Duration
+                Estimated duration
               </label>
               <input
                 id="booking-duration"
@@ -196,6 +202,34 @@ export function BookingDialog({
                 placeholder="e.g. 2–3 days"
                 className="form-input mt-2"
               />
+            </div>
+
+            <div>
+              <label htmlFor="booking-confirmation" className="qf-field-label">
+                Booking status
+              </label>
+              <select
+                id="booking-confirmation"
+                name="bookingConfirmation"
+                value={bookingStatus}
+                onChange={(event) =>
+                  setBookingStatus(event.target.value as BookingConfirmation)
+                }
+                className="form-input mt-2"
+              >
+                {BOOKING_CONFIRMATIONS.map((value) => (
+                  <option key={value} value={value}>
+                    {formatBookingConfirmation(value)}
+                    {value === "confirmed"
+                      ? " — green on calendar"
+                      : " — amber on calendar"}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-muted">
+                Confirmed bookings appear in green. Provisional holds the date
+                in amber until you firm it up.
+              </p>
             </div>
           </div>
 
@@ -208,8 +242,8 @@ export function BookingDialog({
               Cancel
             </button>
             <SubmitButton
-              idleLabel={isAccept ? "Create provisional booking" : "Confirm booking"}
-              pendingLabel={isAccept ? "Booking…" : "Confirming…"}
+              idleLabel={isAccept ? "Add to calendar" : "Confirm booking"}
+              pendingLabel={isAccept ? "Adding…" : "Confirming…"}
             />
           </footer>
         </form>

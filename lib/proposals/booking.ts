@@ -24,14 +24,28 @@ export function isConfirmedBooking(
   status: string,
   bookingConfirmation: string | null | undefined
 ): boolean {
-  return status === "booked" && bookingConfirmation === "confirmed";
+  return (
+    normalizeProposalStatus(status) === "booked" &&
+    bookingConfirmation === "confirmed"
+  );
 }
 
 export function isProvisionalBooking(
   status: string,
   bookingConfirmation: string | null | undefined
 ): boolean {
-  return status === "booked" && bookingConfirmation === "provisional";
+  return (
+    normalizeProposalStatus(status) === "booked" &&
+    bookingConfirmation === "provisional"
+  );
+}
+
+/** Accepted quote that still needs the tradesperson to firm up the booking. */
+export function needsBookingConfirmation(
+  status: string,
+  bookingConfirmation: string | null | undefined
+): boolean {
+  return isProvisionalBooking(status, bookingConfirmation);
 }
 
 /**
