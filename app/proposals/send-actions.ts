@@ -109,7 +109,7 @@ export async function sendProposalByEmail(
   const { error: updateError } = await supabase
     .from("proposals")
     .update({
-      status: "sent",
+      status: "waiting_for_customer",
       sent_at: sentAt,
       customer_email: customerEmail,
     })
@@ -129,7 +129,7 @@ export async function sendProposalByEmail(
     proposal_id: proposalId,
     event_type: "emailed",
     from_status: "ready_to_send",
-    to_status: "sent",
+    to_status: "waiting_for_customer",
     note: `Proposal emailed to ${customerEmail}`,
     metadata: {
       recipient_email: customerEmail,
@@ -147,6 +147,7 @@ export async function sendProposalByEmail(
   }
 
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
   revalidatePath("/proposals");
   revalidatePath(`/proposals/${proposalId}`);
 

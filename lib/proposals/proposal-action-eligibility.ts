@@ -2,6 +2,7 @@ import { hasStructuredProposal } from "@/lib/proposals/structured-proposal";
 import {
   canEditProposal,
   isProposalStatus,
+  normalizeProposalStatus,
   type ProposalStatus,
 } from "@/lib/proposals/status";
 
@@ -14,15 +15,18 @@ export type ProposalActionContext = {
   total_amount?: number | null;
 };
 
-const SENT_LIKE_STATUSES: ProposalStatus[] = [
+const QUOTE_READY_STATUSES: ProposalStatus[] = [
   "ready_to_send",
-  "sent",
-  "accepted",
+  "waiting_for_customer",
+  "needs_attention",
+  "booked",
   "declined",
 ];
 
 export function canPreviewProposalPdf(proposal: ProposalActionContext): boolean {
-  if (proposal.status === "cancelled") {
+  const status = normalizeProposalStatus(proposal.status);
+
+  if (status === "cancelled") {
     return false;
   }
 
@@ -30,10 +34,7 @@ export function canPreviewProposalPdf(proposal: ProposalActionContext): boolean 
     return true;
   }
 
-  if (
-    isProposalStatus(proposal.status) &&
-    SENT_LIKE_STATUSES.includes(proposal.status)
-  ) {
+  if (isProposalStatus(status) && QUOTE_READY_STATUSES.includes(status)) {
     return true;
   }
 
@@ -47,7 +48,10 @@ export function canPreviewProposalPdf(proposal: ProposalActionContext): boolean 
 export function canMarkProposalReadyToSend(
   proposal: ProposalActionContext
 ): boolean {
-  return proposal.status === "draft" && canPreviewProposalPdf(proposal);
+  return (
+    normalizeProposalStatus(proposal.status) === "draft" &&
+    canPreviewProposalPdf(proposal)
+  );
 }
 
 export function canOpenSendProposalDialog(
@@ -57,7 +61,7 @@ export function canOpenSendProposalDialog(
     return false;
   }
 
-  if (proposal.status === "ready_to_send") {
+  if (normalizeProposalStatus(proposal.status) === "ready_to_send") {
     return Boolean(proposal.customer_email?.trim());
   }
 
@@ -69,7 +73,7 @@ export function canUseSendAction(proposal: ProposalActionContext): boolean {
     return false;
   }
 
-  if (proposal.status === "ready_to_send") {
+  if (normalizeProposalStatus(proposal.status) === "ready_to_send") {
     return Boolean(proposal.customer_email?.trim());
   }
 
@@ -84,26 +88,31 @@ export function getSendDisabledReason(
   }
 
   if (
-    proposal.status === "ready_to_send" &&
+    normalizeProposalStatus(proposal.status) === "ready_to_send" &&
     !proposal.customer_email?.trim()
   ) {
     return "Add a customer email address to send this proposal.";
   }
 
+  const status = normalizeProposalStatus(proposal.status);
+
   if (
-    proposal.status !== "draft" &&
-    proposal.status !== "ready_to_send" &&
-    isProposalStatus(proposal.status)
+    status !== "draft" &&
+    status !== "ready_to_send" &&
+    isProposalStatus(status)
   ) {
     return null;
   }
 
   return null;
 }
+
 export function canEditProposalActions(status: string): boolean {
-  if (status === "cancelled") {
+  const normalized = normalizeProposalStatus(status);
+
+  if (normalized === "cancelled" || normalized === "completed") {
     return false;
   }
 
-  return canEditProposal(status);
+  return canEditProposal(normalized);
 }

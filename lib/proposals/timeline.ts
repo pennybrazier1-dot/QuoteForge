@@ -3,6 +3,7 @@ import {
   type ProposalStatusEventRecord,
 } from "@/lib/proposals/proposal-status-events";
 import { hasStructuredProposal } from "@/lib/proposals/structured-proposal";
+import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 export type TimelineEventType =
   | "created"
@@ -10,9 +11,12 @@ export type TimelineEventType =
   | "edited"
   | "pdf"
   | "emailed"
-  | "sent"
+  | "waiting_for_customer"
   | "viewed"
-  | "accepted"
+  | "customer_accepted"
+  | "needs_attention"
+  | "booked"
+  | "completed"
   | "cancelled"
   | "rearranged";
 
@@ -31,7 +35,10 @@ export type TimelineProposal = {
   updated_at: string | null;
   sent_at: string | null;
   accepted_at: string | null;
+  booked_at?: string | null;
+  completed_at?: string | null;
   job_summary: string | null;
+  booking_confirmation?: string | null;
 };
 
 const MINUTE_MS = 60_000;
@@ -110,12 +117,16 @@ export function buildProposalTimeline(
 
   const pdfReadyStatuses = new Set([
     "ready_to_send",
-    "sent",
-    "accepted",
+    "waiting_for_customer",
+    "needs_attention",
+    "booked",
+    "completed",
     "declined",
   ]);
 
-  if (pdfReadyStatuses.has(proposal.status)) {
+  const normalizedStatus = normalizeProposalStatus(proposal.status);
+
+  if (pdfReadyStatuses.has(normalizedStatus)) {
     events.push({
       id: "pdf",
       type: "pdf",
@@ -144,25 +155,28 @@ export function buildProposalTimeline(
 
   if (proposal.sent_at && emailedEvents.length === 0) {
     events.push({
-      id: "sent",
-      type: "sent",
-      label: "Sent",
+      id: "waiting_for_customer",
+      type: "waiting_for_customer",
+      label: "Waiting for Customer",
       timestamp: proposal.sent_at,
       status: "complete",
     });
 
-    if (proposal.status === "sent" && !proposal.accepted_at) {
+    if (
+      normalizedStatus === "waiting_for_customer" &&
+      !proposal.accepted_at
+    ) {
       events.push({
         id: "viewed",
         type: "viewed",
-        label: "Viewed",
-        description: "Waiting for customer to open the proposal",
+        label: "Customer reply",
+        description: "Waiting for the customer to accept the quote",
         timestamp: null,
         status: "pending",
       });
     }
   } else if (
-    proposal.status === "sent" &&
+    normalizedStatus === "waiting_for_customer" &&
     !proposal.accepted_at &&
     proposal.sent_at
   ) {
@@ -178,15 +192,54 @@ export function buildProposalTimeline(
 
   if (proposal.accepted_at) {
     events.push({
-      id: "accepted",
-      type: "accepted",
-      label: "Accepted",
+      id: "customer_accepted",
+      type: "customer_accepted",
+      label: "Customer accepted",
+      description:
+        proposal.booking_confirmation === "confirmed"
+          ? "Booking confirmed"
+          : "Provisional booking — confirm the start date",
       timestamp: proposal.accepted_at,
       status: "complete",
     });
   }
 
+  if (proposal.booked_at) {
+    const isConfirmed = proposal.booking_confirmation === "confirmed";
+
+    events.push({
+      id: "booked",
+      type: "booked",
+      label: isConfirmed ? "Booking confirmed" : "Provisional booking",
+      timestamp: proposal.booked_at,
+      status: "complete",
+    });
+  }
+
+  if (proposal.completed_at) {
+    events.push({
+      id: "completed",
+      type: "completed",
+      label: "Completed",
+      timestamp: proposal.completed_at,
+      status: "complete",
+    });
+  }
+
   for (const event of statusEvents) {
+    if (
+      event.event_type === "status_change" &&
+      event.to_status === "needs_attention"
+    ) {
+      events.push({
+        id: event.id,
+        type: "needs_attention",
+        label: event.note ?? "Needs your attention",
+        timestamp: event.created_at,
+        status: "complete",
+      });
+    }
+
     if (event.event_type === "status_change" && event.to_status === "cancelled") {
       events.push({
         id: event.id,
@@ -208,7 +261,7 @@ export function buildProposalTimeline(
     }
   }
 
-  if (proposal.status === "cancelled") {
+  if (normalizedStatus === "cancelled") {
     const hasCancelledEvent = events.some((event) => event.type === "cancelled");
 
     if (!hasCancelledEvent) {

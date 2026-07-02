@@ -7,8 +7,10 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import {
   canTransitionStatus,
   isProposalStatus,
+  normalizeProposalStatus,
   type ProposalStatus,
 } from "@/lib/proposals/status";
+import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 
 export type UpdateProposalStatusState = {
   error?: string;
@@ -21,15 +23,16 @@ function getString(formData: FormData, key: string): string {
 function getTimestampUpdates(status: ProposalStatus): Record<string, string> {
   const now = new Date().toISOString();
 
-  if (status === "sent") {
-    return { sent_at: now };
+  switch (status) {
+    case "waiting_for_customer":
+      return { sent_at: now };
+    case "booked":
+      return { booked_at: now, accepted_at: now };
+    case "completed":
+      return { completed_at: now };
+    default:
+      return {};
   }
-
-  if (status === "accepted") {
-    return { accepted_at: now };
-  }
-
-  return {};
 }
 
 export async function updateProposalStatus(
@@ -64,7 +67,7 @@ export async function updateProposalStatus(
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status")
+    .select("id, status, workspace_id")
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -72,13 +75,15 @@ export async function updateProposalStatus(
     return { error: "Proposal not found." };
   }
 
-  if (!isProposalStatus(proposal.status)) {
+  const currentStatus = normalizeProposalStatus(proposal.status);
+
+  if (!isProposalStatus(currentStatus)) {
     return { error: "This proposal has an unknown status." };
   }
 
-  if (!canTransitionStatus(proposal.status, newStatus)) {
+  if (!canTransitionStatus(currentStatus, newStatus)) {
     return {
-      error: `Cannot move a ${proposal.status.replaceAll("_", " ")} proposal to ${newStatus.replaceAll("_", " ")}.`,
+      error: `Cannot move a ${formatStatusLabel(currentStatus)} proposal to ${formatStatusLabel(newStatus)}.`,
     };
   }
 
@@ -96,7 +101,22 @@ export async function updateProposalStatus(
     };
   }
 
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: user.id,
+    eventType: "status_change",
+    fromStatus: currentStatus,
+    toStatus: newStatus,
+    note: formatStatusLabel(newStatus),
+  });
+
   revalidatePath("/dashboard");
+  revalidatePath("/calendar");
   revalidatePath(`/proposals/${proposalId}`);
   redirect(`/proposals/${proposalId}`);
+}
+
+function formatStatusLabel(status: ProposalStatus): string {
+  return status.replaceAll("_", " ");
 }

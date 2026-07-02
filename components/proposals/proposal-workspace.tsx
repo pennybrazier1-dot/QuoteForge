@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
+import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
@@ -30,8 +32,12 @@ export type ProposalWorkspaceData = {
   total_amount: number;
   created_at: string;
   updated_at: string | null;
+  attention_reason: string | null;
+  booking_confirmation: string | null;
   sent_at: string | null;
   accepted_at: string | null;
+  booked_at: string | null;
+  completed_at: string | null;
   job_summary: string | null;
   scope_of_work: string | null;
   materials: unknown;
@@ -324,6 +330,17 @@ export function ProposalWorkspace({
         status={proposal.status}
         actionContext={actionContext}
       />
+
+      <Suspense fallback={null}>
+        <ProposalLifecycleActions
+          proposalId={proposal.id}
+          status={proposal.status}
+          bookingConfirmation={proposal.booking_confirmation}
+          plannedStartDateText={proposal.planned_start_date_text}
+          plannedStartDate={proposal.planned_start_date}
+          estimatedDuration={proposal.estimated_duration}
+        />
+      </Suspense>
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />

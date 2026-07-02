@@ -10,6 +10,7 @@ import {
 import { AuthError } from "@/components/auth/auth-shell";
 import {
   isProposalStatus,
+  normalizeProposalStatus,
   type ProposalStatus,
 } from "@/lib/proposals/status";
 
@@ -128,12 +129,14 @@ export function ProposalStatusActions({
     return null;
   }
 
+  const normalized = normalizeProposalStatus(status);
+
   return (
     <div className="space-y-4">
       {state.error ? <AuthError message={state.error} /> : null}
 
       <div className="flex flex-wrap gap-3">
-        {status === "draft" ? (
+        {normalized === "draft" ? (
           <>
             <ActionLink
               href={`/proposals/${proposalId}/edit`}
@@ -154,40 +157,11 @@ export function ProposalStatusActions({
           </>
         ) : null}
 
-        {status === "ready_to_send" ? (
+        {normalized === "ready_to_send" ? (
           <>
             <PdfDownloadLink
               proposalId={proposalId}
               proposalNumber={proposalNumber}
-            />
-            <StatusTransitionForm
-              formAction={formAction}
-              proposalId={proposalId}
-              newStatus="sent"
-              label="Mark Sent"
-              pendingLabel="Updating…"
-              variant="primary"
-            />
-          </>
-        ) : null}
-
-        {status === "sent" ? (
-          <>
-            <StatusTransitionForm
-              formAction={formAction}
-              proposalId={proposalId}
-              newStatus="accepted"
-              label="Mark Accepted"
-              pendingLabel="Updating…"
-              variant="success"
-            />
-            <StatusTransitionForm
-              formAction={formAction}
-              proposalId={proposalId}
-              newStatus="declined"
-              label="Mark Declined"
-              pendingLabel="Updating…"
-              variant="danger"
             />
           </>
         ) : null}

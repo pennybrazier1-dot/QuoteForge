@@ -35,7 +35,7 @@ const EVENT_ICONS: Record<TimelineEvent["type"], ReactNode> = {
       <path d="M22 2 11 13" />
     </svg>
   ),
-  sent: (
+  waiting_for_customer: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4Z" />
       <path d="M22 2 11 13" />
@@ -47,9 +47,28 @@ const EVENT_ICONS: Record<TimelineEvent["type"], ReactNode> = {
       <circle cx="12" cy="12" r="3" />
     </svg>
   ),
-  accepted: (
+  customer_accepted: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M20 6 9 17l-5-5" />
+    </svg>
+  ),
+  needs_attention: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </svg>
+  ),
+  booked: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  ),
+  completed: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <path d="m22 4-10 10.01-3-3" />
     </svg>
   ),
   cancelled: (

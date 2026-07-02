@@ -11,6 +11,7 @@ import {
 } from "@/lib/proposals/proposal-action-eligibility";
 import {
   isProposalStatus,
+  normalizeProposalStatus,
 } from "@/lib/proposals/status";
 
 export type NextActionsProposal = {
@@ -182,7 +183,9 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
     return hasStructured ? [openPdf] : [];
   }
 
-  switch (status) {
+  const normalized = normalizeProposalStatus(status);
+
+  switch (normalized) {
     case "draft": {
       const actions: NextAction[] = [];
 
@@ -228,12 +231,12 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         editProposal,
       ];
 
-    case "sent":
+    case "waiting_for_customer":
       return [
         {
           id: "view-timeline",
           title: "View Timeline",
-          description: "See what has happened with this proposal so far.",
+          description: "Waiting for the customer to accept this quote.",
           icon: ICONS.timeline,
           tone: "accent",
           primary: true,
@@ -244,13 +247,41 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         viewCustomer,
       ];
 
-    case "accepted":
+    case "needs_attention":
       return [
-        { ...viewCustomer, primary: true },
+        {
+          id: "respond-to-customer",
+          title: "Respond to Customer",
+          description: "Update the quote and send it back to the customer.",
+          icon: ICONS.send,
+          tone: "accent",
+          primary: true,
+          href: "#proposal-lifecycle",
+        },
         openPdf,
-        duplicateProposal,
-        convertToJob,
+        viewCustomer,
       ];
+
+    case "booked":
+      return [
+        {
+          id: "manage-booking",
+          title: "Manage Booking",
+          description: "Confirm the date or mark this job complete.",
+          icon: ICONS.job,
+          tone: "accent",
+          primary: true,
+          href: "#proposal-lifecycle",
+        },
+        openPdf,
+        viewCustomer,
+      ];
+
+    case "completed":
+      return [viewCustomer, openPdf];
+
+    case "cancelled":
+      return [viewCustomer, openPdf];
 
     case "declined":
       return [

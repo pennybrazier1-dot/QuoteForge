@@ -13,6 +13,7 @@ import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import {
   canCancelProposal,
   isProposalStatus,
+  normalizeProposalStatus,
 } from "@/lib/proposals/status";
 
 export type ProposalManagementState = {
@@ -109,7 +110,9 @@ export async function cancelProposal(
     return { error: "This proposal has an unknown status." };
   }
 
-  if (!canCancelProposal(proposal.status)) {
+  const currentStatus = normalizeProposalStatus(proposal.status);
+
+  if (!canCancelProposal(currentStatus)) {
     return { error: "This proposal is already cancelled." };
   }
 
@@ -129,7 +132,7 @@ export async function cancelProposal(
     proposalId: proposal.id,
     userId: user.id,
     eventType: "status_change",
-    fromStatus: proposal.status,
+    fromStatus: currentStatus,
     toStatus: "cancelled",
     note: "Cancelled",
   });
