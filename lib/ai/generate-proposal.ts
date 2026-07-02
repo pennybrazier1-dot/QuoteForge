@@ -177,7 +177,12 @@ function normalizeGeneratedProposal(
   );
   logProposalPipelineStage("after qualifier preservation", afterQualifiers);
 
-  const sanitized = sanitizeGeneratedProposal(afterQualifiers, input.siteNotes);
+  const sanitized = sanitizeGeneratedProposal(
+    afterQualifiers,
+    input.siteNotes,
+    input.estimatedPrice,
+    input.estimatedDuration
+  );
   logProposalPipelineStage("after sanitization", sanitized);
 
   return sanitized;

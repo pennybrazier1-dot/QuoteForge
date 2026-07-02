@@ -22,6 +22,7 @@ import { MobileQuoteCapture } from "@/components/proposals/mobile-quote-capture"
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
 import type { GeneratedProposal } from "@/lib/ai";
+import { logProposalFormMapping } from "@/lib/ai/proposal-debug";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import {
@@ -240,6 +241,10 @@ export function NewProposalForm({
     setReviewProposal(proposal);
 
     const extracted = applyExtractedProposalFields(proposal);
+    logProposalFormMapping(proposal, {
+      estimatedPrice: extracted.estimatedPrice,
+      optionalExtras: extracted.optionalExtras,
+    });
     if (extracted.customerName) {
       setCustomerName(extracted.customerName);
     }

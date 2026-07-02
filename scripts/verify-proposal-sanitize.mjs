@@ -1,34 +1,57 @@
 /**
- * Run with: node --input-type=module scripts/verify-proposal-sanitize.mjs
+ * Run with: npx tsx scripts/verify-proposal-sanitize.mjs
  */
+import { preserveQualifiedDuration } from "../lib/ai/qualifiers.ts";
 import {
   sanitizeGeneratedProposal,
   sanitizeLabour,
   sanitizeOptionalExtras,
+  sanitizeExtractedPrice,
+  sanitizeEstimatedDuration,
 } from "../lib/ai/sanitize-proposal.ts";
+import {
+  extractEstimatedPriceDigits,
+  extractOptionalExtrasFromSiteNotes,
+  extractDurationFromSiteNotes,
+  looksLikeInvalidDuration,
+  priceDigitsToPence,
+} from "../lib/ai/extract-from-site-notes.ts";
+import { DURATION_CANNOT_DETERMINE_MESSAGE } from "../lib/ai/prompts.ts";
 
-const siteNotes =
-  "Install kitchen units and island. total price around £3,000, duration around one week, optional extras could be extra sockets and under-cabinet lighting";
+const realisticSiteNotes = `Customer: Sarah Mitchell
+Property: 42 Oak Avenue, Manchester M14 5RT
+Phone: 07123 456789
+Email: sarah.mitchell@example.com
 
-const aiProposal = {
-  jobSummary: "Kitchen installation work.",
+Install kitchen units and a freestanding island with sink cut-out.
+Materials: kitchen units, worktops, handles.
+£3,000 estimate price.
+Duration around one week.
+Start week commencing 18th September.
+optional extras could be under-cabinet lighting and extra sockets`;
+
+const badAiProposal = {
+  jobSummary: "Kitchen installation for Sarah Mitchell at 42 Oak Avenue.",
   scopeOfWork: [
     "Install kitchen units",
     "Install a freestanding kitchen island with a cut-out prepared for the sink",
     "Fit handles and complete final adjustments",
   ],
-  materials: ["Kitchen units", "Island unit"],
+  materials: ["Kitchen units", "Worktops", "Handles"],
   labour: "around £3,000 for completing the job, expected to take a week",
-  estimatedDuration: "around one week",
-  thingsToConfirm: ["Confirm optional extras could be extra sockets"],
+  estimatedDuration: "42 Oak Avenue, Manchester M14 5RT",
+  thingsToConfirm: [
+    "Confirm optional extras could be extra sockets",
+    "Confirm customer address",
+  ],
   optionalExtras: [],
   paymentTerms: "50% deposit on acceptance",
-  extractedCustomerName: "",
-  extractedPropertyAddress: "",
-  extractedPhoneNumber: "",
-  extractedEmailAddress: "",
-  extractedEstimatedPrice: "3000",
-  plannedStartDate: "",
+  extractedCustomerName: "Sarah Mitchell",
+  extractedPropertyAddress: "42 Oak Avenue, Manchester M14 5RT",
+  extractedPhoneNumber: "07123 456789",
+  extractedEmailAddress: "sarah.mitchell@example.com",
+  extractedEstimatedPrice: "",
+  plannedStartDate: "week commencing 18th September",
   plannedStartDateExact: "",
 };
 
@@ -40,36 +63,172 @@ function assert(condition, message) {
   }
 }
 
-const labour = sanitizeLabour(aiProposal);
+function assertLabourClean(labour, label) {
+  assert(
+    !/£|pound|week|duration|price|total|days?/i.test(labour),
+    `${label}: labour still contains forbidden wording: ${labour}`
+  );
+  assert(
+    labour.startsWith("Labour to"),
+    `${label}: labour should be rebuilt from scope: ${labour}`
+  );
+}
+
+// --- Realistic site notes extraction ---
 assert(
-  !/£|pound|week|duration|price|total/i.test(labour),
-  `Labour still contains forbidden wording: ${labour}`
+  extractEstimatedPriceDigits(realisticSiteNotes) === "3000",
+  `Price from realistic notes: expected 3000`
 );
 assert(
-  labour.startsWith("Labour to"),
-  `Labour should be rebuilt from scope: ${labour}`
+  priceDigitsToPence(extractEstimatedPriceDigits(realisticSiteNotes)) === 300000,
+  `Price pence from realistic notes: expected 300000`
 );
 
-const extras = sanitizeOptionalExtras(aiProposal.optionalExtras, siteNotes);
-assert(extras.length >= 2, `Expected optional extras from site notes, got: ${JSON.stringify(extras)}`);
+const realisticExtras = extractOptionalExtrasFromSiteNotes(realisticSiteNotes, []);
+assert(realisticExtras.length >= 2, `Realistic optional extras: ${JSON.stringify(realisticExtras)}`);
 assert(
-  extras.some((item) => /socket/i.test(item)),
-  `Expected sockets in optional extras: ${JSON.stringify(extras)}`
+  realisticExtras.some((item) => /under-cabinet lighting/i.test(item)),
+  `Missing under-cabinet lighting: ${JSON.stringify(realisticExtras)}`
+);
+assert(
+  realisticExtras.some((item) => /extra sockets/i.test(item)),
+  `Missing extra sockets: ${JSON.stringify(realisticExtras)}`
 );
 
-const sanitized = sanitizeGeneratedProposal(aiProposal, siteNotes);
+const realisticDuration = extractDurationFromSiteNotes(realisticSiteNotes);
 assert(
-  !/£|pound|week|duration|price|total/i.test(sanitized.labour),
-  `Sanitized labour still wrong: ${sanitized.labour}`
+  /week/i.test(realisticDuration) && !/avenue|manchester|m14/i.test(realisticDuration),
+  `Duration from notes should be time-only, got: ${realisticDuration}`
+);
+
+// --- Address bleeding: qualifier stage must not inject address into duration ---
+const afterQualifiers = preserveQualifiedDuration(
+  badAiProposal.estimatedDuration,
+  realisticSiteNotes,
+  null
+);
+assert(
+  looksLikeInvalidDuration(afterQualifiers),
+  `Qualifier stage should not fix bad duration (sanitizer does): got ${afterQualifiers}`
+);
+assert(
+  /avenue|manchester|m14/i.test(afterQualifiers),
+  `Address should still be in qualifier output before sanitize: ${afterQualifiers}`
+);
+
+// --- Full sanitize fixes field bleed ---
+const sanitized = sanitizeGeneratedProposal(badAiProposal, realisticSiteNotes, null, null);
+
+assert(
+  sanitized.extractedCustomerName === "Sarah Mitchell",
+  `Customer name: ${sanitized.extractedCustomerName}`
+);
+assert(
+  sanitized.extractedPropertyAddress.includes("Oak Avenue"),
+  `Property address: ${sanitized.extractedPropertyAddress}`
+);
+assert(
+  sanitized.extractedPhoneNumber.includes("07123"),
+  `Phone: ${sanitized.extractedPhoneNumber}`
+);
+assert(
+  sanitized.extractedEmailAddress.includes("sarah.mitchell"),
+  `Email: ${sanitized.extractedEmailAddress}`
+);
+assert(
+  sanitized.extractedEstimatedPrice === "3000",
+  `Price after sanitize: ${sanitized.extractedEstimatedPrice}`
+);
+assert(
+  priceDigitsToPence(sanitized.extractedEstimatedPrice) === 300000,
+  `Price pence after sanitize`
+);
+assert(
+  !looksLikeInvalidDuration(sanitized.estimatedDuration),
+  `Duration after sanitize must be valid, got: ${sanitized.estimatedDuration}`
+);
+assert(
+  /week/i.test(sanitized.estimatedDuration),
+  `Duration should mention week, got: ${sanitized.estimatedDuration}`
+);
+assert(
+  !/avenue|manchester|m14|07123|@/i.test(sanitized.estimatedDuration),
+  `Duration must not contain address/contact: ${sanitized.estimatedDuration}`
 );
 assert(
   sanitized.optionalExtras.length >= 2,
-  `Sanitized optional extras missing: ${JSON.stringify(sanitized.optionalExtras)}`
+  `Optional extras after sanitize: ${JSON.stringify(sanitized.optionalExtras)}`
 );
+assert(
+  sanitized.plannedStartDate.toLowerCase().includes("september"),
+  `Planned start: ${sanitized.plannedStartDate}`
+);
+assertLabourClean(sanitized.labour, "Realistic case");
 assert(
   !sanitized.thingsToConfirm.some((item) => /optional extra/i.test(item)),
   `Optional extras still in thingsToConfirm: ${JSON.stringify(sanitized.thingsToConfirm)}`
 );
+assert(
+  !sanitized.thingsToConfirm.some((item) => /confirm customer address/i.test(item)),
+  `Address confirmation should be removed: ${JSON.stringify(sanitized.thingsToConfirm)}`
+);
+
+// --- Isolated price + extras phrasing ---
+const shortNotes =
+  "Install kitchen units and island. £3,000 estimate price. optional extras could be under-cabinet lighting and extra sockets";
+
+const shortAi = {
+  ...badAiProposal,
+  extractedCustomerName: "",
+  extractedPropertyAddress: "",
+  extractedPhoneNumber: "",
+  extractedEmailAddress: "",
+  estimatedDuration: "around one week",
+  plannedStartDate: "",
+};
+
+const shortSanitized = sanitizeGeneratedProposal(shortAi, shortNotes, null, null);
+assert(shortSanitized.extractedEstimatedPrice === "3000", `Short notes price`);
+assert(shortSanitized.optionalExtras.length >= 2, `Short notes extras`);
+
+// --- Duration sanitizer rejects address directly ---
+const durationFixed = sanitizeEstimatedDuration(
+  { ...badAiProposal, thingsToConfirm: [] },
+  realisticSiteNotes,
+  null
+);
+assert(
+  !looksLikeInvalidDuration(durationFixed.estimatedDuration),
+  `sanitizeEstimatedDuration: ${durationFixed.estimatedDuration}`
+);
+assert(
+  durationFixed.thingsToConfirm.some((item) => /confirm estimated duration/i.test(item)) === false,
+  `Should not need confirm when duration recovered from notes`
+);
+
+// --- Invalid AI price is replaced from notes ---
+const badPrice = sanitizeExtractedPrice(
+  { ...badAiProposal, extractedEstimatedPrice: "Oak Avenue" },
+  realisticSiteNotes,
+  null
+);
+assert(badPrice.extractedEstimatedPrice === "3000", `Bad AI price replaced: ${badPrice.extractedEstimatedPrice}`);
+
+// --- Price phrasing variants ---
+const pricePhrases = [
+  ["£3,000 estimate price", "3000"],
+  ["£3000", "3000"],
+  ["3000 pounds", "3000"],
+  ["around £3,000", "3000"],
+  ["price about £3,000", "3000"],
+  ["estimated at £3,000", "3000"],
+  ["quote around £3,000", "3000"],
+];
+
+for (const [phrase, expected] of pricePhrases) {
+  const got = extractEstimatedPriceDigits(phrase);
+  assert(got === expected, `Price phrase "${phrase}": expected ${expected}, got ${got}`);
+}
 
 if (failures.length > 0) {
   console.error("FAILED:");
@@ -80,7 +239,7 @@ if (failures.length > 0) {
 }
 
 console.log("PASSED proposal sanitization checks");
-console.log("Labour:", sanitized.labour);
+console.log("Duration:", sanitized.estimatedDuration);
+console.log("Price:", sanitized.extractedEstimatedPrice);
 console.log("Optional extras:", sanitized.optionalExtras);
-console.log("Estimated duration (unchanged):", sanitized.estimatedDuration);
-console.log("Price field (unchanged):", sanitized.extractedEstimatedPrice);
+console.log("Labour:", sanitized.labour);

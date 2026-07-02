@@ -100,7 +100,7 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
     extractedEstimatedPrice: {
       type: "string",
       description:
-        "Main quote price from Site Notes or manual context only when clearly stated (digits only, e.g. 850). Empty string if not stated. Do not invent.",
+        "Main quote price from Site Notes or manual context only when clearly stated (digits only, e.g. 3000 for £3,000 estimate price). Empty string if not stated. Do not invent.",
     },
     plannedStartDate: {
       type: "string",

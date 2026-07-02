@@ -83,9 +83,11 @@ export function extractQualifierClauses(text: string): string[] {
 }
 
 function splitSourceSegments(sourceText: string): string[] {
-  return sourceText
-    .split(/(?<=[.!?])\s+|\n+|;\s*/)
-    .map((segment) => segment.trim())
+  const protectedText = sourceText.replace(/(\d),(\d{3})/g, "$1__THOUSAND__$2");
+
+  return protectedText
+    .split(/(?<=[.!?])\s+|\n+|;|\s*,\s+/)
+    .map((segment) => segment.replace(/__THOUSAND__/g, ",").trim())
     .filter(Boolean);
 }
 
@@ -210,26 +212,29 @@ export function preserveQualifiedDuration(
 
   const safeFallback =
     "Estimated duration cannot yet be determined from the information provided.";
+  const trimmed = estimatedDuration.trim();
+  const qualifiedFragment = findBestQualifiedDurationFragment(siteNotes);
 
-  if (estimatedDuration.trim() === safeFallback) {
-    const qualifiedFragment = findBestQualifiedDurationFragment(siteNotes);
+  if (trimmed === safeFallback) {
     if (qualifiedFragment) {
       return qualifiedFragment.replace(/[.,;]+$/, "").trim() + ".";
     }
-    return estimatedDuration;
+    return trimmed;
   }
-
-  const qualifiedFragment = findBestQualifiedDurationFragment(siteNotes);
 
   if (!qualifiedFragment) {
-    return enrichWithSourceQualifiers(estimatedDuration, siteNotes);
+    return trimmed;
   }
 
-  if (isRelatedContent(estimatedDuration, qualifiedFragment)) {
-    return enrichWithSourceQualifiers(estimatedDuration, qualifiedFragment);
+  if (isRelatedContent(trimmed, qualifiedFragment)) {
+    return enrichWithSourceQualifiers(trimmed, qualifiedFragment, {
+      allowSegmentReplace: false,
+    });
   }
 
-  return enrichWithSourceQualifiers(estimatedDuration, siteNotes);
+  return enrichWithSourceQualifiers(trimmed, qualifiedFragment, {
+    allowSegmentReplace: false,
+  });
 }
 
 function findQualifiedPriceFragments(sourceText: string): string[] {

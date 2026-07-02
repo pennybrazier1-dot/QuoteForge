@@ -119,6 +119,8 @@ OPTIONAL EXTRAS RULES:
 - If no optional extras were provided or mentioned, return an empty optionalExtras array.
 
 ESTIMATED DURATION RULES:
+- estimatedDuration must contain only time wording (hours, days, weeks, half day, full day, morning, afternoon, approximately, around).
+- estimatedDuration must NEVER contain: customer name, property address, postcode, phone number, email, £ amounts, price, or cost.
 - Use the manual Estimated Duration when provided.
 - Otherwise, use duration only if clearly stated in Site Notes.
 - Preserve the full qualified wording from Site Notes, including conditions such as "depending on ground conditions".
@@ -196,11 +198,11 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "- labour: describe work effort only; never include price, £ amounts, or payment terms; derive from scope when labour detail is thin.",
     "- materials: physical materials and consumables only; never copy site notes, scope bullets, customer details, or addresses.",
     "- thingsToConfirm: only genuinely missing or uncertain technical details; never confirm customer details already clearly stated.",
-    "- optionalExtras: extract from Site Notes when clearly optional/extra work, and from the Optional Extras field; keep separate from main scope and main price.",
-    "- extractedEstimatedPrice: digits only when a main quote price is clearly stated; otherwise empty string.",
+    "- optionalExtras: extract from Site Notes when clearly optional/extra work (e.g. optional extras could be under-cabinet lighting and extra sockets; extras could include; additional work could be; customer may also want); keep separate from main scope and main price.",
+    "- extractedEstimatedPrice: digits only when a main quote price is clearly stated (e.g. £3,000 estimate price, around £3,000, 3000 pounds, estimated at £3,000); otherwise empty string.",
     "- plannedStartDate: when the customer wants work to start, preserve flexible UK wording from Site Notes; empty if not mentioned.",
     "- plannedStartDateExact: ISO YYYY-MM-DD only for a single exact calendar date; empty if vague or not mentioned. Never guess.",
-    "- estimatedDuration: use manual duration when provided; otherwise preserve the full qualified duration wording from Site Notes; otherwise use the safe fallback message.",
+    "- estimatedDuration: time wording only — never address, postcode, customer name, phone, email, or price; use manual duration when provided; otherwise preserve qualified duration from Site Notes; otherwise use the safe fallback message.",
     "- Never invent price or duration.",
     "- Never remove qualifiers such as approximately, around, depending on, subject to, if suitable, or where possible."
   );

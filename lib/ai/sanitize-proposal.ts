@@ -1,4 +1,15 @@
 import type { GeneratedProposal } from "./types";
+import { DURATION_CANNOT_DETERMINE_MESSAGE } from "./prompts";
+import {
+  CONFIRM_ESTIMATED_DURATION,
+  extractDurationFromSiteNotes,
+  extractEstimatedPriceDigits,
+  extractOptionalExtrasFromSiteNotes,
+  isValidExtractedPriceDigits,
+  looksLikeInvalidDuration,
+  looksLikeOptionalExtraTrigger,
+  normalizeExtractedPriceDigits,
+} from "./extract-from-site-notes";
 
 const PAYMENT_PATTERN =
   /\b(payment terms?|deposit|invoice|balance due|payable|instalments?)\b/i;
@@ -6,13 +17,6 @@ const PAYMENT_PATTERN =
 /** Hard rule: labour must never contain pricing or duration wording. */
 const LABOUR_FORBIDDEN_PATTERN =
   /£|\bpounds?\b|\bcost\b|\bprice\b|\btotal\b|\bweeks?\b|\bdays?\b|\bduration\b/i;
-
-const OPTIONAL_EXTRA_LINE_PATTERNS = [
-  /\boptional extras?\s+(?:could be|include|are|might be)\s+(.+)$/i,
-  /\boptional extra\s*:\s*(.+)$/i,
-  /\badditional work\s+(?:could be|would be|includes?)\s+(.+)$/i,
-  /\bnot included(?:\s+in\s+(?:the\s+)?(?:main\s+)?quote)?\s+(?:but\s+)?(.+)$/i,
-];
 
 function normalizeKey(text: string): string {
   return text
@@ -23,17 +27,12 @@ function normalizeKey(text: string): string {
 }
 
 function splitSegments(text: string): string[] {
-  return text
-    .split(/(?<=[.!?])\s+|\n+|;|\s*,\s+/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-}
+  const protectedText = text.replace(/(\d),(\d{3})/g, "$1__THOUSAND__$2");
 
-function splitOptionalExtraItems(text: string): string[] {
-  return text
-    .split(/\s*,\s*|\s+and\s+|\s*;\s*|\s+or\s+/i)
-    .map((item) => item.trim().replace(/^[-•]\s*/, ""))
-    .filter((item) => item.length > 2);
+  return protectedText
+    .split(/(?<=[.!?])\s+|\n+|;|\s*,\s+/)
+    .map((segment) => segment.replace(/__THOUSAND__/g, ",").trim())
+    .filter(Boolean);
 }
 
 function tokenOverlapRatio(a: string, b: string): number {
@@ -135,60 +134,70 @@ function duplicatesScopeItem(item: string, scopeOfWork: string[]): boolean {
   });
 }
 
-function looksLikeOptionalExtraTrigger(segment: string): boolean {
-  return /\b(optional extras?|additional work|not included|extras could be)\b/i.test(
-    segment
-  );
+export function sanitizeExtractedPrice(
+  proposal: GeneratedProposal,
+  siteNotes: string,
+  manualEstimatedPrice: string | null | undefined
+): GeneratedProposal {
+  if (manualEstimatedPrice?.trim()) {
+    return proposal;
+  }
+
+  const existing = proposal.extractedEstimatedPrice.replace(/[£,\s]/g, "").trim();
+  if (existing && isValidExtractedPriceDigits(existing)) {
+    return {
+      ...proposal,
+      extractedEstimatedPrice: normalizeExtractedPriceDigits(existing),
+    };
+  }
+
+  const fromNotes = extractEstimatedPriceDigits(siteNotes);
+  if (!fromNotes) {
+    return {
+      ...proposal,
+      extractedEstimatedPrice: "",
+    };
+  }
+
+  return {
+    ...proposal,
+    extractedEstimatedPrice: fromNotes,
+  };
 }
 
-export function extractOptionalExtrasFromSiteNotes(
+export function sanitizeEstimatedDuration(
+  proposal: GeneratedProposal,
   siteNotes: string,
-  existing: string[]
-): string[] {
-  const extras = [...existing];
-  const seen = new Set(existing.map((item) => normalizeKey(item)));
+  manualEstimatedDuration: string | null | undefined
+): GeneratedProposal {
+  if (manualEstimatedDuration?.trim()) {
+    return proposal;
+  }
 
-  for (const segment of splitSegments(siteNotes)) {
-    if (!looksLikeOptionalExtraTrigger(segment)) {
-      continue;
-    }
+  const duration = proposal.estimatedDuration.trim();
+  let nextDuration = duration;
+  let thingsToConfirm = [...proposal.thingsToConfirm];
 
-    for (const pattern of OPTIONAL_EXTRA_LINE_PATTERNS) {
-      const match = segment.match(pattern);
-      if (!match?.[1]) {
-        continue;
-      }
-
-      for (const item of splitOptionalExtraItems(match[1])) {
-        const key = normalizeKey(item);
-        if (!key || key.length < 4 || seen.has(key) || /^s could be/i.test(item)) {
-          continue;
-        }
-
-        extras.push(item.charAt(0).toUpperCase() + item.slice(1));
-        seen.add(key);
+  if (!duration || looksLikeInvalidDuration(duration)) {
+    const fromNotes = extractDurationFromSiteNotes(siteNotes);
+    if (fromNotes && !looksLikeInvalidDuration(fromNotes)) {
+      nextDuration = fromNotes;
+    } else {
+      nextDuration = DURATION_CANNOT_DETERMINE_MESSAGE;
+      if (!thingsToConfirm.some((item) => /confirm estimated duration/i.test(item))) {
+        thingsToConfirm = [...thingsToConfirm, CONFIRM_ESTIMATED_DURATION];
       }
     }
   }
 
-  return extras;
+  return {
+    ...proposal,
+    estimatedDuration: nextDuration,
+    thingsToConfirm,
+  };
 }
 
-function optionalExtraAppearsElsewhere(
-  item: string,
-  proposal: GeneratedProposal
-): boolean {
-  const key = normalizeKey(item);
-  const pools = [
-    ...proposal.scopeOfWork,
-    ...proposal.materials,
-    ...proposal.thingsToConfirm,
-    proposal.jobSummary,
-    proposal.labour,
-  ];
-
-  return pools.some((entry) => normalizeKey(entry).includes(key));
-}
+export { extractOptionalExtrasFromSiteNotes };
 
 function removeOptionalExtrasFromOtherSections(
   proposal: GeneratedProposal,
@@ -420,11 +429,16 @@ export function sanitizeOptionalExtras(
 
 export function sanitizeGeneratedProposal(
   proposal: GeneratedProposal,
-  siteNotes: string
+  siteNotes: string,
+  manualEstimatedPrice?: string | null,
+  manualEstimatedDuration?: string | null
 ): GeneratedProposal {
-  const optionalExtras = sanitizeOptionalExtras(proposal.optionalExtras, siteNotes);
-  let next: GeneratedProposal = {
-    ...proposal,
+  let next = sanitizeExtractedPrice(proposal, siteNotes, manualEstimatedPrice);
+  next = sanitizeEstimatedDuration(next, siteNotes, manualEstimatedDuration);
+
+  const optionalExtras = sanitizeOptionalExtras(next.optionalExtras, siteNotes);
+  next = {
+    ...next,
     optionalExtras,
   };
 

@@ -1,5 +1,6 @@
 import type { GeneratedProposal } from "@/lib/ai";
 import { DURATION_CANNOT_DETERMINE_MESSAGE } from "@/lib/ai/prompts";
+import { looksLikeInvalidDuration } from "@/lib/ai/extract-from-site-notes";
 
 const DURATION_UNITS = ["day", "days", "hour", "hours", "week", "weeks"] as const;
 
@@ -44,19 +45,22 @@ export function arrayToLines(items: string[]): string {
 }
 
 export function applyExtractedProposalFields(proposal: GeneratedProposal) {
+  const rawDuration = proposal.estimatedDuration.trim();
   const duration =
-    proposal.estimatedDuration.includes(DURATION_CANNOT_DETERMINE_MESSAGE)
+    !rawDuration ||
+    rawDuration.includes(DURATION_CANNOT_DETERMINE_MESSAGE) ||
+    looksLikeInvalidDuration(rawDuration)
       ? { value: "", unit: "days" as const }
-      : splitDuration(proposal.estimatedDuration);
+      : splitDuration(rawDuration);
+
+  const priceDigits = proposal.extractedEstimatedPrice.replace(/[£,\s]/g, "").trim();
 
   return {
     customerName: proposal.extractedCustomerName.trim(),
     propertyAddress: proposal.extractedPropertyAddress.trim(),
     phoneNumber: proposal.extractedPhoneNumber.trim(),
     emailAddress: proposal.extractedEmailAddress.trim(),
-    estimatedPrice: proposal.extractedEstimatedPrice
-      .replace(/[£,\s]/g, "")
-      .trim(),
+    estimatedPrice: priceDigits,
     durationValue: duration.value,
     durationUnit: duration.unit,
     optionalExtras: arrayToLines(proposal.optionalExtras),

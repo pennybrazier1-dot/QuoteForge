@@ -33,3 +33,23 @@ export function logProposalPipelineStage(
 
   console.log(`[QuoteForge proposal] ${stage}`, sliceForDebug(proposal));
 }
+
+export function logProposalFormMapping(
+  proposal: GeneratedProposal,
+  mapped: {
+    estimatedPrice: string;
+    optionalExtras: string;
+  }
+): void {
+  if (!DEBUG_ENABLED) {
+    return;
+  }
+
+  console.log("[QuoteForge proposal] form field mapping", {
+    extractedEstimatedPrice: proposal.extractedEstimatedPrice,
+    mappedEstimatedPrice: mapped.estimatedPrice,
+    optionalExtrasFromProposal: proposal.optionalExtras,
+    mappedOptionalExtras: mapped.optionalExtras,
+    labour: proposal.labour,
+  });
+}
