@@ -12,6 +12,7 @@ import {
   OPTIONAL_EXTRAS_EMPTY_MESSAGE,
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
+import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
@@ -263,11 +264,13 @@ export function ProposalWorkspace({
   businessName,
   senderName,
   statusEvents,
+  calendarProposals,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
   senderName: string;
   statusEvents: ProposalStatusEventRecord[];
+  calendarProposals: CalendarProposal[];
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const actionContext = {
@@ -340,6 +343,7 @@ export function ProposalWorkspace({
           plannedStartDateText={proposal.planned_start_date_text}
           plannedStartDate={proposal.planned_start_date}
           estimatedDuration={proposal.estimated_duration}
+          calendarProposals={calendarProposals}
         />
       </Suspense>
 

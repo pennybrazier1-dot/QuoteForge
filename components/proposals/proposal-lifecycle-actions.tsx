@@ -17,6 +17,7 @@ import { AuthError } from "@/components/auth/auth-shell";
 import { BookingDialog } from "@/components/proposals/booking-dialog";
 import { ATTENTION_REASONS, formatAttentionReason } from "@/lib/proposals/attention";
 import { isProvisionalBooking } from "@/lib/proposals/booking";
+import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -56,6 +57,7 @@ type ProposalLifecycleActionsProps = {
   plannedStartDateText: string | null;
   plannedStartDate: string | null;
   estimatedDuration: string | null;
+  calendarProposals: CalendarProposal[];
 };
 
 export function ProposalLifecycleActions({
@@ -65,6 +67,7 @@ export function ProposalLifecycleActions({
   plannedStartDateText,
   plannedStartDate,
   estimatedDuration,
+  calendarProposals,
 }: ProposalLifecycleActionsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -220,6 +223,7 @@ export function ProposalLifecycleActions({
         plannedStartDateText={plannedStartDateText}
         plannedStartDate={plannedStartDate}
         estimatedDuration={estimatedDuration}
+        calendarProposals={calendarProposals}
       />
 
       <BookingDialog
@@ -231,6 +235,7 @@ export function ProposalLifecycleActions({
         plannedStartDate={plannedStartDate}
         estimatedDuration={estimatedDuration}
         bookingConfirmation="confirmed"
+        calendarProposals={calendarProposals}
       />
     </section>
   );

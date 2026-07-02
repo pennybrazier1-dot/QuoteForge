@@ -1,36 +1,49 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { createPortal } from "react-dom";
 import {
   confirmBooking,
   type LifecycleActionState,
 } from "@/app/proposals/lifecycle-actions";
+import { BookingCalendarPreview } from "@/components/calendar/booking-calendar-preview";
+import { BookingClashWarnings } from "@/components/proposals/booking-clash-warnings";
 import { AuthError } from "@/components/auth/auth-shell";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
+import { analyzeBookingClashes } from "@/lib/calendar/clash-detection";
+import {
+  buildCalendarJobs,
+  type CalendarJob,
+  type CalendarProposal,
+} from "@/lib/calendar/calendar-data";
 import {
   BOOKING_CONFIRMATIONS,
   formatBookingConfirmation,
   type BookingConfirmation,
 } from "@/lib/proposals/booking";
-import { plannedStartFromDb } from "@/lib/proposals/planned-start-date";
+import {
+  formatPlannedStartExact,
+  plannedStartFromDb,
+} from "@/lib/proposals/planned-start-date";
 
 const confirmInitialState: LifecycleActionState = {};
 
 function SubmitButton({
   idleLabel,
   pendingLabel,
+  disabled = false,
 }: {
   idleLabel: string;
   pendingLabel: string;
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={pending || disabled}
       className="qf-mgmt-dialog-btn qf-mgmt-dialog-btn-primary"
     >
       {pending ? pendingLabel : idleLabel}
@@ -47,6 +60,7 @@ type BookingDialogProps = {
   plannedStartDate: string | null;
   estimatedDuration: string | null;
   bookingConfirmation?: BookingConfirmation | null;
+  calendarProposals: CalendarProposal[];
 };
 
 export function BookingDialog({
@@ -58,6 +72,7 @@ export function BookingDialog({
   plannedStartDate,
   estimatedDuration,
   bookingConfirmation = "confirmed",
+  calendarProposals,
 }: BookingDialogProps) {
   const [confirmState, confirmAction] = useActionState(
     confirmBooking,
@@ -74,8 +89,31 @@ export function BookingDialog({
   const [bookingStatus, setBookingStatus] = useState<BookingConfirmation>(
     bookingConfirmation ?? "confirmed"
   );
+  const [acknowledgedClash, setAcknowledgedClash] = useState(false);
 
   const isAccept = mode === "accept";
+
+  const existingJobs = useMemo(
+    () => buildCalendarJobs(calendarProposals),
+    [calendarProposals]
+  );
+
+  const clashAnalysis = useMemo(
+    () =>
+      analyzeBookingClashes(
+        {
+          proposalId,
+          startDateIso: startExact || null,
+          duration,
+          bookingStatus,
+        },
+        existingJobs
+      ),
+    [proposalId, startExact, duration, bookingStatus, existingJobs]
+  );
+
+  const needsAcknowledgment = clashAnalysis.hasStrongOrWarning;
+  const canSubmit = !needsAcknowledgment || acknowledgedClash;
 
   useEffect(() => {
     setMounted(true);
@@ -95,6 +133,7 @@ export function BookingDialog({
     setStartExact(planned.plannedStartDateExact);
     setDuration(estimatedDuration ?? "");
     setBookingStatus(bookingConfirmation ?? "confirmed");
+    setAcknowledgedClash(false);
   }, [
     open,
     plannedStartDateText,
@@ -102,6 +141,10 @@ export function BookingDialog({
     estimatedDuration,
     bookingConfirmation,
   ]);
+
+  useEffect(() => {
+    setAcknowledgedClash(false);
+  }, [startExact, duration, bookingStatus]);
 
   useEffect(() => {
     if (!open) {
@@ -124,6 +167,12 @@ export function BookingDialog({
       window.removeEventListener("keydown", handleKeyDown);
     };
   }, [open, onClose]);
+
+  const applySuggestedDate = (iso: string) => {
+    setStartExact(iso);
+    setStartText(formatPlannedStartExact(iso));
+    setAcknowledgedClash(false);
+  };
 
   if (!open || !mounted) {
     return null;
@@ -176,7 +225,15 @@ export function BookingDialog({
           </button>
         </header>
 
-        <form action={confirmAction} className="qf-mgmt-dialog-sheet-form">
+        <form
+          action={confirmAction}
+          className="qf-mgmt-dialog-sheet-form"
+          onSubmit={(event) => {
+            if (!canSubmit) {
+              event.preventDefault();
+            }
+          }}
+        >
           <input type="hidden" name="proposalId" value={proposalId} />
 
           <div className="qf-mgmt-dialog-sheet-body">
@@ -231,6 +288,21 @@ export function BookingDialog({
                 in amber until you firm it up.
               </p>
             </div>
+
+            <BookingCalendarPreview
+              anchorDateIso={startExact || null}
+              proposedSpanDates={clashAnalysis.proposedSpanDates}
+              existingJobs={existingJobs.filter(
+                (job: CalendarJob) => job.proposalId !== proposalId
+              )}
+            />
+
+            <BookingClashWarnings
+              analysis={clashAnalysis}
+              acknowledged={acknowledgedClash}
+              onAcknowledgeChange={setAcknowledgedClash}
+              onUseSuggestedDate={applySuggestedDate}
+            />
           </div>
 
           <footer className="qf-mgmt-dialog-sheet-footer">
@@ -242,8 +314,15 @@ export function BookingDialog({
               Cancel
             </button>
             <SubmitButton
-              idleLabel={isAccept ? "Add to calendar" : "Confirm booking"}
+              idleLabel={
+                needsAcknowledgment && !acknowledgedClash
+                  ? "Acknowledge to continue"
+                  : isAccept
+                    ? "Add to calendar"
+                    : "Confirm booking"
+              }
               pendingLabel={isAccept ? "Adding…" : "Confirming…"}
+              disabled={!canSubmit}
             />
           </footer>
         </form>

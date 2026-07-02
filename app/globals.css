@@ -3263,3 +3263,194 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
     min-height: 3.75rem;
   }
 }
+
+/* Booking dialog — clash warnings & week preview (Calendar Phase 4) */
+.qf-booking-preview {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.qf-booking-preview-empty {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.qf-booking-preview-label {
+  margin: 0 0 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.qf-booking-preview-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.qf-booking-preview-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+.qf-booking-preview-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  min-height: 3.5rem;
+  padding: 0.375rem 0.25rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.qf-booking-preview-day-proposed {
+  border-color: rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.qf-booking-preview-weekday {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.qf-booking-preview-daynum {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.qf-booking-preview-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 0.5rem;
+  margin-top: 0.125rem;
+}
+
+.qf-booking-preview-proposed-mark {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: rgb(56, 189, 248);
+}
+
+.qf-booking-preview-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.qf-booking-preview-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.qf-booking-preview-proposed-swatch {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 0.2rem;
+  background: rgba(56, 189, 248, 0.55);
+}
+
+.qf-booking-clash-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qf-booking-clash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qf-booking-clash-item {
+  border-radius: 0.625rem;
+  border: 1px solid var(--border);
+  padding: 0.75rem 0.875rem;
+}
+
+.qf-booking-clash-strong {
+  border-color: rgba(239, 68, 68, 0.45);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.qf-booking-clash-warning {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.qf-booking-clash-soft {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.qf-booking-clash-message {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.qf-booking-clash-job {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-booking-clash-suggestion {
+  border-radius: 0.625rem;
+  border: 1px dashed rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.06);
+  padding: 0.75rem 0.875rem;
+}
+
+.qf-booking-clash-suggestion-text {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.qf-booking-clash-suggestion-btn {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: rgba(56, 189, 248, 0.15);
+  cursor: pointer;
+}
+
+.qf-booking-clash-suggestion-btn:hover {
+  background: rgba(56, 189, 248, 0.22);
+}
+
+.qf-booking-clash-ack {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.qf-booking-clash-ack input {
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+}

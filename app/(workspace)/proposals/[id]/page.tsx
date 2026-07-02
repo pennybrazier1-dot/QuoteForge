@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
+import { fetchCalendarProposals } from "@/lib/calendar/calendar-queries";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,7 +31,7 @@ export default async function ProposalPage({ params }: PageProps) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const [{ data: proposal, error }, { data: workspace }, { data: statusEvents }] =
+  const [{ data: proposal, error }, { data: workspace }, { data: statusEvents }, calendarProposals] =
     await Promise.all([
     supabase
       .from("proposals")
@@ -53,6 +54,7 @@ export default async function ProposalPage({ params }: PageProps) {
       )
       .eq("proposal_id", id)
       .order("created_at", { ascending: true }),
+    fetchCalendarProposals(supabase),
   ]);
 
   if (error || !proposal) {
@@ -65,6 +67,7 @@ export default async function ProposalPage({ params }: PageProps) {
       businessName={workspace?.business_name ?? "Your business"}
       senderName={profile?.full_name ?? "Your team"}
       statusEvents={(statusEvents ?? []) as ProposalStatusEventRecord[]}
+      calendarProposals={calendarProposals}
     />
   );
 }
