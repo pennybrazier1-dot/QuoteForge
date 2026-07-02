@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { NewProposalForm } from "@/components/proposals/new-proposal-form";
 
 export const metadata: Metadata = {
-  title: "New Proposal — QuoteForge",
-  description: "Create a new proposal in QuoteForge.",
+  title: "New Quote — QuoteForge",
+  description: "Create a new quote in QuoteForge.",
 };
 
 export default function NewProposalPage() {

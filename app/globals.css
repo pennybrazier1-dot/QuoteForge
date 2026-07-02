@@ -1080,6 +1080,25 @@ a.qf-card-inset:hover {
   line-height: 1.65;
 }
 
+/* Phone-first New Quote capture (single Site Notes screen) */
+.qf-mobile-quote-capture-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.qf-mobile-site-notes {
+  min-height: 22rem;
+}
+
+.qf-mobile-quote-generate {
+  margin-top: 1.25rem;
+}
+
+.qf-editable-proposal-review .qf-card-heading {
+  font-size: 1rem;
+}
+
 .qf-price-input {
   position: relative;
 }
