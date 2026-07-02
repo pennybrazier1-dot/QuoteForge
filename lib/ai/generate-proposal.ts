@@ -12,6 +12,11 @@ import {
   PROPOSAL_SYSTEM_PROMPT,
 } from "./prompts";
 import {
+  CONFIRM_PLANNED_START_DATE,
+  formatPlannedStartExact,
+  normalizePlannedStartExact,
+} from "@/lib/proposals/planned-start-date";
+import {
   GENERATED_PROPOSAL_JSON_SCHEMA,
   type GenerateProposalInput,
   type GeneratedProposal,
@@ -122,11 +127,55 @@ function preserveQualifiedLanguage(
   };
 }
 
+function normalizePlannedStartDate(
+  proposal: GeneratedProposal
+): GeneratedProposal {
+  const text = proposal.plannedStartDate.trim();
+  const exact = normalizePlannedStartExact(proposal.plannedStartDateExact) ?? "";
+
+  if (!text && !exact) {
+    return {
+      ...proposal,
+      plannedStartDate: "",
+      plannedStartDateExact: "",
+    };
+  }
+
+  let plannedStartDate = text;
+  const plannedStartDateExact = exact;
+
+  if (plannedStartDateExact && !plannedStartDate) {
+    plannedStartDate = formatPlannedStartExact(plannedStartDateExact);
+  }
+
+  const isVague = Boolean(plannedStartDate) && !plannedStartDateExact;
+  let thingsToConfirm = proposal.thingsToConfirm;
+
+  if (isVague) {
+    const hasStartConfirm = thingsToConfirm.some((item) =>
+      /planned start|start date/i.test(item)
+    );
+
+    if (!hasStartConfirm) {
+      thingsToConfirm = [...thingsToConfirm, CONFIRM_PLANNED_START_DATE];
+    }
+  }
+
+  return {
+    ...proposal,
+    plannedStartDate,
+    plannedStartDateExact,
+    thingsToConfirm,
+  };
+}
+
 function normalizeGeneratedProposal(
   proposal: GeneratedProposal,
   input: GenerateProposalInput
 ): GeneratedProposal {
-  return normalizeEstimatedDuration(preserveQualifiedLanguage(proposal, input));
+  return normalizePlannedStartDate(
+    normalizeEstimatedDuration(preserveQualifiedLanguage(proposal, input))
+  );
 }
 
 export async function generateProposal(

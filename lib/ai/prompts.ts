@@ -97,6 +97,15 @@ ESTIMATED DURATION RULES:
 - Never write "needs confirming", "to be confirmed", "TBC", or similar phrasing in estimatedDuration.
 - Move duration uncertainty into thingsToConfirm, but do not remove qualifying conditions from estimatedDuration when they were stated in Site Notes.
 
+PLANNED START DATE RULES:
+- Extract when the customer wants work to start only if mentioned in Site Notes.
+- Put the wording in plannedStartDate — preserve flexible UK phrasing exactly as stated or professionally rewritten without changing meaning.
+  Examples: "18th September", "week commencing 18th September", "middle of August", "after the bank holiday", "customer wants it done in October".
+- Put plannedStartDateExact (YYYY-MM-DD) only when a single exact calendar date is clearly stated. Leave empty for vague ranges, months only, week commencing without one fixed day, or relative phrases like "after the bank holiday".
+- Do not invent or guess dates. If no start timing is mentioned, leave both fields empty.
+- If the start timing is vague, add "Confirm planned start date" to thingsToConfirm unless a similar confirmation is already listed.
+- Do not put planned start date in jobSummary unless it is essential context for the work itself.
+
 If scope details are missing, do not guess — list them in thingsToConfirm.
 
 Use British English. Write for homeowners who are not trade experts.`;
@@ -158,6 +167,8 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "- thingsToConfirm: include missing customer details, access issues, measurements to confirm, material specifications, and helpful confirmations for any qualified conditions from Site Notes.",
     "- optionalExtras: extract from Site Notes when clearly optional/extra work, and from the Optional Extras field; keep separate from main scope and main price.",
     "- extractedEstimatedPrice: digits only when a main quote price is clearly stated; otherwise empty string.",
+    "- plannedStartDate: when the customer wants work to start, preserve flexible UK wording from Site Notes; empty if not mentioned.",
+    "- plannedStartDateExact: ISO YYYY-MM-DD only for a single exact calendar date; empty if vague or not mentioned. Never guess.",
     "- estimatedDuration: use manual duration when provided; otherwise preserve the full qualified duration wording from Site Notes; otherwise use the safe fallback message.",
     "- Never invent price or duration.",
     "- Never remove qualifiers such as approximately, around, depending on, subject to, if suitable, or where possible."

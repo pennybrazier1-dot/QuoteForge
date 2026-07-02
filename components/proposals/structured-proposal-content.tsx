@@ -71,6 +71,12 @@ export function StructuredProposalContent({
         <p>{proposal.estimatedDuration}</p>
       </ProposalSectionBlock>
 
+      {proposal.plannedStartDate.trim() ? (
+        <ProposalSectionBlock title="Planned Start Date">
+          <p>{proposal.plannedStartDate}</p>
+        </ProposalSectionBlock>
+      ) : null}
+
       <ProposalSectionBlock title="Things to Confirm">
         {proposal.thingsToConfirm.length > 0 ? (
           <BulletList items={proposal.thingsToConfirm} />

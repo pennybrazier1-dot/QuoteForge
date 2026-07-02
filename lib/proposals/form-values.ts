@@ -7,6 +7,8 @@ export type ProposalFormValues = {
   optionalExtras: string;
   estimatedPrice: string;
   estimatedDuration: string;
+  plannedStartDateText: string;
+  plannedStartDateExact: string;
 };
 
 export const emptyProposalFormValues: ProposalFormValues = {
@@ -18,4 +20,6 @@ export const emptyProposalFormValues: ProposalFormValues = {
   optionalExtras: "",
   estimatedPrice: "",
   estimatedDuration: "",
+  plannedStartDateText: "",
+  plannedStartDateExact: "",
 };

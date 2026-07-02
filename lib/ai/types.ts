@@ -25,6 +25,10 @@ export type GeneratedProposal = {
   extractedEmailAddress: string;
   /** Numeric price reference only (e.g. "850") — empty if not clearly stated. */
   extractedEstimatedPrice: string;
+  /** Planned start wording from Site Notes — exact or vague. Empty if not mentioned. */
+  plannedStartDate: string;
+  /** ISO date (YYYY-MM-DD) only when an exact calendar date is clear. Empty if vague. */
+  plannedStartDateExact: string;
 };
 
 export const GENERATED_PROPOSAL_JSON_SCHEMA = {
@@ -98,6 +102,16 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
       description:
         "Main quote price from Site Notes or manual context only when clearly stated (digits only, e.g. 850). Empty string if not stated. Do not invent.",
     },
+    plannedStartDate: {
+      type: "string",
+      description:
+        "When the customer wants work to start, as stated in Site Notes. Preserve flexible UK wording (e.g. 18th September, week commencing 18th September, middle of August, after the bank holiday, in October). Empty string if not mentioned. Do not invent.",
+    },
+    plannedStartDateExact: {
+      type: "string",
+      description:
+        "ISO date YYYY-MM-DD only when a single exact calendar date is clearly stated (e.g. 18th September 2026). Empty string for vague ranges, months only, or week commencing without a single fixed day. Do not guess.",
+    },
   },
   required: [
     "jobSummary",
@@ -113,6 +127,8 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
     "extractedPhoneNumber",
     "extractedEmailAddress",
     "extractedEstimatedPrice",
+    "plannedStartDate",
+    "plannedStartDateExact",
   ],
   additionalProperties: false,
 } as const;

@@ -1,4 +1,8 @@
 import type { GeneratedProposal } from "@/lib/ai";
+import {
+  plannedStartFromDb,
+  plannedStartToDbFields,
+} from "@/lib/proposals/planned-start-date";
 
 export type StructuredProposalData = {
   jobSummary: string;
@@ -6,6 +10,8 @@ export type StructuredProposalData = {
   materials: string[];
   labour: string;
   estimatedDuration: string;
+  plannedStartDate: string;
+  plannedStartDateExact: string;
   thingsToConfirm: string[];
   optionalExtras: string[];
   paymentTerms: string;
@@ -26,6 +32,8 @@ export function mapGeneratedProposalToStructuredData(
     materials: proposal.materials,
     labour: proposal.labour,
     estimatedDuration: proposal.estimatedDuration,
+    plannedStartDate: proposal.plannedStartDate.trim(),
+    plannedStartDateExact: proposal.plannedStartDateExact.trim(),
     thingsToConfirm: proposal.thingsToConfirm,
     optionalExtras: proposal.optionalExtras,
     paymentTerms: proposal.paymentTerms,
@@ -42,6 +50,10 @@ export function mapGeneratedProposalToDbFields(proposal: GeneratedProposal) {
     things_to_confirm_items: proposal.thingsToConfirm,
     ai_optional_extras: proposal.optionalExtras,
     payment_terms: proposal.paymentTerms,
+    ...plannedStartToDbFields({
+      plannedStartDate: proposal.plannedStartDate,
+      plannedStartDateExact: proposal.plannedStartDateExact,
+    }),
   };
 }
 
@@ -51,6 +63,8 @@ export function mapDbRowToStructuredProposal(proposal: {
   materials: unknown;
   labour_description: string | null;
   estimated_duration: string | null;
+  planned_start_date_text?: string | null;
+  planned_start_date?: string | null;
   things_to_confirm_items: unknown;
   ai_optional_extras: unknown;
   payment_terms: string | null;
@@ -59,12 +73,16 @@ export function mapDbRowToStructuredProposal(proposal: {
     return null;
   }
 
+  const plannedStart = plannedStartFromDb(proposal);
+
   return {
     jobSummary: proposal.job_summary,
     scopeOfWork: parseStringArrayField(proposal.scope_of_work),
     materials: parseJsonStringArray(proposal.materials),
     labour: proposal.labour_description ?? "",
     estimatedDuration: proposal.estimated_duration ?? "",
+    plannedStartDate: plannedStart.plannedStartDate,
+    plannedStartDateExact: plannedStart.plannedStartDateExact,
     thingsToConfirm: parseJsonStringArray(proposal.things_to_confirm_items),
     optionalExtras: parseJsonStringArray(proposal.ai_optional_extras),
     paymentTerms: proposal.payment_terms ?? "",
@@ -135,6 +153,14 @@ export function parseGeneratedProposalJson(
       extractedEstimatedPrice:
         typeof parsed.extractedEstimatedPrice === "string"
           ? parsed.extractedEstimatedPrice
+          : "",
+      plannedStartDate:
+        typeof parsed.plannedStartDate === "string"
+          ? parsed.plannedStartDate
+          : "",
+      plannedStartDateExact:
+        typeof parsed.plannedStartDateExact === "string"
+          ? parsed.plannedStartDateExact
           : "",
     };
   } catch {

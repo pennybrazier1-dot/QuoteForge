@@ -11,6 +11,7 @@ import {
   parseGeneratedProposalJson,
 } from "@/lib/proposals/structured-proposal";
 import { formatPersonName } from "@/lib/text/format-name";
+import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
@@ -38,6 +39,8 @@ type ParsedProposalForm = {
   optionalExtras: string;
   estimatedPrice: string;
   estimatedDuration: string;
+  plannedStartDateText: string;
+  plannedStartDateExact: string | null;
 };
 
 function parseProposalForm(formData: FormData): ParsedProposalForm {
@@ -50,7 +53,18 @@ function parseProposalForm(formData: FormData): ParsedProposalForm {
     optionalExtras: String(formData.get("optionalExtras") ?? "").trim(),
     estimatedPrice: getString(formData, "estimatedPrice"),
     estimatedDuration: getString(formData, "estimatedDuration"),
+    plannedStartDateText: getString(formData, "plannedStartDateText"),
+    plannedStartDateExact: normalizePlannedStartExact(
+      getString(formData, "plannedStartDateExact")
+    ),
   };
+}
+
+function plannedStartDbFields(form: ParsedProposalForm) {
+  return plannedStartToDbFields({
+    plannedStartDate: form.plannedStartDateText,
+    plannedStartDateExact: form.plannedStartDateExact ?? "",
+  });
 }
 
 function validateProposalForm(
@@ -256,6 +270,7 @@ export async function saveDraftProposal(
       subtotal_amount: totalPence,
       vat_amount: 0,
       total_amount: totalPence,
+      ...plannedStartDbFields(form),
     })
     .select("id")
     .single();
@@ -359,6 +374,7 @@ export async function updateDraftProposal(
       subtotal_amount: totalPence,
       vat_amount: 0,
       total_amount: totalPence,
+      ...plannedStartDbFields(form),
     })
     .eq("id", proposalId);
 

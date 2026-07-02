@@ -19,6 +19,7 @@ import { AuthError } from "@/components/auth/auth-shell";
 import { EditableProposalReview } from "@/components/proposals/editable-proposal-review";
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { MobileQuoteCapture } from "@/components/proposals/mobile-quote-capture";
+import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
 import type { GeneratedProposal } from "@/lib/ai";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
@@ -39,7 +40,7 @@ const SITE_NOTES_MAX = 4000;
 const OPTIONAL_EXTRAS_MAX = 1000;
 
 const SITE_NOTES_HELPER =
-  "Write your site notes just as you would on paper. Include the work required, materials or products discussed, measurements, customer requests, access issues, estimated price or duration if you already know them, and anything that still needs confirming.";
+  "Write your site notes just as you would on paper. Include the work required, materials or products discussed, measurements, customer requests, when the customer wants work to start, access issues, estimated price or duration if you already know them, and anything that still needs confirming.";
 
 const OPTIONAL_EXTRAS_HELPER =
   "Add possible extra work you noticed on site that is not part of the main quote yet.";
@@ -223,6 +224,12 @@ export function NewProposalForm({
   const [durationUnit, setDurationUnit] = useState<DurationUnit>(
     initialDuration.unit
   );
+  const [plannedStartDateText, setPlannedStartDateText] = useState(
+    initialValues?.plannedStartDateText ?? ""
+  );
+  const [plannedStartDateExact, setPlannedStartDateExact] = useState(
+    initialValues?.plannedStartDateExact ?? ""
+  );
 
   useEffect(() => {
     if (!generateState.proposal) {
@@ -255,21 +262,40 @@ export function NewProposalForm({
     if (extracted.optionalExtras) {
       setOptionalExtras(extracted.optionalExtras);
     }
+    if (proposal.plannedStartDate) {
+      setPlannedStartDateText(proposal.plannedStartDate);
+    }
+    if (proposal.plannedStartDateExact) {
+      setPlannedStartDateExact(proposal.plannedStartDateExact);
+    }
   }, [generateState.proposal]);
-
-  const estimatedDuration = [durationValue.trim(), durationUnit]
-    .filter(Boolean)
-    .join(" ");
 
   const showMobileCapture = mode === "create" && isMobile && !reviewProposal;
   const showMobileReview = mode === "create" && isMobile && Boolean(reviewProposal);
+
+  const estimatedDuration =
+    showMobileReview && reviewProposal
+      ? reviewProposal.estimatedDuration.trim()
+      : [durationValue.trim(), durationUnit].filter(Boolean).join(" ");
 
   const desktopProposal =
     reviewProposal ?? generateState.proposal ?? null;
 
   const proposalForSubmit = reviewProposal
-    ? { ...reviewProposal, estimatedDuration }
-    : generateState.proposal;
+    ? {
+        ...reviewProposal,
+        estimatedDuration,
+        plannedStartDate: plannedStartDateText,
+        plannedStartDateExact: plannedStartDateExact,
+      }
+    : generateState.proposal
+      ? {
+          ...generateState.proposal,
+          estimatedDuration,
+          plannedStartDate: plannedStartDateText,
+          plannedStartDateExact: plannedStartDateExact,
+        }
+      : null;
 
   const pageTitle =
     mode === "edit"
@@ -348,10 +374,10 @@ export function NewProposalForm({
             onEmailAddressChange={setEmailAddress}
             estimatedPrice={estimatedPrice}
             onEstimatedPriceChange={setEstimatedPrice}
-            durationValue={durationValue}
-            onDurationValueChange={setDurationValue}
-            durationUnit={durationUnit}
-            onDurationUnitChange={setDurationUnit}
+            plannedStartDateText={plannedStartDateText}
+            onPlannedStartDateTextChange={setPlannedStartDateText}
+            plannedStartDateExact={plannedStartDateExact}
+            onPlannedStartDateExactChange={setPlannedStartDateExact}
           />
 
           {proposalForSubmit ? (
@@ -504,9 +530,15 @@ export function NewProposalForm({
                     type="hidden"
                     name="generatedProposal"
                     value={JSON.stringify(
-                      reviewProposal
-                        ? { ...reviewProposal, estimatedDuration }
-                        : desktopProposal
+                      proposalForSubmit ??
+                        (reviewProposal
+                          ? {
+                              ...reviewProposal,
+                              estimatedDuration,
+                              plannedStartDate: plannedStartDateText,
+                              plannedStartDateExact: plannedStartDateExact,
+                            }
+                          : desktopProposal)
                     )}
                   />
                   {acceptState.error ? (
@@ -594,6 +626,29 @@ export function NewProposalForm({
                       </select>
                     </div>
                   </div>
+
+                  <PlannedStartDateFields
+                    textValue={plannedStartDateText}
+                    exactValue={plannedStartDateExact}
+                    onTextChange={(value) => {
+                      setPlannedStartDateText(value);
+                      if (reviewProposal) {
+                        setReviewProposal({
+                          ...reviewProposal,
+                          plannedStartDate: value,
+                        });
+                      }
+                    }}
+                    onExactChange={(value) => {
+                      setPlannedStartDateExact(value);
+                      if (reviewProposal) {
+                        setReviewProposal({
+                          ...reviewProposal,
+                          plannedStartDateExact: value,
+                        });
+                      }
+                    }}
+                  />
                 </div>
               </SectionCard>
 

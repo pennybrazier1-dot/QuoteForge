@@ -6,7 +6,7 @@ import { AuthError } from "@/components/auth/auth-shell";
 const SITE_NOTES_MAX = 4000;
 
 const SITE_NOTES_HELPER =
-  "Include customer name, address, phone, email, job details, measurements, materials, price, duration, optional extras, and anything to confirm — all in one place.";
+  "Include customer name, address, phone, email, job details, measurements, materials, when the customer wants work to start, price, duration, optional extras, and anything to confirm — all in one place.";
 
 export function MobileQuoteCapture({
   siteNotes,

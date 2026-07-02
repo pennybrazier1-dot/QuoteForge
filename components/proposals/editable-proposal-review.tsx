@@ -4,12 +4,10 @@ import type { ReactNode } from "react";
 import type { GeneratedProposal } from "@/lib/ai";
 import {
   arrayToLines,
-  DURATION_UNITS,
-  joinDuration,
   linesToArray,
-  type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
 import { SectionCard } from "@/components/ui/section-card";
+import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 
 function ReviewField({
   label,
@@ -68,10 +66,10 @@ export function EditableProposalReview({
   onEmailAddressChange,
   estimatedPrice,
   onEstimatedPriceChange,
-  durationValue,
-  onDurationValueChange,
-  durationUnit,
-  onDurationUnitChange,
+  plannedStartDateText,
+  onPlannedStartDateTextChange,
+  plannedStartDateExact,
+  onPlannedStartDateExactChange,
 }: {
   proposal: GeneratedProposal;
   onProposalChange: (proposal: GeneratedProposal) => void;
@@ -85,21 +83,15 @@ export function EditableProposalReview({
   onEmailAddressChange: (value: string) => void;
   estimatedPrice: string;
   onEstimatedPriceChange: (value: string) => void;
-  durationValue: string;
-  onDurationValueChange: (value: string) => void;
-  durationUnit: DurationUnit;
-  onDurationUnitChange: (value: DurationUnit) => void;
+  plannedStartDateText: string;
+  onPlannedStartDateTextChange: (value: string) => void;
+  plannedStartDateExact: string;
+  onPlannedStartDateExactChange: (value: string) => void;
 }) {
-  const estimatedDuration = joinDuration(durationValue, durationUnit);
-
   const updateProposal = (patch: Partial<GeneratedProposal>) => {
     onProposalChange({
       ...proposal,
       ...patch,
-      estimatedDuration:
-        patch.estimatedDuration !== undefined
-          ? patch.estimatedDuration
-          : estimatedDuration,
     });
   };
 
@@ -213,6 +205,13 @@ export function EditableProposalReview({
       </SectionCard>
 
       <SectionCard className="qf-card-form">
+        <h2 className="qf-card-heading">Materials Status</h2>
+        <p className="qf-body-text mt-4 text-muted">
+          Materials tracking will be added later.
+        </p>
+      </SectionCard>
+
+      <SectionCard className="qf-card-form">
         <h2 className="qf-card-heading">Labour</h2>
         <div className="mt-4">
           <ReviewTextarea
@@ -263,34 +262,37 @@ export function EditableProposalReview({
       </SectionCard>
 
       <SectionCard className="qf-card-form">
-        <h2 className="qf-card-heading">Duration</h2>
-        <div className="mt-4">
-          <input type="hidden" name="estimatedDuration" value={estimatedDuration} />
-          <ReviewField label="Estimated duration" id="reviewDurationValue">
-            <div className="qf-duration-input">
-              <input
-                id="reviewDurationValue"
-                type="text"
-                value={durationValue}
-                onChange={(event) => onDurationValueChange(event.target.value)}
-                placeholder="e.g. 2"
-                className="form-input"
-              />
-              <select
-                aria-label="Duration unit"
-                value={durationUnit}
-                onChange={(event) =>
-                  onDurationUnitChange(event.target.value as DurationUnit)
-                }
-                className="form-select"
-              >
-                {DURATION_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit.charAt(0).toUpperCase() + unit.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <h2 className="qf-card-heading">Job Timing</h2>
+        <div className="mt-4 space-y-5">
+          <PlannedStartDateFields
+            textValue={plannedStartDateText}
+            exactValue={plannedStartDateExact}
+            onTextChange={(value) => {
+              onPlannedStartDateTextChange(value);
+              updateProposal({ plannedStartDate: value });
+            }}
+            onExactChange={(value) => {
+              onPlannedStartDateExactChange(value);
+              updateProposal({ plannedStartDateExact: value });
+            }}
+          />
+
+          <ReviewField label="Estimated duration" id="reviewEstimatedDuration">
+            <input
+              type="hidden"
+              name="estimatedDuration"
+              value={proposal.estimatedDuration}
+            />
+            <input
+              id="reviewEstimatedDuration"
+              type="text"
+              value={proposal.estimatedDuration}
+              onChange={(event) =>
+                updateProposal({ estimatedDuration: event.target.value })
+              }
+              placeholder="e.g. 2 days, half a day, approximately 3 days depending on weather"
+              className="form-input"
+            />
           </ReviewField>
         </div>
       </SectionCard>
