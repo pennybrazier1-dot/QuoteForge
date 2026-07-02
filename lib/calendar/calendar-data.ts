@@ -1,6 +1,11 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
 import { isConfirmedBooking, isProvisionalBooking } from "@/lib/proposals/booking";
+import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  expandJobSpanDates,
+  parseDurationToCalendarDays,
+} from "@/lib/calendar/job-span";
 
 export type CalendarView = "month" | "week" | "day" | "year";
 
@@ -18,20 +23,24 @@ export type CalendarProposal = {
   planned_start_date: string | null;
   planned_start_date_text: string | null;
   estimated_duration: string | null;
+  things_to_confirm?: string | null;
   job_address: string | null;
 };
 
-export type CalendarEvent = {
+/** One booked job on the calendar (deduplicated by proposal). */
+export type CalendarJob = {
   id: string;
   proposalId: string;
   href: string;
   title: string;
   customer: string;
-  date: string;
+  startDate: string;
+  endDate: string;
+  spanDates: string[];
   dateLabel: string;
-  addressLine?: string;
   tone: CalendarEventTone;
   duration?: string;
+  addressLine?: string;
 };
 
 export type CalendarMonthCell = {
@@ -131,7 +140,7 @@ export function getWeekdayLabels(): readonly string[] {
   return WEEKDAY_LABELS;
 }
 
-export function getCalendarEventDate(proposal: CalendarProposal): string | null {
+export function getCalendarStartDate(proposal: CalendarProposal): string | null {
   if (proposal.planned_start_date) {
     return proposal.planned_start_date.slice(0, 10);
   }
@@ -139,16 +148,16 @@ export function getCalendarEventDate(proposal: CalendarProposal): string | null 
   return null;
 }
 
-export function buildCalendarEvents(
+export function buildCalendarJobs(
   proposals: CalendarProposal[]
-): CalendarEvent[] {
-  const events: CalendarEvent[] = [];
+): CalendarJob[] {
+  const jobs: CalendarJob[] = [];
 
   for (const proposal of proposals) {
     const status = normalizeProposalStatus(proposal.status);
-    const date = getCalendarEventDate(proposal);
+    const startDate = getCalendarStartDate(proposal);
 
-    if (status !== "booked" || !date) {
+    if (status !== "booked" || !startDate) {
       continue;
     }
 
@@ -162,82 +171,128 @@ export function buildCalendarEvents(
       continue;
     }
 
+    const durationText = parseEstimatedDuration(
+      proposal.estimated_duration,
+      proposal.things_to_confirm ?? null
+    );
+    const spanDayCount = parseDurationToCalendarDays(durationText);
+    const spanDates = expandJobSpanDates(startDate, spanDayCount);
+
     const dateLabel = proposal.planned_start_date_text?.trim()
       ? proposal.planned_start_date_text.trim()
       : new Intl.DateTimeFormat("en-GB", {
           weekday: "short",
           day: "numeric",
           month: "short",
-        }).format(parseIsoDate(date));
+        }).format(parseIsoDate(startDate));
 
-    events.push({
-      id: `${proposal.id}-${date}`,
+    jobs.push({
+      id: proposal.id,
       proposalId: proposal.id,
       href: `/proposals/${proposal.id}`,
       title: getProposalSummaryLabel(proposal),
       customer: proposal.customer_name ?? "Customer",
-      date,
+      startDate,
+      endDate: spanDates[spanDates.length - 1] ?? startDate,
+      spanDates,
       dateLabel,
-      addressLine: proposal.job_address?.trim() || undefined,
       tone,
-      duration: proposal.estimated_duration?.trim() || undefined,
+      duration: durationText || undefined,
+      addressLine: proposal.job_address?.trim() || undefined,
     });
   }
 
-  return events.sort((left, right) => left.date.localeCompare(right.date));
+  return jobs.sort((left, right) => left.startDate.localeCompare(right.startDate));
 }
 
-export function getEventsForDate(
-  events: CalendarEvent[],
+export function jobCoversDate(job: CalendarJob, iso: string): boolean {
+  return job.spanDates.includes(iso);
+}
+
+export function getJobsForDate(
+  jobs: CalendarJob[],
   iso: string
-): CalendarEvent[] {
-  return events.filter((event) => event.date === iso);
+): CalendarJob[] {
+  return jobs.filter((job) => jobCoversDate(job, iso));
 }
 
-export function getEventCountsByDate(
-  events: CalendarEvent[]
+export function getJobCountsByDate(
+  jobs: CalendarJob[]
 ): Map<string, { confirmed: number; provisional: number }> {
   const counts = new Map<string, { confirmed: number; provisional: number }>();
 
-  for (const event of events) {
-    const current = counts.get(event.date) ?? {
-      confirmed: 0,
-      provisional: 0,
-    };
-    current[event.tone] += 1;
-    counts.set(event.date, current);
+  for (const job of jobs) {
+    for (const date of job.spanDates) {
+      const current = counts.get(date) ?? {
+        confirmed: 0,
+        provisional: 0,
+      };
+      current[job.tone] += 1;
+      counts.set(date, current);
+    }
   }
 
   return counts;
 }
 
-export function filterEventsForView(
-  events: CalendarEvent[],
+export function filterJobsForView(
+  jobs: CalendarJob[],
   view: CalendarView,
   anchor: Date
-): CalendarEvent[] {
+): CalendarJob[] {
   const anchorIso = toIsoDate(anchor);
 
   if (view === "day") {
-    return events.filter((event) => event.date === anchorIso);
+    return getJobsForDate(jobs, anchorIso);
   }
 
   if (view === "week") {
     const start = startOfWeek(anchor);
     const end = endOfWeek(anchor);
 
-    return events.filter((event) => event.date >= start && event.date <= end);
+    return jobs.filter((job) =>
+      job.spanDates.some((date) => date >= start && date <= end)
+    );
   }
 
   if (view === "month") {
     const monthPrefix = anchorIso.slice(0, 7);
 
-    return events.filter((event) => event.date.startsWith(monthPrefix));
+    return jobs.filter((job) =>
+      job.spanDates.some((date) => date.startsWith(monthPrefix))
+    );
   }
 
   const year = String(anchor.getFullYear());
 
-  return events.filter((event) => event.date.startsWith(year));
+  return jobs.filter((job) =>
+    job.spanDates.some((date) => date.startsWith(year))
+  );
+}
+
+export function getJobsForMonth(
+  jobs: CalendarJob[],
+  year: number,
+  monthIndex: number
+): CalendarJob[] {
+  const monthPrefix = `${year}-${String(monthIndex + 1).padStart(2, "0")}`;
+
+  return jobs.filter((job) =>
+    job.spanDates.some((date) => date.startsWith(monthPrefix))
+  );
+}
+
+export function countJobsByTone(jobs: CalendarJob[]): {
+  confirmed: number;
+  provisional: number;
+} {
+  return jobs.reduce(
+    (totals, job) => {
+      totals[job.tone] += 1;
+      return totals;
+    },
+    { confirmed: 0, provisional: 0 }
+  );
 }
 
 export function formatCalendarHeading(view: CalendarView, anchor: Date): string {
@@ -310,18 +365,4 @@ export function shiftSelectedDate(iso: string, days: number): string {
   date.setDate(date.getDate() + days);
 
   return toIsoDate(date);
-}
-
-export function groupEventsByDate(
-  events: CalendarEvent[]
-): Map<string, CalendarEvent[]> {
-  const groups = new Map<string, CalendarEvent[]>();
-
-  for (const event of events) {
-    const existing = groups.get(event.date) ?? [];
-    existing.push(event);
-    groups.set(event.date, existing);
-  }
-
-  return groups;
 }

@@ -20,13 +20,12 @@ export default async function CalendarPage() {
   }
 
   /*
-    Phase 1 — UI foundation only.
-    Read existing booked jobs when present; booking logic comes later.
+    Phase 2 — booked jobs with planned start dates from the proposal lifecycle.
   */
   const { data: proposalsData } = await supabase
     .from("proposals")
     .select(
-      "id, proposal_number, customer_name, title, job_summary, rough_notes, status, booking_confirmation, planned_start_date, planned_start_date_text, estimated_duration, job_address"
+      "id, proposal_number, customer_name, title, job_summary, rough_notes, status, booking_confirmation, planned_start_date, planned_start_date_text, estimated_duration, things_to_confirm, job_address"
     )
     .eq("status", "booked")
     .not("planned_start_date", "is", null)

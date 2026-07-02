@@ -3,25 +3,29 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  buildCalendarEvents,
+  buildCalendarJobs,
   buildMonthCells,
   buildWeekDays,
-  filterEventsForView,
+  countJobsByTone,
+  endOfWeek,
   formatCalendarHeading,
   formatSelectedDayHeading,
-  getEventCountsByDate,
-  getEventsForDate,
+  getJobCountsByDate,
+  getJobsForDate,
+  getJobsForMonth,
   getWeekdayLabels,
   isSameIsoDate,
   isToday,
   parseIsoDate,
   shiftAnchor,
   shiftSelectedDate,
+  startOfWeek,
   toIsoDate,
-  type CalendarEvent,
+  type CalendarJob,
   type CalendarProposal,
   type CalendarView,
 } from "@/lib/calendar/calendar-data";
+import { formatSpanLabel } from "@/lib/calendar/job-span";
 
 const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
   { value: "month", label: "Month" },
@@ -30,67 +34,66 @@ const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
   { value: "year", label: "Year" },
 ];
 
-function CalendarEventCard({ event }: { event: CalendarEvent }) {
+function CalendarJobCard({
+  job,
+  dateIso,
+}: {
+  job: CalendarJob;
+  dateIso?: string;
+}) {
+  const spanLabel = dateIso ? formatSpanLabel(job.spanDates, dateIso) : null;
+
   return (
     <Link
-      href={event.href}
-      className={`qf-calendar-event qf-calendar-event-${event.tone}`}
+      href={job.href}
+      className={`qf-calendar-event qf-calendar-event-${job.tone}`}
     >
       <div className="qf-calendar-event-top">
-        <p className="qf-calendar-event-title">{event.title}</p>
+        <p className="qf-calendar-event-title">{job.title}</p>
         <span className="qf-calendar-event-badge">
-          {event.tone === "confirmed" ? "Confirmed" : "Provisional"}
+          {job.tone === "confirmed" ? "Confirmed" : "Provisional"}
         </span>
       </div>
-      <p className="qf-calendar-event-customer">{event.customer}</p>
-      {event.duration ? (
-        <p className="qf-calendar-event-meta">{event.duration}</p>
+      <p className="qf-calendar-event-customer">{job.customer}</p>
+      {spanLabel ? (
+        <p className="qf-calendar-event-meta">{spanLabel}</p>
       ) : null}
-      {event.addressLine ? (
-        <p className="qf-calendar-event-meta">{event.addressLine}</p>
+      {job.duration ? (
+        <p className="qf-calendar-event-meta">{job.duration}</p>
+      ) : null}
+      {job.addressLine ? (
+        <p className="qf-calendar-event-meta">{job.addressLine}</p>
       ) : null}
     </Link>
   );
 }
 
-function JobPlaceholderSlots() {
-  return (
-    <div className="qf-calendar-job-slots" aria-hidden="true">
-      <div className="qf-calendar-job-slot qf-calendar-job-slot-confirmed">
-        <span className="qf-calendar-job-slot-dot" />
-        <span className="qf-calendar-job-slot-label">Confirmed booking</span>
-      </div>
-      <div className="qf-calendar-job-slot qf-calendar-job-slot-provisional">
-        <span className="qf-calendar-job-slot-dot" />
-        <span className="qf-calendar-job-slot-label">Provisional hold</span>
-      </div>
-    </div>
-  );
-}
-
 function DayJobsPanel({
   dateIso,
-  events,
+  jobs,
   showHeading = true,
 }: {
   dateIso: string;
-  events: CalendarEvent[];
+  jobs: CalendarJob[];
   showHeading?: boolean;
 }) {
-  const dayEvents = getEventsForDate(events, dateIso);
+  const dayJobs = getJobsForDate(jobs, dateIso);
 
   return (
     <section className="qf-calendar-day-panel" aria-label="Jobs for selected day">
       {showHeading ? (
         <h2 className="qf-calendar-day-panel-title">
           {formatSelectedDayHeading(dateIso)}
+          {isToday(dateIso) ? (
+            <span className="qf-calendar-day-panel-today">Today</span>
+          ) : null}
         </h2>
       ) : null}
 
-      {dayEvents.length > 0 ? (
+      {dayJobs.length > 0 ? (
         <div className="qf-calendar-group-list">
-          {dayEvents.map((event) => (
-            <CalendarEventCard key={event.id} event={event} />
+          {dayJobs.map((job) => (
+            <CalendarJobCard key={job.id} job={job} dateIso={dateIso} />
           ))}
         </div>
       ) : (
@@ -98,13 +101,37 @@ function DayJobsPanel({
           <p className="qf-calendar-empty-title">
             No jobs booked for this day yet.
           </p>
-          <p className="qf-calendar-empty-body">
-            When customers accept quotes, confirmed and provisional bookings
-            will appear here.
-          </p>
-          <JobPlaceholderSlots />
         </div>
       )}
+    </section>
+  );
+}
+
+function WeekJobsPanel({
+  jobs,
+  anchor,
+}: {
+  jobs: CalendarJob[];
+  anchor: Date;
+}) {
+  const weekStart = startOfWeek(anchor);
+  const weekEnd = endOfWeek(anchor);
+  const weekJobs = jobs.filter((job) =>
+    job.spanDates.some((date) => date >= weekStart && date <= weekEnd)
+  );
+
+  if (weekJobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="qf-calendar-week-jobs" aria-label="Jobs this week">
+      <h2 className="qf-calendar-week-jobs-title">This week</h2>
+      <div className="qf-calendar-group-list">
+        {weekJobs.map((job) => (
+          <CalendarJobCard key={job.id} job={job} dateIso={job.startDate} />
+        ))}
+      </div>
     </section>
   );
 }
@@ -167,13 +194,13 @@ function MonthView({
   anchor,
   selectedDate,
   todayIso,
-  eventCounts,
+  jobCounts,
   onSelectDate,
 }: {
   anchor: Date;
   selectedDate: string;
   todayIso: string;
-  eventCounts: Map<string, { confirmed: number; provisional: number }>;
+  jobCounts: Map<string, { confirmed: number; provisional: number }>;
   onSelectDate: (iso: string) => void;
 }) {
   const cells = useMemo(() => buildMonthCells(anchor), [anchor]);
@@ -206,7 +233,7 @@ function MonthView({
                 dayNumber={cell.day}
                 selected={isSameIsoDate(cell.iso, selectedDate)}
                 today={isToday(cell.iso, todayIso)}
-                counts={eventCounts.get(cell.iso)}
+                counts={jobCounts.get(cell.iso)}
                 onSelect={onSelectDate}
               />
             </div>
@@ -221,13 +248,13 @@ function WeekView({
   anchor,
   selectedDate,
   todayIso,
-  eventCounts,
+  jobCounts,
   onSelectDate,
 }: {
   anchor: Date;
   selectedDate: string;
   todayIso: string;
-  eventCounts: Map<string, { confirmed: number; provisional: number }>;
+  jobCounts: Map<string, { confirmed: number; provisional: number }>;
   onSelectDate: (iso: string) => void;
 }) {
   const weekDays = useMemo(() => buildWeekDays(anchor), [anchor]);
@@ -244,7 +271,7 @@ function WeekView({
             compact
             selected={isSameIsoDate(day.iso, selectedDate)}
             today={isToday(day.iso, todayIso)}
-            counts={eventCounts.get(day.iso)}
+            counts={jobCounts.get(day.iso)}
             onSelect={onSelectDate}
           />
         ))}
@@ -280,11 +307,11 @@ function DayView({
 
 function YearView({
   anchor,
-  events,
+  jobs,
   onSelectMonth,
 }: {
   anchor: Date;
-  events: CalendarEvent[];
+  jobs: CalendarJob[];
   onSelectMonth: (monthIndex: number) => void;
 }) {
   const year = anchor.getFullYear();
@@ -295,17 +322,8 @@ function YearView({
   return (
     <div className="qf-calendar-year">
       {months.map((monthIndex) => {
-        const monthEvents = events.filter((event) => {
-          const date = parseIsoDate(event.date);
-
-          return date.getFullYear() === year && date.getMonth() === monthIndex;
-        });
-        const confirmed = monthEvents.filter(
-          (event) => event.tone === "confirmed"
-        ).length;
-        const provisional = monthEvents.filter(
-          (event) => event.tone === "provisional"
-        ).length;
+        const monthJobs = getJobsForMonth(jobs, year, monthIndex);
+        const { confirmed, provisional } = countJobsByTone(monthJobs);
 
         return (
           <button
@@ -322,11 +340,11 @@ function YearView({
               )}
             </h3>
             <p className="qf-calendar-year-month-count">
-              {monthEvents.length === 0
-                ? "No bookings yet"
-                : `${monthEvents.length} booking${monthEvents.length === 1 ? "" : "s"}`}
+              {monthJobs.length === 0
+                ? "No bookings"
+                : `${monthJobs.length} job${monthJobs.length === 1 ? "" : "s"}`}
             </p>
-            {monthEvents.length > 0 ? (
+            {monthJobs.length > 0 ? (
               <div className="qf-calendar-year-month-dots">
                 {confirmed > 0 ? (
                   <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
@@ -357,18 +375,8 @@ export function CalendarScreen({
   const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayIso);
 
-  const allEvents = useMemo(
-    () => buildCalendarEvents(proposals),
-    [proposals]
-  );
-  const eventCounts = useMemo(
-    () => getEventCountsByDate(allEvents),
-    [allEvents]
-  );
-  const visibleEvents = useMemo(
-    () => filterEventsForView(allEvents, view, anchor),
-    [allEvents, view, anchor]
-  );
+  const allJobs = useMemo(() => buildCalendarJobs(proposals), [proposals]);
+  const jobCounts = useMemo(() => getJobCountsByDate(allJobs), [allJobs]);
 
   const selectDate = (iso: string) => {
     setSelectedDate(iso);
@@ -425,7 +433,8 @@ export function CalendarScreen({
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          See your upcoming jobs at a glance. Tap a day to view details.
+          Booked jobs from your proposals. Green is confirmed, amber is
+          provisional.
         </p>
       </header>
 
@@ -500,19 +509,22 @@ export function CalendarScreen({
           anchor={anchor}
           selectedDate={selectedDate}
           todayIso={todayIso}
-          eventCounts={eventCounts}
+          jobCounts={jobCounts}
           onSelectDate={selectDate}
         />
       ) : null}
 
       {view === "week" ? (
-        <WeekView
-          anchor={anchor}
-          selectedDate={selectedDate}
-          todayIso={todayIso}
-          eventCounts={eventCounts}
-          onSelectDate={selectDate}
-        />
+        <>
+          <WeekView
+            anchor={anchor}
+            selectedDate={selectedDate}
+            todayIso={todayIso}
+            jobCounts={jobCounts}
+            onSelectDate={selectDate}
+          />
+          <WeekJobsPanel jobs={allJobs} anchor={anchor} />
+        </>
       ) : null}
 
       {view === "day" ? (
@@ -522,7 +534,7 @@ export function CalendarScreen({
       {view === "year" ? (
         <YearView
           anchor={anchor}
-          events={visibleEvents}
+          jobs={allJobs}
           onSelectMonth={openMonthFromYear}
         />
       ) : null}
@@ -530,7 +542,7 @@ export function CalendarScreen({
       {showDayPanel ? (
         <DayJobsPanel
           dateIso={selectedDate}
-          events={allEvents}
+          jobs={allJobs}
           showHeading={view !== "day"}
         />
       ) : null}
