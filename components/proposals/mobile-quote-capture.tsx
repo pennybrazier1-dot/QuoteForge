@@ -20,7 +20,7 @@ export function MobileQuoteCapture({
   formAction: (payload: FormData) => void;
 }) {
   return (
-    <div className="qf-mobile-quote-capture">
+    <div className="qf-mobile-quote-capture qf-mobile-safe">
       <header className="qf-proposal-header">
         <h1 className="qf-proposal-title">New Quote</h1>
         <p className="qf-proposal-subtitle">

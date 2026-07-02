@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="qf-mobile-safe flex flex-1 flex-col">
       <Nav />
       <main className="flex flex-1 flex-col">
         <Hero />

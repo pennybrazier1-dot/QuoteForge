@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { PreviewBuildBadge } from "@/components/dev/preview-build-badge";
 import "./globals.css";
 import "./shell.css";
 
@@ -41,6 +42,7 @@ export default function RootLayout({
       {/* Workspace Home theme: app/mobile-home.css via workspace layout. No bg-background on body. */}
       <body className="min-h-full flex flex-col">
         {children}
+        <PreviewBuildBadge />
       </body>
     </html>
   );

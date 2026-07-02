@@ -96,7 +96,7 @@ export function EditableProposalReview({
   };
 
   return (
-    <div className="qf-editable-proposal-review space-y-4">
+    <div className="qf-editable-proposal-review qf-mobile-safe space-y-4">
       <SectionCard className="qf-card-form">
         <h2 className="qf-card-heading">Customer</h2>
         <div className="mt-4">

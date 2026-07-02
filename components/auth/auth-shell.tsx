@@ -11,7 +11,7 @@ type AuthShellProps = {
 
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
   return (
-    <div className="bg-hero-glow flex min-h-full flex-1 flex-col">
+    <div className="bg-hero-glow qf-mobile-safe flex min-h-full flex-1 flex-col">
       <header className="border-b border-border-subtle bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center px-6">
           <Link href="/" className="flex items-center gap-2.5">

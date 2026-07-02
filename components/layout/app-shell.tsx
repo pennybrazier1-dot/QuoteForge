@@ -23,7 +23,7 @@ export function AppShell({
 
       <div className="qf-app-frame">
         <AppSidebar recentDrafts={recentDrafts} />
-        <main className="qf-app-main">{children}</main>
+        <main className="qf-app-main qf-mobile-safe">{children}</main>
       </div>
 
       <AppBottomNav />
