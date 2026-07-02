@@ -2,7 +2,7 @@ import { getProposalSummaryLabel } from "@/lib/proposals/display";
 import { isConfirmedBooking, isProvisionalBooking } from "@/lib/proposals/booking";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
-export type CalendarView = "day" | "week" | "month" | "year";
+export type CalendarView = "month" | "week" | "day" | "year";
 
 export type CalendarEventTone = "confirmed" | "provisional";
 
@@ -29,11 +29,107 @@ export type CalendarEvent = {
   customer: string;
   date: string;
   dateLabel: string;
-  timeLabel?: string;
   addressLine?: string;
   tone: CalendarEventTone;
   duration?: string;
 };
+
+export type CalendarMonthCell = {
+  day: number | null;
+  iso: string | null;
+};
+
+export type CalendarWeekDay = {
+  iso: string;
+  dayNumber: number;
+  weekdayShort: string;
+};
+
+const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
+
+/** Local calendar date as YYYY-MM-DD (avoids UTC shift from toISOString). */
+export function toIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+export function parseIsoDate(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+
+  return new Date(year, month - 1, day);
+}
+
+export function isToday(iso: string, todayIso = toIsoDate(new Date())): boolean {
+  return iso === todayIso;
+}
+
+export function isSameIsoDate(left: string, right: string): boolean {
+  return left === right;
+}
+
+export function startOfWeek(date: Date): string {
+  const next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = next.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  next.setDate(next.getDate() + diff);
+
+  return toIsoDate(next);
+}
+
+export function endOfWeek(date: Date): string {
+  const start = parseIsoDate(startOfWeek(date));
+  start.setDate(start.getDate() + 6);
+
+  return toIsoDate(start);
+}
+
+export function buildWeekDays(anchor: Date): CalendarWeekDay[] {
+  const start = parseIsoDate(startOfWeek(anchor));
+  const formatter = new Intl.DateTimeFormat("en-GB", { weekday: "short" });
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate() + index
+    );
+
+    return {
+      iso: toIsoDate(day),
+      dayNumber: day.getDate(),
+      weekdayShort: formatter.format(day),
+    };
+  });
+}
+
+export function buildMonthCells(anchor: Date): CalendarMonthCell[] {
+  const year = anchor.getFullYear();
+  const month = anchor.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const startOffset = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: CalendarMonthCell[] = [];
+
+  for (let index = 0; index < startOffset; index += 1) {
+    cells.push({ day: null, iso: null });
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    cells.push({
+      day,
+      iso: toIsoDate(new Date(year, month, day)),
+    });
+  }
+
+  return cells;
+}
+
+export function getWeekdayLabels(): readonly string[] {
+  return WEEKDAY_LABELS;
+}
 
 export function getCalendarEventDate(proposal: CalendarProposal): string | null {
   if (proposal.planned_start_date) {
@@ -72,7 +168,7 @@ export function buildCalendarEvents(
           weekday: "short",
           day: "numeric",
           month: "short",
-        }).format(new Date(date));
+        }).format(parseIsoDate(date));
 
     events.push({
       id: `${proposal.id}-${date}`,
@@ -91,12 +187,36 @@ export function buildCalendarEvents(
   return events.sort((left, right) => left.date.localeCompare(right.date));
 }
 
+export function getEventsForDate(
+  events: CalendarEvent[],
+  iso: string
+): CalendarEvent[] {
+  return events.filter((event) => event.date === iso);
+}
+
+export function getEventCountsByDate(
+  events: CalendarEvent[]
+): Map<string, { confirmed: number; provisional: number }> {
+  const counts = new Map<string, { confirmed: number; provisional: number }>();
+
+  for (const event of events) {
+    const current = counts.get(event.date) ?? {
+      confirmed: 0,
+      provisional: 0,
+    };
+    current[event.tone] += 1;
+    counts.set(event.date, current);
+  }
+
+  return counts;
+}
+
 export function filterEventsForView(
   events: CalendarEvent[],
   view: CalendarView,
   anchor: Date
 ): CalendarEvent[] {
-  const anchorIso = anchor.toISOString().slice(0, 10);
+  const anchorIso = toIsoDate(anchor);
 
   if (view === "day") {
     return events.filter((event) => event.date === anchorIso);
@@ -106,9 +226,7 @@ export function filterEventsForView(
     const start = startOfWeek(anchor);
     const end = endOfWeek(anchor);
 
-    return events.filter(
-      (event) => event.date >= start && event.date <= end
-    );
+    return events.filter((event) => event.date >= start && event.date <= end);
   }
 
   if (view === "month") {
@@ -122,21 +240,6 @@ export function filterEventsForView(
   return events.filter((event) => event.date.startsWith(year));
 }
 
-function startOfWeek(date: Date): string {
-  const next = new Date(date);
-  const day = next.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  next.setDate(next.getDate() + diff);
-  next.setHours(0, 0, 0, 0);
-  return next.toISOString().slice(0, 10);
-}
-
-function endOfWeek(date: Date): string {
-  const start = new Date(startOfWeek(date));
-  start.setDate(start.getDate() + 6);
-  return start.toISOString().slice(0, 10);
-}
-
 export function formatCalendarHeading(view: CalendarView, anchor: Date): string {
   if (view === "day") {
     return new Intl.DateTimeFormat("en-GB", {
@@ -148,8 +251,8 @@ export function formatCalendarHeading(view: CalendarView, anchor: Date): string 
   }
 
   if (view === "week") {
-    const start = new Date(startOfWeek(anchor));
-    const end = new Date(endOfWeek(anchor));
+    const start = parseIsoDate(startOfWeek(anchor));
+    const end = parseIsoDate(endOfWeek(anchor));
     const formatter = new Intl.DateTimeFormat("en-GB", {
       day: "numeric",
       month: "short",
@@ -166,6 +269,14 @@ export function formatCalendarHeading(view: CalendarView, anchor: Date): string 
   }
 
   return String(anchor.getFullYear());
+}
+
+export function formatSelectedDayHeading(iso: string): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(parseIsoDate(iso));
 }
 
 export function shiftAnchor(
@@ -192,6 +303,13 @@ export function shiftAnchor(
 
   next.setFullYear(next.getFullYear() + direction);
   return next;
+}
+
+export function shiftSelectedDate(iso: string, days: number): string {
+  const date = parseIsoDate(iso);
+  date.setDate(date.getDate() + days);
+
+  return toIsoDate(date);
 }
 
 export function groupEventsByDate(

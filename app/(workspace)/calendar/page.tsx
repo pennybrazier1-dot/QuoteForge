@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Calendar — QuoteForge",
-  description: "Your jobs and schedule.",
+  description: "Your upcoming jobs and schedule.",
 };
 
 export default async function CalendarPage() {
@@ -19,6 +19,10 @@ export default async function CalendarPage() {
     redirect("/login");
   }
 
+  /*
+    Phase 1 — UI foundation only.
+    Read existing booked jobs when present; booking logic comes later.
+  */
   const { data: proposalsData } = await supabase
     .from("proposals")
     .select(

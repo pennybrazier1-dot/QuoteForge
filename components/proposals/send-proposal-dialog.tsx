@@ -33,30 +33,16 @@ function SectionHeading({ children }: { children: ReactNode }) {
   return <h3 className="qf-send-section-title">{children}</h3>;
 }
 
-function SendByEmailButton() {
+function SendButton() {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
       disabled={pending}
-      className="qf-btn-primary qf-send-footer-btn"
+      className="qf-btn-primary qf-send-footer-btn qf-send-footer-btn-primary"
     >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="m22 2-7 20-4-9-9-4Z" />
-        <path d="M22 2 11 13" />
-      </svg>
-      {pending ? "Sending…" : "Send by Email"}
+      {pending ? "Sending…" : "Send"}
     </button>
   );
 }
@@ -135,7 +121,7 @@ export function SendProposalDialog({
       <button
         type="button"
         className="qf-send-overlay"
-        aria-label="Close send by email"
+        aria-label="Close send proposal"
         onClick={onClose}
       />
 
@@ -284,12 +270,12 @@ export function SendProposalDialog({
           <footer className="qf-send-footer">
             <button
               type="button"
-              className="qf-btn-secondary qf-send-footer-btn"
+              className="qf-btn-secondary qf-send-footer-btn qf-send-footer-btn-cancel"
               onClick={onClose}
             >
               Cancel
             </button>
-            <SendByEmailButton />
+            <SendButton />
           </footer>
         </form>
       </div>

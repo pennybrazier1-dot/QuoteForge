@@ -4,19 +4,29 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   buildCalendarEvents,
+  buildMonthCells,
+  buildWeekDays,
   filterEventsForView,
   formatCalendarHeading,
-  groupEventsByDate,
+  formatSelectedDayHeading,
+  getEventCountsByDate,
+  getEventsForDate,
+  getWeekdayLabels,
+  isSameIsoDate,
+  isToday,
+  parseIsoDate,
   shiftAnchor,
+  shiftSelectedDate,
+  toIsoDate,
   type CalendarEvent,
   type CalendarProposal,
   type CalendarView,
 } from "@/lib/calendar/calendar-data";
 
 const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
-  { value: "day", label: "Day" },
-  { value: "week", label: "Week" },
   { value: "month", label: "Month" },
+  { value: "week", label: "Week" },
+  { value: "day", label: "Day" },
   { value: "year", label: "Year" },
 ];
 
@@ -43,77 +53,135 @@ function CalendarEventCard({ event }: { event: CalendarEvent }) {
   );
 }
 
-function DayWeekList({ events }: { events: CalendarEvent[] }) {
-  if (events.length === 0) {
-    return <p className="qf-calendar-empty">No bookings in this period.</p>;
-  }
-
-  const groups = groupEventsByDate(events);
-
+function JobPlaceholderSlots() {
   return (
-    <div className="qf-calendar-groups">
-      {[...groups.entries()].map(([date, dayEvents]) => (
-        <section key={date} className="qf-calendar-group">
-          <h3 className="qf-calendar-group-title">
-            {new Intl.DateTimeFormat("en-GB", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            }).format(new Date(date))}
-          </h3>
-          <div className="qf-calendar-group-list">
-            {dayEvents.map((event) => (
-              <CalendarEventCard key={event.id} event={event} />
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="qf-calendar-job-slots" aria-hidden="true">
+      <div className="qf-calendar-job-slot qf-calendar-job-slot-confirmed">
+        <span className="qf-calendar-job-slot-dot" />
+        <span className="qf-calendar-job-slot-label">Confirmed booking</span>
+      </div>
+      <div className="qf-calendar-job-slot qf-calendar-job-slot-provisional">
+        <span className="qf-calendar-job-slot-dot" />
+        <span className="qf-calendar-job-slot-label">Provisional hold</span>
+      </div>
     </div>
   );
 }
 
-function MonthGrid({
+function DayJobsPanel({
+  dateIso,
   events,
-  anchor,
+  showHeading = true,
 }: {
+  dateIso: string;
   events: CalendarEvent[];
-  anchor: Date;
+  showHeading?: boolean;
 }) {
-  const year = anchor.getFullYear();
-  const month = anchor.getMonth();
-  const firstDay = new Date(year, month, 1);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const eventCounts = useMemo(() => {
-    const counts = new Map<string, { confirmed: number; provisional: number }>();
+  const dayEvents = getEventsForDate(events, dateIso);
 
-    for (const event of events) {
-      const current = counts.get(event.date) ?? {
-        confirmed: 0,
-        provisional: 0,
-      };
-      current[event.tone] += 1;
-      counts.set(event.date, current);
-    }
+  return (
+    <section className="qf-calendar-day-panel" aria-label="Jobs for selected day">
+      {showHeading ? (
+        <h2 className="qf-calendar-day-panel-title">
+          {formatSelectedDayHeading(dateIso)}
+        </h2>
+      ) : null}
 
-    return counts;
-  }, [events]);
+      {dayEvents.length > 0 ? (
+        <div className="qf-calendar-group-list">
+          {dayEvents.map((event) => (
+            <CalendarEventCard key={event.id} event={event} />
+          ))}
+        </div>
+      ) : (
+        <div className="qf-calendar-day-panel-empty">
+          <p className="qf-calendar-empty-title">
+            No jobs booked for this day yet.
+          </p>
+          <p className="qf-calendar-empty-body">
+            When customers accept quotes, confirmed and provisional bookings
+            will appear here.
+          </p>
+          <JobPlaceholderSlots />
+        </div>
+      )}
+    </section>
+  );
+}
 
-  const cells: Array<{ day: number | null; iso: string | null }> = [];
+function DayButton({
+  iso,
+  dayNumber,
+  weekdayShort,
+  compact = false,
+  selected,
+  today,
+  counts,
+  onSelect,
+}: {
+  iso: string;
+  dayNumber: number;
+  weekdayShort?: string;
+  compact?: boolean;
+  selected: boolean;
+  today: boolean;
+  counts?: { confirmed: number; provisional: number };
+  onSelect: (iso: string) => void;
+}) {
+  const className = [
+    "qf-calendar-day-btn",
+    compact ? "qf-calendar-day-btn-compact" : "",
+    selected ? "qf-calendar-day-btn-selected" : "",
+    today ? "qf-calendar-day-btn-today" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
-  for (let i = 0; i < startOffset; i += 1) {
-    cells.push({ day: null, iso: null });
-  }
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={() => onSelect(iso)}
+      aria-label={formatSelectedDayHeading(iso)}
+      aria-pressed={selected}
+    >
+      {weekdayShort ? (
+        <span className="qf-calendar-day-btn-weekday">{weekdayShort}</span>
+      ) : null}
+      <span className="qf-calendar-day-btn-number">{dayNumber}</span>
+      {counts && (counts.confirmed > 0 || counts.provisional > 0) ? (
+        <span className="qf-calendar-day-btn-dots">
+          {counts.confirmed > 0 ? (
+            <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
+          ) : null}
+          {counts.provisional > 0 ? (
+            <span className="qf-calendar-dot qf-calendar-dot-provisional" />
+          ) : null}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const iso = new Date(year, month, day).toISOString().slice(0, 10);
-    cells.push({ day, iso });
-  }
+function MonthView({
+  anchor,
+  selectedDate,
+  todayIso,
+  eventCounts,
+  onSelectDate,
+}: {
+  anchor: Date;
+  selectedDate: string;
+  todayIso: string;
+  eventCounts: Map<string, { confirmed: number; provisional: number }>;
+  onSelectDate: (iso: string) => void;
+}) {
+  const cells = useMemo(() => buildMonthCells(anchor), [anchor]);
 
   return (
     <div className="qf-calendar-month">
       <div className="qf-calendar-month-head">
-        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((label) => (
+        {getWeekdayLabels().map((label) => (
           <span key={label} className="qf-calendar-month-label">
             {label}
           </span>
@@ -122,62 +190,157 @@ function MonthGrid({
       <div className="qf-calendar-month-grid">
         {cells.map((cell, index) => {
           if (!cell.day || !cell.iso) {
-            return <div key={`empty-${index}`} className="qf-calendar-month-cell qf-calendar-month-cell-empty" />;
+            return (
+              <div
+                key={`empty-${index}`}
+                className="qf-calendar-month-cell qf-calendar-month-cell-empty"
+                aria-hidden="true"
+              />
+            );
           }
-
-          const counts = eventCounts.get(cell.iso);
 
           return (
             <div key={cell.iso} className="qf-calendar-month-cell">
-              <span className="qf-calendar-month-day">{cell.day}</span>
-              {counts ? (
-                <div className="qf-calendar-month-dots">
-                  {counts.confirmed > 0 ? (
-                    <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
-                  ) : null}
-                  {counts.provisional > 0 ? (
-                    <span className="qf-calendar-dot qf-calendar-dot-provisional" />
-                  ) : null}
-                </div>
-              ) : null}
+              <DayButton
+                iso={cell.iso}
+                dayNumber={cell.day}
+                selected={isSameIsoDate(cell.iso, selectedDate)}
+                today={isToday(cell.iso, todayIso)}
+                counts={eventCounts.get(cell.iso)}
+                onSelect={onSelectDate}
+              />
             </div>
           );
         })}
       </div>
-      <DayWeekList events={events} />
     </div>
   );
 }
 
-function YearOverview({
-  events,
+function WeekView({
   anchor,
+  selectedDate,
+  todayIso,
+  eventCounts,
+  onSelectDate,
 }: {
-  events: CalendarEvent[];
   anchor: Date;
+  selectedDate: string;
+  todayIso: string;
+  eventCounts: Map<string, { confirmed: number; provisional: number }>;
+  onSelectDate: (iso: string) => void;
+}) {
+  const weekDays = useMemo(() => buildWeekDays(anchor), [anchor]);
+
+  return (
+    <div className="qf-calendar-week">
+      <div className="qf-calendar-week-strip">
+        {weekDays.map((day) => (
+          <DayButton
+            key={day.iso}
+            iso={day.iso}
+            dayNumber={day.dayNumber}
+            weekdayShort={day.weekdayShort}
+            compact
+            selected={isSameIsoDate(day.iso, selectedDate)}
+            today={isToday(day.iso, todayIso)}
+            counts={eventCounts.get(day.iso)}
+            onSelect={onSelectDate}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function DayView({
+  selectedDate,
+  todayIso,
+}: {
+  selectedDate: string;
+  todayIso: string;
+}) {
+  return (
+    <div className="qf-calendar-day-focus">
+      <div
+        className={`qf-calendar-day-focus-card ${
+          isToday(selectedDate, todayIso) ? "qf-calendar-day-focus-card-today" : ""
+        }`}
+      >
+        <p className="qf-calendar-day-focus-label">
+          {isToday(selectedDate, todayIso) ? "Today" : "Selected day"}
+        </p>
+        <p className="qf-calendar-day-focus-date">
+          {formatSelectedDayHeading(selectedDate)}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function YearView({
+  anchor,
+  events,
+  onSelectMonth,
+}: {
+  anchor: Date;
+  events: CalendarEvent[];
+  onSelectMonth: (monthIndex: number) => void;
 }) {
   const year = anchor.getFullYear();
   const months = Array.from({ length: 12 }, (_, index) => index);
+  const today = new Date();
+  const todayMonth = today.getFullYear() === year ? today.getMonth() : -1;
 
   return (
     <div className="qf-calendar-year">
       {months.map((monthIndex) => {
         const monthEvents = events.filter((event) => {
-          const date = new Date(event.date);
+          const date = parseIsoDate(event.date);
+
           return date.getFullYear() === year && date.getMonth() === monthIndex;
         });
+        const confirmed = monthEvents.filter(
+          (event) => event.tone === "confirmed"
+        ).length;
+        const provisional = monthEvents.filter(
+          (event) => event.tone === "provisional"
+        ).length;
 
         return (
-          <section key={monthIndex} className="qf-calendar-year-month">
+          <button
+            key={monthIndex}
+            type="button"
+            className={`qf-calendar-year-month ${
+              monthIndex === todayMonth ? "qf-calendar-year-month-today" : ""
+            }`}
+            onClick={() => onSelectMonth(monthIndex)}
+          >
             <h3 className="qf-calendar-year-month-title">
               {new Intl.DateTimeFormat("en-GB", { month: "long" }).format(
                 new Date(year, monthIndex, 1)
               )}
             </h3>
             <p className="qf-calendar-year-month-count">
-              {monthEvents.length} booking{monthEvents.length === 1 ? "" : "s"}
+              {monthEvents.length === 0
+                ? "No bookings yet"
+                : `${monthEvents.length} booking${monthEvents.length === 1 ? "" : "s"}`}
             </p>
-          </section>
+            {monthEvents.length > 0 ? (
+              <div className="qf-calendar-year-month-dots">
+                {confirmed > 0 ? (
+                  <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
+                ) : null}
+                {provisional > 0 ? (
+                  <span className="qf-calendar-dot qf-calendar-dot-provisional" />
+                ) : null}
+              </div>
+            ) : (
+              <p className="qf-calendar-year-month-placeholder">
+                Tap to open month
+              </p>
+            )}
+          </button>
         );
       })}
     </div>
@@ -189,24 +352,80 @@ export function CalendarScreen({
 }: {
   proposals: CalendarProposal[];
 }) {
-  const [view, setView] = useState<CalendarView>("week");
+  const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const [view, setView] = useState<CalendarView>("month");
   const [anchor, setAnchor] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState(todayIso);
+
   const allEvents = useMemo(
     () => buildCalendarEvents(proposals),
     [proposals]
+  );
+  const eventCounts = useMemo(
+    () => getEventCountsByDate(allEvents),
+    [allEvents]
   );
   const visibleEvents = useMemo(
     () => filterEventsForView(allEvents, view, anchor),
     [allEvents, view, anchor]
   );
 
+  const selectDate = (iso: string) => {
+    setSelectedDate(iso);
+    setAnchor(parseIsoDate(iso));
+  };
+
+  const goToToday = () => {
+    const now = new Date();
+    setAnchor(now);
+    setSelectedDate(todayIso);
+  };
+
+  const goToPrevious = () => {
+    if (view === "day") {
+      const nextDate = shiftSelectedDate(selectedDate, -1);
+      setSelectedDate(nextDate);
+      setAnchor(parseIsoDate(nextDate));
+      return;
+    }
+
+    setAnchor((current) => shiftAnchor(view, current, -1));
+  };
+
+  const goToNext = () => {
+    if (view === "day") {
+      const nextDate = shiftSelectedDate(selectedDate, 1);
+      setSelectedDate(nextDate);
+      setAnchor(parseIsoDate(nextDate));
+      return;
+    }
+
+    setAnchor((current) => shiftAnchor(view, current, 1));
+  };
+
+  const openMonthFromYear = (monthIndex: number) => {
+    const next = new Date(anchor.getFullYear(), monthIndex, 1);
+    const iso = toIsoDate(next);
+
+    setView("month");
+    setAnchor(next);
+
+    if (isToday(iso, todayIso)) {
+      setSelectedDate(todayIso);
+      return;
+    }
+
+    setSelectedDate(iso);
+  };
+
+  const showDayPanel = view === "month" || view === "week" || view === "day";
+
   return (
-    <div className="qf-calendar-page">
+    <div className="qf-calendar-page qf-mobile-safe">
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          Green bookings are confirmed. Amber bookings are provisional while you
-          wait for confirmation.
+          See your upcoming jobs at a glance. Tap a day to view details.
         </p>
       </header>
 
@@ -222,14 +441,18 @@ export function CalendarScreen({
       </div>
 
       <div className="qf-calendar-toolbar">
-        <div className="qf-calendar-view-tabs" role="tablist" aria-label="Calendar view">
+        <div
+          className="qf-calendar-view-tabs"
+          role="tablist"
+          aria-label="Calendar view"
+        >
           {VIEW_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
               role="tab"
               aria-selected={view === option.value}
-              className={`qf-calendar-view-tab ${
+              className={`qf-calendar-view-tab qf-touch-target ${
                 view === option.value ? "qf-calendar-view-tab-active" : ""
               }`}
               onClick={() => setView(option.value)}
@@ -242,31 +465,75 @@ export function CalendarScreen({
         <div className="qf-calendar-nav">
           <button
             type="button"
-            className="qf-calendar-nav-btn"
-            onClick={() => setAnchor((current) => shiftAnchor(view, current, -1))}
+            className="qf-calendar-nav-btn qf-touch-target"
+            onClick={goToPrevious}
             aria-label="Previous period"
           >
             ‹
           </button>
-          <p className="qf-calendar-nav-label">{formatCalendarHeading(view, anchor)}</p>
+          <p className="qf-calendar-nav-label">
+            {view === "day"
+              ? formatSelectedDayHeading(selectedDate)
+              : formatCalendarHeading(view, anchor)}
+          </p>
           <button
             type="button"
-            className="qf-calendar-nav-btn"
-            onClick={() => setAnchor((current) => shiftAnchor(view, current, 1))}
+            className="qf-calendar-nav-btn qf-touch-target"
+            onClick={goToNext}
             aria-label="Next period"
           >
             ›
           </button>
         </div>
+
+        <button
+          type="button"
+          className="qf-calendar-today-btn qf-touch-target"
+          onClick={goToToday}
+        >
+          Today
+        </button>
       </div>
 
       {view === "month" ? (
-        <MonthGrid events={visibleEvents} anchor={anchor} />
-      ) : view === "year" ? (
-        <YearOverview events={visibleEvents} anchor={anchor} />
-      ) : (
-        <DayWeekList events={visibleEvents} />
-      )}
+        <MonthView
+          anchor={anchor}
+          selectedDate={selectedDate}
+          todayIso={todayIso}
+          eventCounts={eventCounts}
+          onSelectDate={selectDate}
+        />
+      ) : null}
+
+      {view === "week" ? (
+        <WeekView
+          anchor={anchor}
+          selectedDate={selectedDate}
+          todayIso={todayIso}
+          eventCounts={eventCounts}
+          onSelectDate={selectDate}
+        />
+      ) : null}
+
+      {view === "day" ? (
+        <DayView selectedDate={selectedDate} todayIso={todayIso} />
+      ) : null}
+
+      {view === "year" ? (
+        <YearView
+          anchor={anchor}
+          events={visibleEvents}
+          onSelectMonth={openMonthFromYear}
+        />
+      ) : null}
+
+      {showDayPanel ? (
+        <DayJobsPanel
+          dateIso={selectedDate}
+          events={allEvents}
+          showHeading={view !== "day"}
+        />
+      ) : null}
     </div>
   );
 }
