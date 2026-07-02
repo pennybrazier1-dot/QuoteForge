@@ -1,6 +1,7 @@
 /**
  * Run with: npx tsx scripts/verify-proposal-sanitize.mjs
  */
+import { readFileSync } from "node:fs";
 import { preserveQualifiedDuration } from "../lib/ai/qualifiers.ts";
 import {
   sanitizeGeneratedProposal,
@@ -266,6 +267,33 @@ assert(
   `Scope should drop summary duplicate, got: ${JSON.stringify(scope)}`
 );
 
+const workflowScope = refineScopeOfWork(
+  [
+    "Protect work area",
+    "Isolate water supply",
+    "Remove existing suite",
+    "Bathroom refurbishment with replacement suite",
+    "Install new suite",
+    "Test installation",
+    "Leave work area clean",
+  ],
+  "Bathroom refurbishment with replacement suite."
+);
+assert(
+  workflowScope.length >= 6,
+  `Workflow scope tasks should be kept: ${JSON.stringify(workflowScope)}`
+);
+assert(
+  workflowScope.some((item) => /protect work area/i.test(item)),
+  `Workflow scope should keep preparation tasks`
+);
+assert(
+  !workflowScope.some((item) =>
+    /bathroom refurbishment with replacement suite/i.test(item)
+  ),
+  `Workflow scope should drop whole-job summary duplicate`
+);
+
 const doorExtra = professionalizeOptionalExtra("new replacement door, please");
 assert(
   /supply and fit a replacement door/i.test(doorExtra) && !/please/i.test(doorExtra),
@@ -279,6 +307,19 @@ const refinedExtras = refineOptionalExtras([
 assert(
   refinedExtras.every((item) => !/please|thanks/i.test(item)),
   `Conversational wording removed: ${JSON.stringify(refinedExtras)}`
+);
+
+// --- Labour: internal only, never customer-facing UI ---
+assert(
+  typeof sanitized.labour === "string" && sanitized.labour.trim().length > 0,
+  "Internal labour should exist after sanitization"
+);
+assert(
+  !readFileSync(
+    new URL("../components/proposals/structured-proposal-content.tsx", import.meta.url),
+    "utf8"
+  ).includes("proposal.labour"),
+  "Structured proposal content must not render proposal.labour"
 );
 
 if (failures.length > 0) {

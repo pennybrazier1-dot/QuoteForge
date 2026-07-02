@@ -37,13 +37,13 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
     jobSummary: {
       type: "string",
       description:
-        "One or two concise sentences describing the overall job from Site Notes. Do not list every task — that belongs in scopeOfWork. Preserve qualifying language from Site Notes.",
+        "One or two concise sentences — high-level overview of the overall job only. No task checklist. Do not list workflow steps (those belong in scopeOfWork). Preserve qualifying language from Site Notes.",
     },
     scopeOfWork: {
       type: "array",
       items: { type: "string" },
       description:
-        "Bullet list of specific tasks rewritten into professional quotation language. One piece of work per bullet. Do not repeat jobSummary. Preserve qualifiers. Exclude optional extras.",
+        "Practical tradesperson work-plan checklist: one task per bullet in logical order. Include normal workflow steps (preparation, isolation, removal, installation, connection, testing, finishing, waste removal, clean-up) required to complete the requested work professionally — not just a rewrite of Site Notes. Do not add optional upgrades, upsells, or work that changes the quote scope. Do not repeat jobSummary. Short clear tasks suitable for future job tracking. Exclude optional extras.",
     },
     materials: {
       type: "array",

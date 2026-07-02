@@ -490,7 +490,7 @@ function drawInvestmentCard(
   drawThinRule(flow, innerX, inclLineY, innerWidth, PDF_COLORS.rule, 0.5);
   microLabel(
     flow,
-    "Including labour & materials",
+    "Including materials",
     textX,
     inclLineY + 5,
     textWidth

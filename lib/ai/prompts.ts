@@ -33,26 +33,55 @@ CUSTOMER DETAILS RULES:
 - Never put customer name, address, phone, or email in thingsToConfirm when that detail is already clearly stated in Site Notes.
 - Only add customer-related confirmation items when a detail is genuinely missing or unclear — not when it was already written on site.
 
-SCOPE OF WORK RULES:
-- scopeOfWork must be a bullet list of specific tasks — one piece of work per bullet.
-- Do not repeat or paraphrase the jobSummary in scopeOfWork.
-- Rewrite Site Notes into professional quotation language for homeowners.
-- Do not copy Site Notes verbatim into scopeOfWork.
-- Each bullet should read like a line from a professional quote.
-- Example:
-  - Site Notes: "install island with sink hole cutout"
-  - CORRECT scope item: "Install a freestanding kitchen island with a cut-out prepared for the sink."
-  - WRONG scope item: "install island with sink hole cutout"
-- Preserve important qualifiers such as approximately, depending on, if suitable, and where possible — but still write in professional quote language.
-- Exclude optional extras from scopeOfWork.
-
 JOB SUMMARY RULES:
 - jobSummary must be one or two concise sentences only.
-- Describe what the overall job is — do not list every task (that belongs in scopeOfWork).
+- High-level overview of the overall job — what is being done, not how step by step.
+- Do not list tasks, workflow steps, or a checklist (that belongs in scopeOfWork).
 - Do not repeat scope bullets verbatim in jobSummary.
 - Example:
-  - CORRECT: "Kitchen refurbishment including new units and a freestanding island with sink preparation."
-  - WRONG: A long paragraph repeating every scope bullet.
+  - CORRECT: "Bathroom refurbishment including removal of the existing suite and installation of a new bathroom suite."
+  - WRONG: A long paragraph or bullet list repeating every scope task.
+
+SCOPE OF WORK RULES:
+- Think like an experienced tradesperson preparing a practical work plan for yourself.
+- scopeOfWork is a checklist of individual tasks — one task per bullet — in the order a professional would normally carry out the work.
+- This is NOT just a rewrite of the customer's Site Notes. Expand Site Notes into the normal workflow required to complete the requested work professionally.
+- Include standard preparation, installation, connection, testing, finishing, waste removal, and clean-up steps that are normally required for the quoted work — even if the customer did not write them down.
+- Each bullet should be a short, clear task suitable for future job tracking (each task may later be marked complete).
+- Write in professional quotation language for homeowners. Do not copy Site Notes verbatim.
+- Preserve important qualifiers such as approximately, depending on, if suitable, and where possible.
+- Exclude optional extras from scopeOfWork.
+- Do not repeat or paraphrase the jobSummary as a scope bullet.
+
+SCOPE OF WORK — WHAT YOU MAY INFER:
+- Normal workflow steps required to complete the requested work safely and professionally.
+- Examples for bathroom suite replacement:
+  - Protect work area
+  - Isolate water supply
+  - Remove existing suite
+  - Inspect existing plumbing
+  - Install new suite
+  - Connect plumbing
+  - Seal fittings
+  - Test installation
+  - Remove waste from site
+  - Leave work area clean
+
+SCOPE OF WORK — WHAT YOU MUST NOT ADD:
+- Do not invent additional paid work beyond what was requested.
+- Do not add optional upgrades or upsells.
+- Do not assume the customer wants extra work.
+- Do not add tasks that fundamentally change the scope of the quote.
+- Do not add separate trade items that were not part of the requested job.
+
+SCOPE OF WORK EXAMPLES:
+- Site Notes: "fit new bathroom suite"
+  - CORRECT scope items include preparation, isolation, removal, installation, connection, testing, and clean-up tasks as above.
+  - WRONG scope item: "Fit new bathroom suite" as the only bullet (too thin — expand into a proper work plan).
+  - WRONG scope item: "Upgrade to premium tiles" (not requested — optional upgrade).
+- Site Notes: "install island with sink hole cutout"
+  - CORRECT scope item: "Install a freestanding kitchen island with a cut-out prepared for the sink."
+  - Also include normal related tasks such as positioning, fixing, and final adjustment where appropriate for the job.
 
 You MUST NEVER:
 - Invent measurements, dimensions, or quantities.
@@ -211,8 +240,8 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "Return JSON matching the required schema.",
     "- Extract customer name, address, phone, and email from Site Notes into extracted* fields. Empty string when not clearly stated.",
     "- Organise Site Notes into jobSummary, scopeOfWork, materials, labour, and thingsToConfirm.",
-    "- jobSummary: one or two concise sentences describing the overall job; do not list every task.",
-    "- scopeOfWork: bullet list of specific tasks in professional quote language; do not repeat jobSummary.",
+    "- jobSummary: high-level overview only — one or two concise sentences; no task checklist.",
+    "- scopeOfWork: tradesperson work-plan checklist — one task per bullet in logical order; include normal workflow steps to complete the requested work professionally; do not repeat jobSummary; do not add paid extras, upgrades, or scope changes.",
     "- labour: describe work effort only; never include price, £ amounts, or payment terms; derive from scope when labour detail is thin.",
     "- materials: physical materials and consumables only; never copy site notes, scope bullets, customer details, or addresses.",
     "- thingsToConfirm: only genuinely missing or uncertain technical details; never confirm customer details already clearly stated.",

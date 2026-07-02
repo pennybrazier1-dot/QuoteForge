@@ -278,8 +278,7 @@ Do not build yet:
 - Customer portal
 - AI pricing insights
 - Business reporting
-- Tax summaries
-- Receipt storage
+- Tax summaries and receipt storage (see [MONEY.md](./MONEY.md))
 - Material cost tracking
 - Mileage tracking
 - Team accounts

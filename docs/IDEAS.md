@@ -31,11 +31,10 @@ If an idea does not help us get the first 10 paying customers, it goes here.
 
 - Invoicing
 - Payment tracking
-- Receipt storage
-- Tax summaries
+- **Money section** — see [MONEY.md](./MONEY.md) (receipts, expenses, estimated profit/tax, AI categorisation)
 - Mileage tracking
 - Material cost tracking
-- Profit estimates
+- Profit estimates (see [MONEY.md](./MONEY.md))
 - Calendar integration
 - Team accounts
 - Customer portal
@@ -99,3 +98,22 @@ Possible options:
 - Track when proposal was viewed
 - Allow customer to accept proposal online
 - Allow customer to approve optional extras
+
+Business Health
+
+🟢 Healthy
+
+Money In this month
+£8,450
+
+Money Out
+£2,180
+
+Estimated Profit
+£6,270
+
+Estimated Tax
+£1,250
+
+Outstanding invoices
+£1,900

@@ -230,3 +230,24 @@ The software does the organising.
 The tradesperson does the work.
 
 We build one product for independent tradespeople. We adapt it to different trades without making it more complicated.
+
+Future Feature — Money
+
+QuoteForge helps independent tradespeople stay organised throughout the year.
+
+Money In is calculated automatically from invoices.
+
+Money Out is entered simply by adding expenses.
+
+QuoteForge then provides:
+
+• Money In
+• Money Out
+• Estimated Profit
+• Estimated Tax
+
+The goal is not to replace accounting software or an accountant.
+
+The goal is to give tradespeople clear, organised figures throughout the year so tax time is simple instead of stressful.
+
+Tax estimates should adapt to the user's country and always be clearly marked as estimates.

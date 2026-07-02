@@ -58,11 +58,30 @@ function scopeRepeatsSummary(scopeItem: string, jobSummary: string): boolean {
     return false;
   }
 
-  if (summaryKey.includes(scopeKey) || scopeKey.includes(summaryKey)) {
+  if (scopeKey === summaryKey) {
     return true;
   }
 
-  return tokenOverlapRatio(scopeItem, jobSummary) >= 0.72;
+  // Only drop scope bullets that paraphrase the whole job summary — not individual workflow tasks.
+  if (
+    scopeKey.length > 20 &&
+    (summaryKey.includes(scopeKey) || scopeKey.includes(summaryKey)) &&
+    scopeKey.length >= summaryKey.length * 0.55
+  ) {
+    return true;
+  }
+
+  return tokenOverlapRatio(scopeItem, jobSummary) >= 0.88;
+}
+
+function normalizeScopeBullet(item: string): string {
+  const trimmed = item.trim().replace(/[.]+$/, "");
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return `${capitalized}.`;
 }
 
 export function refineScopeOfWork(
@@ -77,7 +96,8 @@ export function refineScopeOfWork(
       continue;
     }
 
-    const key = normalizeKey(item);
+    const normalized = normalizeScopeBullet(item);
+    const key = normalizeKey(normalized);
     if (seen.has(key)) {
       continue;
     }
@@ -85,14 +105,14 @@ export function refineScopeOfWork(
     const duplicatesEarlier = refined.some(
       (existing) =>
         normalizeKey(existing) === key ||
-        tokenOverlapRatio(existing, item) >= 0.9
+        tokenOverlapRatio(existing, normalized) >= 0.9
     );
     if (duplicatesEarlier) {
       continue;
     }
 
     seen.add(key);
-    refined.push(item);
+    refined.push(normalized);
   }
 
   return refined;

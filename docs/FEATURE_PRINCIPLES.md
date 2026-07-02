@@ -68,3 +68,6 @@ Independent tradespeople with 5–10 minutes, often one-handed — beside the va
 | Customer | What do I know about this customer? |
 | Proposal | What still needs doing? |
 | Job | Am I ready to start? |
+| Money | How is my business doing financially? |
+
+See [MONEY.md](./MONEY.md) for the Money product vision.

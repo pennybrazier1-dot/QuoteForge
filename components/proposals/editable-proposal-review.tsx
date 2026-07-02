@@ -212,18 +212,6 @@ export function EditableProposalReview({
       </SectionCard>
 
       <SectionCard className="qf-card-form">
-        <h2 className="qf-card-heading">Labour</h2>
-        <div className="mt-4">
-          <ReviewTextarea
-            id="reviewLabour"
-            value={proposal.labour}
-            onChange={(value) => updateProposal({ labour: value })}
-            rows={4}
-          />
-        </div>
-      </SectionCard>
-
-      <SectionCard className="qf-card-form">
         <h2 className="qf-card-heading">Optional Extras</h2>
         <div className="mt-4">
           <ReviewTextarea
