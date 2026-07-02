@@ -13,6 +13,7 @@ import {
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
+import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
   hasStructuredProposal,
   mapDbRowToStructuredProposal,
@@ -234,8 +235,10 @@ function ProposalWorkspaceLeft({
 
 function ProposalWorkspaceRight({
   proposal,
+  statusEvents,
 }: {
   proposal: ProposalWorkspaceData;
+  statusEvents: ProposalStatusEventRecord[];
 }) {
   const canPreview = hasStructuredProposal(proposal);
   const isDraft = proposal.status === "draft";
@@ -259,7 +262,7 @@ function ProposalWorkspaceRight({
         <SectionCard className="qf-card-form">
           <WorkspaceCardHeading title="Proposal Timeline" icon={CLOCK_ICON} />
           <div className="mt-4">
-            <ProposalTimeline proposal={proposal} />
+            <ProposalTimeline proposal={proposal} statusEvents={statusEvents} />
           </div>
         </SectionCard>
       </div>
@@ -356,10 +359,12 @@ export function ProposalWorkspace({
   proposal,
   businessName,
   senderName,
+  statusEvents,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
   senderName: string;
+  statusEvents: ProposalStatusEventRecord[];
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const hasStructured = hasStructuredProposal(proposal);
@@ -423,7 +428,10 @@ export function ProposalWorkspace({
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
-        <ProposalWorkspaceRight proposal={proposal} />
+        <ProposalWorkspaceRight
+          proposal={proposal}
+          statusEvents={statusEvents}
+        />
       </div>
     </div>
     </SendProposalProvider>

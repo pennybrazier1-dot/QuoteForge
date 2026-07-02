@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
+import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -29,7 +30,8 @@ export default async function ProposalPage({ params }: PageProps) {
     .eq("id", user.id)
     .maybeSingle();
 
-  const [{ data: proposal, error }, { data: workspace }] = await Promise.all([
+  const [{ data: proposal, error }, { data: workspace }, { data: statusEvents }] =
+    await Promise.all([
     supabase
       .from("proposals")
       .select(
@@ -44,6 +46,13 @@ export default async function ProposalPage({ params }: PageProps) {
           .eq("id", profile.workspace_id)
           .maybeSingle()
       : Promise.resolve({ data: null }),
+    supabase
+      .from("proposal_status_events")
+      .select(
+        "id, event_type, from_status, to_status, note, metadata, created_at"
+      )
+      .eq("proposal_id", id)
+      .order("created_at", { ascending: true }),
   ]);
 
   if (error || !proposal) {
@@ -55,6 +64,7 @@ export default async function ProposalPage({ params }: PageProps) {
       proposal={proposal}
       businessName={workspace?.business_name ?? "Your business"}
       senderName={profile?.full_name ?? "Your team"}
+      statusEvents={(statusEvents ?? []) as ProposalStatusEventRecord[]}
     />
   );
 }

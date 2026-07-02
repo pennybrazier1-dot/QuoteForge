@@ -29,6 +29,12 @@ const EVENT_ICONS: Record<TimelineEvent["type"], ReactNode> = {
       <path d="M14 2v4a2 2 0 0 0 2 2h4" />
     </svg>
   ),
+  emailed: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m22 2-7 20-4-9-9-4Z" />
+      <path d="M22 2 11 13" />
+    </svg>
+  ),
   sent: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -50,10 +56,12 @@ const EVENT_ICONS: Record<TimelineEvent["type"], ReactNode> = {
 
 export function ProposalTimeline({
   proposal,
+  statusEvents = [],
 }: {
   proposal: Parameters<typeof buildProposalTimeline>[0];
+  statusEvents?: Parameters<typeof buildProposalTimeline>[1];
 }) {
-  const events = buildProposalTimeline(proposal);
+  const events = buildProposalTimeline(proposal, statusEvents);
 
   return (
     <ol className="qf-workspace-timeline">

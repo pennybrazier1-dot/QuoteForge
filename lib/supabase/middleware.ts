@@ -37,6 +37,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/calendar") ||
+    pathname.startsWith("/more") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/proposals") ||
     pathname.startsWith("/customers") ||
@@ -76,6 +78,18 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (pathname.startsWith("/settings") && !hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/calendar") && !hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/more") && !hasProfile) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);

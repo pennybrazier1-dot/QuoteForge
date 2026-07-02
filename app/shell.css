@@ -1,0 +1,78 @@
+/*
+  Phone app shell — layout and scroll only (no Home colours).
+  Mobile Home theme: app/mobile-home.css (imported by workspace layout).
+*/
+
+.qf-app {
+  min-height: 100dvh;
+}
+
+/*
+  Mobile — natural document scroll (body/html), fixed bottom nav.
+  Do NOT trap scroll in a nested flex panel; Safari RDM and iOS need the
+  document to scroll when content exceeds the viewport.
+*/
+@media (max-width: 1023px) {
+  html:has(.qf-app) {
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body.flex.flex-col:has(.qf-app) {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .qf-app {
+    display: block;
+    height: auto;
+    max-height: none;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .qf-app-frame {
+    display: block;
+    flex: none;
+    height: auto;
+    max-width: none;
+    overflow: visible;
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
+
+  .qf-app-main {
+    flex: none;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+}
+
+/* Mobile: bottom nav is primary — hide desktop top bar */
+@media (max-width: 1023px) {
+  .qf-app-top {
+    display: none;
+  }
+}
+
+/* Mobile main area — room for fixed bottom nav + iPhone safe area */
+.qf-app-main {
+  padding: 1rem var(--page-padding-mobile);
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .qf-app-main {
+    padding-inline: var(--page-padding-tablet);
+  }
+}
+
+@media (min-width: 1024px) {
+  .qf-app-main {
+    padding: 2.5rem var(--page-padding-desktop) 3.5rem;
+  }
+}

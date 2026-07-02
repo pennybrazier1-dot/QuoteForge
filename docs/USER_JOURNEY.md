@@ -4,17 +4,26 @@
 
 James is a self-employed electrician.
 
-He is good at his trade, but he does not enjoy paperwork. Most evenings, he has quotes to write, customers to follow up, and jobs to organise.
+He is good at his trade, but he does not enjoy paperwork. Between jobs and at the end of the day, he has quotes to write, customers to follow up, and jobs to organise.
 
-QuoteForge should help James finish his admin quickly, clearly, and professionally.
+QuoteForge should help James finish his admin quickly, clearly, and professionally — usually on his phone, often in 5–10 minutes.
+
+## Where James Uses QuoteForge
+
+- Beside his van
+- Between jobs
+- Sitting in his vehicle
+- At the kitchen table after work
+- One hand free
+- Short sessions — not at a desk for an hour
 
 ## The Core Journey
 
 1. James signs up.
 2. James sets up his business once.
 3. QuoteForge creates his secure workspace.
-4. James opens his dashboard.
-5. James sees what paperwork needs doing.
+4. James opens his home screen.
+5. James sees what needs doing today.
 6. James creates a professional proposal.
 7. James reviews and edits it.
 8. James saves it.
@@ -33,13 +42,26 @@ James should feel:
 
 ## The Daily Use Case
 
-At the end of the working day, James opens QuoteForge.
+James opens QuoteForge when he has a few minutes — between jobs or after work.
 
-He should be able to spend around 20–30 minutes getting his admin organised, then close the laptop and enjoy the rest of his evening.
+He should see **what to do today**, tap the next action, and move on.
+
+Most sessions take 5–10 minutes. He should never feel like he is filling in forms.
+
+## Screen Questions
+
+Every screen answers one question:
+
+- **Home** — What do I need to do today?
+- **Customer** — What do I know about this customer?
+- **Proposal** — What still needs doing?
+- **Job** — Am I ready to start?
 
 ## Product Promise
 
 QuoteForge helps self-employed tradespeople stay organised, look professional, and spend less time on business admin.
+
+**Finish work. Not paperwork.**
 
 ## Design Rule
 

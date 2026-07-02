@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppUserMenu } from "@/components/layout/app-user-menu";
-import { APP_NAV_ITEMS, isAppNavActive } from "@/lib/layout/app-nav";
+import { DESKTOP_SIDEBAR_ITEMS, isAppNavActive } from "@/lib/layout/app-nav";
 
 export function AppTopNav({
   fullName,
@@ -39,9 +39,9 @@ export function AppTopNav({
 
           <nav
             aria-label="Main navigation"
-            className="hidden min-w-0 items-center gap-0.5 md:flex"
+            className="hidden min-w-0 items-center gap-0.5 lg:flex"
           >
-            {APP_NAV_ITEMS.map((item) => {
+            {DESKTOP_SIDEBAR_ITEMS.filter((item) => !item.primary).map((item) => {
               const isActive = isAppNavActive(pathname, item.href);
 
               return (

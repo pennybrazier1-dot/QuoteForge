@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useId, useState, type ReactNode } from "react";
+import { useFormStatus } from "react-dom";
+import {
+  sendProposalByEmail,
+  type SendProposalByEmailState,
+} from "@/app/proposals/send-actions";
+import { AuthError } from "@/components/auth/auth-shell";
 import {
   buildSendProposalMessage,
   buildSendProposalSubject,
@@ -11,16 +17,48 @@ import {
 type SendProposalDialogProps = {
   open: boolean;
   onClose: () => void;
+  onSent: () => void;
   data: SendProposalContext;
 };
+
+const initialState: SendProposalByEmailState = {};
 
 function SectionHeading({ children }: { children: ReactNode }) {
   return <h3 className="qf-send-section-title">{children}</h3>;
 }
 
+function SendByEmailButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="qf-btn-primary qf-send-footer-btn"
+    >
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m22 2-7 20-4-9-9-4Z" />
+        <path d="M22 2 11 13" />
+      </svg>
+      {pending ? "Sending…" : "Send by Email"}
+    </button>
+  );
+}
+
 export function SendProposalDialog({
   open,
   onClose,
+  onSent,
   data,
 }: SendProposalDialogProps) {
   const titleId = useId();
@@ -32,7 +70,7 @@ export function SendProposalDialog({
   const [message, setMessage] = useState(() =>
     buildSendProposalMessage(customerName, data.businessName)
   );
-  const [prepared, setPrepared] = useState(false);
+  const [state, formAction] = useActionState(sendProposalByEmail, initialState);
 
   useEffect(() => {
     if (!open) {
@@ -42,8 +80,13 @@ export function SendProposalDialog({
     setCustomerEmail(data.customerEmail ?? "");
     setSubject(buildSendProposalSubject(customerName));
     setMessage(buildSendProposalMessage(customerName, data.businessName));
-    setPrepared(false);
   }, [open, data, customerName]);
+
+  useEffect(() => {
+    if (state.success) {
+      onSent();
+    }
+  }, [state.success, onSent]);
 
   useEffect(() => {
     if (!open) {
@@ -75,10 +118,6 @@ export function SendProposalDialog({
   const editCustomerHref = data.customerId
     ? `/customers/${data.customerId}/edit`
     : "/customers";
-
-  function handleSend() {
-    setPrepared(true);
-  }
 
   return (
     <div className="qf-send-root" role="presentation">
@@ -126,172 +165,122 @@ export function SendProposalDialog({
           </button>
         </header>
 
-        <div className="qf-send-body">
-          {prepared ? (
-            <section className="qf-send-prepared qf-card-inset" role="status">
-              <h3 className="qf-send-prepared-title">
-                Email sending isn&apos;t connected yet
-              </h3>
-              <p className="qf-send-prepared-lead">
-                The email has been prepared successfully.
-              </p>
-              <p className="qf-send-prepared-copy">
-                Connecting QuoteForge to your email service is the next
-                development step.
-              </p>
-              <p className="qf-send-prepared-copy">
-                Once connected, clicking &apos;Send by Email&apos; will:
-              </p>
-              <ul className="qf-send-prepared-list">
-                <li>Generate the PDF</li>
-                <li>Attach it automatically</li>
-                <li>Send the email</li>
-                <li>Update the proposal status to Sent</li>
-                <li>Add the event to the proposal timeline</li>
-              </ul>
-            </section>
-          ) : (
-            <>
-              <section className="qf-send-section qf-card-inset">
-                <SectionHeading>Recipient</SectionHeading>
-                <div className="qf-send-fields">
-                  <div>
-                    <label
-                      htmlFor="send-customer-name"
-                      className="qf-field-label"
-                    >
-                      Customer name
-                    </label>
-                    <input
-                      id="send-customer-name"
-                      type="text"
-                      readOnly
-                      value={customerName}
-                      className="form-input mt-2"
-                    />
-                  </div>
+        <form action={formAction} className="qf-send-form">
+          <input type="hidden" name="proposalId" value={data.proposalId} />
+          <input type="hidden" name="customerEmail" value={customerEmail} />
+          <input type="hidden" name="subject" value={subject} />
+          <input type="hidden" name="message" value={message} />
 
-                  <div>
-                    <label
-                      htmlFor="send-customer-email"
-                      className="qf-field-label"
-                    >
-                      Customer email
-                    </label>
-                    <input
-                      id="send-customer-email"
-                      type="email"
-                      value={customerEmail}
-                      onChange={(event) =>
-                        setCustomerEmail(event.target.value)
-                      }
-                      placeholder="customer@example.com"
-                      className="form-input mt-2"
-                    />
-                  </div>
+          <div className="qf-send-body">
+            {state.error ? (
+              <div className="qf-send-error">
+                <AuthError message={state.error} />
+              </div>
+            ) : null}
+
+            <section className="qf-send-section qf-card-inset">
+              <SectionHeading>Recipient</SectionHeading>
+              <div className="qf-send-fields">
+                <div>
+                  <label
+                    htmlFor="send-customer-name"
+                    className="qf-field-label"
+                  >
+                    Customer name
+                  </label>
+                  <input
+                    id="send-customer-name"
+                    type="text"
+                    readOnly
+                    value={customerName}
+                    className="form-input mt-2"
+                  />
                 </div>
 
-                {!hasEmail ? (
-                  <div className="qf-send-warning">
-                    <p>
-                      No email address has been saved for this customer.
-                    </p>
-                    <Link
-                      href={editCustomerHref}
-                      className="qf-send-warning-link"
-                    >
-                      Edit Customer
-                    </Link>
-                  </div>
-                ) : null}
-              </section>
+                <div>
+                  <label
+                    htmlFor="send-customer-email"
+                    className="qf-field-label"
+                  >
+                    Customer email
+                  </label>
+                  <input
+                    id="send-customer-email"
+                    type="email"
+                    value={customerEmail}
+                    onChange={(event) => setCustomerEmail(event.target.value)}
+                    placeholder="customer@example.com"
+                    className="form-input mt-2"
+                  />
+                </div>
+              </div>
 
-              <section className="qf-send-section qf-card-inset">
-                <SectionHeading>Subject</SectionHeading>
-                <input
-                  id="send-subject"
-                  type="text"
-                  value={subject}
-                  onChange={(event) => setSubject(event.target.value)}
-                  className="form-input"
-                />
-              </section>
+              {!hasEmail ? (
+                <div className="qf-send-warning">
+                  <p>No email address has been saved for this customer.</p>
+                  <Link
+                    href={editCustomerHref}
+                    className="qf-send-warning-link"
+                  >
+                    Edit Customer
+                  </Link>
+                </div>
+              ) : null}
+            </section>
 
-              <section className="qf-send-section qf-card-inset">
-                <SectionHeading>Email Message</SectionHeading>
-                <textarea
-                  id="send-message"
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  rows={12}
-                  className="form-textarea qf-send-message"
-                />
-              </section>
+            <section className="qf-send-section qf-card-inset">
+              <SectionHeading>Subject</SectionHeading>
+              <input
+                id="send-subject"
+                type="text"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                className="form-input"
+              />
+            </section>
 
-              <section className="qf-send-section qf-card-inset">
-                <SectionHeading>Attachments</SectionHeading>
-                <ul className="qf-send-attachments">
-                  <li className="qf-send-attachment qf-send-attachment-active">
-                    <span
-                      className="qf-send-attachment-check"
-                      aria-hidden="true"
-                    >
-                      ✓
-                    </span>
-                    <p className="qf-send-attachment-title">Proposal.pdf</p>
-                  </li>
-                </ul>
-                <p className="qf-send-attachments-helper">
-                  Additional attachments such as photos and documents will be
-                  available in a future update.
-                </p>
-              </section>
-            </>
-          )}
-        </div>
+            <section className="qf-send-section qf-card-inset">
+              <SectionHeading>Email Message</SectionHeading>
+              <textarea
+                id="send-message"
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                rows={12}
+                className="form-textarea qf-send-message"
+              />
+            </section>
 
-        <footer className="qf-send-footer">
-          {prepared ? (
+            <section className="qf-send-section qf-card-inset">
+              <SectionHeading>Attachments</SectionHeading>
+              <ul className="qf-send-attachments">
+                <li className="qf-send-attachment qf-send-attachment-active">
+                  <span
+                    className="qf-send-attachment-check"
+                    aria-hidden="true"
+                  >
+                    ✓
+                  </span>
+                  <p className="qf-send-attachment-title">Proposal.pdf</p>
+                </li>
+              </ul>
+              <p className="qf-send-attachments-helper">
+                Additional attachments such as photos and documents will be
+                available in a future update.
+              </p>
+            </section>
+          </div>
+
+          <footer className="qf-send-footer">
             <button
               type="button"
-              className="qf-btn-primary qf-send-footer-btn"
+              className="qf-btn-secondary qf-send-footer-btn"
               onClick={onClose}
             >
-              Close
+              Cancel
             </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="qf-btn-secondary qf-send-footer-btn"
-                onClick={onClose}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="qf-btn-primary qf-send-footer-btn"
-                onClick={handleSend}
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="m22 2-7 20-4-9-9-4Z" />
-                  <path d="M22 2 11 13" />
-                </svg>
-                Send by Email
-              </button>
-            </>
-          )}
-        </footer>
+            <SendByEmailButton />
+          </footer>
+        </form>
       </div>
     </div>
   );

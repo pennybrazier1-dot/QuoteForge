@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./shell.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +19,12 @@ export const metadata: Metadata = {
     "QuoteForge is an AI sales assistant for self-employed tradespeople and small trade businesses. Turn a few details into polished, professional quotes in minutes.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -28,7 +35,8 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      {/* Workspace Home theme: app/mobile-home.css via workspace layout. No bg-background on body. */}
+      <body className="min-h-full flex flex-col">
         {children}
       </body>
     </html>

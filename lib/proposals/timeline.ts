@@ -1,3 +1,7 @@
+import {
+  getSenderNameFromEventMetadata,
+  type ProposalStatusEventRecord,
+} from "@/lib/proposals/proposal-status-events";
 import { hasStructuredProposal } from "@/lib/proposals/structured-proposal";
 
 export type TimelineEventType =
@@ -5,6 +9,7 @@ export type TimelineEventType =
   | "ai_draft"
   | "edited"
   | "pdf"
+  | "emailed"
   | "sent"
   | "viewed"
   | "accepted";
@@ -56,7 +61,8 @@ export function formatTimelineTimestamp(
 }
 
 export function buildProposalTimeline(
-  proposal: TimelineProposal
+  proposal: TimelineProposal,
+  statusEvents: ProposalStatusEventRecord[] = []
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
   const createdAt = proposal.created_at;
@@ -117,7 +123,24 @@ export function buildProposalTimeline(
     });
   }
 
-  if (proposal.sent_at) {
+  const emailedEvents = statusEvents.filter(
+    (event) => event.event_type === "emailed"
+  );
+
+  for (const event of emailedEvents) {
+    const senderName = getSenderNameFromEventMetadata(event.metadata);
+
+    events.push({
+      id: event.id,
+      type: "emailed",
+      label: event.note ?? "Proposal emailed",
+      description: senderName ? `Sent by ${senderName}` : undefined,
+      timestamp: event.created_at,
+      status: "complete",
+    });
+  }
+
+  if (proposal.sent_at && emailedEvents.length === 0) {
     events.push({
       id: "sent",
       type: "sent",
@@ -136,6 +159,19 @@ export function buildProposalTimeline(
         status: "pending",
       });
     }
+  } else if (
+    proposal.status === "sent" &&
+    !proposal.accepted_at &&
+    proposal.sent_at
+  ) {
+    events.push({
+      id: "viewed",
+      type: "viewed",
+      label: "Viewed",
+      description: "Waiting for customer to open the proposal",
+      timestamp: null,
+      status: "pending",
+    });
   }
 
   if (proposal.accepted_at) {

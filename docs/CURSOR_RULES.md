@@ -52,3 +52,96 @@ When redesigning a page:
 2. Replace the existing JSX within that component.
 3. Reuse the existing business logic.
 4. Avoid leaving unused components or dead code in the project.
+
+## Phone-first rule
+
+QuoteForge is a **phone-first web application**.
+
+**Do not adapt desktop layouts.** Redesign every screen from first principles for mobile use.
+
+The primary user is an independent tradesperson:
+
+- Standing beside their van
+- Between jobs
+- Sitting in their vehicle
+- At the kitchen table after work
+- Using one hand
+- Completing tasks in 5–10 minute sessions
+
+Design every interaction around **speed**.
+
+The phone experience is the primary product. Desktop and tablet expand naturally from mobile layouts.
+
+Every screen should feel **calm, obvious, and fast**.
+
+Our mission: **Finish work. Not paperwork.**
+
+### One question per screen
+
+Every page answers one simple question:
+
+| Screen | Question |
+|--------|----------|
+| Home | What do I need to do today? |
+| Customer | What do I know about this customer? |
+| Proposal | What still needs doing? |
+| Job | Am I ready to start? |
+
+Build the layout around that question. Remove anything that does not help answer it.
+
+### Actions, not forms
+
+Never design around forms. Design around **actions**.
+
+- Lead with what the user can do next
+- Reduce typing wherever possible
+- Use large touch targets and clear language
+- The software organises information automatically
+- The user only describes the work — everything else happens in the background where possible
+
+### Design for
+
+- One-handed use
+- Large touch targets (minimum 44px, prefer 48px for primary actions)
+- Minimal typing
+- Clear hierarchy
+- Fast completion
+- Thumb-friendly navigation
+- Simple language
+
+### Layout order
+
+When redesigning any page:
+
+1. Design the **mobile** layout first
+2. Then **tablet**
+3. Then **desktop**
+
+Desktop layouts must **expand naturally** from the mobile design.
+
+**Never** shrink desktop layouts to fit a phone.
+
+**Never** build desktop-only layouts.
+
+The phone experience is the product. Desktop is the enhanced version.
+
+### Mobile layout rules
+
+- Prefer one-column layouts on phones
+- Use progressive disclosure instead of showing every option at once
+- Never require horizontal scrolling
+- Primary actions sit in the thumb zone (bottom half of the screen when possible)
+- Forms should be short — one task per screen where possible
+- Every screen should feel intentionally designed for touch input
+- Do not solve layout problems by reducing font sizes, shrinking content, or hiding information — fix the layout system
+
+### Copy
+
+- Use short, plain English
+- Prefer labels over paragraphs
+- One or two word section headings where possible (Dashboard, Actions, Timeline)
+- Avoid jargon
+
+Always reuse existing components.
+
+Never invent a new design language.

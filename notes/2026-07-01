@@ -1,0 +1,100 @@
+# 2026-07-01
+
+## Proposal Workspace
+
+Completed the redesign of the Proposal Workspace.
+
+Added:
+- Professional workspace layout
+- Customer Details panel
+- Timeline panel
+- Actions panel
+- PDF Preview panel
+- Improved proposal header
+- Status workflow integration
+
+The Proposal Workspace is now the primary place for managing proposals.
+
+---
+
+## Proposal Workflow
+
+Completed the proposal workflow.
+
+Draft
+↓
+
+Ready to Send
+↓
+
+Send by Email
+↓
+
+Sent
+
+Proposal editing is now allowed while a proposal is:
+
+- Draft
+- Ready to Send
+
+Sent proposals become read-only.
+
+---
+
+## Send by Email
+
+Built the complete email preparation workflow.
+
+Added:
+
+- Send Proposal dialog
+- Customer email validation
+- Editable subject
+- Editable email body
+- Automatic PDF attachment
+- Success state
+- Future-ready attachment system
+
+The UI is complete and ready for real email delivery.
+
+---
+
+## Dashboard
+
+Continued redesign using the QuoteForge design system.
+
+Improved:
+
+- Layout
+- Card hierarchy
+- Proposal Workspace integration
+
+Further refinement planned.
+
+---
+
+## Product Direction
+
+Decided that QuoteForge should evolve beyond proposal software into a complete operating system for tradespeople.
+
+The current roadmap is:
+
+Customers
+↓
+
+Proposals
+↓
+
+Email
+
+↓
+
+Jobs
+
+↓
+
+Invoices
+
+↓
+
+Customer Portal

@@ -1,0 +1,526 @@
+/*
+  QuoteForge mobile workspace — ONE dark-only theme.
+  Imported by app/(workspace)/layout.tsx (Home, Calendar, More, bottom nav).
+
+  No light mode. No prefers-color-scheme. No globals.css card/text tokens.
+
+  DEBUG — source of truth for each surface:
+  1. Page background → this file (html, body, .qf-app, .qf-app-main)
+  2. Card background → this file (.qf-home-card, .qf-home-empty, .qf-home-notifications)
+  3. Bottom nav background → this file (.qf-bottom-nav)
+  4. All Home text colours → this file (--qf-text / --qf-muted on .qf-app[data-qf-theme="dark"])
+*/
+
+.qf-app[data-qf-theme="dark"] {
+  --qf-page: #08080a;
+  --qf-card: #111114;
+  --qf-text: #f5f5f7;
+  --qf-muted: #a1a1aa;
+  --qf-border: rgba(255, 255, 255, 0.12);
+  --qf-border-accent: rgba(255, 106, 26, 0.35);
+  --qf-nav: #08080a;
+  --qf-surface: #16161e;
+  --qf-accent: #ff6a1a;
+  --qf-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --qf-green: #4ade80;
+  --qf-green-soft: rgba(74, 222, 128, 0.16);
+  --qf-orange-soft: rgba(255, 106, 26, 0.18);
+  --qf-blue: #60a5fa;
+  --qf-blue-soft: rgba(96, 165, 250, 0.16);
+  --qf-purple: #c084fc;
+  --qf-purple-soft: rgba(192, 132, 252, 0.16);
+
+  background-color: var(--qf-page);
+  color: var(--qf-text);
+  color-scheme: dark;
+}
+
+html:has(.qf-app[data-qf-theme="dark"]),
+body:has(.qf-app[data-qf-theme="dark"]) {
+  color: var(--qf-text);
+}
+
+@media (max-width: 1023px) {
+  html:has(.qf-app[data-qf-theme="dark"]),
+  body:has(.qf-app[data-qf-theme="dark"]),
+  body.min-h-full.flex.flex-col:has(.qf-app[data-qf-theme="dark"]) {
+    background-color: #08080a;
+    color: #f5f5f7;
+  }
+
+  .qf-app[data-qf-theme="dark"],
+  .qf-app[data-qf-theme="dark"] .qf-app-main {
+    background-color: #08080a;
+    color: #f5f5f7;
+  }
+}
+
+@media (min-width: 1024px) {
+  .qf-app[data-qf-theme="dark"],
+  .qf-app[data-qf-theme="dark"] .qf-app-main {
+    background-color: transparent;
+    color: var(--qf-text);
+  }
+}
+
+/* ── Home screen ─────────────────────────────────────────────────────────── */
+
+.qf-app[data-qf-theme="dark"] .qf-home {
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  color: #f5f5f7;
+}
+
+@media (min-width: 1024px) {
+  .qf-app[data-qf-theme="dark"] .qf-home {
+    max-width: 56rem;
+  }
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-header {
+  margin-bottom: 1.25rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-greeting-title {
+  font-size: 1.4375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-greeting-name {
+  color: #ff6a1a;
+  font-weight: 600;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-greeting-date {
+  margin-top: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-notifications {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgba(255, 106, 26, 0.45);
+  border-radius: 9999px;
+  background-color: rgba(255, 106, 26, 0.12);
+  color: #ff6a1a;
+  box-shadow: 0 0 0 1px rgba(255, 106, 26, 0.08);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-notifications-badge {
+  position: absolute;
+  top: -0.125rem;
+  right: -0.125rem;
+  display: flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  align-items: center;
+  justify-content: center;
+  padding-inline: 0.25rem;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: #f5f5f7;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-question {
+  margin-top: 1.25rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.875rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-green .qf-home-section-icon {
+  color: var(--qf-green);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-orange .qf-home-section-icon {
+  color: #ff6a1a;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-blue .qf-home-section-icon {
+  color: var(--qf-blue);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-purple .qf-home-section-icon {
+  color: var(--qf-purple);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #a1a1aa;
+  text-decoration: none;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-section-view-all:hover {
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card {
+  display: block;
+  min-height: var(--touch-target-comfortable);
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--qf-border);
+  border-left-width: 4px;
+  background-color: #111114;
+  color: #f5f5f7;
+  text-decoration: none;
+  box-shadow: var(--qf-shadow);
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card:active {
+  transform: scale(0.99);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-green {
+  border-left-color: var(--qf-green);
+  background: linear-gradient(90deg, var(--qf-green-soft) 0%, #111114 28%);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-orange {
+  border-left-color: #ff6a1a;
+  background: linear-gradient(90deg, var(--qf-orange-soft) 0%, #111114 28%);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-blue {
+  border-left-color: var(--qf-blue);
+  background: linear-gradient(90deg, var(--qf-blue-soft) 0%, #111114 28%);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-purple {
+  border-left-color: var(--qf-purple);
+  background: linear-gradient(90deg, var(--qf-purple-soft) 0%, #111114 28%);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-leading {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-avatar {
+  display: flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: #16161e;
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-subtitle {
+  margin-top: 0.2rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-trail {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-status-green {
+  background: var(--qf-green-soft);
+  color: var(--qf-green);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-status-orange {
+  background: var(--qf-orange-soft);
+  color: #ff6a1a;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-status-blue {
+  background: var(--qf-blue-soft);
+  color: var(--qf-blue);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-status-purple {
+  background: var(--qf-purple-soft);
+  color: var(--qf-purple);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-chevron {
+  display: flex;
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--qf-border);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-meta-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-meta-text {
+  min-width: 0;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-card-attention {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #ff6a1a;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-empty {
+  padding: 1.25rem 1rem;
+  border-radius: 1rem;
+  border: 1px dashed var(--qf-border);
+  background-color: #111114;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+  text-align: center;
+}
+
+/* Workspace placeholder pages (Calendar, More) */
+.qf-app[data-qf-theme="dark"] .qf-page-simple {
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: auto;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-page-simple-header {
+  margin-bottom: 1.5rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-page-simple-title {
+  font-size: 1.625rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-page-simple-subtitle {
+  margin-top: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #a1a1aa;
+}
+
+/* ── Bottom navigation ─────────────────────────────────────────────────────── */
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: block;
+  border-top: 1px solid var(--qf-border);
+  background-color: #08080a;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 1024px) {
+  .qf-app[data-qf-theme="dark"] .qf-bottom-nav {
+    display: none;
+  }
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 28rem;
+  min-height: 4rem;
+  margin-inline: auto;
+  padding: 0.5rem 0.75rem 0.625rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  min-height: var(--touch-target-min);
+  padding: 0.375rem 0.25rem;
+  border-radius: 0.5rem;
+  color: #a1a1aa;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link:hover {
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link-active {
+  color: #ff6a1a;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link-active-home {
+  color: var(--qf-green);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-link-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: -1.35rem;
+  text-decoration: none;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-primary-icon {
+  display: flex;
+  height: 3.5rem;
+  width: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: #ff6a1a;
+  color: #08080a;
+  box-shadow: 0 6px 18px rgba(255, 106, 26, 0.4);
+}
+
+.qf-app[data-qf-theme="dark"] .qf-bottom-nav-primary-label {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: #ff6a1a;
+}

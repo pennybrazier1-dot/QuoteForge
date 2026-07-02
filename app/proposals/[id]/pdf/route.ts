@@ -1,10 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import {
-  buildProposalPdfData,
-  generateProposalPdf,
-} from "@/lib/proposals/generate-proposal-pdf";
-import { userHasProfile } from "@/lib/onboarding/status";
+  generateFreshProposalPdfBuffer,
+  loadProposalPdfContext,
+} from "@/lib/proposals/load-proposal-pdf";
 import { createClient } from "@/lib/supabase/server";
 
 type RouteContext = {
@@ -22,58 +21,21 @@ export async function GET(_request: Request, context: RouteContext) {
     redirect("/login");
   }
 
-  if (!(await userHasProfile(user.id))) {
-    redirect("/onboarding");
-  }
+  const loaded = await loadProposalPdfContext(supabase, id, user.id);
 
-  const { data: proposal, error: proposalError } = await supabase
-    .from("proposals")
-    .select(
-      "id, proposal_number, created_at, customer_name, customer_address, customer_email, customer_phone, rough_notes, optional_extras, things_to_confirm, estimated_duration, payment_terms, total_amount, job_summary, scope_of_work, materials, labour_description, ai_optional_extras, things_to_confirm_items"
-    )
-    .eq("id", id)
-    .maybeSingle();
-
-  if (proposalError || !proposal) {
+  if (!loaded.ok) {
     notFound();
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("workspace_id")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError || !profile) {
-    notFound();
-  }
-
-  const { data: workspace, error: workspaceError } = await supabase
-    .from("workspaces")
-    .select("business_name, trade_type, contact_email, phone, default_payment_terms")
-    .eq("id", profile.workspace_id)
-    .single();
-
-  if (workspaceError || !workspace) {
-    notFound();
-  }
-
-  const pdfData = buildProposalPdfData(proposal, workspace);
+  const { proposal, workspace } = loaded;
 
   let pdfBuffer: Buffer;
   try {
-    pdfBuffer = await generateProposalPdf(pdfData);
+    pdfBuffer = await generateFreshProposalPdfBuffer(proposal, workspace);
   } catch (error) {
     console.error("Failed to generate proposal PDF:", error);
     return NextResponse.json(
       { error: "Could not generate PDF. Please try again." },
-      { status: 500 }
-    );
-  }
-
-  if (!pdfBuffer.length) {
-    return NextResponse.json(
-      { error: "Generated PDF was empty." },
       { status: 500 }
     );
   }

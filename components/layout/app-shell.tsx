@@ -3,6 +3,7 @@ import {
   AppSidebar,
   type SidebarDraftItem,
 } from "@/components/layout/app-sidebar";
+import { AppBottomNav } from "@/components/layout/app-bottom-nav";
 import { AppTopNav } from "@/components/layout/app-top-nav";
 
 export function AppShell({
@@ -17,13 +18,15 @@ export function AppShell({
   children: ReactNode;
 }) {
   return (
-    <div className="qf-app">
+    <div className="qf-app" data-qf-theme="dark">
       <AppTopNav fullName={fullName} email={email} />
 
       <div className="qf-app-frame">
         <AppSidebar recentDrafts={recentDrafts} />
         <main className="qf-app-main">{children}</main>
       </div>
+
+      <AppBottomNav />
     </div>
   );
 }

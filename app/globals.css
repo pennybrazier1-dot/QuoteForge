@@ -61,12 +61,21 @@
   --field-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  /* Phone-first tokens — mobile is the default; desktop expands from here. */
+  --touch-target-min: 2.75rem;
+  --touch-target-comfortable: 3rem;
+  --page-padding-mobile: 1rem;
+  --page-padding-tablet: 1.25rem;
+  --page-padding-desktop: 2rem;
+  --thumb-action-gap: 0.75rem;
 }
 
 html {
   scroll-behavior: smooth;
 }
 
+/* Marketing/auth default (dark). Mobile Home theme lives in app/mobile-home.css — not here. */
 body {
   background: var(--background);
   color: var(--foreground);
@@ -124,6 +133,19 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+/*
+  Phone-first interaction baseline.
+  Apply to buttons, links, and rows that must be easy to tap one-handed.
+*/
+.qf-touch-target {
+  min-height: var(--touch-target-min);
+  min-width: var(--touch-target-min);
+}
+
+.qf-touch-target-comfortable {
+  min-height: var(--touch-target-comfortable);
 }
 
 /* Dashboard — centred workspace (max 1240px). */
@@ -733,6 +755,7 @@ a.qf-card-inset:hover {
 
 /*
   App shell — fixed top nav, sidebar, and centred workspace (~1400px).
+  Mobile is the default layout; sidebar and wider padding appear at 1024px+.
 */
 .qf-app {
   display: flex;
@@ -753,14 +776,21 @@ a.qf-card-inset:hover {
 
 .qf-app-top-inner {
   display: flex;
-  height: 4rem;
+  height: 3.5rem;
   width: 100%;
   max-width: 87.5rem;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
   margin-inline: auto;
-  padding-inline: 1.25rem;
+  padding-inline: var(--page-padding-mobile);
+}
+
+@media (min-width: 1024px) {
+  .qf-app-top-inner {
+    height: 4rem;
+    padding-inline: 1.25rem;
+  }
 }
 
 .qf-top-nav-link {
@@ -785,7 +815,13 @@ a.qf-card-inset:hover {
   max-width: 87.5rem;
   flex: 1;
   margin-inline: auto;
-  padding-top: 4rem;
+  padding-top: 3.5rem;
+}
+
+@media (min-width: 1024px) {
+  .qf-app-frame {
+    padding-top: 4rem;
+  }
 }
 
 .qf-app-sidebar {
@@ -809,7 +845,6 @@ a.qf-card-inset:hover {
 .qf-app-main {
   min-width: 0;
   flex: 1;
-  padding: 2rem 1.25rem 3rem;
   container-type: inline-size;
   container-name: app-main;
 }
@@ -817,10 +852,6 @@ a.qf-card-inset:hover {
 @media (min-width: 1024px) {
   .qf-app-sidebar {
     display: block;
-  }
-
-  .qf-app-main {
-    padding: 2.5rem 2rem 3.5rem;
   }
 }
 
@@ -1625,6 +1656,7 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   border: 2px solid var(--card-border-color);
   background: var(--background-card);
   box-shadow: var(--card-shadow);
+  overflow: hidden;
 }
 
 @media (min-width: 640px) {
@@ -1888,6 +1920,56 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
 
 .qf-send-prepared-list li + li {
   margin-top: 0.375rem;
+}
+
+.qf-send-form {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.qf-send-error {
+  margin-bottom: 0.25rem;
+}
+
+.qf-workspace-notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+
+.qf-workspace-notice-success {
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.qf-workspace-notice-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #34d399;
+}
+
+.qf-workspace-notice-body {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.qf-workspace-notice-dismiss {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--accent);
+}
+
+.qf-workspace-notice-dismiss:hover {
+  color: var(--accent-hover);
 }
 
 .qf-send-notice {
