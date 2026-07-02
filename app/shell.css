@@ -15,16 +15,20 @@
 @media (max-width: 1023px) {
   html:has(.qf-app) {
     height: auto;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: auto;
+    width: 100%;
+    max-width: 100%;
   }
 
   body.flex.flex-col:has(.qf-app) {
     display: block;
     height: auto;
     min-height: 100dvh;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: auto;
+    width: 100%;
+    max-width: 100%;
   }
 
   .qf-app {
@@ -32,22 +36,29 @@
     height: auto;
     max-height: none;
     min-height: 100dvh;
-    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    overflow-y: visible;
   }
 
   .qf-app-frame {
     display: block;
     flex: none;
     height: auto;
-    max-width: none;
-    overflow: visible;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    overflow-y: visible;
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
 
   .qf-app-main {
     flex: none;
+    width: 100%;
+    max-width: 100%;
     height: auto;
-    overflow-x: hidden;
+    overflow-x: clip;
     overflow-y: visible;
   }
 }

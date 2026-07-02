@@ -22,7 +22,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  minimumScale: 1,
   viewportFit: "cover",
+  // Keep the layout viewport stable when the on-screen keyboard opens (iOS Safari).
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

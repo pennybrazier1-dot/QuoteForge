@@ -73,6 +73,18 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Prevent horizontal overflow on phones (Safari may scale/zoom if content is wider than the screen). */
+@media (max-width: 1023px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
 }
 
 /* Marketing/auth default (dark). Mobile Home theme lives in app/mobile-home.css — not here. */
