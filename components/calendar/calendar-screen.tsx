@@ -433,8 +433,8 @@ export function CalendarScreen({
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          Booked jobs from your proposals. Green is confirmed, amber is
-          provisional.
+          Sent quotes with a planned start date. Amber holds the date while you
+          wait; green is a confirmed booking.
         </p>
       </header>
 
@@ -445,7 +445,7 @@ export function CalendarScreen({
         </span>
         <span className="qf-calendar-legend-item">
           <span className="qf-calendar-dot qf-calendar-dot-provisional" />
-          Provisional booking
+          Holding date (awaiting confirmation)
         </span>
       </div>
 

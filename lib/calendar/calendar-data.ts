@@ -1,5 +1,8 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
-import { isConfirmedBooking, isProvisionalBooking } from "@/lib/proposals/booking";
+import {
+  getCalendarBookingTone,
+  isCalendarEligibleProposal,
+} from "@/lib/proposals/booking";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import {
@@ -27,7 +30,7 @@ export type CalendarProposal = {
   job_address: string | null;
 };
 
-/** One booked job on the calendar (deduplicated by proposal). */
+/** One scheduled job on the calendar (deduplicated by proposal). */
 export type CalendarJob = {
   id: string;
   proposalId: string;
@@ -157,15 +160,11 @@ export function buildCalendarJobs(
     const status = normalizeProposalStatus(proposal.status);
     const startDate = getCalendarStartDate(proposal);
 
-    if (status !== "booked" || !startDate) {
+    if (!startDate || !isCalendarEligibleProposal(status, startDate)) {
       continue;
     }
 
-    const tone = isConfirmedBooking(status, proposal.booking_confirmation)
-      ? "confirmed"
-      : isProvisionalBooking(status, proposal.booking_confirmation)
-        ? "provisional"
-        : null;
+    const tone = getCalendarBookingTone(status, proposal.booking_confirmation);
 
     if (!tone) {
       continue;

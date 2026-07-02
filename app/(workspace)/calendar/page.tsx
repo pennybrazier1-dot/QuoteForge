@@ -20,14 +20,22 @@ export default async function CalendarPage() {
   }
 
   /*
-    Phase 2 — booked jobs with planned start dates from the proposal lifecycle.
+    Sent quotes with a planned start date — waiting (amber), accepted/booked (green when confirmed).
+    Ready to Send and drafts are excluded.
   */
   const { data: proposalsData } = await supabase
     .from("proposals")
     .select(
       "id, proposal_number, customer_name, title, job_summary, rough_notes, status, booking_confirmation, planned_start_date, planned_start_date_text, estimated_duration, things_to_confirm, job_address"
     )
-    .eq("status", "booked")
+    .in("status", [
+      "waiting_for_customer",
+      "needs_attention",
+      "booked",
+      "sent",
+      "accepted",
+      "in_progress",
+    ])
     .not("planned_start_date", "is", null)
     .order("planned_start_date", { ascending: true });
 
