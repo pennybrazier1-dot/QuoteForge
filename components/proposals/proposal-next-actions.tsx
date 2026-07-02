@@ -4,6 +4,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useSendProposalDialog } from "@/components/proposals/send-proposal-provider";
 import {
+  canOpenSendProposalDialog,
+  canPreviewProposalPdf,
+  getSendDisabledReason,
+  type ProposalActionContext,
+} from "@/lib/proposals/proposal-action-eligibility";
+import {
   isProposalStatus,
 } from "@/lib/proposals/status";
 
@@ -12,7 +18,8 @@ export type NextActionsProposal = {
   proposal_number: string;
   status: string;
   customer_id: string | null;
-  hasStructured: boolean;
+  customer_email: string | null;
+  actionContext: ProposalActionContext;
 };
 
 type NextAction = {
@@ -26,6 +33,7 @@ type NextAction = {
   href?: string;
   external?: boolean;
   download?: boolean;
+  disabledReason?: string;
   opensSendDialog?: boolean;
 };
 
@@ -96,7 +104,10 @@ function pdfHref(proposalId: string): string {
 }
 
 function buildNextActions(proposal: NextActionsProposal): NextAction[] {
-  const { id, proposal_number, status, customer_id, hasStructured } = proposal;
+  const { id, proposal_number, status, customer_id, actionContext } = proposal;
+  const hasStructured = canPreviewProposalPdf(actionContext);
+  const canSendByEmail = canOpenSendProposalDialog(actionContext);
+  const sendDisabledReason = getSendDisabledReason(actionContext);
   const pdfPreview = {
     id: "preview-pdf",
     title: "Preview PDF",
@@ -200,12 +211,17 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
       return [
         {
           id: "send-proposal",
-          title: "Send by Email",
-          description: "Prepare and send this proposal by email.",
+          title: "Send to Customer",
+          description: canSendByEmail
+            ? "Prepare and send this proposal by email."
+            : (sendDisabledReason ??
+              "Add a customer email address before sending."),
           icon: ICONS.send,
           tone: "accent",
           primary: true,
-          opensSendDialog: true,
+          opensSendDialog: canSendByEmail,
+          disabled: !canSendByEmail,
+          disabledReason: sendDisabledReason ?? undefined,
         },
         pdfPreview,
         downloadPdf,
@@ -280,7 +296,11 @@ function ActionRowContent({ action }: { action: NextAction }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="qf-workspace-next-title">{action.title}</p>
-        <p className="qf-workspace-next-description">{action.description}</p>
+        <p className="qf-workspace-next-description">
+          {action.disabled && action.disabledReason
+            ? action.disabledReason
+            : action.description}
+        </p>
       </div>
       {!action.disabled ? <Chevron /> : null}
     </>

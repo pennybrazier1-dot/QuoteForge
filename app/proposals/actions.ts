@@ -12,6 +12,7 @@ import {
 } from "@/lib/proposals/structured-proposal";
 import { formatPersonName } from "@/lib/text/format-name";
 import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
+import { shouldAutoMarkReadyToSend } from "@/lib/proposals/proposal-action-eligibility";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
@@ -42,6 +43,55 @@ type ParsedProposalForm = {
   plannedStartDateText: string;
   plannedStartDateExact: string | null;
 };
+
+function redirectToProposal(proposalId: string): never {
+  redirect(`/proposals/${proposalId}?saved=1`);
+}
+
+function getStructuredFieldsFromForm(formData: FormData) {
+  const generatedProposal = parseGeneratedProposalJson(
+    String(formData.get("generatedProposal") ?? "")
+  );
+
+  if (!generatedProposal) {
+    return {};
+  }
+
+  return mapGeneratedProposalToDbFields(generatedProposal);
+}
+
+function resolveProposalStatusAfterSave(
+  form: ParsedProposalForm,
+  structuredFields: ReturnType<typeof getStructuredFieldsFromForm>,
+  totalPence: number,
+  existing?: {
+    status?: string;
+    job_summary?: string | null;
+  }
+): "draft" | "ready_to_send" {
+  const jobSummary =
+    "job_summary" in structuredFields
+      ? (structuredFields.job_summary as string | undefined)
+      : existing?.job_summary ?? undefined;
+
+  const shouldReady = shouldAutoMarkReadyToSend({
+    status: "draft",
+    job_summary: jobSummary ?? null,
+    rough_notes: form.jobDescription,
+    customer_name: form.customerName,
+    total_amount: totalPence,
+  });
+
+  if (shouldReady) {
+    return "ready_to_send";
+  }
+
+  if (existing?.status === "ready_to_send") {
+    return "ready_to_send";
+  }
+
+  return "draft";
+}
 
 function parseProposalForm(formData: FormData): ParsedProposalForm {
   return {
@@ -249,6 +299,12 @@ export async function saveDraftProposal(
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
   const estimatedDuration = form.estimatedDuration || null;
+  const structuredFields = getStructuredFieldsFromForm(formData);
+  const status = resolveProposalStatusAfterSave(
+    form,
+    structuredFields,
+    totalPence
+  );
 
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
@@ -256,7 +312,7 @@ export async function saveDraftProposal(
       workspace_id: workspaceId,
       customer_id: customerId,
       proposal_number: proposalNumber,
-      status: "draft",
+      status,
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
@@ -271,6 +327,7 @@ export async function saveDraftProposal(
       vat_amount: 0,
       total_amount: totalPence,
       ...plannedStartDbFields(form),
+      ...structuredFields,
     })
     .select("id")
     .single();
@@ -281,7 +338,7 @@ export async function saveDraftProposal(
     };
   }
 
-  redirect(`/proposals/${proposal.id}`);
+  redirectToProposal(proposal.id);
 }
 
 export async function updateDraftProposal(
@@ -318,7 +375,7 @@ export async function updateDraftProposal(
 
   const { data: existingProposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, customer_id")
+    .select("id, status, customer_id, job_summary")
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -356,6 +413,16 @@ export async function updateDraftProposal(
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
   const estimatedDuration = form.estimatedDuration || null;
+  const structuredFields = getStructuredFieldsFromForm(formData);
+  const status = resolveProposalStatusAfterSave(
+    form,
+    structuredFields,
+    totalPence,
+    {
+      status: existingProposal.status,
+      job_summary: existingProposal.job_summary,
+    }
+  );
 
   const { error: proposalError } = await supabase
     .from("proposals")
@@ -374,7 +441,9 @@ export async function updateDraftProposal(
       subtotal_amount: totalPence,
       vat_amount: 0,
       total_amount: totalPence,
+      status,
       ...plannedStartDbFields(form),
+      ...structuredFields,
     })
     .eq("id", proposalId);
 
@@ -384,7 +453,7 @@ export async function updateDraftProposal(
     };
   }
 
-  redirect(`/proposals/${proposalId}`);
+  redirectToProposal(proposalId);
 }
 
 export async function acceptAiDraftProposal(
@@ -440,7 +509,7 @@ export async function acceptAiDraftProposal(
   if (proposalId) {
     const { data: existingProposal, error: loadError } = await supabase
       .from("proposals")
-      .select("id, status, customer_id")
+      .select("id, status, customer_id, job_summary")
       .eq("id", proposalId)
       .maybeSingle();
 
@@ -463,6 +532,16 @@ export async function acceptAiDraftProposal(
       return { error: customerError ?? "Could not save customer details." };
     }
 
+    const status = resolveProposalStatusAfterSave(
+      form,
+      structuredFields,
+      totalPence,
+      {
+        status: existingProposal.status,
+        job_summary: existingProposal.job_summary,
+      }
+    );
+
     const { error: proposalError } = await supabase
       .from("proposals")
       .update({
@@ -478,6 +557,7 @@ export async function acceptAiDraftProposal(
         subtotal_amount: totalPence,
         vat_amount: 0,
         total_amount: totalPence,
+        status,
         ...structuredFields,
         estimated_duration: manualDuration ?? structuredFields.estimated_duration,
         things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
@@ -490,7 +570,7 @@ export async function acceptAiDraftProposal(
       };
     }
 
-    redirect(`/proposals/${proposalId}`);
+    redirectToProposal(proposalId);
   }
 
   const { customerId, error: customerError } = await resolveCustomerId(
@@ -515,13 +595,19 @@ export async function acceptAiDraftProposal(
     };
   }
 
+  const status = resolveProposalStatusAfterSave(
+    form,
+    structuredFields,
+    totalPence
+  );
+
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .insert({
       workspace_id: workspaceId,
       customer_id: customerId,
       proposal_number: proposalNumber,
-      status: "draft",
+      status,
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
@@ -546,7 +632,7 @@ export async function acceptAiDraftProposal(
     };
   }
 
-  redirect(`/proposals/${proposal.id}`);
+  redirectToProposal(proposal.id);
 }
 
 export type DeleteDraftProposalState = {

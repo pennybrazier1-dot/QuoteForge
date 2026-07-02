@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
 import { ProposalNextActions } from "@/components/proposals/proposal-next-actions";
+import { ProposalPostSavePrompt } from "@/components/proposals/proposal-post-save-prompt";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
@@ -15,7 +16,11 @@ import { SectionCard } from "@/components/ui/section-card";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
-  hasStructuredProposal,
+  canOpenSendProposalDialog,
+  canPreviewProposalPdf,
+  getSendDisabledReason,
+} from "@/lib/proposals/proposal-action-eligibility";
+import {
   mapDbRowToStructuredProposal,
 } from "@/lib/proposals/structured-proposal";
 
@@ -232,7 +237,15 @@ function ProposalWorkspaceRight({
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
 }) {
-  const canPreview = hasStructuredProposal(proposal);
+  const actionContext = {
+    status: proposal.status,
+    job_summary: proposal.job_summary,
+    rough_notes: proposal.rough_notes,
+    customer_name: proposal.customer_name,
+    customer_email: proposal.customer_email,
+    total_amount: proposal.total_amount,
+  };
+  const canPreview = canPreviewProposalPdf(actionContext);
   const isDraft = proposal.status === "draft";
 
   return (
@@ -268,7 +281,8 @@ function ProposalWorkspaceRight({
               proposal_number: proposal.proposal_number,
               status: proposal.status,
               customer_id: proposal.customer_id,
-              hasStructured: canPreview,
+              customer_email: proposal.customer_email,
+              actionContext,
             }}
           />
         </div>
@@ -352,14 +366,25 @@ export function ProposalWorkspace({
   businessName,
   senderName,
   statusEvents,
+  justSaved = false,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
   senderName: string;
   statusEvents: ProposalStatusEventRecord[];
+  justSaved?: boolean;
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
-  const hasStructured = hasStructuredProposal(proposal);
+  const actionContext = {
+    status: proposal.status,
+    job_summary: proposal.job_summary,
+    rough_notes: proposal.rough_notes,
+    customer_name: proposal.customer_name,
+    customer_email: proposal.customer_email,
+    total_amount: proposal.total_amount,
+  };
+  const canPreview = canPreviewProposalPdf(actionContext);
+  const sendDisabledReason = getSendDisabledReason(actionContext);
 
   return (
     <SendProposalProvider
@@ -414,9 +439,18 @@ export function ProposalWorkspace({
         <ProposalWorkspaceActions
           proposalId={proposal.id}
           status={proposal.status}
-          hasStructured={hasStructured}
+          actionContext={actionContext}
         />
       </header>
+
+      {justSaved ? (
+        <ProposalPostSavePrompt
+          proposalId={proposal.id}
+          canPreviewPdf={canPreview}
+          canSend={canOpenSendProposalDialog(actionContext)}
+          sendDisabledReason={sendDisabledReason}
+        />
+      ) : null}
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
