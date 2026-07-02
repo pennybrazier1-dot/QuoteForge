@@ -16,7 +16,12 @@ import {
   looksLikeInvalidDuration,
   priceDigitsToPence,
 } from "../lib/ai/extract-from-site-notes.ts";
-import { DURATION_CANNOT_DETERMINE_MESSAGE } from "../lib/ai/prompts.ts";
+import {
+  refineJobSummary,
+  refineOptionalExtras,
+  refineScopeOfWork,
+  professionalizeOptionalExtra,
+} from "../lib/ai/refine-proposal-structure.ts";
 
 const realisticSiteNotes = `Customer: Sarah Mitchell
 Property: 42 Oak Avenue, Manchester M14 5RT
@@ -56,6 +61,13 @@ const badAiProposal = {
 };
 
 const failures = [];
+
+function splitSentences(text) {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
 
 function assert(condition, message) {
   if (!condition) {
@@ -229,6 +241,45 @@ for (const [phrase, expected] of pricePhrases) {
   const got = extractEstimatedPriceDigits(phrase);
   assert(got === expected, `Price phrase "${phrase}": expected ${expected}, got ${got}`);
 }
+
+// --- Proposal structure refinement ---
+const longSummary =
+  "Kitchen refurbishment for the customer. Install new units and an island. Fit handles and complete adjustments. Remove old units.";
+const concise = refineJobSummary(longSummary);
+assert(
+  splitSentences(concise).length <= 2,
+  `Job summary should be at most 2 sentences, got: ${concise}`
+);
+
+const summary =
+  "Kitchen refurbishment including new units and a freestanding island.";
+const scope = refineScopeOfWork(
+  [
+    "Kitchen refurbishment including new units and a freestanding island.",
+    "Install kitchen units",
+    "Install a freestanding kitchen island with a cut-out prepared for the sink",
+  ],
+  summary
+);
+assert(
+  scope.length === 2,
+  `Scope should drop summary duplicate, got: ${JSON.stringify(scope)}`
+);
+
+const doorExtra = professionalizeOptionalExtra("new replacement door, please");
+assert(
+  /supply and fit a replacement door/i.test(doorExtra) && !/please/i.test(doorExtra),
+  `Optional extra should be professional: ${doorExtra}`
+);
+
+const refinedExtras = refineOptionalExtras([
+  "under-cabinet lighting please",
+  "extra sockets, thanks",
+]);
+assert(
+  refinedExtras.every((item) => !/please|thanks/i.test(item)),
+  `Conversational wording removed: ${JSON.stringify(refinedExtras)}`
+);
 
 if (failures.length > 0) {
   console.error("FAILED:");

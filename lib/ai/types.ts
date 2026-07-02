@@ -37,13 +37,13 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
     jobSummary: {
       type: "string",
       description:
-        "A short paragraph summarising the main work from Site Notes. Preserve qualifying language from Site Notes.",
+        "One or two concise sentences describing the overall job from Site Notes. Do not list every task — that belongs in scopeOfWork. Preserve qualifying language from Site Notes.",
     },
     scopeOfWork: {
       type: "array",
       items: { type: "string" },
       description:
-        "Bullet points of main quoted work rewritten into professional quotation language for homeowners. Preserve qualifiers such as approximately, depending on, if suitable, and where possible. Do not copy Site Notes verbatim. Exclude optional extras.",
+        "Bullet list of specific tasks rewritten into professional quotation language. One piece of work per bullet. Do not repeat jobSummary. Preserve qualifiers. Exclude optional extras.",
     },
     materials: {
       type: "array",
@@ -71,7 +71,7 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
       type: "array",
       items: { type: "string" },
       description:
-        "Optional work separate from the main quoted scope. Extract from Site Notes when clearly marked as optional, extra, separate quote, or while-on-site add-on. Also use the separate Optional Extras field when provided. Do not include in scopeOfWork, materials, labour, or main price. Empty array if none.",
+        "Optional work in professional quote language (e.g. Supply and fit a replacement door.). No conversational wording such as please or thanks. Separate from main scope and price. Empty array if none.",
     },
     paymentTerms: {
       type: "string",

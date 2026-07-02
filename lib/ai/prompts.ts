@@ -34,6 +34,8 @@ CUSTOMER DETAILS RULES:
 - Only add customer-related confirmation items when a detail is genuinely missing or unclear — not when it was already written on site.
 
 SCOPE OF WORK RULES:
+- scopeOfWork must be a bullet list of specific tasks — one piece of work per bullet.
+- Do not repeat or paraphrase the jobSummary in scopeOfWork.
 - Rewrite Site Notes into professional quotation language for homeowners.
 - Do not copy Site Notes verbatim into scopeOfWork.
 - Each bullet should read like a line from a professional quote.
@@ -43,6 +45,14 @@ SCOPE OF WORK RULES:
   - WRONG scope item: "install island with sink hole cutout"
 - Preserve important qualifiers such as approximately, depending on, if suitable, and where possible — but still write in professional quote language.
 - Exclude optional extras from scopeOfWork.
+
+JOB SUMMARY RULES:
+- jobSummary must be one or two concise sentences only.
+- Describe what the overall job is — do not list every task (that belongs in scopeOfWork).
+- Do not repeat scope bullets verbatim in jobSummary.
+- Example:
+  - CORRECT: "Kitchen refurbishment including new units and a freestanding island with sink preparation."
+  - WRONG: A long paragraph repeating every scope bullet.
 
 You MUST NEVER:
 - Invent measurements, dimensions, or quantities.
@@ -61,6 +71,7 @@ PRICE AND DURATION RULES:
 - Price belongs only in extractedEstimatedPrice — never in labour, scopeOfWork, or jobSummary.
 
 LABOUR RULES:
+- labour is stored internally for costing but is not shown to customers in the proposal or PDF.
 - labour must describe the work effort and trades involved — not the price.
 - Never include £ amounts, total price, quotes, or payment wording in labour.
 - Never include payment terms, deposits, or invoicing in labour.
@@ -110,6 +121,12 @@ THINGS TO CONFIRM RULES:
 
 OPTIONAL EXTRAS RULES:
 - Optional extras are separate from the main scope and must not be included in the main quote price.
+- Rewrite each optional extra into professional quote language for homeowners.
+- Remove conversational wording such as please, thanks, ASAP, hurry, and similar.
+- Example:
+  - Site Notes: "new replacement door, please"
+  - CORRECT optional extra: "Supply and fit a replacement door."
+  - WRONG optional extra: "new replacement door, please"
 - Extract optional extras from Site Notes when the tradesperson clearly marks work as optional, extra, separate quote, add-on, or "while on site" work that is not part of the main job.
 - Look for phrases such as: optional extras could be, optional extra, extras, additional work, not included in the main quote.
 - Put each optional extra in optionalExtras — never bury them in scopeOfWork, materials, labour, or thingsToConfirm.
@@ -194,11 +211,12 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "Return JSON matching the required schema.",
     "- Extract customer name, address, phone, and email from Site Notes into extracted* fields. Empty string when not clearly stated.",
     "- Organise Site Notes into jobSummary, scopeOfWork, materials, labour, and thingsToConfirm.",
-    "- scopeOfWork: rewrite into professional quote language; do not copy Site Notes verbatim.",
+    "- jobSummary: one or two concise sentences describing the overall job; do not list every task.",
+    "- scopeOfWork: bullet list of specific tasks in professional quote language; do not repeat jobSummary.",
     "- labour: describe work effort only; never include price, £ amounts, or payment terms; derive from scope when labour detail is thin.",
     "- materials: physical materials and consumables only; never copy site notes, scope bullets, customer details, or addresses.",
     "- thingsToConfirm: only genuinely missing or uncertain technical details; never confirm customer details already clearly stated.",
-    "- optionalExtras: extract from Site Notes when clearly optional/extra work (e.g. optional extras could be under-cabinet lighting and extra sockets; extras could include; additional work could be; customer may also want); keep separate from main scope and main price.",
+    "- optionalExtras: professional quote language only; remove please, thanks, ASAP, and similar conversational wording.",
     "- extractedEstimatedPrice: digits only when a main quote price is clearly stated (e.g. £3,000 estimate price, around £3,000, 3000 pounds, estimated at £3,000); otherwise empty string.",
     "- plannedStartDate: when the customer wants work to start, preserve flexible UK wording from Site Notes; empty if not mentioned.",
     "- plannedStartDateExact: ISO YYYY-MM-DD only for a single exact calendar date; empty if vague or not mentioned. Never guess.",

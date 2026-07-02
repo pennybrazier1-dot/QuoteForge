@@ -183,14 +183,6 @@ function ProposalWorkspaceLeft({
         )}
       </WorkspaceSection>
 
-      <WorkspaceSection title="Labour" icon={DOC_ICON}>
-        {hasStructured && structured!.labour ? (
-          <p className="whitespace-pre-wrap">{structured!.labour}</p>
-        ) : (
-          <EmptySection message="Labour details will appear after you generate an AI draft." />
-        )}
-      </WorkspaceSection>
-
       <WorkspaceSection title="Optional Extras" icon={DOC_ICON}>
         {hasStructured && structured!.optionalExtras.length > 0 ? (
           <BulletList items={structured!.optionalExtras} />

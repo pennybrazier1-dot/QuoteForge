@@ -10,6 +10,11 @@ import {
   looksLikeOptionalExtraTrigger,
   normalizeExtractedPriceDigits,
 } from "./extract-from-site-notes";
+import {
+  refineJobSummary,
+  refineOptionalExtras,
+  refineScopeOfWork,
+} from "./refine-proposal-structure";
 
 const PAYMENT_PATTERN =
   /\b(payment terms?|deposit|invoice|balance due|payable|instalments?)\b/i;
@@ -408,23 +413,7 @@ export function sanitizeOptionalExtras(
   siteNotes: string
 ): string[] {
   const merged = extractOptionalExtrasFromSiteNotes(siteNotes, optionalExtras);
-  const seen = new Set<string>();
-
-  return merged
-    .map((item) => item.trim())
-    .filter((item) => {
-      if (!item) {
-        return false;
-      }
-
-      const key = normalizeKey(item);
-      if (seen.has(key)) {
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    });
+  return refineOptionalExtras(merged);
 }
 
 export function sanitizeGeneratedProposal(
@@ -444,10 +433,15 @@ export function sanitizeGeneratedProposal(
 
   next = removeOptionalExtrasFromOtherSections(next, optionalExtras);
 
+  const jobSummary = refineJobSummary(next.jobSummary);
+  const scopeOfWork = refineScopeOfWork(next.scopeOfWork, jobSummary);
+
   return {
     ...next,
-    labour: sanitizeLabour(next),
-    materials: sanitizeMaterials(next.materials, next, siteNotes),
+    jobSummary,
+    scopeOfWork,
+    labour: sanitizeLabour({ ...next, scopeOfWork }),
+    materials: sanitizeMaterials(next.materials, { ...next, scopeOfWork }, siteNotes),
     thingsToConfirm: sanitizeThingsToConfirm(next.thingsToConfirm, next),
   };
 }

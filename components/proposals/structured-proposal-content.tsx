@@ -63,10 +63,6 @@ export function StructuredProposalContent({
         <p className="mt-3 text-xs text-muted">{MATERIALS_REVIEW_NOTE}</p>
       </ProposalSectionBlock>
 
-      <ProposalSectionBlock title="Labour">
-        <p className="whitespace-pre-wrap">{proposal.labour}</p>
-      </ProposalSectionBlock>
-
       <ProposalSectionBlock title="Estimated Duration">
         <p>{proposal.estimatedDuration}</p>
       </ProposalSectionBlock>
