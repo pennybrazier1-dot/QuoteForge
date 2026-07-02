@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
+import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import {
   generateFreshProposalPdfBuffer,
   loadProposalPdfContext,
 } from "@/lib/proposals/load-proposal-pdf";
+import { executeSimulatedSend } from "@/lib/proposals/simulated-send";
 import { createClient } from "@/lib/supabase/server";
 
 export type SendProposalByEmailState = {
@@ -28,6 +30,15 @@ export async function sendProposalByEmail(
   formData: FormData
 ): Promise<SendProposalByEmailState> {
   const supabase = await createClient();
+
+  /*
+    Belt-and-suspenders: if a test-send intent reaches this action, never touch Resend.
+    The Test Send button should use formAction={simulateSendProposal} directly.
+  */
+  if (getString(formData, "qfSendIntent") === "test" && isDevTestingEnabled()) {
+    return executeSimulatedSend(supabase, formData);
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

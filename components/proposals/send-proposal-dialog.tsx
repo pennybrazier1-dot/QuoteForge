@@ -38,7 +38,13 @@ function SectionHeading({ children }: { children: ReactNode }) {
   return <h3 className="qf-send-section-title">{children}</h3>;
 }
 
-function SendButton({ label = "Send", pendingLabel = "Sending…" }: { label?: string; pendingLabel?: string }) {
+function SendButton({
+  label = "Send",
+  pendingLabel = "Sending…",
+}: {
+  label?: string;
+  pendingLabel?: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
@@ -52,7 +58,11 @@ function SendButton({ label = "Send", pendingLabel = "Sending…" }: { label?: s
   );
 }
 
-function TestSendButton() {
+function TestSendButton({
+  testSendAction,
+}: {
+  testSendAction: (formData: FormData) => void;
+}) {
   const { pending } = useFormStatus();
 
   return (
@@ -60,8 +70,7 @@ function TestSendButton() {
       type="submit"
       disabled={pending}
       className="qf-btn-secondary qf-send-footer-btn qf-send-test-btn"
-      name="qfSendIntent"
-      value="test"
+      formAction={testSendAction}
     >
       {pending ? "Testing…" : "Test send"}
     </button>
@@ -84,7 +93,10 @@ export function SendProposalDialog({
   const [message, setMessage] = useState(() =>
     buildSendProposalMessage(customerName, data.businessName)
   );
-  const [sendState, sendAction] = useActionState(sendProposalByEmail, initialState);
+  const [sendState, sendAction] = useActionState(
+    sendProposalByEmail,
+    initialState
+  );
   const [testState, testSendAction] = useActionState(
     simulateSendProposal,
     initialState as DevLifecycleState
@@ -97,16 +109,6 @@ export function SendProposalDialog({
           message: testState.message,
         }
       : sendState;
-
-  const handleFormAction = (formData: FormData) => {
-    const intent = formData.get("qfSendIntent");
-
-    if (intent === "test") {
-      return testSendAction(formData);
-    }
-
-    return sendAction(formData);
-  };
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -209,7 +211,7 @@ export function SendProposalDialog({
           </button>
         </header>
 
-        <form action={handleFormAction} className="qf-send-form">
+        <form action={sendAction} className="qf-send-form">
           <input type="hidden" name="proposalId" value={data.proposalId} />
           <input type="hidden" name="customerEmail" value={customerEmail} />
           <input type="hidden" name="subject" value={subject} />
@@ -331,7 +333,9 @@ export function SendProposalDialog({
             >
               Cancel
             </button>
-            {devTestingEnabled ? <TestSendButton /> : null}
+            {devTestingEnabled ? (
+              <TestSendButton testSendAction={testSendAction} />
+            ) : null}
             <SendButton />
           </footer>
         </form>
