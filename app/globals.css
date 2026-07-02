@@ -2674,10 +2674,10 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
     position: sticky;
     bottom: 0;
     z-index: 2;
-    padding: 0.875rem 1rem;
-    padding-bottom: calc(
-      0.875rem + var(--qf-safe-area-bottom, env(safe-area-inset-bottom, 0px))
-    );
+    padding-top: 0.875rem;
+    padding-inline: 1rem;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+    margin-bottom: 8px;
     box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.28);
   }
 }
