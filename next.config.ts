@@ -19,6 +19,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["pdfkit"],
   env: {
     GIT_COMMIT_SHA: getShortGitSha(),
+    NEXT_PUBLIC_QF_DEV_TESTING:
+      process.env.VERCEL_ENV === "production" ? "0" : "1",
   },
 };
 

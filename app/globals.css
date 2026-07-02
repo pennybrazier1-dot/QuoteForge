@@ -3454,3 +3454,82 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   margin-top: 0.15rem;
   flex-shrink: 0;
 }
+
+/* Dev lifecycle testing tools (preview / local only) */
+.qf-dev-lifecycle-tools {
+  margin-bottom: 1rem;
+  border: 1px dashed rgba(168, 85, 247, 0.45);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(168, 85, 247, 0.08);
+}
+
+.qf-dev-lifecycle-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: rgb(216, 180, 254);
+}
+
+.qf-dev-lifecycle-hint {
+  margin: 0.25rem 0 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.qf-dev-lifecycle-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qf-dev-lifecycle-btn {
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  background: rgba(168, 85, 247, 0.12);
+  cursor: pointer;
+}
+
+.qf-dev-lifecycle-btn-primary {
+  border-color: rgba(168, 85, 247, 0.55);
+  background: rgba(168, 85, 247, 0.22);
+}
+
+.qf-dev-lifecycle-btn-danger {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.qf-send-test-btn {
+  border: 1px dashed rgba(168, 85, 247, 0.45);
+}
+
+.qf-send-success {
+  border-radius: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.qf-send-success-test {
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.qf-send-success-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgb(216, 180, 254);
+}
+
+.qf-send-success-body {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}

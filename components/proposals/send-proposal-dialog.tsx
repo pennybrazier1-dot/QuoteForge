@@ -13,6 +13,10 @@ import {
   sendProposalByEmail,
   type SendProposalByEmailState,
 } from "@/app/proposals/send-actions";
+import {
+  simulateSendProposal,
+  type DevLifecycleState,
+} from "@/app/proposals/dev-lifecycle-actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import {
   buildSendProposalMessage,
@@ -23,8 +27,9 @@ import {
 type SendProposalDialogProps = {
   open: boolean;
   onClose: () => void;
-  onSent: () => void;
+  onSent: (options?: { simulated?: boolean; message?: string }) => void;
   data: SendProposalContext;
+  devTestingEnabled?: boolean;
 };
 
 const initialState: SendProposalByEmailState = {};
@@ -33,7 +38,7 @@ function SectionHeading({ children }: { children: ReactNode }) {
   return <h3 className="qf-send-section-title">{children}</h3>;
 }
 
-function SendButton() {
+function SendButton({ label = "Send", pendingLabel = "Sending…" }: { label?: string; pendingLabel?: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -42,7 +47,23 @@ function SendButton() {
       disabled={pending}
       className="qf-btn-primary qf-send-footer-btn qf-send-footer-btn-primary"
     >
-      {pending ? "Sending…" : "Send"}
+      {pending ? pendingLabel : label}
+    </button>
+  );
+}
+
+function TestSendButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="qf-btn-secondary qf-send-footer-btn qf-send-test-btn"
+      name="qfSendIntent"
+      value="test"
+    >
+      {pending ? "Testing…" : "Test send"}
     </button>
   );
 }
@@ -52,6 +73,7 @@ export function SendProposalDialog({
   onClose,
   onSent,
   data,
+  devTestingEnabled = false,
 }: SendProposalDialogProps) {
   const titleId = useId();
   const customerName = data.customerName.trim() || "Customer";
@@ -62,7 +84,29 @@ export function SendProposalDialog({
   const [message, setMessage] = useState(() =>
     buildSendProposalMessage(customerName, data.businessName)
   );
-  const [state, formAction] = useActionState(sendProposalByEmail, initialState);
+  const [sendState, sendAction] = useActionState(sendProposalByEmail, initialState);
+  const [testState, testSendAction] = useActionState(
+    simulateSendProposal,
+    initialState as DevLifecycleState
+  );
+  const state =
+    testState.success || testState.error
+      ? {
+          ...testState,
+          simulated: testState.simulated,
+          message: testState.message,
+        }
+      : sendState;
+
+  const handleFormAction = (formData: FormData) => {
+    const intent = formData.get("qfSendIntent");
+
+    if (intent === "test") {
+      return testSendAction(formData);
+    }
+
+    return sendAction(formData);
+  };
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -81,9 +125,12 @@ export function SendProposalDialog({
 
   useEffect(() => {
     if (state.success) {
-      onSent();
+      onSent({
+        simulated: state.simulated,
+        message: state.message,
+      });
     }
-  }, [state.success, onSent]);
+  }, [state.success, state.simulated, state.message, onSent]);
 
   useEffect(() => {
     if (!open) {
@@ -162,13 +209,22 @@ export function SendProposalDialog({
           </button>
         </header>
 
-        <form action={formAction} className="qf-send-form">
+        <form action={handleFormAction} className="qf-send-form">
           <input type="hidden" name="proposalId" value={data.proposalId} />
           <input type="hidden" name="customerEmail" value={customerEmail} />
           <input type="hidden" name="subject" value={subject} />
           <input type="hidden" name="message" value={message} />
 
           <div className="qf-send-body">
+            {state.success && state.simulated ? (
+              <div className="qf-send-success qf-send-success-test" role="status">
+                <p className="qf-send-success-title">Test send complete</p>
+                <p className="qf-send-success-body">
+                  Status updated to Waiting for Customer. No email was sent.
+                </p>
+              </div>
+            ) : null}
+
             {state.error ? (
               <div className="qf-send-error">
                 <AuthError message={state.error} />
@@ -275,6 +331,7 @@ export function SendProposalDialog({
             >
               Cancel
             </button>
+            {devTestingEnabled ? <TestSendButton /> : null}
             <SendButton />
           </footer>
         </form>

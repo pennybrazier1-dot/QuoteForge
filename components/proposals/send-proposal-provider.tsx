@@ -33,17 +33,19 @@ export function useSendProposalDialog(): SendProposalProviderValue {
 }
 
 function ProposalSentNotice({
+  title,
+  body,
   onDismiss,
 }: {
+  title: string;
+  body: string;
   onDismiss: () => void;
 }) {
   return (
     <div className="qf-workspace-notice qf-workspace-notice-success" role="status">
       <div>
-        <p className="qf-workspace-notice-title">Proposal sent successfully</p>
-        <p className="qf-workspace-notice-body">
-          Your proposal has been emailed to the customer.
-        </p>
+        <p className="qf-workspace-notice-title">{title}</p>
+        <p className="qf-workspace-notice-body">{body}</p>
       </div>
       <button
         type="button"
@@ -59,23 +61,41 @@ function ProposalSentNotice({
 export function SendProposalProvider({
   children,
   data,
+  devTestingEnabled = false,
 }: {
   children: ReactNode;
   data: SendProposalContext;
+  devTestingEnabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [showSuccessNotice, setShowSuccessNotice] = useState(false);
+  const [notice, setNotice] = useState<{
+    title: string;
+    body: string;
+  } | null>(null);
 
   const openSendDialog = useCallback(() => {
     setOpen(true);
   }, []);
 
-  const handleSent = useCallback(() => {
-    setOpen(false);
-    setShowSuccessNotice(true);
-    router.refresh();
-  }, [router]);
+  const handleSent = useCallback(
+    (options?: { simulated?: boolean; message?: string }) => {
+      setOpen(false);
+      setNotice(
+        options?.simulated
+          ? {
+              title: options.message ?? "Test send complete",
+              body: "Status updated to Waiting for Customer. No email was sent.",
+            }
+          : {
+              title: "Proposal sent successfully",
+              body: "Your proposal has been emailed to the customer.",
+            }
+      );
+      router.refresh();
+    },
+    [router]
+  );
 
   const value = useMemo(
     () => ({
@@ -86,8 +106,12 @@ export function SendProposalProvider({
 
   return (
     <SendProposalContext.Provider value={value}>
-      {showSuccessNotice ? (
-        <ProposalSentNotice onDismiss={() => setShowSuccessNotice(false)} />
+      {notice ? (
+        <ProposalSentNotice
+          title={notice.title}
+          body={notice.body}
+          onDismiss={() => setNotice(null)}
+        />
       ) : null}
       {children}
       <SendProposalDialog
@@ -95,6 +119,7 @@ export function SendProposalProvider({
         onClose={() => setOpen(false)}
         onSent={handleSent}
         data={data}
+        devTestingEnabled={devTestingEnabled}
       />
     </SendProposalContext.Provider>
   );

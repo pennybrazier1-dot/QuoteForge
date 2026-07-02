@@ -13,6 +13,7 @@ import {
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
+import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
@@ -281,9 +282,11 @@ export function ProposalWorkspace({
     customer_email: proposal.customer_email,
     total_amount: proposal.total_amount,
   };
+  const devTestingEnabled = isDevTestingEnabled();
 
   return (
     <SendProposalProvider
+      devTestingEnabled={devTestingEnabled}
       data={{
         proposalId: proposal.id,
         proposalNumber: proposal.proposal_number,

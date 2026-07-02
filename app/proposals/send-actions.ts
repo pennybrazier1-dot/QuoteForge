@@ -10,6 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export type SendProposalByEmailState = {
   success?: boolean;
+  simulated?: boolean;
+  message?: string;
   error?: string;
 };
 

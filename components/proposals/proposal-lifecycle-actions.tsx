@@ -15,6 +15,7 @@ import {
 } from "@/app/proposals/lifecycle-actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import { BookingDialog } from "@/components/proposals/booking-dialog";
+import { DevLifecycleTools } from "@/components/proposals/dev-lifecycle-tools";
 import { ATTENTION_REASONS, formatAttentionReason } from "@/lib/proposals/attention";
 import { isProvisionalBooking } from "@/lib/proposals/booking";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
@@ -98,6 +99,13 @@ export function ProposalLifecycleActions({
     }
   }, [proposalId, router, searchParams]);
 
+  useEffect(() => {
+    if (searchParams.get("openAccept") === "1") {
+      setAcceptDialogOpen(true);
+      router.replace(`/proposals/${proposalId}`, { scroll: false });
+    }
+  }, [proposalId, router, searchParams]);
+
   if (!isProposalStatus(normalized)) {
     return null;
   }
@@ -128,6 +136,7 @@ export function ProposalLifecycleActions({
 
       {showWaiting ? (
         <div className="qf-workspace-lifecycle-block">
+          <DevLifecycleTools proposalId={proposalId} status={status} />
           <p className="qf-workspace-lifecycle-label">Customer response</p>
           <div className="qf-workspace-lifecycle-actions">
             <button

@@ -2,22 +2,14 @@
  * Preview / development build badge — hidden on Vercel production.
  */
 
+import { isDevTestingEnabled } from "@/lib/env/dev-testing";
+
 export type PreviewBuildInfo = {
   commitSha: string;
 };
 
 export function shouldShowPreviewBuildBadge(): boolean {
-  const vercelEnv = process.env.VERCEL_ENV;
-
-  if (vercelEnv === "production") {
-    return false;
-  }
-
-  if (vercelEnv === "preview") {
-    return true;
-  }
-
-  return process.env.NODE_ENV === "development";
+  return isDevTestingEnabled();
 }
 
 export function getPreviewBuildInfo(): PreviewBuildInfo | null {
