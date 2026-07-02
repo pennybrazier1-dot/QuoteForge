@@ -12,7 +12,9 @@ export type TimelineEventType =
   | "emailed"
   | "sent"
   | "viewed"
-  | "accepted";
+  | "accepted"
+  | "cancelled"
+  | "rearranged";
 
 export type TimelineEvent = {
   id: string;
@@ -182,6 +184,42 @@ export function buildProposalTimeline(
       timestamp: proposal.accepted_at,
       status: "complete",
     });
+  }
+
+  for (const event of statusEvents) {
+    if (event.event_type === "status_change" && event.to_status === "cancelled") {
+      events.push({
+        id: event.id,
+        type: "cancelled",
+        label: event.note ?? "Cancelled",
+        timestamp: event.created_at,
+        status: "complete",
+      });
+    }
+
+    if (event.event_type === "rearranged") {
+      events.push({
+        id: event.id,
+        type: "rearranged",
+        label: event.note ?? "Date changed",
+        timestamp: event.created_at,
+        status: "complete",
+      });
+    }
+  }
+
+  if (proposal.status === "cancelled") {
+    const hasCancelledEvent = events.some((event) => event.type === "cancelled");
+
+    if (!hasCancelledEvent) {
+      events.push({
+        id: "cancelled",
+        type: "cancelled",
+        label: "Cancelled",
+        timestamp: proposal.updated_at ?? proposal.created_at,
+        status: "complete",
+      });
+    }
   }
 
   return events.sort((left, right) => {

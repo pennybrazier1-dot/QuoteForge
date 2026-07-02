@@ -22,6 +22,10 @@ const SENT_LIKE_STATUSES: ProposalStatus[] = [
 ];
 
 export function canPreviewProposalPdf(proposal: ProposalActionContext): boolean {
+  if (proposal.status === "cancelled") {
+    return false;
+  }
+
   if (hasStructuredProposal(proposal)) {
     return true;
   }
@@ -104,5 +108,9 @@ export function shouldAutoMarkReadyToSend(
 }
 
 export function canEditProposalActions(status: string): boolean {
+  if (status === "cancelled") {
+    return false;
+  }
+
   return canEditProposal(status);
 }

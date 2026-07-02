@@ -1,5 +1,5 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
-import { isProposalStatus } from "@/lib/proposals/status";
+import { isActiveHomeProposal, isProposalStatus } from "@/lib/proposals/status";
 
 export type HomeProposal = {
   id: string;
@@ -79,6 +79,10 @@ function isJobReady(proposal: HomeProposal): boolean {
 }
 
 function jobNeedsAttention(proposal: HomeProposal): boolean {
+  if (!isActiveHomeProposal(proposal.status)) {
+    return false;
+  }
+
   if (proposal.status === "sent") {
     return true;
   }
@@ -160,7 +164,13 @@ export function getHomeNotificationCount(proposals: HomeProposal[]): number {
 }
 
 export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
-  const accepted = proposals.filter((proposal) => proposal.status === "accepted");
+  const activeProposals = proposals.filter((proposal) =>
+    isActiveHomeProposal(proposal.status)
+  );
+
+  const accepted = activeProposals.filter(
+    (proposal) => proposal.status === "accepted"
+  );
   const todaysJobs = accepted.filter(
     (proposal) =>
       isToday(proposal.accepted_at) || isToday(proposal.updated_at)
@@ -178,7 +188,7 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
     })
   );
 
-  const jobsNeedingAttention = proposals
+  const jobsNeedingAttention = activeProposals
     .filter(jobNeedsAttention)
     .map((proposal) => {
       if (proposal.status === "sent") {
@@ -198,7 +208,7 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       });
     });
 
-  const newQuoteRequests = proposals
+  const newQuoteRequests = activeProposals
     .filter((proposal) => proposal.status === "draft")
     .slice(0, 8)
     .map((proposal) =>
@@ -208,7 +218,7 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       })
     );
 
-  const quotesReadyToSend = proposals
+  const quotesReadyToSend = activeProposals
     .filter((proposal) => proposal.status === "ready_to_send")
     .map((proposal) =>
       buildCard(proposal, {
@@ -218,7 +228,17 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       })
     );
 
-  return [
+  const cancelledJobs = proposals
+    .filter((proposal) => proposal.status === "cancelled")
+    .slice(0, 8)
+    .map((proposal) =>
+      buildCard(proposal, {
+        jobTitle: getProposalSummaryLabel(proposal),
+        status: { label: "Cancelled", tone: "orange" },
+      })
+    );
+
+  const sections: HomeSection[] = [
     {
       id: "todays-jobs",
       title: "Today's Jobs",
@@ -252,4 +272,17 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       emptyMessage: "No quotes waiting to send.",
     },
   ];
+
+  if (cancelledJobs.length > 0) {
+    sections.push({
+      id: "cancelled-jobs",
+      title: "Cancelled Jobs",
+      tone: "orange",
+      viewAllHref: "/proposals",
+      cards: cancelledJobs,
+      emptyMessage: "No cancelled jobs.",
+    });
+  }
+
+  return sections;
 }

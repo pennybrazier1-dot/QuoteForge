@@ -5,6 +5,7 @@ export const PROPOSAL_STATUSES = [
   "accepted",
   "declined",
   "expired",
+  "cancelled",
 ] as const;
 
 export type ProposalStatus = (typeof PROPOSAL_STATUSES)[number];
@@ -22,13 +23,22 @@ export function canEditProposal(status: string): status is EditableProposalStatu
 }
 
 const VALID_TRANSITIONS: Record<ProposalStatus, ProposalStatus[]> = {
-  draft: ["ready_to_send"],
-  ready_to_send: ["sent"],
-  sent: ["accepted", "declined"],
-  accepted: [],
-  declined: [],
-  expired: [],
+  draft: ["ready_to_send", "cancelled"],
+  ready_to_send: ["sent", "cancelled"],
+  sent: ["accepted", "declined", "cancelled"],
+  accepted: ["cancelled"],
+  declined: ["cancelled"],
+  expired: ["cancelled"],
+  cancelled: [],
 };
+
+export function canCancelProposal(status: string): boolean {
+  return isProposalStatus(status) && status !== "cancelled";
+}
+
+export function isActiveHomeProposal(status: string): boolean {
+  return status !== "cancelled";
+}
 
 export function isProposalStatus(value: string): value is ProposalStatus {
   return (PROPOSAL_STATUSES as readonly string[]).includes(value);
@@ -63,6 +73,8 @@ export function getProposalPageTitle(status: string): string {
       return "Declined Proposal";
     case "expired":
       return "Expired Proposal";
+    case "cancelled":
+      return "Cancelled Proposal";
     default:
       return "Proposal";
   }
@@ -75,6 +87,7 @@ export const STATUS_BADGE_STYLES: Record<ProposalStatus, string> = {
   accepted: "bg-emerald-500/10 text-emerald-400",
   declined: "bg-red-500/10 text-red-400",
   expired: "bg-white/5 text-muted",
+  cancelled: "bg-white/5 text-zinc-400",
 };
 
 export function getStatusBadgeClass(status: string): string {
