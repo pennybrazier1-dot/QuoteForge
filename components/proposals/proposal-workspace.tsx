@@ -330,8 +330,6 @@ export function ProposalWorkspace({
       <Suspense fallback={null}>
         <ProposalMoreActions
           proposalId={proposal.id}
-          proposalNumber={proposal.proposal_number}
-          status={proposal.status}
           plannedStartDateText={proposal.planned_start_date_text}
           plannedStartDate={proposal.planned_start_date}
           estimatedDuration={proposal.estimated_duration}
