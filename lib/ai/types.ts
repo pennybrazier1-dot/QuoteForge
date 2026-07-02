@@ -18,6 +18,13 @@ export type GeneratedProposal = {
   thingsToConfirm: string[];
   optionalExtras: string[];
   paymentTerms: string;
+  /** Extracted from Site Notes when clearly stated — empty string if missing. */
+  extractedCustomerName: string;
+  extractedPropertyAddress: string;
+  extractedPhoneNumber: string;
+  extractedEmailAddress: string;
+  /** Numeric price reference only (e.g. "850") — empty if not clearly stated. */
+  extractedEstimatedPrice: string;
 };
 
 export const GENERATED_PROPOSAL_JSON_SCHEMA = {
@@ -60,11 +67,36 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
       type: "array",
       items: { type: "string" },
       description:
-        "Optional work separate from the main quoted scope. Use optional extras notes when provided. Do not include in scopeOfWork, materials, labour, or main price. Empty array if none provided or mentioned.",
+        "Optional work separate from the main quoted scope. Extract from Site Notes when clearly marked as optional, extra, separate quote, or while-on-site add-on. Also use the separate Optional Extras field when provided. Do not include in scopeOfWork, materials, labour, or main price. Empty array if none.",
     },
     paymentTerms: {
       type: "string",
       description: "Payment terms for the proposal.",
+    },
+    extractedCustomerName: {
+      type: "string",
+      description:
+        "Customer or client name from Site Notes only when clearly stated. Empty string if not stated. Do not invent.",
+    },
+    extractedPropertyAddress: {
+      type: "string",
+      description:
+        "Property or job site address from Site Notes only when clearly stated. Empty string if not stated.",
+    },
+    extractedPhoneNumber: {
+      type: "string",
+      description:
+        "Customer phone number from Site Notes only when clearly stated. Empty string if not stated.",
+    },
+    extractedEmailAddress: {
+      type: "string",
+      description:
+        "Customer email from Site Notes only when clearly stated. Empty string if not stated.",
+    },
+    extractedEstimatedPrice: {
+      type: "string",
+      description:
+        "Main quote price from Site Notes or manual context only when clearly stated (digits only, e.g. 850). Empty string if not stated. Do not invent.",
     },
   },
   required: [
@@ -76,6 +108,11 @@ export const GENERATED_PROPOSAL_JSON_SCHEMA = {
     "thingsToConfirm",
     "optionalExtras",
     "paymentTerms",
+    "extractedCustomerName",
+    "extractedPropertyAddress",
+    "extractedPhoneNumber",
+    "extractedEmailAddress",
+    "extractedEstimatedPrice",
   ],
   additionalProperties: false,
 } as const;

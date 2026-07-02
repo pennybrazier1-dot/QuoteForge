@@ -114,7 +114,29 @@ export function parseGeneratedProposalJson(
       return null;
     }
 
-    return parsed;
+    return {
+      ...parsed,
+      extractedCustomerName:
+        typeof parsed.extractedCustomerName === "string"
+          ? parsed.extractedCustomerName
+          : "",
+      extractedPropertyAddress:
+        typeof parsed.extractedPropertyAddress === "string"
+          ? parsed.extractedPropertyAddress
+          : "",
+      extractedPhoneNumber:
+        typeof parsed.extractedPhoneNumber === "string"
+          ? parsed.extractedPhoneNumber
+          : "",
+      extractedEmailAddress:
+        typeof parsed.extractedEmailAddress === "string"
+          ? parsed.extractedEmailAddress
+          : "",
+      extractedEstimatedPrice:
+        typeof parsed.extractedEstimatedPrice === "string"
+          ? parsed.extractedEstimatedPrice
+          : "",
+    };
   } catch {
     return null;
   }

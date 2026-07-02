@@ -38,10 +38,6 @@ export async function generateProposalDraft(
   const estimatedPrice = getString(formData, "estimatedPrice");
   const estimatedDuration = getString(formData, "estimatedDuration");
 
-  if (!customerName) {
-    return { error: "Customer name is required before generating a proposal." };
-  }
-
   if (!siteNotes) {
     return {
       error: "Please add site notes before generating a proposal.",

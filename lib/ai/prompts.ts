@@ -16,13 +16,22 @@ Follow QuoteForge AI principles:
 SITE NOTES RULES:
 - Site Notes are the main source of truth for the main quoted work.
 - Extract and organise from Site Notes where possible:
+  - customer name, property address, phone number, email address (only when clearly written)
   - scope of work
   - materials
   - things to confirm
   - estimated duration (only if clearly stated)
   - price references (only if clearly stated, and only in labour when appropriate)
+  - optional extras (when clearly marked as optional, extra, separate quote, or add-on work)
 - Write naturally scribbled notes into professional proposal language.
-- Do not move Optional Extras from the separate optional extras field into the main scope.
+- Do not move optional extras into the main scope or main price.
+
+CUSTOMER DETAILS RULES:
+- Extract customer name, property address, phone number, and email from Site Notes only when clearly stated.
+- Put extracted values in extractedCustomerName, extractedPropertyAddress, extractedPhoneNumber, extractedEmailAddress.
+- Do not invent or guess customer details.
+- If customer name is missing, leave extractedCustomerName as an empty string and add a confirmation item to thingsToConfirm.
+- If address, phone, or email are missing, leave the corresponding extracted field empty and add helpful confirmation items to thingsToConfirm when useful.
 
 You MUST NEVER:
 - Invent measurements, dimensions, or quantities.
@@ -74,10 +83,11 @@ MATERIALS RULES:
 
 OPTIONAL EXTRAS RULES:
 - Optional extras are separate from the main scope and must not be included in the main quote price.
-- Use only the separate Optional Extras field for optionalExtras output.
+- Extract optional extras from Site Notes when the tradesperson clearly marks work as optional, extra, separate quote, add-on, or "while on site" work that is not part of the main job.
+- Also use the separate Optional Extras field when provided.
 - Do not move optional extras into scopeOfWork, materials, or labour.
 - Do not invent optional extras.
-- If no optional extras were provided, return an empty optionalExtras array.
+- If no optional extras were provided or mentioned, return an empty optionalExtras array.
 
 ESTIMATED DURATION RULES:
 - Use the manual Estimated Duration when provided.
@@ -97,7 +107,9 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "",
     `Trade type: ${input.tradeType ?? "Not specified"}`,
     `Business name: ${input.businessName}`,
-    `Customer name: ${input.customerName}`,
+    input.customerName.trim()
+      ? `Customer name (from form — use if Site Notes do not name a different customer): ${input.customerName}`
+      : "Customer name (form): Not provided — extract from Site Notes only if clearly stated",
     "",
     "Site Notes from the tradesperson (main source of truth for the main quote):",
     input.siteNotes,
@@ -140,10 +152,12 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     input.defaultPaymentTerms,
     "",
     "Return JSON matching the required schema.",
+    "- Extract customer name, address, phone, and email from Site Notes into extracted* fields. Empty string when not clearly stated.",
     "- Organise Site Notes into jobSummary, scopeOfWork, materials, labour, and thingsToConfirm.",
     "- materials: extract from Site Notes; include clearly implied core materials; preserve qualifying language; do not invent specifications.",
-    "- thingsToConfirm: include missing details, access issues, measurements to confirm, material specifications, and helpful confirmations for any qualified conditions from Site Notes.",
-    "- optionalExtras: use only the Optional Extras field; keep separate from main scope and main price.",
+    "- thingsToConfirm: include missing customer details, access issues, measurements to confirm, material specifications, and helpful confirmations for any qualified conditions from Site Notes.",
+    "- optionalExtras: extract from Site Notes when clearly optional/extra work, and from the Optional Extras field; keep separate from main scope and main price.",
+    "- extractedEstimatedPrice: digits only when a main quote price is clearly stated; otherwise empty string.",
     "- estimatedDuration: use manual duration when provided; otherwise preserve the full qualified duration wording from Site Notes; otherwise use the safe fallback message.",
     "- Never invent price or duration.",
     "- Never remove qualifiers such as approximately, around, depending on, subject to, if suitable, or where possible."
