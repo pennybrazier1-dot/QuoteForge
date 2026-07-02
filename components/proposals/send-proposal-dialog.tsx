@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useId, useState, type ReactNode } from "react";
-import { useFormStatus } from "react-dom";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useState,
+  type ReactNode,
+} from "react";
+import { createPortal, useFormStatus } from "react-dom";
 import {
   sendProposalByEmail,
   type SendProposalByEmailState,
@@ -71,6 +77,11 @@ export function SendProposalDialog({
     buildSendProposalMessage(customerName, data.businessName)
   );
   const [state, formAction] = useActionState(sendProposalByEmail, initialState);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -110,7 +121,7 @@ export function SendProposalDialog({
     };
   }, [open, onClose]);
 
-  if (!open) {
+  if (!open || !mounted) {
     return null;
   }
 
@@ -119,7 +130,7 @@ export function SendProposalDialog({
     ? `/customers/${data.customerId}/edit`
     : "/customers";
 
-  return (
+  return createPortal(
     <div className="qf-send-root" role="presentation">
       <button
         type="button"
@@ -282,6 +293,7 @@ export function SendProposalDialog({
           </footer>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
