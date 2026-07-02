@@ -493,8 +493,10 @@ export async function acceptAiDraftProposal(
       return { error: "Proposal not found." };
     }
 
-    if (existingProposal.status !== "draft") {
-      return { error: "Only draft proposals can be updated." };
+    if (!canEditProposal(existingProposal.status)) {
+      return {
+        error: "Only draft and ready-to-send proposals can be updated.",
+      };
     }
 
     const { customerId, error: customerError } = await resolveCustomerId(

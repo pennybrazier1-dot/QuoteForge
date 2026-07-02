@@ -72,7 +72,7 @@
 
   /*
     Fixed bottom nav — single source of truth for scroll clearance.
-    Matches .qf-bottom-nav-inner + primary overhang in mobile-home.css.
+    Inner bar + primary overhang + home-indicator safe area (mobile-home.css).
   */
   --qf-bottom-nav-inner-min-height: 4rem;
   --qf-bottom-nav-inner-padding-block: 1.125rem;
@@ -82,8 +82,12 @@
       var(--qf-bottom-nav-inner-padding-block) +
       var(--qf-bottom-nav-primary-overhang)
   );
+  --qf-safe-area-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  --qf-bottom-nav-total-height: calc(
+    var(--qf-bottom-nav-height) + var(--qf-safe-area-bottom)
+  );
   --qf-workspace-bottom-padding: calc(
-    var(--qf-bottom-nav-height) + env(safe-area-inset-bottom, 0px) + 1.5rem
+    var(--qf-bottom-nav-total-height) + 1.5rem
   );
 }
 
@@ -122,6 +126,22 @@ body {
 @media (max-width: 1023px) {
   .qf-workspace-scroll {
     padding-bottom: var(--qf-workspace-bottom-padding);
+    scroll-padding-bottom: var(--qf-workspace-bottom-padding);
+  }
+
+  .qf-proposal-page,
+  form.qf-proposal-page,
+  .qf-workspace-page,
+  .qf-mobile-quote-capture,
+  .qf-editable-proposal-review {
+    padding-bottom: 0.5rem;
+  }
+
+  .qf-proposal-review-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-bottom: 0.25rem;
   }
 }
 .bg-hero-glow {
@@ -850,7 +870,7 @@ a.qf-card-inset:hover {
   }
 
   .qf-editable-proposal-review {
-    padding-bottom: 0;
+    padding-bottom: 0.25rem;
   }
 
   .form-input,
@@ -2650,7 +2670,7 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
 .qf-preview-build-badge {
   position: fixed;
   right: 0.5rem;
-  bottom: calc(var(--qf-bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+  bottom: var(--qf-bottom-nav-total-height);
   z-index: 90;
   display: flex;
   flex-direction: column;

@@ -69,7 +69,6 @@
     overflow-y: visible;
     overscroll-behavior-x: none;
     touch-action: pan-y pinch-zoom;
-    padding-bottom: var(--qf-workspace-bottom-padding);
   }
 }
 

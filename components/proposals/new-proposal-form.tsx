@@ -276,8 +276,8 @@ export function NewProposalForm({
     }
   }, [generateState.proposal]);
 
-  const showMobileCapture = mode === "create" && isMobile && !reviewProposal;
-  const showMobileReview = mode === "create" && isMobile && Boolean(reviewProposal);
+  const showMobileCapture = isMobile && !reviewProposal;
+  const showMobileReview = isMobile && Boolean(reviewProposal);
 
   useEffect(() => {
     if (!showMobileCapture && !showMobileReview) {
@@ -356,15 +356,21 @@ export function NewProposalForm({
 
       {showMobileCapture ? (
         <>
-          <input type="hidden" name="customerName" value="" />
-          <input type="hidden" name="optionalExtras" value="" />
-          <input type="hidden" name="estimatedPrice" value="" />
-          <input type="hidden" name="estimatedDuration" value="" />
+          {mode === "create" ? (
+            <>
+              <input type="hidden" name="customerName" value="" />
+              <input type="hidden" name="optionalExtras" value="" />
+              <input type="hidden" name="estimatedPrice" value="" />
+              <input type="hidden" name="estimatedDuration" value="" />
+            </>
+          ) : null}
           <MobileQuoteCapture
             siteNotes={jobDescription}
             onSiteNotesChange={setJobDescription}
             generateError={generateState.error}
             formAction={generateAction}
+            title={mode === "edit" ? pageTitle : undefined}
+            subtitle={mode === "edit" ? pageSubtitle : undefined}
           />
         </>
       ) : null}
@@ -403,7 +409,7 @@ export function NewProposalForm({
           />
 
           {proposalForSubmit ? (
-            <div className="mt-6 space-y-3">
+            <div className="qf-proposal-review-actions mt-6">
               <input
                 type="hidden"
                 name="generatedProposal"

@@ -13,19 +13,21 @@ export function MobileQuoteCapture({
   onSiteNotesChange,
   generateError,
   formAction,
+  title = "New Quote",
+  subtitle = "Write everything you know. We'll organise it.",
 }: {
   siteNotes: string;
   onSiteNotesChange: (value: string) => void;
   generateError?: string;
   formAction: (payload: FormData) => void;
+  title?: string;
+  subtitle?: string;
 }) {
   return (
     <div className="qf-mobile-quote-capture qf-mobile-safe">
       <header className="qf-proposal-header">
-        <h1 className="qf-proposal-title">New Quote</h1>
-        <p className="qf-proposal-subtitle">
-          Write everything you know. We&apos;ll organise it.
-        </p>
+        <h1 className="qf-proposal-title">{title}</h1>
+        <p className="qf-proposal-subtitle">{subtitle}</p>
       </header>
 
       <div className="qf-mobile-quote-capture-body">

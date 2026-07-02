@@ -530,7 +530,8 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   background-color: #08080a;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--qf-safe-area-bottom, env(safe-area-inset-bottom, 0px));
+  transform: translateZ(0);
 }
 
 @media (min-width: 1024px) {
