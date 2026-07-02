@@ -10,7 +10,6 @@ import {
   type DevLifecycleState,
 } from "@/app/proposals/dev-lifecycle-actions";
 import { AuthError } from "@/components/auth/auth-shell";
-import { isDevTestingEnabledClient } from "@/lib/env/dev-testing";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 const initialState: DevLifecycleState = {};
@@ -42,9 +41,14 @@ function DevActionButton({
 type DevLifecycleToolsProps = {
   proposalId: string;
   status: string;
+  devTestingEnabled: boolean;
 };
 
-export function DevLifecycleTools({ proposalId, status }: DevLifecycleToolsProps) {
+export function DevLifecycleTools({
+  proposalId,
+  status,
+  devTestingEnabled,
+}: DevLifecycleToolsProps) {
   const [acceptedState, acceptedAction] = useActionState(
     simulateCustomerAccepted,
     initialState
@@ -62,7 +66,7 @@ export function DevLifecycleTools({ proposalId, status }: DevLifecycleToolsProps
     initialState
   );
 
-  if (!isDevTestingEnabledClient()) {
+  if (!devTestingEnabled) {
     return null;
   }
 

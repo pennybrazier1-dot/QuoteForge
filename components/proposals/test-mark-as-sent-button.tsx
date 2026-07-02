@@ -7,7 +7,6 @@ import {
   type DevLifecycleState,
 } from "@/app/proposals/dev-lifecycle-actions";
 import { AuthError } from "@/components/auth/auth-shell";
-import { isDevTestingEnabledClient } from "@/lib/env/dev-testing";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 const initialState: DevLifecycleState = {};
@@ -30,19 +29,21 @@ type TestMarkAsSentButtonProps = {
   proposalId: string;
   status: string;
   customerEmail: string | null;
+  devTestingEnabled: boolean;
 };
 
 export function TestMarkAsSentButton({
   proposalId,
   status,
   customerEmail,
+  devTestingEnabled,
 }: TestMarkAsSentButtonProps) {
   const [state, formAction] = useActionState(
     simulateSendProposal,
     initialState
   );
 
-  if (!isDevTestingEnabledClient()) {
+  if (!devTestingEnabled) {
     return null;
   }
 

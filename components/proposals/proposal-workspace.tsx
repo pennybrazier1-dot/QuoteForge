@@ -8,6 +8,7 @@ import { ProposalWorkspaceActions } from "@/components/proposals/proposal-worksp
 import { SendProposalProvider } from "@/components/proposals/send-proposal-provider";
 import { TestMarkAsSentButton } from "@/components/proposals/test-mark-as-sent-button";
 import { TestSendSuccessNotice } from "@/components/proposals/test-send-success-notice";
+import { DevTestingDebugLine } from "@/components/proposals/dev-testing-debug-line-server";
 import {
   BulletList,
   MATERIALS_REVIEW_NOTE,
@@ -15,6 +16,7 @@ import {
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
+import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
@@ -275,6 +277,7 @@ export function ProposalWorkspace({
   calendarProposals: CalendarProposal[];
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
+  const devTestingEnabled = isDevTestingEnabled();
   const actionContext = {
     status: proposal.status,
     job_summary: proposal.job_summary,
@@ -336,10 +339,13 @@ export function ProposalWorkspace({
         actionContext={actionContext}
       />
 
+      <DevTestingDebugLine />
+
       <TestMarkAsSentButton
         proposalId={proposal.id}
         status={proposal.status}
         customerEmail={proposal.customer_email}
+        devTestingEnabled={devTestingEnabled}
       />
 
       <Suspense fallback={null}>
@@ -355,6 +361,7 @@ export function ProposalWorkspace({
           plannedStartDate={proposal.planned_start_date}
           estimatedDuration={proposal.estimated_duration}
           calendarProposals={calendarProposals}
+          devTestingEnabled={devTestingEnabled}
         />
       </Suspense>
 

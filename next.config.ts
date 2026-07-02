@@ -13,6 +13,24 @@ function getShortGitSha(): string {
   }
 }
 
+function getDevTestingPublicFlag(): string {
+  const vercelEnv = process.env.VERCEL_ENV;
+
+  if (vercelEnv === "production") {
+    return "0";
+  }
+
+  if (vercelEnv === "preview" || vercelEnv === "development") {
+    return "1";
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    return "1";
+  }
+
+  return "0";
+}
+
 const nextConfig: NextConfig = {
   // PDFKit loads font metric files from disk at runtime.
   // Keep it external so Next.js does not bundle it with a broken /ROOT path.
@@ -20,8 +38,8 @@ const nextConfig: NextConfig = {
   env: {
     GIT_COMMIT_SHA: getShortGitSha(),
     NEXT_PUBLIC_GIT_COMMIT_SHA: getShortGitSha(),
-    NEXT_PUBLIC_QF_DEV_TESTING:
-      process.env.VERCEL_ENV === "production" ? "0" : "1",
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV ?? "",
+    NEXT_PUBLIC_QF_DEV_TESTING: getDevTestingPublicFlag(),
   },
 };
 

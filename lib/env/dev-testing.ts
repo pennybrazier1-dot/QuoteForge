@@ -3,8 +3,12 @@
  * Disabled on Vercel production — never expose lifecycle simulation there.
  */
 
-export function isDevTestingEnabled(): boolean {
-  const vercelEnv = process.env.VERCEL_ENV;
+function isDevTestingEnabledFromSignals(options: {
+  vercelEnv: string | undefined;
+  nodeEnv: string | undefined;
+  publicDevTestingFlag: string | undefined;
+}): boolean {
+  const { vercelEnv, nodeEnv, publicDevTestingFlag } = options;
 
   if (vercelEnv === "production") {
     return false;
@@ -14,16 +18,32 @@ export function isDevTestingEnabled(): boolean {
     return true;
   }
 
-  if (process.env.NEXT_PUBLIC_QF_DEV_TESTING === "1") {
+  if (publicDevTestingFlag === "1") {
     return true;
   }
 
-  return process.env.NODE_ENV === "development";
+  return nodeEnv === "development";
 }
 
-/** Client-side mirror of isDevTestingEnabled (via next.config env). */
+/** Server-side — uses runtime VERCEL_ENV (reliable on Vercel). */
+export function isDevTestingEnabled(): boolean {
+  return isDevTestingEnabledFromSignals({
+    vercelEnv: process.env.VERCEL_ENV,
+    nodeEnv: process.env.NODE_ENV,
+    publicDevTestingFlag: process.env.NEXT_PUBLIC_QF_DEV_TESTING,
+  });
+}
+
+/**
+ * Client-side — mirrors server logic using public env vars inlined at build time.
+ * Prefer passing isDevTestingEnabled() from a server component when possible.
+ */
 export function isDevTestingEnabledClient(): boolean {
-  return process.env.NEXT_PUBLIC_QF_DEV_TESTING === "1";
+  return isDevTestingEnabledFromSignals({
+    vercelEnv: process.env.NEXT_PUBLIC_VERCEL_ENV,
+    nodeEnv: process.env.NODE_ENV,
+    publicDevTestingFlag: process.env.NEXT_PUBLIC_QF_DEV_TESTING,
+  });
 }
 
 export function devTestingDisabledMessage(): string {

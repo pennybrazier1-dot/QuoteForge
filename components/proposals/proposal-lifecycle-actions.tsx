@@ -59,6 +59,7 @@ type ProposalLifecycleActionsProps = {
   plannedStartDate: string | null;
   estimatedDuration: string | null;
   calendarProposals: CalendarProposal[];
+  devTestingEnabled: boolean;
 };
 
 export function ProposalLifecycleActions({
@@ -69,6 +70,7 @@ export function ProposalLifecycleActions({
   plannedStartDate,
   estimatedDuration,
   calendarProposals,
+  devTestingEnabled,
 }: ProposalLifecycleActionsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -136,7 +138,11 @@ export function ProposalLifecycleActions({
 
       {showWaiting ? (
         <div className="qf-workspace-lifecycle-block">
-          <DevLifecycleTools proposalId={proposalId} status={status} />
+          <DevLifecycleTools
+            proposalId={proposalId}
+            status={status}
+            devTestingEnabled={devTestingEnabled}
+          />
           <p className="qf-workspace-lifecycle-label">Customer response</p>
           <div className="qf-workspace-lifecycle-actions">
             <button

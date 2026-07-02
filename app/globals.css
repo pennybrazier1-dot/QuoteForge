@@ -3540,3 +3540,27 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.qf-dev-debug {
+  margin-bottom: 0.75rem;
+  border: 1px dashed rgba(56, 189, 248, 0.45);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.75rem;
+  background: rgba(56, 189, 248, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.6875rem;
+  line-height: 1.55;
+  color: rgb(186, 230, 253);
+}
+
+.qf-dev-debug-title {
+  margin: 0 0 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgb(224, 242, 254);
+}
+
+.qf-dev-debug-line {
+  margin: 0;
+  word-break: break-word;
+}
