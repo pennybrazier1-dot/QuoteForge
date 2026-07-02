@@ -8,27 +8,35 @@
 }
 
 /*
-  Mobile — natural document scroll (body/html), fixed bottom nav.
-  Do NOT trap scroll in a nested flex panel; Safari RDM and iOS need the
-  document to scroll when content exceeds the viewport.
+  Mobile — document scroll on html only (WebKit/iOS Safari).
+  Do NOT set overflow-y: auto on both html and body — that clips max scroll
+  and causes rubber-band bounce without resting on the final content.
+  Clearance below content uses .qf-workspace-scroll-end inside main.
 */
 @media (max-width: 1023px) {
   html:has(.qf-app) {
-    height: auto;
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior-x: none;
-    width: 100%;
-    max-width: 100%;
-    scroll-padding-bottom: var(--qf-workspace-bottom-padding);
-  }
-
-  body.flex.flex-col:has(.qf-app) {
-    display: block;
-    height: auto;
+    height: 100%;
     min-height: 100dvh;
     overflow-x: hidden;
     overflow-y: auto;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: none;
+    width: 100%;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: var(
+      --qf-workspace-scroll-end-height,
+      var(--qf-workspace-bottom-padding)
+    );
+  }
+
+  body.flex.flex-col:has(.qf-app),
+  body:has(.qf-app) {
+    display: block;
+    height: auto;
+    min-height: auto;
+    overflow: visible;
+    overflow-x: hidden;
     overscroll-behavior-x: none;
     touch-action: pan-y pinch-zoom;
     width: 100%;
@@ -39,11 +47,11 @@
     display: block;
     height: auto;
     max-height: none;
-    min-height: 100dvh;
+    min-height: 0;
     width: 100%;
     max-width: 100%;
+    overflow: visible;
     overflow-x: hidden;
-    overflow-y: visible;
     overscroll-behavior-x: none;
     touch-action: pan-y pinch-zoom;
   }
@@ -54,8 +62,8 @@
     height: auto;
     width: 100%;
     max-width: 100%;
+    overflow: visible;
     overflow-x: hidden;
-    overflow-y: visible;
     overscroll-behavior-x: none;
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
@@ -65,8 +73,8 @@
     width: 100%;
     max-width: 100%;
     height: auto;
+    overflow: visible;
     overflow-x: hidden;
-    overflow-y: visible;
     overscroll-behavior-x: none;
     touch-action: pan-y pinch-zoom;
   }
@@ -79,7 +87,7 @@
   }
 }
 
-/* Workspace main area — horizontal padding; bottom pad on mobile only (see above). */
+/* Workspace main area — horizontal padding; bottom clearance via scroll-end spacer. */
 .qf-app-main {
   padding: 1rem var(--page-padding-mobile);
 }

@@ -5,6 +5,10 @@ import {
 } from "@/components/layout/app-sidebar";
 import { AppBottomNav } from "@/components/layout/app-bottom-nav";
 import { AppTopNav } from "@/components/layout/app-top-nav";
+import {
+  WorkspaceScrollEnd,
+  WorkspaceScrollSync,
+} from "@/components/layout/workspace-scroll-end";
 
 export function AppShell({
   fullName,
@@ -23,9 +27,13 @@ export function AppShell({
 
       <div className="qf-app-frame">
         <AppSidebar recentDrafts={recentDrafts} />
-        <main className="qf-app-main qf-workspace-scroll qf-mobile-safe">{children}</main>
+        <main className="qf-app-main qf-workspace-scroll qf-mobile-safe">
+          {children}
+          <WorkspaceScrollEnd />
+        </main>
       </div>
 
+      <WorkspaceScrollSync />
       <AppBottomNav />
     </div>
   );

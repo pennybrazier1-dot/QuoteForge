@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
@@ -349,6 +350,8 @@ export function ProposalWorkspace({
           statusEvents={statusEvents}
         />
       </div>
+
+      <WorkspaceScrollDebug context="proposal-detail" />
     </div>
     </SendProposalProvider>
   );

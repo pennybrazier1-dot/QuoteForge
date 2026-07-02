@@ -89,6 +89,9 @@
   --qf-workspace-bottom-padding: calc(
     var(--qf-bottom-nav-total-height) + 1.5rem
   );
+  /* Measured at runtime from .qf-bottom-nav (see workspace-scroll-end.tsx). */
+  --qf-bottom-nav-measured-height: var(--qf-bottom-nav-total-height);
+  --qf-workspace-scroll-end-height: var(--qf-workspace-bottom-padding);
 }
 
 html {
@@ -120,13 +123,26 @@ body {
 }
 
 /*
-  Workspace scroll clearance — applied on .qf-app-main in the app shell.
-  Keeps the last card above the fixed bottom nav + home indicator + extra gap.
+  Workspace scroll clearance — physical spacer inside .qf-app-main (app shell).
+  iOS Safari needs in-flow height, not only padding-bottom on wrappers.
 */
 @media (max-width: 1023px) {
   .qf-workspace-scroll {
-    padding-bottom: var(--qf-workspace-bottom-padding);
-    scroll-padding-bottom: var(--qf-workspace-bottom-padding);
+    scroll-padding-bottom: var(
+      --qf-workspace-scroll-end-height,
+      var(--qf-workspace-bottom-padding)
+    );
+  }
+
+  .qf-workspace-scroll-end {
+    display: block;
+    width: 100%;
+    height: var(
+      --qf-workspace-scroll-end-height,
+      var(--qf-workspace-bottom-padding)
+    );
+    flex-shrink: 0;
+    pointer-events: none;
   }
 
   .qf-proposal-page,
@@ -134,7 +150,7 @@ body {
   .qf-workspace-page,
   .qf-mobile-quote-capture,
   .qf-editable-proposal-review {
-    padding-bottom: 0.5rem;
+    padding-bottom: 0;
   }
 
   .qf-proposal-review-actions {
@@ -142,6 +158,19 @@ body {
     flex-direction: column;
     gap: 0.75rem;
     padding-bottom: 0.25rem;
+  }
+
+  #proposal-timeline {
+    scroll-margin-bottom: var(
+      --qf-workspace-scroll-end-height,
+      var(--qf-workspace-bottom-padding)
+    );
+  }
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-scroll-end {
+    display: none;
   }
 }
 .bg-hero-glow {
@@ -1966,7 +1995,7 @@ a.qf-card-inset:hover {
 }
 
 .qf-workspace-timeline-item:last-child {
-  padding-bottom: 0;
+  padding-bottom: 0.25rem;
 }
 
 .qf-workspace-timeline-dot {
