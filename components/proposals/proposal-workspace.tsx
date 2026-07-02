@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { DeleteDraftSection } from "@/components/proposals/delete-draft-section";
+import { ProposalMoreActions } from "@/components/proposals/proposal-more-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
@@ -38,6 +38,8 @@ export type ProposalWorkspaceData = {
   materials: unknown;
   labour_description: string | null;
   estimated_duration: string | null;
+  planned_start_date_text: string | null;
+  planned_start_date: string | null;
   things_to_confirm_items: unknown;
   ai_optional_extras: unknown;
   payment_terms: string | null;
@@ -223,8 +225,6 @@ function ProposalWorkspaceRight({
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
 }) {
-  const isDraft = proposal.status === "draft";
-
   return (
     <div className="qf-proposal-col-right">
       <SectionCard className="qf-card-form">
@@ -248,15 +248,6 @@ function ProposalWorkspaceRight({
           </div>
         </SectionCard>
       </div>
-
-      {isDraft ? (
-        <SectionCard className="qf-card-form">
-          <DeleteDraftSection
-            proposalId={proposal.id}
-            proposalNumber={proposal.proposal_number}
-          />
-        </SectionCard>
-      ) : null}
     </div>
   );
 }
@@ -333,6 +324,15 @@ export function ProposalWorkspace({
         proposalId={proposal.id}
         status={proposal.status}
         actionContext={actionContext}
+      />
+
+      <ProposalMoreActions
+        proposalId={proposal.id}
+        proposalNumber={proposal.proposal_number}
+        status={proposal.status}
+        plannedStartDateText={proposal.planned_start_date_text}
+        plannedStartDate={proposal.planned_start_date}
+        estimatedDuration={proposal.estimated_duration}
       />
 
       <div className="qf-workspace-layout">

@@ -672,10 +672,6 @@ export async function deleteDraftProposal(
     return { error: "Proposal not found." };
   }
 
-  if (proposal.status !== "draft") {
-    return { error: "Only draft proposals can be deleted." };
-  }
-
   const { error: deleteError } = await supabase
     .from("proposals")
     .delete()

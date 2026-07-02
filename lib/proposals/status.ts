@@ -56,6 +56,10 @@ export function formatProposalStatus(status: string): string {
     return "Ready to send";
   }
 
+  if (status === "cancelled") {
+    return "Cancelled";
+  }
+
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 

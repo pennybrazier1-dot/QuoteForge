@@ -100,7 +100,14 @@ function MarkReadyButton({
         className="qf-workspace-action qf-workspace-action-primary"
       >
         {SEND_ICON}
-        {pending ? pendingLabel : "Send to Customer"}
+        <span className="qf-workspace-action-label">
+          <span className="qf-workspace-action-label-short">
+            {pending ? "…" : "Send"}
+          </span>
+          <span className="qf-workspace-action-label-long">
+            {pending ? pendingLabel : "Send to Customer"}
+          </span>
+        </span>
       </button>
     </form>
   );
@@ -135,7 +142,12 @@ export function ProposalWorkspaceActions({
             className="qf-workspace-action qf-workspace-action-primary"
           >
             {SEND_ICON}
-            Send to Customer
+            <span className="qf-workspace-action-label">
+              <span className="qf-workspace-action-label-short">Send</span>
+              <span className="qf-workspace-action-label-long">
+                Send to Customer
+              </span>
+            </span>
           </button>
         ) : showMarkReady ? (
           <MarkReadyButton
@@ -150,7 +162,12 @@ export function ProposalWorkspaceActions({
             title={sendDisabledReason ?? undefined}
           >
             {SEND_ICON}
-            Send to Customer
+            <span className="qf-workspace-action-label">
+              <span className="qf-workspace-action-label-short">Send</span>
+              <span className="qf-workspace-action-label-long">
+                Send to Customer
+              </span>
+            </span>
           </span>
         )}
 
@@ -162,7 +179,7 @@ export function ProposalWorkspaceActions({
             className="qf-workspace-action qf-workspace-action-secondary"
           >
             {PDF_ICON}
-            PDF
+            <span className="qf-workspace-action-label">PDF</span>
           </a>
         ) : (
           <span
@@ -170,7 +187,7 @@ export function ProposalWorkspaceActions({
             aria-disabled="true"
           >
             {PDF_ICON}
-            PDF
+            <span className="qf-workspace-action-label">PDF</span>
           </span>
         )}
 
@@ -180,7 +197,12 @@ export function ProposalWorkspaceActions({
             className="qf-workspace-action qf-workspace-action-secondary"
           >
             {EDIT_ICON}
-            Edit Proposal
+            <span className="qf-workspace-action-label">
+              <span className="qf-workspace-action-label-short">Edit</span>
+              <span className="qf-workspace-action-label-long">
+                Edit Proposal
+              </span>
+            </span>
           </Link>
         ) : (
           <span
@@ -188,7 +210,12 @@ export function ProposalWorkspaceActions({
             aria-disabled="true"
           >
             {EDIT_ICON}
-            Edit Proposal
+            <span className="qf-workspace-action-label">
+              <span className="qf-workspace-action-label-short">Edit</span>
+              <span className="qf-workspace-action-label-long">
+                Edit Proposal
+              </span>
+            </span>
           </span>
         )}
       </div>
