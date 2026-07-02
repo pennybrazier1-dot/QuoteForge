@@ -100,13 +100,6 @@ export function getSendDisabledReason(
 
   return null;
 }
-
-export function shouldAutoMarkReadyToSend(
-  proposal: ProposalActionContext
-): boolean {
-  return canPreviewProposalPdf(proposal);
-}
-
 export function canEditProposalActions(status: string): boolean {
   if (status === "cancelled") {
     return false;

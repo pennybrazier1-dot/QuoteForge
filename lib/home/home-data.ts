@@ -47,7 +47,7 @@ export type HomeSection = {
 export const HOME_SWIPE_SECTION_IDS = new Set([
   "todays-jobs",
   "jobs-needing-attention",
-  "new-quote-requests",
+  "quotes-to-finish",
   "quotes-ready-to-send",
 ]);
 
@@ -219,7 +219,7 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       });
     });
 
-  const newQuoteRequests = activeProposals
+  const quotesToFinish = activeProposals
     .filter((proposal) => proposal.status === "draft")
     .slice(0, 8)
     .map((proposal) =>
@@ -267,11 +267,11 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
       emptyMessage: "Nothing needs attention right now.",
     },
     {
-      id: "new-quote-requests",
-      title: "New Quote Requests",
+      id: "quotes-to-finish",
+      title: "Quotes to Finish",
       tone: "blue",
       viewAllHref: "/proposals",
-      cards: newQuoteRequests,
+      cards: quotesToFinish,
       emptyMessage: "No new quotes to work on.",
     },
     {

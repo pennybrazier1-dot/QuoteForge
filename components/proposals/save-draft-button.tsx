@@ -9,7 +9,7 @@ export function SaveDraftButton({ label = "Save Draft" }: { label?: string }) {
     <button
       type="submit"
       disabled={pending}
-      className="flex h-12 w-full items-center justify-center rounded-full bg-accent text-base font-semibold text-black transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+      className="qf-btn-primary"
     >
       {pending ? "Saving draft…" : label}
     </button>

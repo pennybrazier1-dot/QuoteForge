@@ -14,7 +14,7 @@ import {
   generateProposalDraft,
   type GenerateProposalState,
 } from "@/app/proposals/generate-actions";
-import { AcceptAiDraftButton } from "@/components/proposals/accept-ai-draft-button";
+import { MarkReadyToSendButton } from "@/components/proposals/mark-ready-to-send-button";
 import { AuthError } from "@/components/auth/auth-shell";
 import { EditableProposalReview } from "@/components/proposals/editable-proposal-review";
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
@@ -57,8 +57,8 @@ const HOW_IT_WORKS_STEPS = [
     description: "AI will create a professional proposal.",
   },
   {
-    title: "Review and accept",
-    description: "Check the AI draft and accept to save.",
+    title: "Review and save",
+    description: "Check the organised quote, then save as draft or mark ready to send.",
   },
   {
     title: "Download or send",
@@ -338,7 +338,9 @@ export function NewProposalForm({
   const saveLabel =
     mode === "edit" && proposalStatus === "ready_to_send"
       ? "Save Changes"
-      : "Save Draft";
+      : showMobileReview || desktopProposal
+        ? "Save as Draft"
+        : "Save Draft";
 
   return (
     <form action={formAction} className="qf-proposal-page qf-mobile-safe">
@@ -401,20 +403,21 @@ export function NewProposalForm({
           />
 
           {proposalForSubmit ? (
-            <div className="mt-6 space-y-4">
+            <div className="mt-6 space-y-3">
               <input
                 type="hidden"
                 name="generatedProposal"
                 value={JSON.stringify(proposalForSubmit)}
               />
+              <input type="hidden" name="proposalStatusIntent" value="draft" />
+              {saveState.error ? (
+                <AuthError message={saveState.error} />
+              ) : null}
               {acceptState.error ? (
                 <AuthError message={acceptState.error} />
               ) : null}
-              <AcceptAiDraftButton formAction={acceptAction} />
-              <p className="text-center text-xs text-muted">
-                Saves the AI draft as your official proposal. Your site notes stay
-                as your original visit record.
-              </p>
+              <SaveDraftButton label={saveLabel} />
+              <MarkReadyToSendButton formAction={acceptAction} />
             </div>
           ) : null}
 
@@ -422,13 +425,10 @@ export function NewProposalForm({
             {generateState.error ? (
               <AuthError message={generateState.error} />
             ) : null}
-            <div className="space-y-3">
-              <GenerateButton
-                formAction={generateAction}
-                label="Regenerate Quote"
-              />
-              <SaveDraftButton label={saveLabel} />
-            </div>
+            <GenerateButton
+              formAction={generateAction}
+              label="Regenerate Quote"
+            />
           </div>
         </>
       ) : null}
@@ -561,14 +561,15 @@ export function NewProposalForm({
                           : desktopProposal)
                     )}
                   />
+                  <input type="hidden" name="proposalStatusIntent" value="draft" />
+                  {saveState.error ? (
+                    <AuthError message={saveState.error} />
+                  ) : null}
                   {acceptState.error ? (
                     <AuthError message={acceptState.error} />
                   ) : null}
-                  <AcceptAiDraftButton formAction={acceptAction} />
-                  <p className="text-center text-xs text-muted">
-                    Saves the AI draft as your official proposal. Your site notes
-                    stay as your original visit record.
-                  </p>
+                  <SaveDraftButton label={saveLabel} />
+                  <MarkReadyToSendButton formAction={acceptAction} />
                 </div>
               ) : null}
             </div>
@@ -687,7 +688,9 @@ export function NewProposalForm({
                   ) : null}
 
                   <GenerateButton formAction={generateAction} />
-                  <SaveDraftButton label={saveLabel} />
+                  {!desktopProposal ? (
+                    <SaveDraftButton label={saveLabel} />
+                  ) : null}
                   <p className="qf-actions-helper">
                     <svg
                       width="14"
@@ -703,8 +706,9 @@ export function NewProposalForm({
                       <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
                       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                     </svg>
-                    Saves your site notes as a draft. AI draft is not saved until you
-                    accept it.
+                    {desktopProposal
+                      ? "Use Save as Draft or Mark Ready to Send above after reviewing the quote."
+                      : "Saves your site notes as a draft before you generate a quote."}
                   </p>
                 </div>
               </SectionCard>

@@ -12,7 +12,6 @@ import {
 } from "@/lib/proposals/structured-proposal";
 import { formatPersonName } from "@/lib/text/format-name";
 import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
-import { shouldAutoMarkReadyToSend } from "@/lib/proposals/proposal-action-eligibility";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
@@ -60,30 +59,18 @@ function getStructuredFieldsFromForm(formData: FormData) {
   return mapGeneratedProposalToDbFields(generatedProposal);
 }
 
-function resolveProposalStatusAfterSave(
-  form: ParsedProposalForm,
-  structuredFields: ReturnType<typeof getStructuredFieldsFromForm>,
-  totalPence: number,
-  existing?: {
-    status?: string;
-    job_summary?: string | null;
-  }
+function resolveProposalStatusOnUpdate(
+  formData: FormData,
+  existing?: { status?: string }
 ): "draft" | "ready_to_send" {
-  const jobSummary =
-    "job_summary" in structuredFields
-      ? (structuredFields.job_summary as string | undefined)
-      : existing?.job_summary ?? undefined;
+  const intent = getString(formData, "proposalStatusIntent");
 
-  const shouldReady = shouldAutoMarkReadyToSend({
-    status: "draft",
-    job_summary: jobSummary ?? null,
-    rough_notes: form.jobDescription,
-    customer_name: form.customerName,
-    total_amount: totalPence,
-  });
-
-  if (shouldReady) {
+  if (intent === "ready_to_send") {
     return "ready_to_send";
+  }
+
+  if (intent === "draft") {
+    return "draft";
   }
 
   if (existing?.status === "ready_to_send") {
@@ -300,11 +287,6 @@ export async function saveDraftProposal(
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
   const estimatedDuration = form.estimatedDuration || null;
   const structuredFields = getStructuredFieldsFromForm(formData);
-  const status = resolveProposalStatusAfterSave(
-    form,
-    structuredFields,
-    totalPence
-  );
 
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
@@ -312,7 +294,7 @@ export async function saveDraftProposal(
       workspace_id: workspaceId,
       customer_id: customerId,
       proposal_number: proposalNumber,
-      status,
+      status: "draft",
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
@@ -414,15 +396,9 @@ export async function updateDraftProposal(
   const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
   const estimatedDuration = form.estimatedDuration || null;
   const structuredFields = getStructuredFieldsFromForm(formData);
-  const status = resolveProposalStatusAfterSave(
-    form,
-    structuredFields,
-    totalPence,
-    {
-      status: existingProposal.status,
-      job_summary: existingProposal.job_summary,
-    }
-  );
+  const status = resolveProposalStatusOnUpdate(formData, {
+    status: existingProposal.status,
+  });
 
   const { error: proposalError } = await supabase
     .from("proposals")
@@ -532,16 +508,6 @@ export async function acceptAiDraftProposal(
       return { error: customerError ?? "Could not save customer details." };
     }
 
-    const status = resolveProposalStatusAfterSave(
-      form,
-      structuredFields,
-      totalPence,
-      {
-        status: existingProposal.status,
-        job_summary: existingProposal.job_summary,
-      }
-    );
-
     const { error: proposalError } = await supabase
       .from("proposals")
       .update({
@@ -557,7 +523,7 @@ export async function acceptAiDraftProposal(
         subtotal_amount: totalPence,
         vat_amount: 0,
         total_amount: totalPence,
-        status,
+        status: "ready_to_send",
         ...structuredFields,
         estimated_duration: manualDuration ?? structuredFields.estimated_duration,
         things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
@@ -595,19 +561,13 @@ export async function acceptAiDraftProposal(
     };
   }
 
-  const status = resolveProposalStatusAfterSave(
-    form,
-    structuredFields,
-    totalPence
-  );
-
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .insert({
       workspace_id: workspaceId,
       customer_id: customerId,
       proposal_number: proposalNumber,
-      status,
+      status: "ready_to_send",
       title: `Proposal for ${form.customerName}`,
       job_address: form.propertyAddress || null,
       rough_notes: form.jobDescription,
