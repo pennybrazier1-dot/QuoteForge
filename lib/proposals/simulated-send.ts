@@ -6,6 +6,7 @@ import {
 } from "@/lib/env/dev-testing";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
+import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
 
 export type SimulatedSendResult = {
   success?: boolean;
@@ -33,6 +34,8 @@ export async function executeSimulatedSend(
   supabase: SupabaseClient,
   formData: FormData
 ): Promise<SimulatedSendResult> {
+  console.log("[QuoteForge] executeSimulatedSend called");
+
   if (!isDevTestingEnabled()) {
     return { error: devTestingDisabledMessage() };
   }
@@ -116,6 +119,6 @@ export async function executeSimulatedSend(
   return {
     success: true,
     simulated: true,
-    message: "Test send complete",
+    message: SIMULATED_SEND_MESSAGE,
   };
 }

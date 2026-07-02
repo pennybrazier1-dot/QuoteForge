@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
+import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
 
 describe("simulated send routing", () => {
   it("does not import or call Resend from simulated-send module", async () => {
@@ -34,16 +35,17 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
 
-describe("sendProposalByEmail test intent guard", () => {
-  it("delegates test intent to executeSimulatedSend before Resend", async () => {
+describe("handleProposalSend routing", () => {
+  it("routes simulated mode to executeSimulatedSend before Resend", async () => {
     const executeSimulatedSend = vi.fn(async () => ({
       success: true,
       simulated: true,
-      message: "Test send complete",
+      message: SIMULATED_SEND_MESSAGE,
     }));
 
     vi.doMock("@/lib/env/dev-testing", () => ({
       isDevTestingEnabled: () => true,
+      devTestingDisabledMessage: () => "disabled",
     }));
 
     vi.doMock("@/lib/proposals/simulated-send", () => ({
@@ -53,21 +55,22 @@ describe("sendProposalByEmail test intent guard", () => {
     vi.doMock("@/lib/email/send-proposal-email", () => ({
       sendProposalEmail: vi.fn(async () => ({
         ok: false,
-        error: "Email sending is not configured. Add RESEND_API_KEY to your environment.",
+        error:
+          "Email sending is not configured. Add RESEND_API_KEY to your environment.",
       })),
     }));
 
-    const { sendProposalByEmail } = await import("@/app/proposals/send-actions");
+    const { handleProposalSend } = await import("@/app/proposals/send-actions");
     const formData = new FormData();
 
-    formData.set("qfSendIntent", "test");
+    formData.set("qfSendMode", "simulated");
     formData.set("proposalId", "proposal-1");
     formData.set("customerEmail", "test@example.com");
 
-    const result = await sendProposalByEmail({}, formData);
+    const result = await handleProposalSend({}, formData);
 
     expect(executeSimulatedSend).toHaveBeenCalled();
     expect(result.simulated).toBe(true);
-    expect(result.message).toBe("Test send complete");
+    expect(result.message).toBe("SIMULATED_SEND_USED");
   });
 });

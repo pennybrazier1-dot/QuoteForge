@@ -10,7 +10,11 @@ export function isDevTestingEnabled(): boolean {
     return false;
   }
 
-  if (vercelEnv === "preview") {
+  if (vercelEnv === "preview" || vercelEnv === "development") {
+    return true;
+  }
+
+  if (process.env.NEXT_PUBLIC_QF_DEV_TESTING === "1") {
     return true;
   }
 

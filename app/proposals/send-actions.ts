@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
-import { isDevTestingEnabled } from "@/lib/env/dev-testing";
+import {
+  devTestingDisabledMessage,
+  isDevTestingEnabled,
+} from "@/lib/env/dev-testing";
 import {
   generateFreshProposalPdfBuffer,
   loadProposalPdfContext,
@@ -25,19 +28,44 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+/**
+ * Single entry point for Send and Test Send from the proposal dialog.
+ * Branch on qfSendMode before any Resend/PDF work runs.
+ */
+export async function handleProposalSend(
+  _prevState: SendProposalByEmailState,
+  formData: FormData
+): Promise<SendProposalByEmailState> {
+  const sendMode = getString(formData, "qfSendMode");
+
+  console.log(
+    "[QuoteForge] handleProposalSend called — qfSendMode=%s",
+    sendMode || "(missing)"
+  );
+
+  if (sendMode === "simulated") {
+    console.log("[QuoteForge] handleProposalSend → simulateSendProposal path");
+
+    if (!isDevTestingEnabled()) {
+      return { error: devTestingDisabledMessage() };
+    }
+
+    const supabase = await createClient();
+
+    return executeSimulatedSend(supabase, formData);
+  }
+
+  console.log("[QuoteForge] handleProposalSend → sendProposalByEmail path");
+
+  return sendProposalByEmail(_prevState, formData);
+}
+
+/** Real email send — only called when qfSendMode is not "simulated". */
 export async function sendProposalByEmail(
   _prevState: SendProposalByEmailState,
   formData: FormData
 ): Promise<SendProposalByEmailState> {
   const supabase = await createClient();
-
-  /*
-    Belt-and-suspenders: if a test-send intent reaches this action, never touch Resend.
-    The Test Send button should use formAction={simulateSendProposal} directly.
-  */
-  if (getString(formData, "qfSendIntent") === "test" && isDevTestingEnabled()) {
-    return executeSimulatedSend(supabase, formData);
-  }
 
   const {
     data: { user },

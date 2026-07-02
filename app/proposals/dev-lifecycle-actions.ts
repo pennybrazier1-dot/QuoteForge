@@ -42,6 +42,8 @@ export async function simulateSendProposal(
   _prevState: DevLifecycleState,
   formData: FormData
 ): Promise<DevLifecycleState> {
+  console.log("[QuoteForge] simulateSendProposal called");
+
   const supabase = await createClient();
 
   return executeSimulatedSend(supabase, formData);

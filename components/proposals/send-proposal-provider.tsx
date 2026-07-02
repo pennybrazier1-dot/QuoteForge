@@ -11,6 +11,7 @@ import {
 } from "react";
 import { SendProposalDialog } from "@/components/proposals/send-proposal-dialog";
 import type { SendProposalContext } from "@/lib/proposals/send-proposal-defaults";
+import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
 
 type SendProposalProviderValue = {
   openSendDialog: () => void;
@@ -84,7 +85,7 @@ export function SendProposalProvider({
       setNotice(
         options?.simulated
           ? {
-              title: options.message ?? "Test send complete",
+              title: options.message ?? SIMULATED_SEND_MESSAGE,
               body: "Status updated to Waiting for Customer. No email was sent.",
             }
           : {
