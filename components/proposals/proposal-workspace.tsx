@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 import { ProposalMoreActions } from "@/components/proposals/proposal-more-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
@@ -326,14 +327,16 @@ export function ProposalWorkspace({
         actionContext={actionContext}
       />
 
-      <ProposalMoreActions
-        proposalId={proposal.id}
-        proposalNumber={proposal.proposal_number}
-        status={proposal.status}
-        plannedStartDateText={proposal.planned_start_date_text}
-        plannedStartDate={proposal.planned_start_date}
-        estimatedDuration={proposal.estimated_duration}
-      />
+      <Suspense fallback={null}>
+        <ProposalMoreActions
+          proposalId={proposal.id}
+          proposalNumber={proposal.proposal_number}
+          status={proposal.status}
+          plannedStartDateText={proposal.planned_start_date_text}
+          plannedStartDate={proposal.planned_start_date}
+          estimatedDuration={proposal.estimated_duration}
+        />
+      </Suspense>
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />

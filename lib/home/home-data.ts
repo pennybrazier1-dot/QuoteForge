@@ -23,6 +23,8 @@ export type HomeCardStatusTone = "green" | "orange" | "blue" | "purple";
 export type HomeCard = {
   id: string;
   href: string;
+  proposalNumber: string;
+  proposalStatus: string;
   customer: string;
   jobTitle: string;
   timeLabel?: string;
@@ -41,6 +43,13 @@ export type HomeSection = {
   cards: HomeCard[];
   emptyMessage: string;
 };
+
+export const HOME_SWIPE_SECTION_IDS = new Set([
+  "todays-jobs",
+  "jobs-needing-attention",
+  "new-quote-requests",
+  "quotes-ready-to-send",
+]);
 
 function startOfDay(date: Date): Date {
   const next = new Date(date);
@@ -128,6 +137,8 @@ function buildCard(
   return {
     id: proposal.id,
     href: proposalHref(proposal),
+    proposalNumber: proposal.proposal_number,
+    proposalStatus: proposal.status,
     customer: proposal.customer_name ?? "Customer",
     jobTitle: options.jobTitle ?? proposal.title,
     timeLabel: options.includeSchedule ? formatTimeRange(proposal) : undefined,

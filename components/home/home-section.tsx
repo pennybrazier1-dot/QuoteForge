@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { HomeSection as HomeSectionData } from "@/lib/home/home-data";
-import { HomeActionCard } from "@/components/home/home-action-card";
+import { HomeSectionCards } from "@/components/home/home-section-cards";
 
 function SectionIcon({ sectionId }: { sectionId: string }) {
   if (sectionId === "todays-jobs") {
@@ -80,13 +80,7 @@ export function HomeSection({ section }: { section: HomeSectionData }) {
       {section.cards.length === 0 ? (
         <div className="qf-home-empty">{section.emptyMessage}</div>
       ) : (
-        <ul className="qf-home-card-list">
-          {section.cards.map((card) => (
-            <li key={card.id}>
-              <HomeActionCard card={card} sectionTone={section.tone} />
-            </li>
-          ))}
-        </ul>
+        <HomeSectionCards section={section} />
       )}
     </section>
   );

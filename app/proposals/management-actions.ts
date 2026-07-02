@@ -96,6 +96,7 @@ export async function cancelProposal(
   formData: FormData
 ): Promise<ProposalManagementState> {
   const proposalId = getString(formData, "proposalId");
+  const returnTo = getString(formData, "returnTo");
   const loaded = await loadManagedProposal(proposalId);
 
   if ("error" in loaded) {
@@ -134,6 +135,11 @@ export async function cancelProposal(
   });
 
   revalidateProposalPaths(proposal.id);
+
+  if (returnTo === "dashboard") {
+    redirect("/dashboard");
+  }
+
   redirect(`/proposals/${proposal.id}`);
 }
 

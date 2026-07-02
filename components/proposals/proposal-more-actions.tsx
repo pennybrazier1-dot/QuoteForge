@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
 import {
   cancelProposal,
@@ -32,8 +33,17 @@ export function ProposalMoreActions({
   plannedStartDate,
   estimatedDuration,
 }: ProposalMoreActionsProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
   const showCancel = canCancelProposal(status);
+
+  useEffect(() => {
+    if (searchParams.get("rearrange") === "1") {
+      setActiveDialog("rearrange");
+      router.replace(`/proposals/${proposalId}`, { scroll: false });
+    }
+  }, [proposalId, router, searchParams]);
 
   function closeDialog() {
     setActiveDialog(null);

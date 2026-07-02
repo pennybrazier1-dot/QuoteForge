@@ -1470,90 +1470,99 @@ a.qf-card-inset:hover {
 }
 
 .qf-workspace-actions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.625rem;
-}
-
-@media (max-width: 1023px) {
-  .qf-workspace-actions-list {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.5rem;
-  }
-}
-
-.qf-workspace-actions-item {
-  display: block;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
   width: 100%;
 }
 
-@media (max-width: 1023px) {
-  .qf-workspace-actions-item {
-    display: contents;
-  }
+.qf-workspace-actions-item {
+  display: contents;
 }
 
 .qf-workspace-action {
   display: inline-flex;
   width: 100%;
-  min-height: 3rem;
+  min-width: 0;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.125rem;
   border-radius: 9999px;
-  padding-inline: 1.25rem;
-  font-size: 0.9375rem;
+  padding: 0.375rem 0.375rem;
+  font-size: 0.75rem;
+  line-height: 1.1;
   font-weight: 600;
   text-decoration: none;
-  white-space: nowrap;
+  white-space: normal;
+  text-align: center;
+  box-sizing: border-box;
   transition:
     background-color 0.15s ease,
     border-color 0.15s ease,
     opacity 0.15s ease;
-  box-sizing: border-box;
 }
 
-@media (max-width: 1023px) {
-  .qf-workspace-action {
-    min-width: 0;
-    min-height: 2.75rem;
-    flex-direction: column;
-    gap: 0.125rem;
-    padding: 0.375rem 0.375rem;
-    font-size: 0.75rem;
-    line-height: 1.1;
-    white-space: normal;
-    text-align: center;
-  }
-
-  .qf-workspace-action svg {
-    width: 1rem;
-    height: 1rem;
-    flex-shrink: 0;
-  }
+.qf-workspace-action svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
 }
 
 .qf-workspace-action-label-long {
-  display: inline;
-}
-
-.qf-workspace-action-label-short {
   display: none;
 }
 
-@media (max-width: 1023px) {
-  .qf-workspace-action-label-long {
-    display: none;
-  }
-
-  .qf-workspace-action-label-short {
-    display: inline;
-  }
+.qf-workspace-action-label-short {
+  display: inline;
 }
 
 .qf-workspace-action-label {
   min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-actions {
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .qf-workspace-actions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    max-width: 20rem;
+  }
+
+  .qf-workspace-actions-item {
+    display: block;
+    width: 100%;
+  }
+
+  .qf-workspace-action {
+    min-height: 3rem;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding-inline: 1.25rem;
+    font-size: 0.9375rem;
+    line-height: normal;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .qf-workspace-action svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .qf-workspace-action-label-long {
+    display: inline;
+  }
+
+  .qf-workspace-action-label-short {
+    display: none;
+  }
 }
 
 .qf-workspace-action-primary {
@@ -1588,12 +1597,6 @@ a.qf-card-inset:hover {
   font-size: 0.8125rem;
   line-height: 1.45;
   color: var(--muted);
-}
-
-@media (min-width: 1024px) {
-  .qf-workspace-actions-list {
-    max-width: 20rem;
-  }
 }
 
 .qf-workspace-more-actions {
