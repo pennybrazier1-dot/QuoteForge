@@ -3,20 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
 import {
-  devTestingDisabledMessage,
-  isDevTestingEnabled,
-} from "@/lib/env/dev-testing";
-import {
   generateFreshProposalPdfBuffer,
   loadProposalPdfContext,
 } from "@/lib/proposals/load-proposal-pdf";
-import { executeSimulatedSend } from "@/lib/proposals/simulated-send";
 import { createClient } from "@/lib/supabase/server";
 
 export type SendProposalByEmailState = {
   success?: boolean;
-  simulated?: boolean;
-  message?: string;
   error?: string;
 };
 
@@ -28,39 +21,6 @@ function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-/**
- * Single entry point for Send and Test Send from the proposal dialog.
- * Branch on qfSendMode before any Resend/PDF work runs.
- */
-export async function handleProposalSend(
-  _prevState: SendProposalByEmailState,
-  formData: FormData
-): Promise<SendProposalByEmailState> {
-  const sendMode = getString(formData, "qfSendMode");
-
-  console.log(
-    "[QuoteForge] handleProposalSend called — qfSendMode=%s",
-    sendMode || "(missing)"
-  );
-
-  if (sendMode === "simulated") {
-    console.log("[QuoteForge] handleProposalSend → simulateSendProposal path");
-
-    if (!isDevTestingEnabled()) {
-      return { error: devTestingDisabledMessage() };
-    }
-
-    const supabase = await createClient();
-
-    return executeSimulatedSend(supabase, formData);
-  }
-
-  console.log("[QuoteForge] handleProposalSend → sendProposalByEmail path");
-
-  return sendProposalByEmail(_prevState, formData);
-}
-
-/** Real email send — only called when qfSendMode is not "simulated". */
 export async function sendProposalByEmail(
   _prevState: SendProposalByEmailState,
   formData: FormData

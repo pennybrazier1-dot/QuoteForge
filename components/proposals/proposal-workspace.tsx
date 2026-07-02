@@ -6,6 +6,8 @@ import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badg
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
 import { SendProposalProvider } from "@/components/proposals/send-proposal-provider";
+import { TestMarkAsSentButton } from "@/components/proposals/test-mark-as-sent-button";
+import { TestSendSuccessNotice } from "@/components/proposals/test-send-success-notice";
 import {
   BulletList,
   MATERIALS_REVIEW_NOTE,
@@ -13,7 +15,6 @@ import {
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
-import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
@@ -282,11 +283,8 @@ export function ProposalWorkspace({
     customer_email: proposal.customer_email,
     total_amount: proposal.total_amount,
   };
-  const devTestingEnabled = isDevTestingEnabled();
-
   return (
     <SendProposalProvider
-      devTestingEnabled={devTestingEnabled}
       data={{
         proposalId: proposal.id,
         proposalNumber: proposal.proposal_number,
@@ -337,6 +335,16 @@ export function ProposalWorkspace({
         status={proposal.status}
         actionContext={actionContext}
       />
+
+      <TestMarkAsSentButton
+        proposalId={proposal.id}
+        status={proposal.status}
+        customerEmail={proposal.customer_email}
+      />
+
+      <Suspense fallback={null}>
+        <TestSendSuccessNotice proposalId={proposal.id} />
+      </Suspense>
 
       <Suspense fallback={null}>
         <ProposalLifecycleActions

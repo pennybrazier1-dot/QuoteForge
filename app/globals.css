@@ -3506,30 +3506,37 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   background: rgba(239, 68, 68, 0.1);
 }
 
-.qf-send-test-btn {
+.qf-dev-test-send {
+  margin-bottom: 1rem;
   border: 1px dashed rgba(168, 85, 247, 0.45);
+  border-radius: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: rgba(168, 85, 247, 0.08);
 }
 
-.qf-send-success {
-  border-radius: 0.625rem;
-  padding: 0.75rem 0.875rem;
-  margin-bottom: 0.75rem;
-}
-
-.qf-send-success-test {
-  border: 1px solid rgba(168, 85, 247, 0.45);
-  background: rgba(168, 85, 247, 0.1);
-}
-
-.qf-send-success-title {
-  margin: 0;
-  font-size: 0.875rem;
-  font-weight: 700;
+.qf-dev-test-send-label {
+  margin: 0 0 0.625rem;
+  font-size: 0.75rem;
+  font-weight: 600;
   color: rgb(216, 180, 254);
 }
 
-.qf-send-success-body {
-  margin: 0.25rem 0 0;
-  font-size: 0.8125rem;
-  color: var(--muted);
+.qf-dev-test-send-btn {
+  width: 100%;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+  border-radius: 0.625rem;
+  padding: 0.625rem 0.875rem;
+  background: rgba(168, 85, 247, 0.16);
+  color: rgb(233, 213, 255);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.qf-dev-test-send-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.24);
+}
+
+.qf-dev-test-send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

@@ -44,9 +44,26 @@ export async function simulateSendProposal(
 ): Promise<DevLifecycleState> {
   console.log("[QuoteForge] simulateSendProposal called");
 
-  const supabase = await createClient();
+  const guard = assertDevTesting();
 
-  return executeSimulatedSend(supabase, formData);
+  if (guard) {
+    return guard;
+  }
+
+  const proposalId = getString(formData, "proposalId");
+
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const supabase = await createClient();
+  const result = await executeSimulatedSend(supabase, formData);
+
+  if (result.error) {
+    return { error: result.error };
+  }
+
+  redirect(`/proposals/${proposalId}?testSent=1`);
 }
 
 async function simulateCustomerAttention(

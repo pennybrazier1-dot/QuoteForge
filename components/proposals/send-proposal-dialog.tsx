@@ -10,11 +10,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
-  handleProposalSend,
+  sendProposalByEmail,
   type SendProposalByEmailState,
 } from "@/app/proposals/send-actions";
 import { AuthError } from "@/components/auth/auth-shell";
-import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
 import {
   buildSendProposalMessage,
   buildSendProposalSubject,
@@ -24,9 +23,8 @@ import {
 type SendProposalDialogProps = {
   open: boolean;
   onClose: () => void;
-  onSent: (options?: { simulated?: boolean; message?: string }) => void;
+  onSent: () => void;
   data: SendProposalContext;
-  devTestingEnabled?: boolean;
 };
 
 const initialState: SendProposalByEmailState = {};
@@ -40,7 +38,6 @@ export function SendProposalDialog({
   onClose,
   onSent,
   data,
-  devTestingEnabled = false,
 }: SendProposalDialogProps) {
   const titleId = useId();
   const sendFormId = useId();
@@ -52,8 +49,8 @@ export function SendProposalDialog({
   const [message, setMessage] = useState(() =>
     buildSendProposalMessage(customerName, data.businessName)
   );
-  const [state, dispatch, isPending] = useActionState(
-    handleProposalSend,
+  const [state, formAction, isPending] = useActionState(
+    sendProposalByEmail,
     initialState
   );
   const [mounted, setMounted] = useState(false);
@@ -74,12 +71,9 @@ export function SendProposalDialog({
 
   useEffect(() => {
     if (state.success) {
-      onSent({
-        simulated: state.simulated,
-        message: state.message,
-      });
+      onSent();
     }
-  }, [state.success, state.simulated, state.message, onSent]);
+  }, [state.success, onSent]);
 
   useEffect(() => {
     if (!open) {
@@ -103,16 +97,6 @@ export function SendProposalDialog({
     };
   }, [open, onClose]);
 
-  const handleTestSend = () => {
-    const formData = new FormData();
-
-    formData.set("qfSendMode", "simulated");
-    formData.set("proposalId", data.proposalId);
-    formData.set("customerEmail", customerEmail.trim() || "test@example.com");
-
-    dispatch(formData);
-  };
-
   if (!open || !mounted) {
     return null;
   }
@@ -121,10 +105,6 @@ export function SendProposalDialog({
   const editCustomerHref = data.customerId
     ? `/customers/${data.customerId}/edit`
     : "/customers";
-  const showSimulatedProof =
-    state.success &&
-    state.simulated &&
-    state.message === SIMULATED_SEND_MESSAGE;
 
   return createPortal(
     <div className="qf-send-root" role="presentation">
@@ -172,24 +152,13 @@ export function SendProposalDialog({
           </button>
         </header>
 
-        <form id={sendFormId} action={dispatch} className="qf-send-form">
-          <input type="hidden" name="qfSendMode" value="email" />
+        <form id={sendFormId} action={formAction} className="qf-send-form">
           <input type="hidden" name="proposalId" value={data.proposalId} />
           <input type="hidden" name="customerEmail" value={customerEmail} />
           <input type="hidden" name="subject" value={subject} />
           <input type="hidden" name="message" value={message} />
 
           <div className="qf-send-body">
-            {showSimulatedProof ? (
-              <div className="qf-send-success qf-send-success-test" role="status">
-                <p className="qf-send-success-title">{SIMULATED_SEND_MESSAGE}</p>
-                <p className="qf-send-success-body">
-                  Test send complete. Status updated to Waiting for Customer. No
-                  email was sent.
-                </p>
-              </div>
-            ) : null}
-
             {state.error ? (
               <div className="qf-send-error">
                 <AuthError message={state.error} />
@@ -297,16 +266,6 @@ export function SendProposalDialog({
           >
             Cancel
           </button>
-          {devTestingEnabled ? (
-            <button
-              type="button"
-              disabled={isPending}
-              className="qf-btn-secondary qf-send-footer-btn qf-send-test-btn"
-              onClick={handleTestSend}
-            >
-              {isPending ? "Testing…" : "Test send — no email"}
-            </button>
-          ) : null}
           <button
             type="submit"
             form={sendFormId}

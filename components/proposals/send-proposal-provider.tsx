@@ -11,7 +11,6 @@ import {
 } from "react";
 import { SendProposalDialog } from "@/components/proposals/send-proposal-dialog";
 import type { SendProposalContext } from "@/lib/proposals/send-proposal-defaults";
-import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
 
 type SendProposalProviderValue = {
   openSendDialog: () => void;
@@ -33,20 +32,14 @@ export function useSendProposalDialog(): SendProposalProviderValue {
   return context;
 }
 
-function ProposalSentNotice({
-  title,
-  body,
-  onDismiss,
-}: {
-  title: string;
-  body: string;
-  onDismiss: () => void;
-}) {
+function ProposalSentNotice({ onDismiss }: { onDismiss: () => void }) {
   return (
     <div className="qf-workspace-notice qf-workspace-notice-success" role="status">
       <div>
-        <p className="qf-workspace-notice-title">{title}</p>
-        <p className="qf-workspace-notice-body">{body}</p>
+        <p className="qf-workspace-notice-title">Proposal sent successfully</p>
+        <p className="qf-workspace-notice-body">
+          Your proposal has been emailed to the customer.
+        </p>
       </div>
       <button
         type="button"
@@ -62,41 +55,23 @@ function ProposalSentNotice({
 export function SendProposalProvider({
   children,
   data,
-  devTestingEnabled = false,
 }: {
   children: ReactNode;
   data: SendProposalContext;
-  devTestingEnabled?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [notice, setNotice] = useState<{
-    title: string;
-    body: string;
-  } | null>(null);
+  const [showNotice, setShowNotice] = useState(false);
 
   const openSendDialog = useCallback(() => {
     setOpen(true);
   }, []);
 
-  const handleSent = useCallback(
-    (options?: { simulated?: boolean; message?: string }) => {
-      setOpen(false);
-      setNotice(
-        options?.simulated
-          ? {
-              title: options.message ?? SIMULATED_SEND_MESSAGE,
-              body: "Status updated to Waiting for Customer. No email was sent.",
-            }
-          : {
-              title: "Proposal sent successfully",
-              body: "Your proposal has been emailed to the customer.",
-            }
-      );
-      router.refresh();
-    },
-    [router]
-  );
+  const handleSent = useCallback(() => {
+    setOpen(false);
+    setShowNotice(true);
+    router.refresh();
+  }, [router]);
 
   const value = useMemo(
     () => ({
@@ -107,12 +82,8 @@ export function SendProposalProvider({
 
   return (
     <SendProposalContext.Provider value={value}>
-      {notice ? (
-        <ProposalSentNotice
-          title={notice.title}
-          body={notice.body}
-          onDismiss={() => setNotice(null)}
-        />
+      {showNotice ? (
+        <ProposalSentNotice onDismiss={() => setShowNotice(false)} />
       ) : null}
       {children}
       <SendProposalDialog
@@ -120,7 +91,6 @@ export function SendProposalProvider({
         onClose={() => setOpen(false)}
         onSent={handleSent}
         data={data}
-        devTestingEnabled={devTestingEnabled}
       />
     </SendProposalContext.Provider>
   );

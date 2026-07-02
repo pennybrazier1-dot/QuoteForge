@@ -35,12 +35,23 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
 
-describe("handleProposalSend routing", () => {
-  it("routes simulated mode to executeSimulatedSend before Resend", async () => {
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn((url: string) => {
+    throw new Error(`REDIRECT:${url}`);
+  }),
+}));
+
+describe("simulateSendProposal", () => {
+  it("calls executeSimulatedSend only and never sendProposalByEmail", async () => {
     const executeSimulatedSend = vi.fn(async () => ({
       success: true,
       simulated: true,
       message: SIMULATED_SEND_MESSAGE,
+    }));
+
+    const sendProposalByEmail = vi.fn(async () => ({
+      error:
+        "Email sending is not configured. Add RESEND_API_KEY to your environment.",
     }));
 
     vi.doMock("@/lib/env/dev-testing", () => ({
@@ -53,24 +64,29 @@ describe("handleProposalSend routing", () => {
     }));
 
     vi.doMock("@/lib/email/send-proposal-email", () => ({
-      sendProposalEmail: vi.fn(async () => ({
-        ok: false,
-        error:
-          "Email sending is not configured. Add RESEND_API_KEY to your environment.",
-      })),
+      sendProposalEmail: vi.fn(),
     }));
 
-    const { handleProposalSend } = await import("@/app/proposals/send-actions");
+    vi.doMock("@/app/proposals/send-actions", () => ({
+      sendProposalByEmail,
+    }));
+
+    const { createClient } = await import("@/lib/supabase/server");
+    vi.mocked(createClient).mockResolvedValue({} as never);
+
+    const { simulateSendProposal } = await import(
+      "@/app/proposals/dev-lifecycle-actions"
+    );
     const formData = new FormData();
 
-    formData.set("qfSendMode", "simulated");
     formData.set("proposalId", "proposal-1");
     formData.set("customerEmail", "test@example.com");
 
-    const result = await handleProposalSend({}, formData);
+    await expect(simulateSendProposal({}, formData)).rejects.toThrow(
+      "REDIRECT:/proposals/proposal-1?testSent=1"
+    );
 
     expect(executeSimulatedSend).toHaveBeenCalled();
-    expect(result.simulated).toBe(true);
-    expect(result.message).toBe("SIMULATED_SEND_USED");
+    expect(sendProposalByEmail).not.toHaveBeenCalled();
   });
 });
