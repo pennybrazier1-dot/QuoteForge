@@ -11,14 +11,14 @@ import {
 } from "@/components/customer-journey/ui/journey-ui";
 
 export function StepDetails() {
-  const { state, updateField, goNext, goBack, canContinue } = useJourney();
+  const { state, tradesperson, updateField, goNext, goBack, canContinue } = useJourney();
   const { name, mobile, email } = state.formData;
 
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("details")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("details", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="How can we reach you?"
         description="Just your name and mobile — that's all we need to get started."
       />

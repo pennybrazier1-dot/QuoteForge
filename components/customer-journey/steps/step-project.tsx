@@ -10,13 +10,13 @@ import {
 } from "@/components/customer-journey/ui/journey-ui";
 
 export function StepProject() {
-  const { state, updateField, goNext, goBack, canContinue } = useJourney();
+  const { state, tradesperson, updateField, goNext, goBack, canContinue } = useJourney();
 
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("project")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("project", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Tell us what you need"
         description="A sentence or two is fine — say it how you'd tell a friend."
       />

@@ -1,10 +1,16 @@
 "use client";
 
-import { TRADE_OPTIONS, PROPERTY_TYPES } from "@/lib/customer-journey/constants";
+import { PROPERTY_TYPES } from "@/lib/customer-journey/constants";
+import { needsServiceSelection } from "@/lib/customer-journey/business-services";
 import { getTradeQuestions } from "@/lib/customer-journey/trade-questions";
-import { getStepNumber, getTotalSteps } from "@/lib/customer-journey/journey-state";
+import {
+  getEffectiveTrade,
+  getStepNumber,
+  getTotalSteps,
+} from "@/lib/customer-journey/journey-state";
 import { useJourney } from "@/lib/customer-journey/journey-provider";
 import type { JourneyStepId } from "@/lib/customer-journey/types";
+import type { MeasurementField } from "@/lib/customer-journey/types";
 import { JourneyContinueButton } from "@/components/customer-journey/layout/journey-continue-button";
 import { JourneyStepHeader } from "@/components/customer-journey/ui/journey-ui";
 
@@ -47,29 +53,33 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 export function StepReview() {
-  const { state, setStep, submit } = useJourney();
+  const { state, tradesperson, setStep, submit } = useJourney();
   const { formData } = state;
-  const tradeLabel =
-    TRADE_OPTIONS.find((trade) => trade.id === formData.trade)?.label ??
-    "Not selected";
+  const trade = getEffectiveTrade(formData, tradesperson);
   const propertyLabel =
     PROPERTY_TYPES.find((type) => type.id === formData.propertyType)?.label ??
     "Not selected";
-  const tradeQuestions = getTradeQuestions(formData.trade);
+  const tradeQuestions = getTradeQuestions(trade);
+  const { contactName } = tradesperson;
 
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("review")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("review", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Nearly done"
         description="Check it looks right, then send."
       />
 
       <div className="cj-review-stack">
-        <ReviewSection title="What you need" stepId="trade" onEdit={setStep}>
-          <ReviewRow label="Type of work" value={tradeLabel} />
-        </ReviewSection>
+        {needsServiceSelection(tradesperson) ? (
+          <ReviewSection title="Service" stepId="work_type" onEdit={setStep}>
+            <ReviewRow
+              label="Service"
+              value={formData.selectedService ?? "Not selected"}
+            />
+          </ReviewSection>
+        ) : null}
 
         <ReviewSection title="Your details" stepId="details" onEdit={setStep}>
           <ReviewRow label="Name" value={formData.name} />
@@ -112,13 +122,13 @@ export function StepReview() {
             value={
               formData.knowsMeasurements === "yes"
                 ? "Yes — rough sizes provided"
-                : "John will measure on site"
+                : `${contactName} will measure on site`
             }
           />
           {formData.knowsMeasurements === "yes"
             ? formData.measurements
-                .filter((field) => field.value.trim())
-                .map((field) => (
+                .filter((field: MeasurementField) => field.value.trim())
+                .map((field: MeasurementField) => (
                   <ReviewRow
                     key={field.id}
                     label={field.label}
@@ -148,7 +158,7 @@ export function StepReview() {
       <JourneyContinueButton
         onClick={submit}
         label="Send my request"
-        hint="John will be in touch soon"
+        hint={`${contactName} will be in touch soon`}
         onBack={() => setStep("trade_questions")}
         showBack
       />

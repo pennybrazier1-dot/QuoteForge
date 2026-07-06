@@ -14,15 +14,18 @@ import { StepProject } from "@/components/customer-journey/steps/step-project";
 import { StepProperty } from "@/components/customer-journey/steps/step-property";
 import { StepReview } from "@/components/customer-journey/steps/step-review";
 import { StepThankYou } from "@/components/customer-journey/steps/step-thank-you";
-import { StepTrade } from "@/components/customer-journey/steps/step-trade";
+import { StepWelcome } from "@/components/customer-journey/steps/step-welcome";
+import { StepWorkType } from "@/components/customer-journey/steps/step-work-type";
 import { StepTradeQuestions } from "@/components/customer-journey/steps/step-trade-questions";
 
 function JourneyStepContent() {
   const { state } = useJourney();
 
   switch (state.currentStepId) {
-    case "trade":
-      return <StepTrade />;
+    case "welcome":
+      return <StepWelcome />;
+    case "work_type":
+      return <StepWorkType />;
     case "details":
       return <StepDetails />;
     case "property":
@@ -40,7 +43,7 @@ function JourneyStepContent() {
     case "thank_you":
       return <StepThankYou />;
     default:
-      return <StepTrade />;
+      return <StepWelcome />;
   }
 }
 

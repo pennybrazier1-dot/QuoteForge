@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CustomerJourneyApp } from "@/components/customer-journey/customer-journey-app";
+import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 
 export const metadata: Metadata = {
   title: "Request a Quote",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function RequestQuotePage() {
-  return <CustomerJourneyApp />;
+  return <CustomerJourneyApp devPreviewEnabled={isDevTestingEnabled()} />;
 }

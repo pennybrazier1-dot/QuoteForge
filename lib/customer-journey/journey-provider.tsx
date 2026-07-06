@@ -6,29 +6,36 @@ import {
   useContext,
   useMemo,
   useReducer,
+  useState,
   type ReactNode,
 } from "react";
-import { PLACEHOLDER_TRADESPERSON } from "./constants";
+import {
+  JOURNEY_PREVIEW_PROFILES,
+  type JourneyPreviewProfileId,
+} from "./constants";
+import { resolveServiceTradeType } from "./business-services";
 import {
   canProceed,
+  createInitialState,
   getNextStepId,
   getPreviousStepId,
-  INITIAL_FORM_DATA,
   journeyReducer,
   type JourneyState,
 } from "./journey-state";
-import type { JourneyFormData, JourneyStepId, TradeType, TradespersonInfo } from "./types";
+import type { JourneyFormData, JourneyStepId, TradespersonInfo } from "./types";
 
 type JourneyContextValue = {
   state: JourneyState;
   tradesperson: TradespersonInfo;
+  activePreviewProfileId: JourneyPreviewProfileId;
+  switchPreviewProfile: (profileId: JourneyPreviewProfileId) => void;
   setStep: (stepId: JourneyStepId) => void;
   updateField: <K extends keyof JourneyFormData>(
     field: K,
     value: JourneyFormData[K]
   ) => void;
   setTradeAnswer: (questionId: string, value: string) => void;
-  selectTradeAndContinue: (trade: TradeType) => void;
+  selectServiceAndContinue: (service: string) => void;
   declineMeasurementsAndContinue: () => void;
   addPhotos: (files: File[]) => void;
   removePhoto: (index: number) => void;
@@ -40,15 +47,33 @@ type JourneyContextValue = {
 
 const JourneyContext = createContext<JourneyContextValue | null>(null);
 
-export function JourneyProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(journeyReducer, {
-    currentStepId: "trade" as JourneyStepId,
-    formData: {
-      ...INITIAL_FORM_DATA,
-      measurements: INITIAL_FORM_DATA.measurements.map((field) => ({ ...field })),
-    },
-    submitted: false,
-  });
+type JourneyProviderProps = {
+  children: ReactNode;
+  initialProfileId?: JourneyPreviewProfileId;
+};
+
+export function JourneyProvider({
+  children,
+  initialProfileId = "single-trade",
+}: JourneyProviderProps) {
+  const [activePreviewProfileId, setActivePreviewProfileId] =
+    useState<JourneyPreviewProfileId>(initialProfileId);
+  const [tradesperson, setTradesperson] = useState<TradespersonInfo>(
+    () => JOURNEY_PREVIEW_PROFILES[initialProfileId].tradesperson
+  );
+
+  const [state, dispatch] = useReducer(
+    journeyReducer,
+    tradesperson,
+    createInitialState
+  );
+
+  const switchPreviewProfile = useCallback((profileId: JourneyPreviewProfileId) => {
+    const profile = JOURNEY_PREVIEW_PROFILES[profileId].tradesperson;
+    setActivePreviewProfileId(profileId);
+    setTradesperson(profile);
+    dispatch({ type: "RESET", tradesperson: profile });
+  }, []);
 
   const setStep = useCallback((stepId: JourneyStepId) => {
     dispatch({ type: "SET_STEP", stepId });
@@ -78,8 +103,12 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_TRADE_ANSWER", questionId, value });
   }, []);
 
-  const selectTradeAndContinue = useCallback((trade: TradeType) => {
-    dispatch({ type: "SELECT_TRADE_AND_CONTINUE", trade });
+  const selectServiceAndContinue = useCallback((service: string) => {
+    dispatch({
+      type: "SELECT_SERVICE_AND_CONTINUE",
+      service,
+      trade: resolveServiceTradeType(service),
+    });
   }, []);
 
   const declineMeasurementsAndContinue = useCallback(() => {
@@ -95,7 +124,7 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const goNext = useCallback(() => {
-    const next = getNextStepId(state.currentStepId);
+    const next = getNextStepId(state.currentStepId, tradesperson);
 
     if (state.currentStepId === "review") {
       dispatch({ type: "SET_STEP", stepId: "thank_you" });
@@ -103,30 +132,32 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     }
 
     dispatch({ type: "SET_STEP", stepId: next });
-  }, [state.currentStepId]);
+  }, [state.currentStepId, tradesperson]);
 
   const goBack = useCallback(() => {
-    const previous = getPreviousStepId(state.currentStepId);
+    const previous = getPreviousStepId(state.currentStepId, tradesperson);
 
     if (previous) {
       dispatch({ type: "SET_STEP", stepId: previous });
     }
-  }, [state.currentStepId]);
+  }, [state.currentStepId, tradesperson]);
 
   const submit = useCallback(() => {
     dispatch({ type: "SET_STEP", stepId: "thank_you" });
   }, []);
 
-  const canContinue = canProceed(state.currentStepId, state.formData);
+  const canContinue = canProceed(state.currentStepId, state.formData, tradesperson);
 
   const value = useMemo(
     () => ({
       state,
-      tradesperson: PLACEHOLDER_TRADESPERSON,
+      tradesperson,
+      activePreviewProfileId,
+      switchPreviewProfile,
       setStep,
       updateField,
       setTradeAnswer,
-      selectTradeAndContinue,
+      selectServiceAndContinue,
       declineMeasurementsAndContinue,
       addPhotos,
       removePhoto,
@@ -137,10 +168,13 @@ export function JourneyProvider({ children }: { children: ReactNode }) {
     }),
     [
       state,
+      tradesperson,
+      activePreviewProfileId,
+      switchPreviewProfile,
       setStep,
       updateField,
       setTradeAnswer,
-      selectTradeAndContinue,
+      selectServiceAndContinue,
       declineMeasurementsAndContinue,
       addPhotos,
       removePhoto,

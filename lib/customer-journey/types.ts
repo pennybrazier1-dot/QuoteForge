@@ -1,3 +1,5 @@
+export type BusinessType = "single-trade" | "multi-trade" | "handyman";
+
 export type TradeType =
   | "electrical"
   | "plumbing"
@@ -22,7 +24,8 @@ export type PropertyType =
 export type MeasurementAnswer = "yes" | "no" | null;
 
 export type JourneyStepId =
-  | "trade"
+  | "welcome"
+  | "work_type"
   | "details"
   | "property"
   | "project"
@@ -54,6 +57,8 @@ export type MeasurementField = {
 
 export type JourneyFormData = {
   trade: TradeType | null;
+  /** Customer-facing service label — set from the business profile or customer selection. */
+  selectedService: string | null;
   name: string;
   mobile: string;
   email: string;
@@ -82,4 +87,9 @@ export type TradespersonInfo = {
   contactName: string;
   phone: string;
   brandName: string;
+  businessType: BusinessType;
+  /** Primary trade for single-trade businesses — used to load the enquiry template. */
+  tradeType: TradeType;
+  /** Services this business offers — only these are shown to customers. */
+  services: string[];
 };

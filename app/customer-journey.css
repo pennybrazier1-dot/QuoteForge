@@ -1349,3 +1349,89 @@
 .cj-footer-tagline {
   color: var(--cj-text-muted);
 }
+
+/* Development-only preview switcher — hidden in production via server flag */
+.cj-dev-preview {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(100% - 2rem, 42rem);
+  transform: translateX(-50%);
+  padding: 0.75rem;
+  border: 1px dashed var(--cj-border-accent);
+  border-radius: var(--cj-radius-lg);
+  background: rgba(15, 15, 16, 0.94);
+  box-shadow: var(--cj-shadow);
+  backdrop-filter: blur(10px);
+}
+
+.cj-dev-preview-label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cj-accent);
+}
+
+.cj-dev-preview-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.cj-dev-preview-option {
+  flex: 1 1 auto;
+  min-width: min(100%, 10rem);
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--cj-border-strong);
+  border-radius: var(--cj-radius-pill);
+  background: var(--cj-bg-card);
+  color: var(--cj-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--cj-duration) var(--cj-ease),
+    background-color var(--cj-duration) var(--cj-ease),
+    color var(--cj-duration) var(--cj-ease);
+}
+
+.cj-dev-preview-option:hover {
+  border-color: var(--cj-border-accent);
+  background: var(--cj-accent-softer);
+  color: var(--cj-text);
+}
+
+.cj-dev-preview-option-active {
+  border-color: var(--cj-accent);
+  background: var(--cj-accent-soft);
+  color: var(--cj-text);
+  box-shadow: 0 0 0 1px var(--cj-accent-glow);
+}
+
+.cj-dev-preview-option:focus-visible {
+  outline: 2px solid var(--cj-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .cj-dev-preview {
+    bottom: 0.75rem;
+    width: calc(100% - 1rem);
+  }
+
+  .cj-dev-preview-option {
+    min-width: 100%;
+  }
+}

@@ -1410,6 +1410,34 @@ a.qf-card-inset:hover {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.qf-home-demo-bar {
+  margin-block: 0 1.25rem;
+}
+
+.qf-home-demo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  border: 1px dashed var(--accent);
+  border-radius: 9999px;
+  background: rgba(255, 122, 0, 0.08);
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.qf-home-demo-button:hover {
+  background: rgba(255, 122, 0, 0.14);
+  border-color: var(--accent-hover);
+  color: var(--accent-hover);
+}
+
 .qf-btn-danger {
   display: flex;
   height: 3rem;

@@ -14,7 +14,7 @@ import {
 } from "@/components/customer-journey/ui/journey-ui";
 
 export function StepPhotos() {
-  const { state, goNext, goBack, addPhotos, removePhoto } = useJourney();
+  const { state, tradesperson, goNext, goBack, addPhotos, removePhoto } = useJourney();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -40,8 +40,8 @@ export function StepPhotos() {
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("photos")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("photos", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Got any photos?"
         description="A quick snap of the area helps — but you can skip this entirely."
       />
@@ -105,7 +105,7 @@ export function StepPhotos() {
 
       {hasPhotos ? (
         <ul className="cj-photo-list">
-          {state.formData.photos.map((file, index) => (
+          {state.formData.photos.map((file: File, index: number) => (
             <li key={`${file.name}-${index}`} className="cj-photo-item">
               <span className="cj-photo-name">{file.name}</span>
               <button

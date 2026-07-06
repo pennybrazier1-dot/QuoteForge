@@ -1,16 +1,19 @@
 import {
   DEFAULT_MEASUREMENT_FIELDS,
-  JOURNEY_STEPS,
+  getJourneySteps,
 } from "./constants";
+import { getPrimaryServiceLabel, needsServiceSelection } from "./business-services";
 import { getRequiredTradeQuestions } from "./trade-questions";
 import type {
   JourneyFormData,
   JourneyStepId,
-  MeasurementField,
+  TradeType,
+  TradespersonInfo,
 } from "./types";
 
 export const INITIAL_FORM_DATA: JourneyFormData = {
   trade: null,
+  selectedService: null,
   name: "",
   mobile: "",
   email: "",
@@ -26,28 +29,70 @@ export const INITIAL_FORM_DATA: JourneyFormData = {
   tradeAnswers: {},
 };
 
-export function getStepIndex(stepId: JourneyStepId): number {
+export function getEffectiveTrade(
+  data: JourneyFormData,
+  tradesperson: TradespersonInfo
+): TradeType {
+  return data.trade ?? tradesperson.tradeType;
+}
+
+export type JourneyState = {
+  currentStepId: JourneyStepId;
+  formData: JourneyFormData;
+  submitted: boolean;
+};
+
+export function createInitialState(tradesperson: TradespersonInfo): JourneyState {
+  const presetService = getPrimaryServiceLabel(tradesperson);
+
+  return {
+    currentStepId: "welcome",
+    formData: {
+      ...INITIAL_FORM_DATA,
+      trade: needsServiceSelection(tradesperson) ? null : tradesperson.tradeType,
+      selectedService: needsServiceSelection(tradesperson) ? null : presetService,
+      measurements: DEFAULT_MEASUREMENT_FIELDS.map((field) => ({ ...field })),
+    },
+    submitted: false,
+  };
+}
+
+export function getStepIndex(
+  stepId: JourneyStepId,
+  tradesperson: TradespersonInfo
+): number {
+  const steps = getJourneySteps(tradesperson);
+
   if (stepId === "thank_you") {
-    return JOURNEY_STEPS.length;
+    return steps.length;
   }
 
-  return JOURNEY_STEPS.findIndex((step) => step.id === stepId);
+  return steps.findIndex((step) => step.id === stepId);
 }
 
-export function getStepNumber(stepId: JourneyStepId): number {
-  const index = getStepIndex(stepId);
+export function getStepNumber(
+  stepId: JourneyStepId,
+  tradesperson: TradespersonInfo
+): number {
+  const index = getStepIndex(stepId, tradesperson);
 
-  return index >= 0 ? index + 1 : JOURNEY_STEPS.length + 1;
+  return index >= 0 ? index + 1 : getJourneySteps(tradesperson).length + 1;
 }
 
-export function getTotalSteps(): number {
-  return JOURNEY_STEPS.length;
+export function getTotalSteps(tradesperson: TradespersonInfo): number {
+  return getJourneySteps(tradesperson).length;
 }
 
-export function canProceed(stepId: JourneyStepId, data: JourneyFormData): boolean {
+export function canProceed(
+  stepId: JourneyStepId,
+  data: JourneyFormData,
+  tradesperson: TradespersonInfo
+): boolean {
   switch (stepId) {
-    case "trade":
-      return data.trade !== null;
+    case "welcome":
+      return true;
+    case "work_type":
+      return data.selectedService !== null && data.trade !== null;
     case "details":
       return (
         data.name.trim().length >= 2 && data.mobile.trim().length >= 7
@@ -65,7 +110,8 @@ export function canProceed(stepId: JourneyStepId, data: JourneyFormData): boolea
     case "measurements":
       return data.knowsMeasurements !== null;
     case "trade_questions": {
-      const questions = getRequiredTradeQuestions(data.trade);
+      const trade = getEffectiveTrade(data, tradesperson);
+      const questions = getRequiredTradeQuestions(trade);
 
       return questions.every((question) =>
         Boolean(data.tradeAnswers[question.id]?.trim())
@@ -80,24 +126,31 @@ export function canProceed(stepId: JourneyStepId, data: JourneyFormData): boolea
   }
 }
 
-export function getNextStepId(stepId: JourneyStepId): JourneyStepId {
-  const index = getStepIndex(stepId);
+export function getNextStepId(
+  stepId: JourneyStepId,
+  tradesperson: TradespersonInfo
+): JourneyStepId {
+  const steps = getJourneySteps(tradesperson);
+  const index = getStepIndex(stepId, tradesperson);
 
-  if (index < 0 || index >= JOURNEY_STEPS.length - 1) {
+  if (index < 0 || index >= steps.length - 1) {
     return "thank_you";
   }
 
-  return JOURNEY_STEPS[index + 1].id;
+  return steps[index + 1].id;
 }
 
-export function getPreviousStepId(stepId: JourneyStepId): JourneyStepId | null {
-  const index = getStepIndex(stepId);
+export function getPreviousStepId(
+  stepId: JourneyStepId,
+  tradesperson: TradespersonInfo
+): JourneyStepId | null {
+  const index = getStepIndex(stepId, tradesperson);
 
   if (index <= 0) {
     return null;
   }
 
-  return JOURNEY_STEPS[index - 1].id;
+  return getJourneySteps(tradesperson)[index - 1].id;
 }
 
 export type JourneyAction =
@@ -109,15 +162,9 @@ export type JourneyAction =
   | { type: "SET_MEASUREMENT"; id: string; value: string }
   | { type: "ADD_PHOTOS"; files: File[] }
   | { type: "REMOVE_PHOTO"; index: number }
-  | { type: "SELECT_TRADE_AND_CONTINUE"; trade: JourneyFormData["trade"] }
+  | { type: "SELECT_SERVICE_AND_CONTINUE"; service: string; trade: TradeType }
   | { type: "DECLINE_MEASUREMENTS_AND_CONTINUE" }
-  | { type: "RESET" };
-
-export type JourneyState = {
-  currentStepId: JourneyStepId;
-  formData: JourneyFormData;
-  submitted: boolean;
-};
+  | { type: "RESET"; tradesperson: TradespersonInfo };
 
 export function journeyReducer(
   state: JourneyState,
@@ -141,7 +188,7 @@ export function journeyReducer(
         formData: {
           ...state.formData,
           [action.field]: action.value,
-        },
+        } as JourneyFormData,
       };
     case "SET_TRADE_ANSWER":
       return {
@@ -188,12 +235,13 @@ export function journeyReducer(
           photos: state.formData.photos.filter((_, index) => index !== action.index),
         },
       };
-    case "SELECT_TRADE_AND_CONTINUE":
+    case "SELECT_SERVICE_AND_CONTINUE":
       return {
         ...state,
         currentStepId: "details",
         formData: {
           ...state.formData,
+          selectedService: action.service,
           trade: action.trade,
           tradeAnswers: {},
         },
@@ -208,16 +256,7 @@ export function journeyReducer(
         },
       };
     case "RESET":
-      return {
-        currentStepId: "trade",
-        formData: {
-          ...INITIAL_FORM_DATA,
-          measurements: DEFAULT_MEASUREMENT_FIELDS.map(
-            (field): MeasurementField => ({ ...field })
-          ),
-        },
-        submitted: false,
-      };
+      return createInitialState(action.tradesperson);
     default:
       return state;
   }

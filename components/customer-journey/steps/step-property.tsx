@@ -12,14 +12,14 @@ import {
 } from "@/components/customer-journey/ui/journey-ui";
 
 export function StepProperty() {
-  const { state, updateField, goNext, goBack, canContinue } = useJourney();
+  const { state, tradesperson, updateField, goNext, goBack, canContinue } = useJourney();
   const { addressLine1, addressLine2, postcode, propertyType } = state.formData;
 
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("property")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("property", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Where is the job?"
         description="So John knows where to come if a visit is needed."
       />

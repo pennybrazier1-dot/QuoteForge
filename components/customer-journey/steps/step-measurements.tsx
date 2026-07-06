@@ -2,6 +2,7 @@
 
 import { getStepNumber, getTotalSteps } from "@/lib/customer-journey/journey-state";
 import { useJourney } from "@/lib/customer-journey/journey-provider";
+import type { MeasurementField } from "@/lib/customer-journey/types";
 import { JourneyContinueButton } from "@/components/customer-journey/layout/journey-continue-button";
 import {
   JourneyCard,
@@ -14,6 +15,7 @@ import {
 export function StepMeasurements() {
   const {
     state,
+    tradesperson,
     updateField,
     goNext,
     goBack,
@@ -23,7 +25,7 @@ export function StepMeasurements() {
   const { knowsMeasurements, measurements } = state.formData;
 
   const setMeasurement = (id: string, value: string) => {
-    const next = measurements.map((field) =>
+    const next = measurements.map((field: MeasurementField) =>
       field.id === id ? { ...field, value } : field
     );
     updateField("measurements", next);
@@ -32,8 +34,8 @@ export function StepMeasurements() {
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("measurements")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("measurements", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Do you know any sizes?"
         description="Totally optional — John can measure on site."
       />
@@ -69,7 +71,7 @@ export function StepMeasurements() {
               about.
             </p>
           </JourneyHelperBox>
-          {measurements.map((field) => (
+          {measurements.map((field: MeasurementField) => (
             <JourneyField
               key={field.id}
               label={`${field.label} (optional)`}

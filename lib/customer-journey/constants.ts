@@ -1,10 +1,70 @@
-import type { JourneyStepConfig, TradeType, TradespersonInfo } from "./types";
+import type {
+  BusinessType,
+  JourneyStepConfig,
+  MeasurementField,
+  TradeType,
+  TradespersonInfo,
+} from "./types";
+
+function includesServiceStep(businessType: BusinessType): boolean {
+  return businessType !== "single-trade";
+}
 
 export const PLACEHOLDER_TRADESPERSON: TradespersonInfo = {
   brandName: "Alex",
-  businessName: "Smith Plumbing & Heating",
+  businessName: "Smith Plumbing",
   contactName: "John",
   phone: "07700 900 123",
+  businessType: "single-trade",
+  tradeType: "plumbing",
+  services: ["Plumbing"],
+};
+
+/** Example multi-trade profile — swap into the provider to preview that journey. */
+export const PLACEHOLDER_MULTI_TRADE: TradespersonInfo = {
+  brandName: "Alex",
+  businessName: "Smith Home Services",
+  contactName: "John",
+  phone: "07700 900 123",
+  businessType: "multi-trade",
+  tradeType: "plumbing",
+  services: ["Plumbing", "Heating", "Bathrooms"],
+};
+
+/** Example handyman profile — services are customised per business. */
+export const PLACEHOLDER_HANDYMAN: TradespersonInfo = {
+  brandName: "Alex",
+  businessName: "Smith Property Care",
+  contactName: "John",
+  phone: "07700 900 123",
+  businessType: "handyman",
+  tradeType: "something_else",
+  services: [
+    "Door hanging",
+    "Shelf fitting",
+    "Small plumbing jobs",
+    "Fence repairs",
+  ],
+};
+
+export type JourneyPreviewProfileId = "single-trade" | "multi-trade" | "handyman";
+
+export const JOURNEY_PREVIEW_PROFILES: Record<
+  JourneyPreviewProfileId,
+  { label: string; tradesperson: TradespersonInfo }
+> = {
+  "single-trade": {
+    label: "Single trade: Smith Plumbing",
+    tradesperson: PLACEHOLDER_TRADESPERSON,
+  },
+  "multi-trade": {
+    label: "Multi-trade: example business",
+    tradesperson: PLACEHOLDER_MULTI_TRADE,
+  },
+  handyman: {
+    label: "Handyman: example tradesperson",
+    tradesperson: PLACEHOLDER_HANDYMAN,
+  },
 };
 
 export const TRADE_OPTIONS: {
@@ -34,64 +94,112 @@ export const PROPERTY_TYPES = [
   { id: "other" as const, label: "Other" },
 ];
 
-export const JOURNEY_STEPS: JourneyStepConfig[] = [
-  {
-    id: "trade",
-    number: 1,
-    title: "What needs doing?",
+export const JOURNEY_STEP_DEFINITIONS = {
+  welcome: {
+    id: "welcome" as const,
+    title: "Welcome",
+    description: "Get started",
+    icon: "grid",
+  },
+  work_type: {
+    id: "work_type" as const,
+    title: "Type of work",
     description: "Pick the closest match",
     icon: "grid",
   },
-  {
-    id: "details",
-    number: 2,
-    title: "How can we reach you?",
+  details: {
+    id: "details" as const,
+    title: "Your details",
     description: "Just the basics",
     icon: "user",
   },
-  {
-    id: "property",
-    number: 3,
-    title: "Where is the job?",
-    description: "So we know where to come",
+  property: {
+    id: "property" as const,
+    title: "Property",
+    description: "Where is the job?",
     icon: "home",
   },
-  {
-    id: "project",
-    number: 4,
-    title: "Tell us what's needed",
+  project: {
+    id: "project" as const,
+    title: "Project details",
     description: "In your own words",
     icon: "file",
   },
-  {
-    id: "photos",
-    number: 5,
+  photos: {
+    id: "photos" as const,
     title: "Photos",
     description: "Optional but helpful",
     icon: "camera",
   },
-  {
-    id: "measurements",
-    number: 6,
-    title: "Sizes",
+  measurements: {
+    id: "measurements" as const,
+    title: "Measurements",
     description: "Only if you know them",
     icon: "ruler",
   },
-  {
-    id: "trade_questions",
-    number: 7,
-    title: "Almost done",
-    description: "A few quick taps",
+  trade_questions: {
+    id: "trade_questions" as const,
+    title: "A few quick questions",
+    description: "Helps us prepare",
     icon: "help",
   },
-  {
-    id: "review",
-    number: 8,
+  review: {
+    id: "review" as const,
     title: "Review & send",
     description: "Then you're finished",
     icon: "check",
   },
-];
+} satisfies Record<
+  Exclude<
+    import("./types").JourneyStepId,
+    "thank_you"
+  >,
+  Omit<import("./types").JourneyStepConfig, "number">
+>;
+
+export function getJourneySteps(tradesperson: TradespersonInfo): JourneyStepConfig[] {
+  const stepIds: Array<keyof typeof JOURNEY_STEP_DEFINITIONS> = [
+    "welcome",
+    ...(includesServiceStep(tradesperson.businessType) ? (["work_type"] as const) : []),
+    "details",
+    "property",
+    "project",
+    "photos",
+    "measurements",
+    "trade_questions",
+    "review",
+  ];
+
+  const workTypeSidebarCopy = includesServiceStep(tradesperson.businessType)
+    ? tradesperson.businessType === "handyman"
+      ? {
+          sidebarTitle: "Pick a job",
+          sidebarDescription: "Choose from our services",
+        }
+      : {
+          sidebarTitle: "Choose a service",
+          sidebarDescription: "Pick what you need",
+        }
+    : null;
+
+  return stepIds.map((stepId, index) => {
+    const base = JOURNEY_STEP_DEFINITIONS[stepId];
+
+    if (stepId === "work_type" && workTypeSidebarCopy) {
+      return {
+        ...base,
+        number: index + 1,
+        title: workTypeSidebarCopy.sidebarTitle,
+        description: workTypeSidebarCopy.sidebarDescription,
+      };
+    }
+
+    return {
+      ...base,
+      number: index + 1,
+    };
+  });
+}
 
 export const WHAT_HAPPENS_NEXT = [
   "John will review your request — usually within one working day",
@@ -99,6 +207,6 @@ export const WHAT_HAPPENS_NEXT = [
   "If a visit is needed, we'll arrange a time that suits you",
 ];
 
-export const DEFAULT_MEASUREMENT_FIELDS = [
+export const DEFAULT_MEASUREMENT_FIELDS: MeasurementField[] = [
   { id: "rough_size", label: "Rough size", unit: "m", value: "" },
 ];

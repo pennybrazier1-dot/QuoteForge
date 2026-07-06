@@ -1,7 +1,11 @@
 "use client";
 
 import { getTradeQuestions } from "@/lib/customer-journey/trade-questions";
-import { getStepNumber, getTotalSteps } from "@/lib/customer-journey/journey-state";
+import {
+  getEffectiveTrade,
+  getStepNumber,
+  getTotalSteps,
+} from "@/lib/customer-journey/journey-state";
 import { useJourney } from "@/lib/customer-journey/journey-provider";
 import { JourneyContinueButton } from "@/components/customer-journey/layout/journey-continue-button";
 import {
@@ -13,14 +17,16 @@ import {
 } from "@/components/customer-journey/ui/journey-ui";
 
 export function StepTradeQuestions() {
-  const { state, setTradeAnswer, goNext, goBack, canContinue } = useJourney();
-  const questions = getTradeQuestions(state.formData.trade);
+  const { state, tradesperson, setTradeAnswer, goNext, goBack, canContinue } =
+    useJourney();
+  const trade = getEffectiveTrade(state.formData, tradesperson);
+  const questions = getTradeQuestions(trade);
 
   return (
     <div className="cj-step">
       <JourneyStepHeader
-        stepNumber={getStepNumber("trade_questions")}
-        totalSteps={getTotalSteps()}
+        stepNumber={getStepNumber("trade_questions", tradesperson)}
+        totalSteps={getTotalSteps(tradesperson)}
         title="Nearly there — just a few taps"
         description="These help John prepare your quote. Tap to answer."
       />

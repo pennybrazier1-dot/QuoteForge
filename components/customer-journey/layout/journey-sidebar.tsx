@@ -1,7 +1,7 @@
 "use client";
 
 import { useJourney } from "@/lib/customer-journey/journey-provider";
-import { JOURNEY_STEPS, WHAT_HAPPENS_NEXT } from "@/lib/customer-journey/constants";
+import { getJourneySteps, WHAT_HAPPENS_NEXT } from "@/lib/customer-journey/constants";
 import { getStepIndex } from "@/lib/customer-journey/journey-state";
 import {
   CheckIcon,
@@ -13,7 +13,8 @@ import { JourneyCard } from "@/components/customer-journey/ui/journey-ui";
 
 export function JourneySidebar() {
   const { state, tradesperson, setStep } = useJourney();
-  const currentIndex = getStepIndex(state.currentStepId);
+  const journeySteps = getJourneySteps(tradesperson);
+  const currentIndex = getStepIndex(state.currentStepId, tradesperson);
 
   return (
     <aside className="cj-sidebar" aria-label="Quote request progress">
@@ -24,10 +25,10 @@ export function JourneySidebar() {
 
       <nav className="cj-progress" aria-label="Steps">
         <ol className="cj-progress-list">
-          {JOURNEY_STEPS.map((step, index) => {
+          {journeySteps.map((step, index) => {
             const isActive = step.id === state.currentStepId;
             const isComplete = index < currentIndex;
-            const isLast = index === JOURNEY_STEPS.length - 1;
+            const isLast = index === journeySteps.length - 1;
 
             return (
               <li
@@ -132,23 +133,24 @@ export function JourneySidebar() {
 }
 
 export function JourneyMobileProgress() {
-  const { state } = useJourney();
-  const currentIndex = getStepIndex(state.currentStepId);
-  const currentStep = JOURNEY_STEPS[currentIndex];
+  const { state, tradesperson } = useJourney();
+  const journeySteps = getJourneySteps(tradesperson);
+  const currentIndex = getStepIndex(state.currentStepId, tradesperson);
+  const currentStep = journeySteps[currentIndex];
 
   return (
     <div
       className="cj-mobile-progress"
       role="status"
       aria-live="polite"
-      aria-label={`Step ${currentIndex + 1} of ${JOURNEY_STEPS.length}: ${currentStep?.title}`}
+      aria-label={`Step ${currentIndex + 1} of ${journeySteps.length}: ${currentStep?.title}`}
     >
       <p className="cj-mobile-progress-eyebrow">
-        Step {currentIndex + 1} of {JOURNEY_STEPS.length}
+        Step {currentIndex + 1} of {journeySteps.length}
       </p>
       <p className="cj-mobile-progress-title">{currentStep?.title}</p>
       <div className="cj-mobile-progress-bar" aria-hidden="true">
-        {JOURNEY_STEPS.map((step, index) => (
+        {journeySteps.map((step, index) => (
           <span
             key={step.id}
             className={[
