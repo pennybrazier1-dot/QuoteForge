@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { ComingSoonSettings } from "@/components/settings/coming-soon-settings";
 import { MyAccountSettings } from "@/components/settings/my-account-settings";
-import { RequestTradeServiceSettings } from "@/components/settings/request-trade-service-settings";
+import { MyServicesSettings } from "@/components/settings/my-services-settings";
 import { createClient } from "@/lib/supabase/server";
+import { getPlaceholderServicesFromTradeType } from "@/lib/settings/placeholder-services";
 
 export const metadata: Metadata = {
   title: "Settings — QuoteForge",
@@ -39,6 +40,8 @@ export default async function SettingsPage() {
     redirect("/dashboard");
   }
 
+  const initialServices = getPlaceholderServicesFromTradeType(workspace.trade_type);
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
       <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -50,7 +53,7 @@ export default async function SettingsPage() {
 
       <div className="mt-8 qf-stack">
         <BusinessSettings workspace={workspace} />
-        <RequestTradeServiceSettings />
+        <MyServicesSettings initialServices={initialServices} />
         <MyAccountSettings
           account={{
             full_name: profile.full_name,
