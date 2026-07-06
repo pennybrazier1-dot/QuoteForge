@@ -1,6 +1,46 @@
 import type { TradespersonInfo } from "./types";
 
 /**
+ * Common trade and service labels for tests and future onboarding/settings.
+ * Businesses configure their own subset — customers only see what is on their profile.
+ */
+export const COMMON_BUSINESS_SERVICES: string[] = [
+  "Plumbing",
+  "Heating",
+  "Electrical",
+  "Bathrooms",
+  "Kitchens",
+  "Building",
+  "Roofing",
+  "Landscaping",
+  "Carpentry",
+  "Painting & Decorating",
+  "Plastering",
+  "Tiling",
+  "Flooring",
+  "Windows & Doors",
+  "Driveways",
+  "Fencing",
+  "Drainage",
+  "Handyman / Property Maintenance",
+];
+
+/** Example multi-trade services for previews and tests. */
+export const EXAMPLE_MULTI_TRADE_SERVICES: string[] = [
+  "Plumbing",
+  "Heating",
+  "Electrical",
+  "Bathrooms",
+  "Kitchens",
+  "Building",
+  "Roofing",
+  "Landscaping",
+  "Carpentry",
+  "Painting & Decorating",
+  "Drainage",
+];
+
+/**
  * Customer-visible services from a business profile, in display order.
  *
  * Today the profile stores `services: string[]`.

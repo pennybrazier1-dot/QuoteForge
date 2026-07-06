@@ -1425,6 +1425,33 @@
   outline-offset: 2px;
 }
 
+.cj-service-miss {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.cj-service-miss-trigger {
+  border: none;
+  background: transparent;
+  color: var(--cj-accent);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.cj-service-miss-trigger:hover {
+  color: var(--cj-accent-hover);
+}
+
+.cj-service-miss-body {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--cj-text-secondary);
+}
+
 @media (max-width: 640px) {
   .cj-dev-preview {
     bottom: 0.75rem;

@@ -1438,6 +1438,29 @@ a.qf-card-inset:hover {
   color: var(--accent-hover);
 }
 
+.qf-settings-request-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.qf-settings-request-submit {
+  width: auto;
+  min-width: 10rem;
+  padding-inline: 1.25rem;
+}
+
+.qf-settings-confirmation {
+  margin-top: 1.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-card-accent);
+  background: rgba(255, 122, 0, 0.08);
+  padding: 1rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
 .qf-btn-danger {
   display: flex;
   height: 3rem;

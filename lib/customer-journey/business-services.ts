@@ -16,14 +16,23 @@ const SERVICE_LABEL_TO_TRADE: Record<string, TradeType> = {
   electrical: "electrical",
   carpentry: "carpentry",
   kitchen: "kitchen",
+  kitchens: "kitchen",
   "kitchen fitting": "kitchen",
   landscaping: "landscaping",
   building: "building",
   decorating: "decorating",
+  "painting & decorating": "decorating",
   roofing: "roofing",
   drainage: "drainage",
+  plastering: "decorating",
+  tiling: "something_else",
+  flooring: "carpentry",
+  "windows & doors": "carpentry",
+  driveways: "landscaping",
+  fencing: "landscaping",
   handyman: "something_else",
   "property maintenance": "something_else",
+  "handyman / property maintenance": "something_else",
 };
 
 /** Keyword hints for custom handyman labels → trade question templates. */
@@ -50,13 +59,31 @@ const SERVICE_KEYWORD_TO_TRADE: Array<[string, TradeType]> = [
   ["bath", "bathroom"],
   ["roof", "roofing"],
   ["kitchen", "kitchen"],
+  ["plaster", "decorating"],
+  ["tiling", "something_else"],
+  ["tile", "something_else"],
+  ["window", "carpentry"],
+  ["driveway", "landscaping"],
+  ["fenc", "landscaping"],
+  ["handyman", "something_else"],
+  ["property maintenance", "something_else"],
   ["build", "building"],
   ["decor", "decorating"],
+  ["carpent", "carpentry"],
 ];
 
 export function needsServiceSelection(tradesperson: TradespersonInfo): boolean {
   return tradesperson.businessType !== "single-trade";
 }
+
+export function hasConfigurableServices(tradesperson: TradespersonInfo): boolean {
+  return needsServiceSelection(tradesperson);
+}
+
+export const SERVICE_PICKER_HINT =
+  "Not sure? Choose the closest option or describe the work later.";
+
+export const CANT_SEE_SERVICE_LABEL = "Can't see your service?";
 
 export function resolveServiceTradeType(serviceLabel: string): TradeType {
   const normalized = serviceLabel.trim().toLowerCase();

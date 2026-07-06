@@ -5,7 +5,10 @@ import type {
   TradeType,
   TradespersonInfo,
 } from "./types";
-import { EXAMPLE_HANDYMAN_SERVICES } from "./business-profile";
+import {
+  EXAMPLE_HANDYMAN_SERVICES,
+  EXAMPLE_MULTI_TRADE_SERVICES,
+} from "./business-profile";
 
 function includesServiceStep(businessType: BusinessType): boolean {
   return businessType !== "single-trade";
@@ -29,7 +32,7 @@ export const PLACEHOLDER_MULTI_TRADE: TradespersonInfo = {
   phone: "07700 900 123",
   businessType: "multi-trade",
   tradeType: "plumbing",
-  services: ["Plumbing", "Heating", "Bathrooms"],
+  services: [...EXAMPLE_MULTI_TRADE_SERVICES],
 };
 
 /** Example handyman profile — services are fully customisable per business. */

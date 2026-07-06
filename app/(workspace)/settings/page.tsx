@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { ComingSoonSettings } from "@/components/settings/coming-soon-settings";
 import { MyAccountSettings } from "@/components/settings/my-account-settings";
+import { RequestTradeServiceSettings } from "@/components/settings/request-trade-service-settings";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default async function SettingsPage() {
 
       <div className="mt-8 qf-stack">
         <BusinessSettings workspace={workspace} />
+        <RequestTradeServiceSettings />
         <MyAccountSettings
           account={{
             full_name: profile.full_name,

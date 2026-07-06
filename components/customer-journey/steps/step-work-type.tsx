@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import {
+  CANT_SEE_SERVICE_LABEL,
   getBusinessServiceOptions,
   getWorkTypeStepCopy,
+  SERVICE_PICKER_HINT,
 } from "@/lib/customer-journey/business-services";
 import { getStepNumber, getTotalSteps } from "@/lib/customer-journey/journey-state";
 import { useJourney } from "@/lib/customer-journey/journey-provider";
@@ -17,6 +20,7 @@ export function StepWorkType() {
   const { state, tradesperson, selectServiceAndContinue } = useJourney();
   const services = getBusinessServiceOptions(tradesperson);
   const copy = getWorkTypeStepCopy(tradesperson.businessType);
+  const [showCantSeeService, setShowCantSeeService] = useState(false);
 
   return (
     <div className="cj-step">
@@ -51,14 +55,27 @@ export function StepWorkType() {
         })}
       </div>
 
+      <div className="cj-service-miss">
+        <button
+          type="button"
+          className="cj-service-miss-trigger"
+          aria-expanded={showCantSeeService}
+          onClick={() => setShowCantSeeService((open) => !open)}
+        >
+          {CANT_SEE_SERVICE_LABEL}
+        </button>
+        {showCantSeeService ? (
+          <p className="cj-service-miss-body">
+            Pick the closest match for now — you can describe exactly what you need
+            in the project details step.
+          </p>
+        ) : null}
+      </div>
+
       <JourneyHelperBox title="Not sure which to pick?">
         <div className="cj-helper-inline">
           <SparkleIcon className="cj-helper-inline-icon" />
-          <p>
-            Choose the closest option. {tradesperson.contactName} can always
-            clarify the details when they get in touch — you don&apos;t need to
-            get it perfect.
-          </p>
+          <p>{SERVICE_PICKER_HINT}</p>
         </div>
       </JourneyHelperBox>
     </div>
