@@ -1,0 +1,157 @@
+"use client";
+
+import { TRADE_OPTIONS, PROPERTY_TYPES } from "@/lib/customer-journey/constants";
+import { getTradeQuestions } from "@/lib/customer-journey/trade-questions";
+import { getStepNumber, getTotalSteps } from "@/lib/customer-journey/journey-state";
+import { useJourney } from "@/lib/customer-journey/journey-provider";
+import type { JourneyStepId } from "@/lib/customer-journey/types";
+import { JourneyContinueButton } from "@/components/customer-journey/layout/journey-continue-button";
+import { JourneyStepHeader } from "@/components/customer-journey/ui/journey-ui";
+
+function ReviewSection({
+  title,
+  stepId,
+  onEdit,
+  children,
+}: {
+  title: string;
+  stepId: JourneyStepId;
+  onEdit: (stepId: JourneyStepId) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="cj-review-section">
+      <div className="cj-review-section-header">
+        <h2 className="cj-review-section-title">{title}</h2>
+        <button
+          type="button"
+          className="cj-review-edit"
+          onClick={() => onEdit(stepId)}
+          aria-label={`Edit ${title}`}
+        >
+          Edit
+        </button>
+      </div>
+      <div className="cj-review-section-body">{children}</div>
+    </section>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="cj-review-row">
+      <span className="cj-review-label">{label}</span>
+      <span className="cj-review-value">{value}</span>
+    </div>
+  );
+}
+
+export function StepReview() {
+  const { state, setStep, submit } = useJourney();
+  const { formData } = state;
+  const tradeLabel =
+    TRADE_OPTIONS.find((trade) => trade.id === formData.trade)?.label ??
+    "Not selected";
+  const propertyLabel =
+    PROPERTY_TYPES.find((type) => type.id === formData.propertyType)?.label ??
+    "Not selected";
+  const tradeQuestions = getTradeQuestions(formData.trade);
+
+  return (
+    <div className="cj-step">
+      <JourneyStepHeader
+        stepNumber={getStepNumber("review")}
+        totalSteps={getTotalSteps()}
+        title="Nearly done"
+        description="Check it looks right, then send."
+      />
+
+      <div className="cj-review-stack">
+        <ReviewSection title="What you need" stepId="trade" onEdit={setStep}>
+          <ReviewRow label="Type of work" value={tradeLabel} />
+        </ReviewSection>
+
+        <ReviewSection title="Your details" stepId="details" onEdit={setStep}>
+          <ReviewRow label="Name" value={formData.name} />
+          <ReviewRow label="Mobile" value={formData.mobile} />
+          <ReviewRow
+            label="Email"
+            value={formData.email.trim() || "Not provided"}
+          />
+        </ReviewSection>
+
+        <ReviewSection title="Job location" stepId="property" onEdit={setStep}>
+          <ReviewRow
+            label="Address"
+            value={[formData.addressLine1, formData.addressLine2]
+              .filter(Boolean)
+              .join(", ")}
+          />
+          <ReviewRow label="Postcode" value={formData.postcode} />
+          <ReviewRow label="Property" value={propertyLabel} />
+        </ReviewSection>
+
+        <ReviewSection title="What you told us" stepId="project" onEdit={setStep}>
+          <p className="cj-review-paragraph">{formData.projectDescription}</p>
+        </ReviewSection>
+
+        <ReviewSection title="Photos" stepId="photos" onEdit={setStep}>
+          <ReviewRow
+            label="Photos"
+            value={
+              formData.photos.length
+                ? `${formData.photos.length} attached`
+                : "None — that's fine"
+            }
+          />
+        </ReviewSection>
+
+        <ReviewSection title="Sizes" stepId="measurements" onEdit={setStep}>
+          <ReviewRow
+            label="Sizes known"
+            value={
+              formData.knowsMeasurements === "yes"
+                ? "Yes — rough sizes provided"
+                : "John will measure on site"
+            }
+          />
+          {formData.knowsMeasurements === "yes"
+            ? formData.measurements
+                .filter((field) => field.value.trim())
+                .map((field) => (
+                  <ReviewRow
+                    key={field.id}
+                    label={field.label}
+                    value={field.value}
+                  />
+                ))
+            : null}
+        </ReviewSection>
+
+        <ReviewSection
+          title="A few more details"
+          stepId="trade_questions"
+          onEdit={setStep}
+        >
+          {tradeQuestions
+            .filter((question) => formData.tradeAnswers[question.id]?.trim())
+            .map((question) => (
+              <ReviewRow
+                key={question.id}
+                label={question.label}
+                value={formData.tradeAnswers[question.id]}
+              />
+            ))}
+        </ReviewSection>
+      </div>
+
+      <JourneyContinueButton
+        onClick={submit}
+        label="Send my request"
+        hint="John will be in touch soon"
+        onBack={() => setStep("trade_questions")}
+        showBack
+      />
+    </div>
+  );
+}
