@@ -22,6 +22,7 @@ import {
   formatBookingConfirmation,
   type BookingConfirmation,
 } from "@/lib/proposals/booking";
+import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import {
   formatPlannedStartExact,
   plannedStartFromDb,
@@ -78,7 +79,7 @@ export function BookingDialog({
     confirmBooking,
     confirmInitialState
   );
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientMounted();
   const plannedStart = plannedStartFromDb({
     planned_start_date_text: plannedStartDateText,
     planned_start_date: plannedStartDate,
@@ -115,36 +116,43 @@ export function BookingDialog({
   const needsAcknowledgment = clashAnalysis.hasStrongOrWarning;
   const canSubmit = !needsAcknowledgment || acknowledgedClash;
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const dialogFormSeed = open
+    ? JSON.stringify({
+        plannedStartDateText,
+        plannedStartDate,
+        estimatedDuration,
+        bookingConfirmation,
+      })
+    : null;
+  const [appliedDialogFormSeed, setAppliedDialogFormSeed] = useState<
+    string | null
+  >(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  if (!open && appliedDialogFormSeed !== null) {
+    setAppliedDialogFormSeed(null);
+  }
 
+  if (open && dialogFormSeed !== null && dialogFormSeed !== appliedDialogFormSeed) {
+    setAppliedDialogFormSeed(dialogFormSeed);
     const planned = plannedStartFromDb({
       planned_start_date_text: plannedStartDateText,
       planned_start_date: plannedStartDate,
     });
-
     setStartText(planned.plannedStartDate);
     setStartExact(planned.plannedStartDateExact);
     setDuration(estimatedDuration ?? "");
     setBookingStatus(bookingConfirmation ?? "confirmed");
     setAcknowledgedClash(false);
-  }, [
-    open,
-    plannedStartDateText,
-    plannedStartDate,
-    estimatedDuration,
-    bookingConfirmation,
-  ]);
+  }
 
-  useEffect(() => {
+  const clashInputsSeed = `${startExact}|${duration}|${bookingStatus}`;
+  const [appliedClashInputsSeed, setAppliedClashInputsSeed] =
+    useState(clashInputsSeed);
+
+  if (clashInputsSeed !== appliedClashInputsSeed) {
+    setAppliedClashInputsSeed(clashInputsSeed);
     setAcknowledgedClash(false);
-  }, [startExact, duration, bookingStatus]);
+  }
 
   useEffect(() => {
     if (!open) {

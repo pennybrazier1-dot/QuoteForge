@@ -170,7 +170,7 @@ function inferSupplyAndFitPhrase(text: string): string | null {
 }
 
 export function professionalizeOptionalExtra(item: string): string {
-  let text = item
+  const text = item
     .trim()
     .replace(CONVERSATIONAL_PATTERN, " ")
     .replace(/\s+/g, " ")

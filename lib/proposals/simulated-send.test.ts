@@ -4,10 +4,10 @@ import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants
 
 describe("simulated send routing", () => {
   it("does not import or call Resend from simulated-send module", async () => {
-    const module = await import("@/lib/proposals/simulated-send");
+    const simulatedSend = await import("@/lib/proposals/simulated-send");
 
-    expect(module.executeSimulatedSend).toBeTypeOf("function");
-    expect(String(module.executeSimulatedSend)).not.toContain("RESEND_API_KEY");
+    expect(simulatedSend.executeSimulatedSend).toBeTypeOf("function");
+    expect(String(simulatedSend.executeSimulatedSend)).not.toContain("RESEND_API_KEY");
   });
 });
 

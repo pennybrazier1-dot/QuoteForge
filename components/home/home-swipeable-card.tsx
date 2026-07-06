@@ -65,9 +65,11 @@ export function HomeSwipeableCard({
     setOffset(0);
   }, []);
 
-  useEffect(() => {
-    closeSwipe();
-  }, [card.id, closeSwipe]);
+  const [lastCardId, setLastCardId] = useState(card.id);
+  if (card.id !== lastCardId) {
+    setLastCardId(card.id);
+    setOffset(0);
+  }
 
   if (!isMobile) {
     return (

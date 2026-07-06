@@ -10,14 +10,20 @@ type TestSendSuccessNoticeProps = {
 export function TestSendSuccessNotice({ proposalId }: TestSendSuccessNoticeProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const testSentFromUrl = searchParams.get("testSent") === "1";
   const [visible, setVisible] = useState(false);
+  const [handledTestSentUrl, setHandledTestSentUrl] = useState(false);
+
+  if (testSentFromUrl && !handledTestSentUrl) {
+    setHandledTestSentUrl(true);
+    setVisible(true);
+  }
 
   useEffect(() => {
-    if (searchParams.get("testSent") === "1") {
-      setVisible(true);
+    if (testSentFromUrl) {
       router.replace(`/proposals/${proposalId}`, { scroll: false });
     }
-  }, [proposalId, router, searchParams]);
+  }, [testSentFromUrl, proposalId, router]);
 
   if (!visible) {
     return null;

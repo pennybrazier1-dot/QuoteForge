@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import type { GeneratedProposal } from "@/lib/ai";
 import {
   arrayToLines,

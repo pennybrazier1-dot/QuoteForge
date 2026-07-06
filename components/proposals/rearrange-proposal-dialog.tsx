@@ -9,6 +9,7 @@ import {
 } from "@/app/proposals/management-actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
+import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import { plannedStartFromDb } from "@/lib/proposals/planned-start-date";
 
 const initialState: ProposalManagementState = {};
@@ -45,7 +46,7 @@ export function RearrangeProposalDialog({
   estimatedDuration,
 }: RearrangeProposalDialogProps) {
   const [state, formAction] = useActionState(rearrangeProposal, initialState);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientMounted();
   const plannedStart = plannedStartFromDb({
     planned_start_date_text: plannedStartDateText,
     planned_start_date: plannedStartDate,
@@ -54,24 +55,31 @@ export function RearrangeProposalDialog({
   const [startExact, setStartExact] = useState(plannedStart.plannedStartDateExact);
   const [duration, setDuration] = useState(estimatedDuration ?? "");
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const dialogFormSeed = open
+    ? JSON.stringify({
+        plannedStartDateText,
+        plannedStartDate,
+        estimatedDuration,
+      })
+    : null;
+  const [appliedDialogFormSeed, setAppliedDialogFormSeed] = useState<
+    string | null
+  >(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  if (!open && appliedDialogFormSeed !== null) {
+    setAppliedDialogFormSeed(null);
+  }
 
+  if (open && dialogFormSeed !== null && dialogFormSeed !== appliedDialogFormSeed) {
+    setAppliedDialogFormSeed(dialogFormSeed);
     const planned = plannedStartFromDb({
       planned_start_date_text: plannedStartDateText,
       planned_start_date: plannedStartDate,
     });
-
     setStartText(planned.plannedStartDate);
     setStartExact(planned.plannedStartDateExact);
     setDuration(estimatedDuration ?? "");
-  }, [open, plannedStartDateText, plannedStartDate, estimatedDuration]);
+  }
 
   useEffect(() => {
     if (!open) {

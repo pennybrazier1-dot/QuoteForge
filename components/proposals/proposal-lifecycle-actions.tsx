@@ -94,19 +94,32 @@ export function ProposalLifecycleActions({
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const normalized = normalizeProposalStatus(status);
 
-  useEffect(() => {
-    if (searchParams.get("confirmBooking") === "1") {
-      setConfirmDialogOpen(true);
-      router.replace(`/proposals/${proposalId}`, { scroll: false });
-    }
-  }, [proposalId, router, searchParams]);
+  const confirmBookingFromUrl = searchParams.get("confirmBooking") === "1";
+  const openAcceptFromUrl = searchParams.get("openAccept") === "1";
+  const [handledConfirmUrl, setHandledConfirmUrl] = useState(false);
+  const [handledAcceptUrl, setHandledAcceptUrl] = useState(false);
+
+  if (confirmBookingFromUrl && !handledConfirmUrl) {
+    setHandledConfirmUrl(true);
+    setConfirmDialogOpen(true);
+  }
+
+  if (openAcceptFromUrl && !handledAcceptUrl) {
+    setHandledAcceptUrl(true);
+    setAcceptDialogOpen(true);
+  }
 
   useEffect(() => {
-    if (searchParams.get("openAccept") === "1") {
-      setAcceptDialogOpen(true);
+    if (confirmBookingFromUrl) {
       router.replace(`/proposals/${proposalId}`, { scroll: false });
     }
-  }, [proposalId, router, searchParams]);
+  }, [confirmBookingFromUrl, proposalId, router]);
+
+  useEffect(() => {
+    if (openAcceptFromUrl) {
+      router.replace(`/proposals/${proposalId}`, { scroll: false });
+    }
+  }, [openAcceptFromUrl, proposalId, router]);
 
   if (!isProposalStatus(normalized)) {
     return null;

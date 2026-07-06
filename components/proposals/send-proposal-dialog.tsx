@@ -14,6 +14,7 @@ import {
   type SendProposalByEmailState,
 } from "@/app/proposals/send-actions";
 import { AuthError } from "@/components/auth/auth-shell";
+import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import {
   buildSendProposalMessage,
   buildSendProposalSubject,
@@ -53,21 +54,29 @@ export function SendProposalDialog({
     sendProposalByEmail,
     initialState
   );
-  const [mounted, setMounted] = useState(false);
+  const mounted = useClientMounted();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const dialogFormSeed = open
+    ? JSON.stringify({
+        customerEmail: data.customerEmail ?? "",
+        customerName,
+        businessName: data.businessName,
+      })
+    : null;
+  const [appliedDialogFormSeed, setAppliedDialogFormSeed] = useState<
+    string | null
+  >(null);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
+  if (!open && appliedDialogFormSeed !== null) {
+    setAppliedDialogFormSeed(null);
+  }
 
+  if (open && dialogFormSeed !== null && dialogFormSeed !== appliedDialogFormSeed) {
+    setAppliedDialogFormSeed(dialogFormSeed);
     setCustomerEmail(data.customerEmail ?? "");
     setSubject(buildSendProposalSubject(customerName));
     setMessage(buildSendProposalMessage(customerName, data.businessName));
-  }, [open, data, customerName]);
+  }
 
   useEffect(() => {
     if (state.success) {

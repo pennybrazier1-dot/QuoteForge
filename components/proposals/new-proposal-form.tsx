@@ -233,12 +233,16 @@ export function NewProposalForm({
     initialValues?.plannedStartDateExact ?? ""
   );
 
-  useEffect(() => {
-    if (!generateState.proposal) {
-      return;
-    }
+  const [lastSyncedProposal, setLastSyncedProposal] = useState(
+    generateState.proposal ?? null
+  );
 
+  if (
+    generateState.proposal &&
+    generateState.proposal !== lastSyncedProposal
+  ) {
     const proposal = generateState.proposal;
+    setLastSyncedProposal(proposal);
     setReviewProposal(proposal);
 
     const extracted = applyExtractedProposalFields(proposal);
@@ -274,7 +278,7 @@ export function NewProposalForm({
     if (proposal.plannedStartDateExact) {
       setPlannedStartDateExact(proposal.plannedStartDateExact);
     }
-  }, [generateState.proposal]);
+  }
 
   const showMobileCapture = isMobile && !reviewProposal;
   const showMobileReview = isMobile && Boolean(reviewProposal);

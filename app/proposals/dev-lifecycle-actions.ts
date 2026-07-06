@@ -7,7 +7,6 @@ import {
   devTestingDisabledMessage,
   isDevTestingEnabled,
 } from "@/lib/env/dev-testing";
-import { userHasProfile } from "@/lib/onboarding/status";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import { executeSimulatedSend } from "@/lib/proposals/simulated-send";
 import { normalizeProposalStatus } from "@/lib/proposals/status";

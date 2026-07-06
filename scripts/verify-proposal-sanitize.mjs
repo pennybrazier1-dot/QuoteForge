@@ -5,8 +5,6 @@ import { readFileSync } from "node:fs";
 import { preserveQualifiedDuration } from "../lib/ai/qualifiers.ts";
 import {
   sanitizeGeneratedProposal,
-  sanitizeLabour,
-  sanitizeOptionalExtras,
   sanitizeExtractedPrice,
   sanitizeEstimatedDuration,
 } from "../lib/ai/sanitize-proposal.ts";

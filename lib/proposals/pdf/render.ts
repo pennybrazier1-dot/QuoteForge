@@ -18,7 +18,6 @@ import {
   iconDocument,
   iconEmail,
   iconInfo,
-  iconPerson,
   iconPersonFilled,
   iconPhone,
   iconPound,
@@ -73,12 +72,6 @@ function formatTradeTagline(tradeType: string | null): string {
     return "PROFESSIONAL TRADE SPECIALISTS";
   }
   return `PROFESSIONAL ${tradeType.toUpperCase()}`;
-}
-
-function formatDuration(duration: string): string {
-  if (!duration || duration === "Not specified") return duration;
-  if (duration.toLowerCase().startsWith("approximately")) return duration;
-  return `Approximately ${duration}`;
 }
 
 function microLabel(
@@ -188,18 +181,6 @@ function measureText(
   return flow.heightOf(text, width, { font, size, lineGap });
 }
 
-function measureBullets(flow: PdfFlow, items: string[], width: number, fallback: string) {
-  if (items.length === 0) {
-    return measureText(flow, fallback, width, FONT.sans, TYPE.bullet);
-  }
-  const indent = 10;
-  let height = 0;
-  for (const item of items) {
-    height += measureText(flow, item, width - indent, FONT.sans, TYPE.bullet) + BULLET_GAP;
-  }
-  return height;
-}
-
 function bodyTextFitted(
   flow: PdfFlow,
   text: string,
@@ -217,40 +198,6 @@ function bodyTextFitted(
     .fillColor(options?.color ?? PDF_COLORS.text)
     .text(text, x, y, { width, lineGap, height: h });
   return y + h;
-}
-
-function drawBulletsFitted(
-  flow: PdfFlow,
-  items: string[],
-  x: number,
-  y: number,
-  width: number,
-  fallback: string
-): number {
-  if (items.length === 0) {
-    return bodyTextFitted(flow, fallback, x, y, width, {
-      size: TYPE.bullet,
-      color: PDF_COLORS.muted,
-    });
-  }
-
-  let cursor = y;
-  const indent = 10;
-  for (const item of items) {
-    const itemH = measureText(flow, item, width - indent, FONT.sans, TYPE.bullet);
-    flow.doc
-      .font(FONT.sans)
-      .fontSize(TYPE.bullet)
-      .fillColor(PDF_COLORS.text)
-      .text("•", x, cursor, { width: indent, lineBreak: false });
-    flow.doc.text(item, x + indent, cursor, {
-      width: width - indent,
-      lineGap: LINE_GAP,
-      height: itemH,
-    });
-    cursor += itemH + BULLET_GAP;
-  }
-  return cursor;
 }
 
 function drawBulletsFlowing(
@@ -724,7 +671,7 @@ const TECH_HEADER_HEIGHT = TECH_TITLE_HEIGHT + 3;
 const TECH_SECTION_GAP = 3;
 const TECH_SEPARATOR_HEIGHT = 3;
 
-function acceptanceSection(flow: PdfFlow, data: ProposalPdfData): TechSection {
+function acceptanceSection(): TechSection {
   return {
     title: "Acceptance",
     drawIcon: iconShield,
@@ -940,7 +887,7 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
           lineGap: LINE_GAP,
         }),
     },
-    acceptanceSection(flow, data),
+    acceptanceSection(),
   ];
 
   const columnStart: ColumnCursor = { page: startPage, y: startY };

@@ -105,7 +105,7 @@ function pdfHref(proposalId: string): string {
 }
 
 function buildNextActions(proposal: NextActionsProposal): NextAction[] {
-  const { id, proposal_number, status, customer_id, actionContext } = proposal;
+  const { id, status, customer_id, actionContext } = proposal;
   const hasStructured = canPreviewProposalPdf(actionContext);
   const canSendByEmail = canOpenSendProposalDialog(actionContext);
   const sendDisabledReason = getSendDisabledReason(actionContext);
@@ -168,14 +168,6 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
     description: "Coming soon — follow up with the customer.",
     icon: ICONS.reminder,
     tone: "amber" as const,
-    disabled: true,
-  };
-  const convertToJob = {
-    id: "convert-to-job",
-    title: "Convert to Job",
-    description: "Coming soon — turn this win into a job.",
-    icon: ICONS.job,
-    tone: "muted" as const,
     disabled: true,
   };
 
