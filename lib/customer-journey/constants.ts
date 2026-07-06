@@ -5,6 +5,7 @@ import type {
   TradeType,
   TradespersonInfo,
 } from "./types";
+import { EXAMPLE_HANDYMAN_SERVICES } from "./business-profile";
 
 function includesServiceStep(businessType: BusinessType): boolean {
   return businessType !== "single-trade";
@@ -31,7 +32,7 @@ export const PLACEHOLDER_MULTI_TRADE: TradespersonInfo = {
   services: ["Plumbing", "Heating", "Bathrooms"],
 };
 
-/** Example handyman profile — services are customised per business. */
+/** Example handyman profile — services are fully customisable per business. */
 export const PLACEHOLDER_HANDYMAN: TradespersonInfo = {
   brandName: "Alex",
   businessName: "Smith Property Care",
@@ -39,12 +40,7 @@ export const PLACEHOLDER_HANDYMAN: TradespersonInfo = {
   phone: "07700 900 123",
   businessType: "handyman",
   tradeType: "something_else",
-  services: [
-    "Door hanging",
-    "Shelf fitting",
-    "Small plumbing jobs",
-    "Fence repairs",
-  ],
+  services: [...EXAMPLE_HANDYMAN_SERVICES],
 };
 
 export type JourneyPreviewProfileId = "single-trade" | "multi-trade" | "handyman";

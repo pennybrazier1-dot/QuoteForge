@@ -32,12 +32,12 @@ export function StepWorkType() {
         role="radiogroup"
         aria-label={copy.ariaLabel}
       >
-        {services.map((service) => {
+        {services.map((service, index) => {
           const selected = state.formData.selectedService === service.label;
 
           return (
             <JourneyCard
-              key={service.label}
+              key={`${service.label}-${index}`}
               interactive
               selected={selected}
               className="cj-trade-card"

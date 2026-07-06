@@ -1,4 +1,5 @@
 import { TRADE_OPTIONS } from "./constants";
+import { getConfiguredServices } from "./business-profile";
 import type { BusinessType, TradeType, TradespersonInfo } from "./types";
 
 export type BusinessServiceOption = {
@@ -25,6 +26,34 @@ const SERVICE_LABEL_TO_TRADE: Record<string, TradeType> = {
   "property maintenance": "something_else",
 };
 
+/** Keyword hints for custom handyman labels → trade question templates. */
+const SERVICE_KEYWORD_TO_TRADE: Array<[string, TradeType]> = [
+  ["plumb", "plumbing"],
+  ["silicone", "plumbing"],
+  ["seal", "plumbing"],
+  ["gutter", "drainage"],
+  ["drain", "drainage"],
+  ["electr", "electrical"],
+  ["paint", "decorating"],
+  ["garden", "landscaping"],
+  ["fence", "landscaping"],
+  ["floor", "carpentry"],
+  ["door", "carpentry"],
+  ["shelf", "carpentry"],
+  ["lock", "carpentry"],
+  ["curtain", "carpentry"],
+  ["flat-pack", "carpentry"],
+  ["assembly", "carpentry"],
+  ["picture", "carpentry"],
+  ["mount", "carpentry"],
+  ["heat", "heating"],
+  ["bath", "bathroom"],
+  ["roof", "roofing"],
+  ["kitchen", "kitchen"],
+  ["build", "building"],
+  ["decor", "decorating"],
+];
+
 export function needsServiceSelection(tradesperson: TradespersonInfo): boolean {
   return tradesperson.businessType !== "single-trade";
 }
@@ -42,6 +71,14 @@ export function resolveServiceTradeType(serviceLabel: string): TradeType {
 
   if (SERVICE_LABEL_TO_TRADE[normalized]) {
     return SERVICE_LABEL_TO_TRADE[normalized];
+  }
+
+  const keywordMatch = SERVICE_KEYWORD_TO_TRADE.find(([keyword]) =>
+    normalized.includes(keyword)
+  );
+
+  if (keywordMatch) {
+    return keywordMatch[1];
   }
 
   const partialMatch = Object.entries(SERVICE_LABEL_TO_TRADE).find(([key]) =>
@@ -64,7 +101,7 @@ export function getTradeIcon(tradeType: TradeType): string {
 export function getBusinessServiceOptions(
   tradesperson: TradespersonInfo
 ): BusinessServiceOption[] {
-  return tradesperson.services.map((label) => {
+  return getConfiguredServices(tradesperson).map((label) => {
     const tradeType = resolveServiceTradeType(label);
 
     return {
@@ -78,8 +115,10 @@ export function getBusinessServiceOptions(
 export function getPrimaryServiceLabel(
   tradesperson: TradespersonInfo
 ): string | null {
-  if (tradesperson.services.length > 0) {
-    return tradesperson.services[0];
+  const configured = getConfiguredServices(tradesperson);
+
+  if (configured.length > 0) {
+    return configured[0];
   }
 
   const catalogLabel = TRADE_OPTIONS.find(

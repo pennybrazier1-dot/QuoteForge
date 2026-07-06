@@ -90,6 +90,6 @@ export type TradespersonInfo = {
   businessType: BusinessType;
   /** Primary trade for single-trade businesses — used to load the enquiry template. */
   tradeType: TradeType;
-  /** Services this business offers — only these are shown to customers. */
+  /** Configured services shown to customers (add/remove/reorder via onboarding later). */
   services: string[];
 };
