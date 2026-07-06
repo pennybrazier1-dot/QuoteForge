@@ -7,7 +7,7 @@ import {
   formatProposalStatus,
   getStatusBadgeClass,
 } from "@/lib/proposals/status";
-import { DESKTOP_SIDEBAR_ITEMS, isAppNavActive } from "@/lib/layout/app-nav";
+import { DESKTOP_SIDEBAR_ITEMS, ADMIN_SIDEBAR_ITEM, isAppNavActive } from "@/lib/layout/app-nav";
 
 export type SidebarDraftItem = {
   id: string;
@@ -55,17 +55,31 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <circle cx="12" cy="12" r="3" />
     </svg>
   ),
+  "/admin": (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
 };
 
-export function AppSidebar({ recentDrafts }: { recentDrafts: SidebarDraftItem[] }) {
+export function AppSidebar({
+  recentDrafts,
+  adminNavEnabled = false,
+}: {
+  recentDrafts: SidebarDraftItem[];
+  adminNavEnabled?: boolean;
+}) {
   const pathname = usePathname();
+  const navItems = adminNavEnabled
+    ? [...DESKTOP_SIDEBAR_ITEMS, ADMIN_SIDEBAR_ITEM]
+    : DESKTOP_SIDEBAR_ITEMS;
 
   return (
     <aside className="qf-app-sidebar" aria-label="Sidebar">
       <div className="qf-app-sidebar-inner">
         <p className="qf-sidebar-label">Main</p>
         <nav aria-label="Sidebar navigation" className="qf-sidebar-nav">
-          {DESKTOP_SIDEBAR_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const isActive = isAppNavActive(pathname, item.href);
 
             return (

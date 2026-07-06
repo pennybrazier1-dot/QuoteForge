@@ -14,11 +14,13 @@ export function AppShell({
   fullName,
   email,
   recentDrafts,
+  adminNavEnabled = false,
   children,
 }: {
   fullName: string | null;
   email: string | null;
   recentDrafts: SidebarDraftItem[];
+  adminNavEnabled?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -26,7 +28,7 @@ export function AppShell({
       <AppTopNav fullName={fullName} email={email} />
 
       <div className="qf-app-frame">
-        <AppSidebar recentDrafts={recentDrafts} />
+        <AppSidebar recentDrafts={recentDrafts} adminNavEnabled={adminNavEnabled} />
         <main className="qf-app-main qf-workspace-scroll qf-mobile-safe">
           {children}
           <WorkspaceScrollEnd />

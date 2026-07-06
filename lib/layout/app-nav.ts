@@ -23,6 +23,11 @@ export const DESKTOP_SIDEBAR_ITEMS: AppNavItem[] = [
   { href: "/settings", label: "Settings" },
 ];
 
+export const ADMIN_SIDEBAR_ITEM: AppNavItem = {
+  href: "/admin",
+  label: "Admin",
+};
+
 export function isAppNavActive(pathname: string, href: string): boolean {
   if (href === "/proposals/new") {
     return pathname === "/proposals/new";
@@ -45,6 +50,10 @@ export function isAppNavActive(pathname: string, href: string): boolean {
 
   if (href === "/dashboard") {
     return pathname === "/dashboard";
+  }
+
+  if (href === "/admin") {
+    return pathname === "/admin" || pathname.startsWith("/admin/");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
