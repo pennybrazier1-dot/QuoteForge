@@ -3,14 +3,14 @@ import { CustomerJourneyApp } from "@/components/customer-journey/customer-journ
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 
 export const metadata: Metadata = {
-  title: "Request a Quote",
-  description: "Tell us about your project and receive a clear, professional quote.",
+  title: "Request a Quote — Handyman Preview",
+  description: "Temporary preview route for a handyman customer enquiry.",
 };
 
-export default function RequestQuotePage() {
+export default function RequestQuoteHandymanPage() {
   return (
     <CustomerJourneyApp
-      initialProfileId="single-trade"
+      initialProfileId="handyman"
       devPreviewEnabled={isDevTestingEnabled()}
     />
   );

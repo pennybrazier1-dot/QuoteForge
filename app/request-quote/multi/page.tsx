@@ -3,14 +3,14 @@ import { CustomerJourneyApp } from "@/components/customer-journey/customer-journ
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 
 export const metadata: Metadata = {
-  title: "Request a Quote",
-  description: "Tell us about your project and receive a clear, professional quote.",
+  title: "Request a Quote — Multi-Trade Preview",
+  description: "Temporary preview route for a multi-trade customer enquiry.",
 };
 
-export default function RequestQuotePage() {
+export default function RequestQuoteMultiPage() {
   return (
     <CustomerJourneyApp
-      initialProfileId="single-trade"
+      initialProfileId="multi-trade"
       devPreviewEnabled={isDevTestingEnabled()}
     />
   );
