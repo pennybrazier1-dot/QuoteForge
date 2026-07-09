@@ -23,6 +23,51 @@ function seedLocalStorage(value: unknown, localStorage: ReturnType<typeof create
   localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
 }
 
+function sampleEnquiry(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "enquiry-1",
+    status: "new",
+    receivedAt: "2026-07-09T12:00:00.000Z",
+    customerName: "Jane Smith",
+    customerMobile: "07700 900123",
+    customerEmail: "jane@example.com",
+    serviceRequested: "Plumbing",
+    addressLine1: "12 Oak Street",
+    addressLine2: "",
+    city: "Northampton",
+    county: "Northamptonshire",
+    postcode: "NN1 1AA",
+    propertyType: "House",
+    projectDescription: "Fix a leak",
+    photoCount: 1,
+    photos: [
+      {
+        id: "photo-1",
+        name: "kitchen.jpg",
+        size: 10,
+        type: "image/jpeg",
+        imageUrl: null,
+        storageKey: null,
+        thumbnailUrl: null,
+      },
+    ],
+    hasMeasurements: false,
+    measurements: [],
+    tradeAnswers: [],
+    tradespersonBusiness: "John's Plumbing",
+    suggestedNextAction: "Review the enquiry",
+    siteVisitSlot: null,
+    timeline: [
+      {
+        id: "timeline-1",
+        label: "Enquiry received",
+        at: "2026-07-09T12:00:00.000Z",
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe("getStoredEnquiries with legacy localStorage data", () => {
   let localStorage = createLocalStorageMock();
 
@@ -148,5 +193,73 @@ describe("getStoredEnquiries with legacy localStorage data", () => {
 
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(getStoredEnquiries()).toEqual([]);
+  });
+});
+
+describe("enquiry workflow actions", () => {
+  let localStorage = createLocalStorageMock();
+
+  beforeEach(async () => {
+    localStorage = createLocalStorageMock();
+    vi.stubGlobal("window", {
+      localStorage,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    });
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function loadStore() {
+    return import("@/lib/enquiries/enquiry-store");
+  }
+
+  it("decline changes enquiry status to Declined", async () => {
+    const { declineStoredEnquiry, getStoredEnquiry } = await loadStore();
+
+    seedLocalStorage([sampleEnquiry()], localStorage);
+
+    const updated = declineStoredEnquiry("enquiry-1");
+
+    expect(updated?.status).toBe("declined");
+    expect(getStoredEnquiry("enquiry-1")?.status).toBe("declined");
+    expect(getStoredEnquiry("enquiry-1")?.timeline[0]?.label).toBe(
+      "Enquiry declined"
+    );
+  });
+
+  it("delete removes enquiry from local storage", async () => {
+    const { deleteStoredEnquiry, getStoredEnquiries } = await loadStore();
+
+    seedLocalStorage([sampleEnquiry()], localStorage);
+
+    expect(getStoredEnquiries()).toHaveLength(1);
+
+    const deleted = await deleteStoredEnquiry("enquiry-1");
+
+    expect(deleted).toBe(true);
+    expect(getStoredEnquiries()).toEqual([]);
+    expect(localStorage.getItem(STORAGE_KEY)).toBe("[]");
+  });
+
+  it("deleted enquiry no longer appears in the stored list", async () => {
+    const { deleteStoredEnquiry, getStoredEnquiries } = await loadStore();
+
+    seedLocalStorage(
+      [
+        sampleEnquiry({ id: "enquiry-1", customerName: "Jane Smith" }),
+        sampleEnquiry({ id: "enquiry-2", customerName: "Alex Jones" }),
+      ],
+      localStorage
+    );
+
+    await deleteStoredEnquiry("enquiry-1");
+
+    expect(getStoredEnquiries()).toHaveLength(1);
+    expect(getStoredEnquiries()[0]?.id).toBe("enquiry-2");
   });
 });

@@ -54,10 +54,10 @@ export const ENQUIRY_STATUS_LABELS: Record<EnquiryStatus, string> = {
 
 export const ENQUIRY_STATUS_TONES: Record<
   EnquiryStatus,
-  "blue" | "amber" | "green" | "muted"
+  "blue" | "amber" | "green" | "red"
 > = {
   new: "blue",
   reviewing: "amber",
   site_visit_booked: "green",
-  declined: "muted",
+  declined: "red",
 };

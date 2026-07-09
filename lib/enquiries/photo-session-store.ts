@@ -137,6 +137,34 @@ export async function hydrateSessionPhotosForEnquiry(
   }
 }
 
+export function clearSessionPhotosForEnquiry(
+  enquiryId: string,
+  photoIds: string[] = []
+): void {
+  if (typeof window === "undefined" || photoIds.length === 0) {
+    return;
+  }
+
+  let changed = false;
+
+  photoIds.forEach((photoId) => {
+    const key = sessionKey(enquiryId, photoId);
+    const existing = previewUrls.get(key);
+
+    if (!existing) {
+      return;
+    }
+
+    URL.revokeObjectURL(existing);
+    previewUrls.delete(key);
+    changed = true;
+  });
+
+  if (changed) {
+    notifyPhotoSessionChange();
+  }
+}
+
 export function getSessionPreviewUrl(
   enquiryId: string,
   photoId: string

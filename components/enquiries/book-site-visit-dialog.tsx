@@ -13,6 +13,7 @@ import {
   SITE_VISIT_TIME_SLOTS,
 } from "@/lib/enquiries/site-visit-messages";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
+import { BOOK_SITE_VISIT_DIALOG_THEME } from "@/lib/enquiries/book-site-visit-dialog-theme";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
 type BookSiteVisitDialogProps = {
@@ -162,7 +163,7 @@ export function BookSiteVisitDialog({
         onClick={onClose}
       />
       <div
-        className="qf-mgmt-dialog-panel qf-mgmt-dialog-panel-sheet qf-enquiry-site-visit-panel"
+        className={`qf-mgmt-dialog-panel qf-mgmt-dialog-panel-sheet ${BOOK_SITE_VISIT_DIALOG_THEME.panel}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -186,7 +187,7 @@ export function BookSiteVisitDialog({
           </button>
         </header>
 
-        <div className="qf-mgmt-dialog-sheet-body qf-enquiry-site-visit-body">
+        <div className={`qf-mgmt-dialog-sheet-body ${BOOK_SITE_VISIT_DIALOG_THEME.body}`}>
           <section className="qf-enquiry-site-visit-section">
             <h3 className="qf-enquiry-site-visit-section-title">Customer details</h3>
             <dl className="qf-enquiry-detail-list">

@@ -116,3 +116,46 @@ export async function getEnquiryPhotoBlob(
     return null;
   }
 }
+
+export async function deleteEnquiryPhotoBlob(
+  enquiryId: string,
+  photoId: string
+): Promise<void> {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const database = await openPhotoBlobDatabase();
+
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(blobKey(enquiryId, photoId));
+
+      request.onerror = () => {
+        reject(request.error ?? new Error("Failed to delete enquiry photo blob"));
+      };
+
+      transaction.oncomplete = () => {
+        database.close();
+        resolve();
+      };
+
+      transaction.onerror = () => {
+        reject(transaction.error ?? new Error("Failed to delete enquiry photo blob"));
+      };
+    });
+  } catch {
+    // Prototype-only storage — ignore delete errors.
+  }
+}
+
+export async function deleteEnquiryPhotoBlobs(
+  enquiryId: string,
+  photoIds: string[] = []
+): Promise<void> {
+  await Promise.all(
+    photoIds.map((photoId) => deleteEnquiryPhotoBlob(enquiryId, photoId))
+  );
+}

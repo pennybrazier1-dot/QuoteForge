@@ -3,7 +3,11 @@
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import { buildPhotoMetadataFromFiles } from "@/lib/enquiries/photo-metadata";
 import { parseStoredEnquiries } from "@/lib/enquiries/normalize-enquiry";
-import { registerSessionPhotosFromFiles } from "@/lib/enquiries/photo-session-store";
+import { deleteEnquiryPhotoBlobs } from "@/lib/enquiries/photo-blob-store";
+import {
+  clearSessionPhotosForEnquiry,
+  registerSessionPhotosFromFiles,
+} from "@/lib/enquiries/photo-session-store";
 import {
   EnquiryPersistError,
   isStorageQuotaError,
@@ -289,4 +293,22 @@ export function bookEnquirySiteVisit(
 
 export function declineStoredEnquiry(id: string): StoredEnquiry | null {
   return updateStoredEnquiryStatus(id, "declined", "Enquiry declined");
+}
+
+export async function deleteStoredEnquiry(id: string): Promise<boolean> {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
+
+  if (index === -1) {
+    return false;
+  }
+
+  const [removed] = enquiries.splice(index, 1);
+  writeEnquiries(enquiries);
+
+  const photoIds = removed.photos.map((photo) => photo.id);
+  clearSessionPhotosForEnquiry(id, photoIds);
+  await deleteEnquiryPhotoBlobs(id, photoIds);
+
+  return true;
 }

@@ -1681,6 +1681,32 @@ a.qf-card-inset:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.qf-enquiry-status-red {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+}
+
+.qf-enquiry-card-declined {
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+.qf-enquiry-detail-declined .qf-enquiry-detail-title,
+.qf-enquiry-detail-declined .qf-enquiry-detail-subtitle {
+  color: var(--foreground);
+}
+
+.qf-enquiry-action-decline {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.qf-enquiry-action-delete {
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
 .qf-enquiry-meta {
   display: grid;
   gap: 0.75rem;
@@ -2017,6 +2043,57 @@ a.qf-card-inset:hover {
 
 .qf-enquiry-site-visit-panel {
   max-height: min(92dvh, 52rem);
+  color: var(--foreground);
+  background: var(--background-card);
+}
+
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-title,
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-subtitle,
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-section-title,
+.qf-enquiry-site-visit-panel .qf-enquiry-detail-list dd,
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-preview,
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-slot,
+.qf-enquiry-site-visit-panel .qf-enquiry-card-notice {
+  color: var(--foreground);
+}
+
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-subtitle,
+.qf-enquiry-site-visit-panel .qf-enquiry-detail-list dt,
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-future-note {
+  color: var(--muted);
+}
+
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-sheet-header,
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-sheet-body,
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-footer {
+  background: var(--background-card);
+}
+
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-message {
+  color: var(--foreground);
+  background: var(--background-field);
+  border-color: var(--border-card);
+}
+
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-slot {
+  background: var(--background-field);
+  border-color: var(--border-card);
+}
+
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-slot-active {
+  border-color: var(--border-card-accent);
+  background: rgba(255, 106, 26, 0.12);
+  color: var(--accent);
+}
+
+.qf-enquiry-site-visit-panel .qf-enquiry-site-visit-preview {
+  color: var(--foreground);
+  background: rgba(255, 106, 26, 0.08);
+  border-color: var(--border-card-accent);
+}
+
+.qf-enquiry-site-visit-panel .qf-mgmt-dialog-close {
+  color: var(--foreground);
 }
 
 .qf-enquiry-site-visit-body {
@@ -3221,6 +3298,7 @@ a.qf-card-inset:hover {
   font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.02em;
+  color: var(--foreground);
 }
 
 .qf-mgmt-dialog-subtitle {

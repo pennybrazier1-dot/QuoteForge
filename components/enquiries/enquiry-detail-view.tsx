@@ -6,8 +6,10 @@ import { useState } from "react";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
+import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
 import {
   declineStoredEnquiry,
+  deleteStoredEnquiry,
   markEnquiryReviewing,
 } from "@/lib/enquiries/enquiry-store";
 import {
@@ -18,12 +20,16 @@ import { getEnquiryPropertyDetailRows } from "@/lib/enquiries/property-details";
 import { useStoredEnquiry } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
+type ConfirmAction = "decline" | "delete" | null;
+
 export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   const router = useRouter();
   const mounted = useClientMounted();
   const enquiry = useStoredEnquiry(enquiryId);
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [pendingAction, setPendingAction] = useState(false);
 
   if (!mounted) {
     return <p className="qf-enquiry-empty">Loading enquiry…</p>;
@@ -45,10 +51,42 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   }
 
   const propertyDetails = getEnquiryPropertyDetailRows(enquiry);
+  const isDeclined = enquiry.status === "declined";
+
+  async function handleConfirmAction() {
+    if (!confirmAction) {
+      return;
+    }
+
+    setPendingAction(true);
+
+    try {
+      if (confirmAction === "decline") {
+        declineStoredEnquiry(enquiryId);
+        setConfirmAction(null);
+        return;
+      }
+
+      const deleted = await deleteStoredEnquiry(enquiryId);
+
+      if (deleted) {
+        router.push("/enquiries");
+      }
+    } finally {
+      setPendingAction(false);
+    }
+  }
 
   return (
     <>
-      <div className="qf-enquiry-detail">
+      <div
+        className={[
+          "qf-enquiry-detail",
+          isDeclined ? "qf-enquiry-detail-declined" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="qf-enquiry-detail-head">
           <div>
             <Link href="/enquiries" className="qf-enquiry-back">
@@ -186,6 +224,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
               markEnquiryReviewing(enquiry.id);
               setNotice("Marked as reviewing — saved locally for now.");
             }}
+            disabled={isDeclined}
           >
             Review Enquiry
           </button>
@@ -193,6 +232,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
             onClick={() => setSiteVisitOpen(true)}
+            disabled={isDeclined}
           >
             Book Site Visit
           </button>
@@ -202,18 +242,25 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             onClick={() =>
               setNotice("Ask Question is coming soon — messages will be saved here.")
             }
+            disabled={isDeclined}
           >
             Ask Question
           </button>
+          {!isDeclined ? (
+            <button
+              type="button"
+              className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-decline"
+              onClick={() => setConfirmAction("decline")}
+            >
+              Decline
+            </button>
+          ) : null}
           <button
             type="button"
-            className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-muted"
-            onClick={() => {
-              declineStoredEnquiry(enquiry.id);
-              setNotice("Enquiry declined — saved locally for now.");
-            }}
+            className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-delete"
+            onClick={() => setConfirmAction("delete")}
           >
-            Decline
+            Delete Enquiry
           </button>
           <button
             type="button"
@@ -230,6 +277,40 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         open={siteVisitOpen}
         onClose={() => setSiteVisitOpen(false)}
         onBooked={setNotice}
+      />
+
+      <ProposalConfirmDialog
+        open={confirmAction === "decline"}
+        title="Decline this enquiry?"
+        description={
+          <>
+            This will mark <strong>{enquiry.customerName}</strong> as{" "}
+            <strong>Declined</strong>. The status badge will update on this page
+            and in your enquiries list.
+          </>
+        }
+        confirmLabel="Decline enquiry"
+        pending={pendingAction}
+        destructive
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => void handleConfirmAction()}
+      />
+
+      <ProposalConfirmDialog
+        open={confirmAction === "delete"}
+        title="Delete this enquiry?"
+        description={
+          <>
+            This removes <strong>{enquiry.customerName}</strong> from this
+            browser, including any saved photo previews. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete enquiry"
+        pending={pendingAction}
+        pendingLabel="Deleting…"
+        destructive
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => void handleConfirmAction()}
       />
     </>
   );

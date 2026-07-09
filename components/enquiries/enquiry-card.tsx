@@ -6,8 +6,10 @@ import { useState } from "react";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
+import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
 import {
   declineStoredEnquiry,
+  deleteStoredEnquiry,
   markEnquiryReviewing,
 } from "@/lib/enquiries/enquiry-store";
 import {
@@ -20,10 +22,15 @@ type EnquiryCardProps = {
   enquiry: StoredEnquiry;
 };
 
+type ConfirmAction = "decline" | "delete" | null;
+
 export function EnquiryCard({ enquiry }: EnquiryCardProps) {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [pendingAction, setPendingAction] = useState(false);
+  const isDeclined = enquiry.status === "declined";
 
   function handleReview() {
     markEnquiryReviewing(enquiry.id);
@@ -34,14 +41,36 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
     setNotice("Ask Question is coming soon — messages will be saved here.");
   }
 
-  function handleDecline() {
-    declineStoredEnquiry(enquiry.id);
-    setNotice("Enquiry declined — saved locally for now.");
+  async function handleConfirmAction() {
+    if (!confirmAction) {
+      return;
+    }
+
+    setPendingAction(true);
+
+    try {
+      if (confirmAction === "decline") {
+        declineStoredEnquiry(enquiry.id);
+      } else {
+        await deleteStoredEnquiry(enquiry.id);
+      }
+
+      setConfirmAction(null);
+    } finally {
+      setPendingAction(false);
+    }
   }
 
   return (
     <>
-      <article className="qf-enquiry-card">
+      <article
+        className={[
+          "qf-enquiry-card",
+          isDeclined ? "qf-enquiry-card-declined" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div className="qf-enquiry-card-head">
           <div>
             <h2 className="qf-enquiry-card-title">{enquiry.customerName}</h2>
@@ -89,6 +118,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
             type="button"
             className="qf-btn-primary qf-enquiry-action-primary"
             onClick={handleReview}
+            disabled={isDeclined}
           >
             Review Enquiry
           </button>
@@ -96,6 +126,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
             onClick={() => setSiteVisitOpen(true)}
+            disabled={isDeclined}
           >
             Book Site Visit
           </button>
@@ -103,15 +134,25 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
             onClick={handleAskQuestion}
+            disabled={isDeclined}
           >
             Ask Question
           </button>
+          {!isDeclined ? (
+            <button
+              type="button"
+              className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-decline"
+              onClick={() => setConfirmAction("decline")}
+            >
+              Decline
+            </button>
+          ) : null}
           <button
             type="button"
-            className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-muted"
-            onClick={handleDecline}
+            className="qf-btn-secondary qf-enquiry-action qf-enquiry-action-delete"
+            onClick={() => setConfirmAction("delete")}
           >
-            Decline
+            Delete Enquiry
           </button>
           <Link href={`/enquiries/${enquiry.id}`} className="qf-enquiry-detail-link">
             Open detail
@@ -124,6 +165,40 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
         open={siteVisitOpen}
         onClose={() => setSiteVisitOpen(false)}
         onBooked={setNotice}
+      />
+
+      <ProposalConfirmDialog
+        open={confirmAction === "decline"}
+        title="Decline this enquiry?"
+        description={
+          <>
+            This will mark <strong>{enquiry.customerName}</strong> as{" "}
+            <strong>Declined</strong>. You can still view the enquiry in your
+            list, but it will move out of New enquiries.
+          </>
+        }
+        confirmLabel="Decline enquiry"
+        pending={pendingAction}
+        destructive
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => void handleConfirmAction()}
+      />
+
+      <ProposalConfirmDialog
+        open={confirmAction === "delete"}
+        title="Delete this enquiry?"
+        description={
+          <>
+            This removes <strong>{enquiry.customerName}</strong> from this
+            browser, including any saved photo previews. This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete enquiry"
+        pending={pendingAction}
+        pendingLabel="Deleting…"
+        destructive
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => void handleConfirmAction()}
       />
     </>
   );
