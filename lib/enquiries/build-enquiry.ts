@@ -68,6 +68,7 @@ export function buildEnquiryFromJourney(
     addressLine1: formData.addressLine1.trim(),
     addressLine2: formData.addressLine2.trim(),
     city: formData.city.trim(),
+    county: formData.county.trim(),
     postcode: formData.postcode.trim(),
     propertyType: propertyTypeLabel(formData.propertyType),
     projectDescription: formData.projectDescription.trim(),

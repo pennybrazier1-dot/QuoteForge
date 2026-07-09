@@ -189,7 +189,11 @@ export async function persistEnquiryFromJourney(
   try {
     const photos = buildPhotoMetadataFromFiles(formData.photos);
     const enquiry = buildEnquiryFromJourney(formData, tradesperson, photos);
-    registerSessionPhotosFromFiles(enquiry.id, photos, formData.photos);
+    registerSessionPhotosFromFiles(
+      enquiry.id,
+      photos,
+      formData.photos.slice(0, photos.length)
+    );
     const enquiries = readEnquiries();
 
     return writeEnquiryWithFallback(enquiry, enquiries);

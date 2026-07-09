@@ -11,10 +11,10 @@ import {
   markEnquiryReviewing,
 } from "@/lib/enquiries/enquiry-store";
 import {
-  formatEnquiryAddress,
   formatEnquiryReceivedDate,
   formatEnquiryTimelineDate,
 } from "@/lib/enquiries/format";
+import { getEnquiryPropertyDetailRows } from "@/lib/enquiries/property-details";
 import { useStoredEnquiry } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
@@ -43,6 +43,8 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
       </div>
     );
   }
+
+  const propertyDetails = getEnquiryPropertyDetailRows(enquiry);
 
   return (
     <>
@@ -100,14 +102,12 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           <section className="qf-card qf-enquiry-detail-card">
             <h2 className="qf-enquiry-detail-section-title">Property details</h2>
             <dl className="qf-enquiry-detail-list">
-              <div>
-                <dt>Address</dt>
-                <dd>{formatEnquiryAddress(enquiry) || "Not provided"}</dd>
-              </div>
-              <div>
-                <dt>Property type</dt>
-                <dd>{enquiry.propertyType || "Not provided"}</dd>
-              </div>
+              {propertyDetails.map((row) => (
+                <div key={row.label}>
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
             </dl>
           </section>
 

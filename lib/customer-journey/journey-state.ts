@@ -20,6 +20,7 @@ export const INITIAL_FORM_DATA: JourneyFormData = {
   addressLine1: "",
   addressLine2: "",
   city: "",
+  county: "",
   postcode: "",
   propertyType: null,
   projectDescription: "",

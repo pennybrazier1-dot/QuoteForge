@@ -2,9 +2,16 @@ export function formatEnquiryAddress(enquiry: {
   addressLine1: string;
   addressLine2: string;
   city: string;
+  county?: string;
   postcode: string;
 }): string {
-  return [enquiry.addressLine1, enquiry.addressLine2, enquiry.city, enquiry.postcode]
+  return [
+    enquiry.addressLine1,
+    enquiry.addressLine2,
+    enquiry.city,
+    enquiry.county ?? "",
+    enquiry.postcode,
+  ]
     .map((part) => part.trim())
     .filter(Boolean)
     .join(", ");

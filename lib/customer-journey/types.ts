@@ -65,6 +65,7 @@ export type JourneyFormData = {
   addressLine1: string;
   addressLine2: string;
   city: string;
+  county: string;
   postcode: string;
   propertyType: PropertyType | null;
   projectDescription: string;

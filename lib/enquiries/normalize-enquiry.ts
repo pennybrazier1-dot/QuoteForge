@@ -230,6 +230,7 @@ export function normalizeEnquiry(value: unknown): StoredEnquiry | null {
     addressLine2:
       typeof raw.addressLine2 === "string" ? raw.addressLine2 : "",
     city: typeof raw.city === "string" ? raw.city : "",
+    county: typeof raw.county === "string" ? raw.county : "",
     postcode: typeof raw.postcode === "string" ? raw.postcode : "",
     propertyType:
       typeof raw.propertyType === "string" ? raw.propertyType : null,

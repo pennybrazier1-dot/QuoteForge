@@ -13,7 +13,8 @@ import {
 
 export function StepProperty() {
   const { state, tradesperson, updateField, goNext, goBack, canContinue } = useJourney();
-  const { addressLine1, addressLine2, postcode, propertyType } = state.formData;
+  const { addressLine1, addressLine2, city, county, postcode, propertyType } =
+    state.formData;
 
   return (
     <div className="cj-step">
@@ -56,6 +57,26 @@ export function StepProperty() {
             onChange={(value) => updateField("addressLine2", value)}
             placeholder="Only if you need to add one"
             autoComplete="address-line2"
+          />
+        </JourneyField>
+
+        <JourneyField label="Town / City" htmlFor="cj-city">
+          <JourneyInput
+            id="cj-city"
+            value={city}
+            onChange={(value) => updateField("city", value)}
+            placeholder="e.g. Northampton"
+            autoComplete="address-level2"
+          />
+        </JourneyField>
+
+        <JourneyField label="County (optional)" htmlFor="cj-county">
+          <JourneyInput
+            id="cj-county"
+            value={county}
+            onChange={(value) => updateField("county", value)}
+            placeholder="e.g. Northamptonshire"
+            autoComplete="address-level1"
           />
         </JourneyField>
 

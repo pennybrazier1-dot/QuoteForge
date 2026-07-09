@@ -1,13 +1,27 @@
 "use client";
 
 import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
+import { saveEnquiryPhotoBlob, getEnquiryPhotoBlob } from "@/lib/enquiries/photo-blob-store";
 
 const previewUrls = new Map<string, string>();
 const listeners = new Set<() => void>();
 const displayCache = new Map<string, EnquiryPhotoDisplay[]>();
+const hydrationPromises = new Map<string, Promise<void>>();
 
 function sessionKey(enquiryId: string, photoId: string): string {
   return `${enquiryId}:${photoId}`;
+}
+
+export function isImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) {
+    return true;
+  }
+
+  if (file.type && file.type !== "application/octet-stream") {
+    return false;
+  }
+
+  return /\.(jpe?g|png|gif|webp|heic|heif|bmp|avif)$/i.test(file.name);
 }
 
 function notifyPhotoSessionChange(): void {
@@ -22,6 +36,25 @@ export function subscribeToPhotoSession(listener: () => void): () => void {
   };
 }
 
+function registerSessionPreviewUrl(
+  enquiryId: string,
+  photoId: string,
+  previewUrl: string
+): void {
+  const key = sessionKey(enquiryId, photoId);
+  const existing = previewUrls.get(key);
+
+  if (existing === previewUrl) {
+    return;
+  }
+
+  if (existing) {
+    URL.revokeObjectURL(existing);
+  }
+
+  previewUrls.set(key, previewUrl);
+}
+
 export function registerSessionPhotosFromFiles(
   enquiryId: string,
   photos: EnquiryPhotoReference[],
@@ -31,23 +64,77 @@ export function registerSessionPhotosFromFiles(
     return;
   }
 
+  let changed = false;
+
   photos.forEach((photo, index) => {
     const file = files[index];
-    if (!file || !file.type.startsWith("image/")) {
+    if (!file || !isImageFile(file)) {
       return;
     }
 
-    const key = sessionKey(enquiryId, photo.id);
-    const existing = previewUrls.get(key);
+    registerSessionPreviewUrl(
+      enquiryId,
+      photo.id,
+      URL.createObjectURL(file)
+    );
+    changed = true;
 
-    if (existing) {
-      URL.revokeObjectURL(existing);
-    }
-
-    previewUrls.set(key, URL.createObjectURL(file));
+    void saveEnquiryPhotoBlob(enquiryId, photo.id, file);
   });
 
-  notifyPhotoSessionChange();
+  if (changed) {
+    notifyPhotoSessionChange();
+  }
+}
+
+export async function hydrateSessionPhotosForEnquiry(
+  enquiryId: string,
+  photos: EnquiryPhotoReference[]
+): Promise<void> {
+  if (typeof window === "undefined" || photos.length === 0) {
+    return;
+  }
+
+  const cacheKey = `${enquiryId}:${photos.map((photo) => photo.id).join(",")}`;
+  const existing = hydrationPromises.get(cacheKey);
+
+  if (existing) {
+    await existing;
+    return;
+  }
+
+  const hydration = (async () => {
+    let changed = false;
+
+    for (const photo of photos) {
+      const key = sessionKey(enquiryId, photo.id);
+
+      if (previewUrls.has(key)) {
+        continue;
+      }
+
+      const blob = await getEnquiryPhotoBlob(enquiryId, photo.id);
+
+      if (!blob) {
+        continue;
+      }
+
+      registerSessionPreviewUrl(enquiryId, photo.id, URL.createObjectURL(blob));
+      changed = true;
+    }
+
+    if (changed) {
+      notifyPhotoSessionChange();
+    }
+  })();
+
+  hydrationPromises.set(cacheKey, hydration);
+
+  try {
+    await hydration;
+  } finally {
+    hydrationPromises.delete(cacheKey);
+  }
 }
 
 export function getSessionPreviewUrl(

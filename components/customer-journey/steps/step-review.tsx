@@ -98,6 +98,14 @@ export function StepReview() {
               .filter(Boolean)
               .join(", ")}
           />
+          <ReviewRow
+            label="Town / City"
+            value={formData.city.trim() || "Not provided"}
+          />
+          <ReviewRow
+            label="County"
+            value={formData.county.trim() || "Not provided"}
+          />
           <ReviewRow label="Postcode" value={formData.postcode} />
           <ReviewRow label="Property" value={propertyLabel} />
         </ReviewSection>
