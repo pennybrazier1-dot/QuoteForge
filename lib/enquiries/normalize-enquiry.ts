@@ -245,12 +245,18 @@ export function normalizeEnquiry(value: unknown): StoredEnquiry | null {
       typeof raw.tradespersonBusiness === "string"
         ? raw.tradespersonBusiness
         : "",
+    tradespersonPhone:
+      typeof raw.tradespersonPhone === "string" ? raw.tradespersonPhone : "",
+    tradespersonEmail:
+      typeof raw.tradespersonEmail === "string" ? raw.tradespersonEmail : "",
     suggestedNextAction:
       typeof raw.suggestedNextAction === "string"
         ? raw.suggestedNextAction
         : "",
     siteVisitSlot:
       typeof raw.siteVisitSlot === "string" ? raw.siteVisitSlot : null,
+    siteVisitStartsAt:
+      typeof raw.siteVisitStartsAt === "string" ? raw.siteVisitStartsAt : null,
     timeline: normalizeTimeline(raw.timeline),
   };
 }

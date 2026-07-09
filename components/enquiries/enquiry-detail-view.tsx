@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
+import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
@@ -120,6 +121,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
               Booked slot: {enquiry.siteVisitSlot}
             </p>
           ) : null}
+          <CustomerJobLinkPanel enquiry={enquiry} onNotice={setNotice} />
         </section>
 
         {notice ? (

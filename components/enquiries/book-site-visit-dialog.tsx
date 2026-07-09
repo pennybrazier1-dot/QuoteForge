@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
 import {
   bookEnquirySiteVisit,
   recordEnquiryCustomerContact,
@@ -54,9 +55,11 @@ export function BookSiteVisitDialog({
   );
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [bookedEnquiry, setBookedEnquiry] = useState<StoredEnquiry | null>(null);
 
   if (!open && appliedDialogSeed !== null) {
     setAppliedDialogSeed(null);
+    setBookedEnquiry(null);
   }
 
   if (open && dialogSeed !== null && dialogSeed !== appliedDialogSeed) {
@@ -64,7 +67,11 @@ export function BookSiteVisitDialog({
     setOutreachMessage(buildSiteVisitOutreachMessage(enquiry.customerName));
     setSelectedSlotId(null);
     setNotice(null);
+    setBookedEnquiry(null);
   }
+
+  const activeEnquiry = bookedEnquiry ?? enquiry;
+  const isBooked = bookedEnquiry !== null;
 
   const selectedSlot =
     SITE_VISIT_TIME_SLOTS.find((slot) => slot.id === selectedSlotId) ?? null;
@@ -163,17 +170,23 @@ export function BookSiteVisitDialog({
       return;
     }
 
-    bookEnquirySiteVisit(enquiry.id, {
+    const updated = bookEnquirySiteVisit(enquiry.id, {
       slotId: selectedSlot.id,
       slotLabel: resolved.slotLabel,
       confirmationLine: resolved.confirmationLine,
       dateIso: resolved.dateIso,
       startsAt: resolved.startsAt,
     });
+
+    if (!updated) {
+      setNotice("Could not save the site visit booking.");
+      return;
+    }
+
+    setBookedEnquiry(updated);
     onBooked?.(
-      `Site visit marked as booked for ${resolved.slotLabel} — saved locally for now.`
+      `Site visit marked as booked for ${resolved.slotLabel} — customer link ready to share.`
     );
-    onClose();
   }
 
   return createPortal(
@@ -288,6 +301,7 @@ export function BookSiteVisitDialog({
                     type="button"
                     role="option"
                     aria-selected={isSelected}
+                    disabled={isBooked}
                     className={[
                       "qf-enquiry-site-visit-slot",
                       isSelected ? "qf-enquiry-site-visit-slot-active" : "",
@@ -312,10 +326,18 @@ export function BookSiteVisitDialog({
             </section>
           ) : null}
 
-          <p className="qf-enquiry-site-visit-future-note">
-            In future this will create a secure customer link where both sides can
-            confirm appointment details and view updates.
-          </p>
+          {isBooked ? (
+            <CustomerJobLinkPanel
+              enquiry={activeEnquiry}
+              compact
+              onNotice={setNotice}
+            />
+          ) : (
+            <p className="qf-enquiry-site-visit-future-note">
+              After booking, a customer confirmation link will be ready to copy
+              and share.
+            </p>
+          )}
 
           {notice ? (
             <p className="qf-enquiry-card-notice" role="status">
@@ -330,15 +352,17 @@ export function BookSiteVisitDialog({
             className="qf-mgmt-dialog-btn qf-mgmt-dialog-btn-secondary"
             onClick={onClose}
           >
-            Cancel
+            {isBooked ? "Close" : "Cancel"}
           </button>
-          <button
-            type="button"
-            className="qf-mgmt-dialog-btn qf-mgmt-dialog-btn-primary"
-            onClick={handleMarkBooked}
-          >
-            Mark as Site Visit Booked
-          </button>
+          {isBooked ? null : (
+            <button
+              type="button"
+              className="qf-mgmt-dialog-btn qf-mgmt-dialog-btn-primary"
+              onClick={handleMarkBooked}
+            >
+              Mark as Site Visit Booked
+            </button>
+          )}
         </footer>
       </div>
     </div>,

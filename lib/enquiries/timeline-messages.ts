@@ -20,6 +20,10 @@ export function formatTimelineSiteVisitBooked(confirmationLine: string): string 
   return `Site visit booked for ${confirmationLine}.`;
 }
 
+export function formatTimelineCustomerConfirmationLinkCreated(): string {
+  return "Customer confirmation link created.";
+}
+
 export function formatTimelineCustomerMessagePrepared(): string {
   return "Customer message prepared.";
 }

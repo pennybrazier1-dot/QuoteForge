@@ -55,8 +55,11 @@ function sampleEnquiry(overrides: Record<string, unknown> = {}) {
     measurements: [],
     tradeAnswers: [],
     tradespersonBusiness: "John's Plumbing",
+    tradespersonPhone: "07700 900 456",
+    tradespersonEmail: "",
     suggestedNextAction: "Review the enquiry",
     siteVisitSlot: null,
+    siteVisitStartsAt: null,
     timeline: [
       {
         id: "timeline-1",
@@ -237,6 +240,7 @@ describe("enquiry workflow actions", () => {
     const { getLocalSiteVisitEvents } = await import(
       "@/lib/calendar/local-calendar-store"
     );
+    const { buildCustomerJobUrl } = await import("@/lib/enquiries/customer-job-link");
 
     seedLocalStorage([sampleEnquiry()], localStorage);
 
@@ -250,7 +254,16 @@ describe("enquiry workflow actions", () => {
 
     expect(updated?.status).toBe("site_visit_booked");
     expect(getStoredEnquiry("enquiry-1")?.timeline[0]?.label).toBe(
+      "Customer confirmation link created."
+    );
+    expect(getStoredEnquiry("enquiry-1")?.timeline[1]?.label).toBe(
       "Site visit booked for Thursday at 9:30."
+    );
+    expect(getStoredEnquiry("enquiry-1")?.siteVisitStartsAt).toBe(
+      "2026-07-10T08:30:00.000Z"
+    );
+    expect(buildCustomerJobUrl("enquiry-1", "https://quoteforge.test")).toBe(
+      "https://quoteforge.test/customer/job/enquiry-1"
     );
     expect(getLocalSiteVisitEvents()).toHaveLength(1);
     expect(getLocalSiteVisitEvents()[0]).toMatchObject({

@@ -15,6 +15,7 @@ import {
   toEnquiryPersistError,
 } from "@/lib/enquiries/persist-errors";
 import {
+  formatTimelineCustomerConfirmationLinkCreated,
   formatTimelineCustomerCalled,
   formatTimelineCustomerEmailPrepared,
   formatTimelineCustomerMessageCopied,
@@ -373,15 +374,29 @@ export function bookEnquirySiteVisit(
   }
 
   const timelineLabel = formatTimelineSiteVisitBooked(booking.confirmationLine);
-  const updated = updateEnquiryAtIndex(enquiries, index, (entry) => ({
-    ...entry,
-    status: "site_visit_booked",
-    siteVisitSlot: booking.slotLabel,
-    suggestedNextAction: suggestedActionForStatus("site_visit_booked"),
-    timeline: enquiryHasTimelineLabel(entry, timelineLabel)
-      ? entry.timeline
-      : appendTimeline(entry, timelineLabel),
-  }));
+  const linkTimelineLabel = formatTimelineCustomerConfirmationLinkCreated();
+  const updated = updateEnquiryAtIndex(enquiries, index, (entry) => {
+    let timeline = entry.timeline;
+
+    if (!enquiryHasTimelineLabel(entry, timelineLabel)) {
+      timeline = appendTimeline({ ...entry, timeline }, timelineLabel);
+    }
+
+    const withSiteVisit = { ...entry, timeline };
+
+    if (!enquiryHasTimelineLabel(withSiteVisit, linkTimelineLabel)) {
+      timeline = appendTimeline(withSiteVisit, linkTimelineLabel);
+    }
+
+    return {
+      ...entry,
+      status: "site_visit_booked",
+      siteVisitSlot: booking.slotLabel,
+      siteVisitStartsAt: booking.startsAt,
+      suggestedNextAction: suggestedActionForStatus("site_visit_booked"),
+      timeline,
+    };
+  });
 
   upsertSiteVisitCalendarEvent(updated, {
     slotLabel: booking.slotLabel,

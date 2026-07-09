@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { shouldShowReviewEnquiryOnDetailPage } from "@/lib/enquiries/enquiry-detail-actions";
-import { shouldShowCustomerJobLink } from "@/lib/enquiries/customer-job-link";
+import {
+  buildCustomerJobPath,
+  buildCustomerJobUrl,
+  shouldShowCustomerJobLink,
+} from "@/lib/enquiries/customer-job-link";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
 
-function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
+function sampleEnquiry(
+  status: StoredEnquiry["status"] = "new"
+): StoredEnquiry {
   return {
     id: "enquiry-1",
     status,
@@ -35,12 +40,16 @@ function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
   };
 }
 
-describe("enquiry detail actions", () => {
-  it("hides Review Enquiry on the detail page", () => {
-    expect(shouldShowReviewEnquiryOnDetailPage()).toBe(false);
+describe("customer job link", () => {
+  it("builds the customer confirmation path and url", () => {
+    expect(buildCustomerJobPath("enquiry-1")).toBe("/customer/job/enquiry-1");
+    expect(buildCustomerJobUrl("enquiry-1", "https://quoteforge.test")).toBe(
+      "https://quoteforge.test/customer/job/enquiry-1"
+    );
   });
 
-  it("shows the customer link on the detail page after booking", () => {
+  it("shows the customer link only after a site visit is booked", () => {
+    expect(shouldShowCustomerJobLink(sampleEnquiry("new"))).toBe(false);
     expect(shouldShowCustomerJobLink(sampleEnquiry("reviewing"))).toBe(false);
     expect(shouldShowCustomerJobLink(sampleEnquiry("site_visit_booked"))).toBe(
       true

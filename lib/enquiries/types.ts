@@ -40,8 +40,11 @@ export type StoredEnquiry = {
   measurements: MeasurementField[];
   tradeAnswers: EnquiryTradeAnswer[];
   tradespersonBusiness: string;
+  tradespersonPhone: string;
+  tradespersonEmail: string;
   suggestedNextAction: string;
   siteVisitSlot: string | null;
+  siteVisitStartsAt: string | null;
   timeline: EnquiryTimelineEvent[];
 };
 

@@ -100,9 +100,12 @@ export function buildEnquiryFromJourney(
     measurements: formData.measurements.filter((field) => field.value.trim()),
     tradeAnswers: buildTradeAnswers(formData, trade),
     tradespersonBusiness: tradesperson.businessName,
+    tradespersonPhone: tradesperson.phone.trim(),
+    tradespersonEmail: "",
     suggestedNextAction:
       "Review the customer details and project description, then decide whether to book a site visit.",
     siteVisitSlot: null,
+    siteVisitStartsAt: null,
     timeline,
   };
 }

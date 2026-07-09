@@ -1473,3 +1473,137 @@
     min-width: 100%;
   }
 }
+
+/* Customer job confirmation page */
+
+.cj-job-page {
+  flex: 1;
+  width: min(100%, 40rem);
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.cj-job-loading {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--cj-text-muted);
+}
+
+.cj-job-card {
+  padding: 1.125rem 1.25rem;
+  border-radius: var(--cj-radius-lg);
+  border: 1px solid var(--cj-border);
+  background: var(--cj-bg-card);
+  box-shadow: var(--cj-shadow);
+}
+
+.cj-job-card-empty,
+.cj-job-card-note {
+  border-color: var(--cj-border-accent);
+  background: linear-gradient(
+    180deg,
+    var(--cj-accent-softer) 0%,
+    var(--cj-bg-card) 100%
+  );
+}
+
+.cj-job-eyebrow {
+  margin: 0 0 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cj-accent);
+}
+
+.cj-job-title {
+  margin: 0;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+.cj-job-section-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.cj-job-copy {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--cj-text-secondary);
+}
+
+.cj-job-contact-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.625rem;
+}
+
+.cj-job-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  text-decoration: none;
+}
+
+.cj-job-contact-btn[aria-disabled="true"] {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.cj-job-status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.cj-job-status-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cj-job-status-marker {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  border: 2px solid var(--cj-border-strong);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.cj-job-status-item-complete .cj-job-status-marker {
+  border-color: var(--cj-accent);
+  background: var(--cj-accent);
+}
+
+.cj-job-status-item-current .cj-job-status-marker {
+  border-color: var(--cj-accent);
+  box-shadow: 0 0 0 4px var(--cj-accent-glow);
+}
+
+.cj-job-status-label {
+  font-size: 0.9375rem;
+  color: var(--cj-text-secondary);
+}
+
+.cj-job-status-item-current .cj-job-status-label,
+.cj-job-status-item-complete .cj-job-status-label {
+  color: var(--cj-text);
+}
+
+@media (max-width: 480px) {
+  .cj-job-contact-actions {
+    grid-template-columns: 1fr;
+  }
+}
