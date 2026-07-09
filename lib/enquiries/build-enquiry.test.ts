@@ -8,8 +8,9 @@ describe("buildEnquiryFromJourney", () => {
     vi.stubGlobal("crypto", {
       randomUUID: vi
         .fn()
-        .mockReturnValueOnce("enquiry-id")
-        .mockReturnValueOnce("timeline-id"),
+        .mockReturnValueOnce("timeline-received")
+        .mockReturnValueOnce("timeline-photos")
+        .mockReturnValueOnce("enquiry-id"),
     });
   });
 
@@ -80,10 +81,14 @@ describe("buildEnquiryFromJourney", () => {
         }),
       ])
     );
-    expect(enquiry.timeline).toHaveLength(1);
+    expect(enquiry.timeline).toHaveLength(2);
     expect(enquiry.timeline[0]).toMatchObject({
-      id: "timeline-id",
-      label: "Enquiry received",
+      id: "timeline-received",
+      label: "Enquiry received from Jane Smith.",
+    });
+    expect(enquiry.timeline[1]).toMatchObject({
+      id: "timeline-photos",
+      label: "Photos and project details were added to the enquiry.",
     });
   });
 

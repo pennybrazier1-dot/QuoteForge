@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
@@ -28,6 +29,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
+  const [askQuestionOpen, setAskQuestionOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const isDeclined = enquiry.status === "declined";
@@ -38,7 +40,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
   }
 
   function handleAskQuestion() {
-    setNotice("Ask Question is coming soon — messages will be saved here.");
+    setAskQuestionOpen(true);
   }
 
   async function handleConfirmAction() {
@@ -165,6 +167,13 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
         open={siteVisitOpen}
         onClose={() => setSiteVisitOpen(false)}
         onBooked={setNotice}
+      />
+
+      <AskQuestionDialog
+        enquiry={enquiry}
+        open={askQuestionOpen}
+        onClose={() => setAskQuestionOpen(false)}
+        onAction={setNotice}
       />
 
       <ProposalConfirmDialog

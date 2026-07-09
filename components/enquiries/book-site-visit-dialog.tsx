@@ -4,12 +4,15 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   bookEnquirySiteVisit,
+  recordEnquiryCustomerContact,
+  recordSiteVisitRequested,
 } from "@/lib/enquiries/enquiry-store";
 import { formatEnquiryAddress } from "@/lib/enquiries/format";
 import {
   buildSiteVisitConfirmationMessage,
   buildSiteVisitEmailSubject,
   buildSiteVisitOutreachMessage,
+  resolveSiteVisitSlotDateTime,
   SITE_VISIT_TIME_SLOTS,
 } from "@/lib/enquiries/site-visit-messages";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
@@ -82,6 +85,8 @@ export function BookSiteVisitDialog({
       return;
     }
 
+    recordSiteVisitRequested(enquiry.id);
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -97,7 +102,7 @@ export function BookSiteVisitDialog({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open, onClose]);
+  }, [open, onClose, enquiry.id]);
 
   if (!open || !mounted) {
     return null;
@@ -105,6 +110,7 @@ export function BookSiteVisitDialog({
 
   async function handleCopyMessage() {
     const copied = await copyText(activeMessage);
+    recordEnquiryCustomerContact(enquiry.id, "copy", "site_visit");
     setNotice(
       copied ? "Message copied to clipboard." : "Could not copy the message."
     );
@@ -117,6 +123,7 @@ export function BookSiteVisitDialog({
       return;
     }
 
+    recordEnquiryCustomerContact(enquiry.id, "call", "site_visit");
     window.location.href = `tel:${phone}`;
   }
 
@@ -127,6 +134,7 @@ export function BookSiteVisitDialog({
       return;
     }
 
+    recordEnquiryCustomerContact(enquiry.id, "text", "site_visit");
     window.location.href = `sms:${phone}?body=${encodeURIComponent(activeMessage)}`;
   }
 
@@ -137,6 +145,7 @@ export function BookSiteVisitDialog({
       return;
     }
 
+    recordEnquiryCustomerContact(enquiry.id, "email", "site_visit");
     const subject = buildSiteVisitEmailSubject(enquiry.tradespersonBusiness);
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(activeMessage)}`;
   }
@@ -147,9 +156,22 @@ export function BookSiteVisitDialog({
       return;
     }
 
-    bookEnquirySiteVisit(enquiry.id, selectedSlot.label);
+    const resolved = resolveSiteVisitSlotDateTime(selectedSlot.id);
+
+    if (!resolved) {
+      setNotice("Could not resolve the selected time slot.");
+      return;
+    }
+
+    bookEnquirySiteVisit(enquiry.id, {
+      slotId: selectedSlot.id,
+      slotLabel: resolved.slotLabel,
+      confirmationLine: resolved.confirmationLine,
+      dateIso: resolved.dateIso,
+      startsAt: resolved.startsAt,
+    });
     onBooked?.(
-      `Site visit marked as booked for ${selectedSlot.label} — saved locally for now.`
+      `Site visit marked as booked for ${resolved.slotLabel} — saved locally for now.`
     );
     onClose();
   }

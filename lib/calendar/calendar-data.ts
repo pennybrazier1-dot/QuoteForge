@@ -12,7 +12,9 @@ import {
 
 export type CalendarView = "month" | "week" | "day" | "year";
 
-export type CalendarEventTone = "confirmed" | "provisional";
+export type CalendarEventTone = "confirmed" | "provisional" | "site_visit";
+
+export type CalendarJobKind = "proposal" | "site_visit";
 
 export type CalendarProposal = {
   id: string;
@@ -30,7 +32,6 @@ export type CalendarProposal = {
   job_address: string | null;
 };
 
-/** One scheduled job on the calendar (deduplicated by proposal). */
 export type CalendarJob = {
   id: string;
   proposalId: string;
@@ -42,6 +43,8 @@ export type CalendarJob = {
   spanDates: string[];
   dateLabel: string;
   tone: CalendarEventTone;
+  kind?: CalendarJobKind;
+  badgeLabel?: string;
   duration?: string;
   addressLine?: string;
 };
@@ -217,16 +220,26 @@ export function getJobsForDate(
 
 export function getJobCountsByDate(
   jobs: CalendarJob[]
-): Map<string, { confirmed: number; provisional: number }> {
-  const counts = new Map<string, { confirmed: number; provisional: number }>();
+): Map<string, { confirmed: number; provisional: number; siteVisit: number }> {
+  const counts = new Map<
+    string,
+    { confirmed: number; provisional: number; siteVisit: number }
+  >();
 
   for (const job of jobs) {
     for (const date of job.spanDates) {
       const current = counts.get(date) ?? {
         confirmed: 0,
         provisional: 0,
+        siteVisit: 0,
       };
-      current[job.tone] += 1;
+
+      if (job.tone === "site_visit") {
+        current.siteVisit += 1;
+      } else {
+        current[job.tone] += 1;
+      }
+
       counts.set(date, current);
     }
   }
@@ -284,13 +297,19 @@ export function getJobsForMonth(
 export function countJobsByTone(jobs: CalendarJob[]): {
   confirmed: number;
   provisional: number;
+  siteVisit: number;
 } {
   return jobs.reduce(
     (totals, job) => {
-      totals[job.tone] += 1;
+      if (job.tone === "site_visit") {
+        totals.siteVisit += 1;
+      } else {
+        totals[job.tone] += 1;
+      }
+
       return totals;
     },
-    { confirmed: 0, provisional: 0 }
+    { confirmed: 0, provisional: 0, siteVisit: 0 }
   );
 }
 
@@ -312,7 +331,7 @@ export function formatCalendarHeading(view: CalendarView, anchor: Date): string 
       month: "short",
     });
 
-    return `${formatter.format(start)} – ${formatter.format(end)} ${anchor.getFullYear()}`;
+    return `${formatter.format(start)} - ${formatter.format(end)} ${anchor.getFullYear()}`;
   }
 
   if (view === "month") {

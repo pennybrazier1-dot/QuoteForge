@@ -228,8 +228,36 @@ describe("enquiry workflow actions", () => {
     expect(updated?.status).toBe("declined");
     expect(getStoredEnquiry("enquiry-1")?.status).toBe("declined");
     expect(getStoredEnquiry("enquiry-1")?.timeline[0]?.label).toBe(
-      "Enquiry declined"
+      "Enquiry declined."
     );
+  });
+
+  it("books a site visit, updates timeline, and creates a calendar event", async () => {
+    const { bookEnquirySiteVisit, getStoredEnquiry } = await loadStore();
+    const { getLocalSiteVisitEvents } = await import(
+      "@/lib/calendar/local-calendar-store"
+    );
+
+    seedLocalStorage([sampleEnquiry()], localStorage);
+
+    const updated = bookEnquirySiteVisit("enquiry-1", {
+      slotId: "thursday-0930",
+      slotLabel: "Thursday 09:30",
+      confirmationLine: "Thursday at 9:30",
+      dateIso: "2026-07-10",
+      startsAt: "2026-07-10T08:30:00.000Z",
+    });
+
+    expect(updated?.status).toBe("site_visit_booked");
+    expect(getStoredEnquiry("enquiry-1")?.timeline[0]?.label).toBe(
+      "Site visit booked for Thursday at 9:30."
+    );
+    expect(getLocalSiteVisitEvents()).toHaveLength(1);
+    expect(getLocalSiteVisitEvents()[0]).toMatchObject({
+      enquiryId: "enquiry-1",
+      title: "Site visit — Jane Smith",
+      status: "site_visit_booked",
+    });
   });
 
   it("delete removes enquiry from local storage", async () => {

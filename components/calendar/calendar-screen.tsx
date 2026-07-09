@@ -25,6 +25,8 @@ import {
   type CalendarProposal,
   type CalendarView,
 } from "@/lib/calendar/calendar-data";
+import { mergeCalendarJobs } from "@/lib/calendar/local-calendar-data";
+import { useLocalSiteVisitJobs } from "@/lib/calendar/use-local-site-visit-jobs";
 import { formatSpanLabel } from "@/lib/calendar/job-span";
 
 const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
@@ -33,6 +35,22 @@ const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
   { value: "day", label: "Day" },
   { value: "year", label: "Year" },
 ];
+
+function getCalendarJobBadge(job: CalendarJob): string {
+  if (job.badgeLabel) {
+    return job.badgeLabel;
+  }
+
+  if (job.tone === "confirmed") {
+    return "Confirmed";
+  }
+
+  if (job.tone === "site_visit") {
+    return "Site Visit Booked";
+  }
+
+  return "Provisional";
+}
 
 function CalendarJobCard({
   job,
@@ -51,7 +69,7 @@ function CalendarJobCard({
       <div className="qf-calendar-event-top">
         <p className="qf-calendar-event-title">{job.title}</p>
         <span className="qf-calendar-event-badge">
-          {job.tone === "confirmed" ? "Confirmed" : "Provisional"}
+          {getCalendarJobBadge(job)}
         </span>
       </div>
       <p className="qf-calendar-event-customer">{job.customer}</p>
@@ -152,7 +170,7 @@ function DayButton({
   compact?: boolean;
   selected: boolean;
   today: boolean;
-  counts?: { confirmed: number; provisional: number };
+  counts?: { confirmed: number; provisional: number; siteVisit: number };
   onSelect: (iso: string) => void;
 }) {
   const className = [
@@ -176,13 +194,17 @@ function DayButton({
         <span className="qf-calendar-day-btn-weekday">{weekdayShort}</span>
       ) : null}
       <span className="qf-calendar-day-btn-number">{dayNumber}</span>
-      {counts && (counts.confirmed > 0 || counts.provisional > 0) ? (
+      {counts &&
+      (counts.confirmed > 0 || counts.provisional > 0 || counts.siteVisit > 0) ? (
         <span className="qf-calendar-day-btn-dots">
           {counts.confirmed > 0 ? (
             <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
           ) : null}
           {counts.provisional > 0 ? (
             <span className="qf-calendar-dot qf-calendar-dot-provisional" />
+          ) : null}
+          {counts.siteVisit > 0 ? (
+            <span className="qf-calendar-dot qf-calendar-dot-site-visit" />
           ) : null}
         </span>
       ) : null}
@@ -200,7 +222,7 @@ function MonthView({
   anchor: Date;
   selectedDate: string;
   todayIso: string;
-  jobCounts: Map<string, { confirmed: number; provisional: number }>;
+  jobCounts: Map<string, { confirmed: number; provisional: number; siteVisit: number }>;
   onSelectDate: (iso: string) => void;
 }) {
   const cells = useMemo(() => buildMonthCells(anchor), [anchor]);
@@ -254,7 +276,7 @@ function WeekView({
   anchor: Date;
   selectedDate: string;
   todayIso: string;
-  jobCounts: Map<string, { confirmed: number; provisional: number }>;
+  jobCounts: Map<string, { confirmed: number; provisional: number; siteVisit: number }>;
   onSelectDate: (iso: string) => void;
 }) {
   const weekDays = useMemo(() => buildWeekDays(anchor), [anchor]);
@@ -323,7 +345,7 @@ function YearView({
     <div className="qf-calendar-year">
       {months.map((monthIndex) => {
         const monthJobs = getJobsForMonth(jobs, year, monthIndex);
-        const { confirmed, provisional } = countJobsByTone(monthJobs);
+        const { confirmed, provisional, siteVisit } = countJobsByTone(monthJobs);
 
         return (
           <button
@@ -352,6 +374,9 @@ function YearView({
                 {provisional > 0 ? (
                   <span className="qf-calendar-dot qf-calendar-dot-provisional" />
                 ) : null}
+                {siteVisit > 0 ? (
+                  <span className="qf-calendar-dot qf-calendar-dot-site-visit" />
+                ) : null}
               </div>
             ) : (
               <p className="qf-calendar-year-month-placeholder">
@@ -375,7 +400,11 @@ export function CalendarScreen({
   const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayIso);
 
-  const allJobs = useMemo(() => buildCalendarJobs(proposals), [proposals]);
+  const localSiteVisitJobs = useLocalSiteVisitJobs();
+  const allJobs = useMemo(
+    () => mergeCalendarJobs(buildCalendarJobs(proposals), localSiteVisitJobs),
+    [proposals, localSiteVisitJobs]
+  );
   const jobCounts = useMemo(() => getJobCountsByDate(allJobs), [allJobs]);
 
   const selectDate = (iso: string) => {
@@ -433,8 +462,9 @@ export function CalendarScreen({
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          Sent quotes with a planned start date. Amber holds the date while you
-          wait; green is a confirmed booking.
+          Sent quotes with a planned start date, plus local site visits booked
+          from enquiries. Amber holds the date while you wait; green is a
+          confirmed booking; orange is a booked site visit.
         </p>
       </header>
 
@@ -446,6 +476,10 @@ export function CalendarScreen({
         <span className="qf-calendar-legend-item">
           <span className="qf-calendar-dot qf-calendar-dot-provisional" />
           Holding date (awaiting confirmation)
+        </span>
+        <span className="qf-calendar-legend-item">
+          <span className="qf-calendar-dot qf-calendar-dot-site-visit" />
+          Site visit booked
         </span>
       </div>
 

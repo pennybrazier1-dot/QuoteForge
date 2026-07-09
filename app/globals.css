@@ -4272,6 +4272,10 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   background: #f59e0b;
 }
 
+.qf-calendar-dot-site-visit {
+  background: var(--accent);
+}
+
 .qf-calendar-toolbar {
   display: flex;
   flex-direction: column;
@@ -4622,6 +4626,10 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
 
 .qf-calendar-event-provisional {
   border-left: 4px solid #f59e0b;
+}
+
+.qf-calendar-event-site_visit {
+  border-left: 4px solid var(--accent);
 }
 
 .qf-calendar-event-top {

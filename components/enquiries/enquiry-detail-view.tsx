@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
+import { shouldShowReviewEnquiryOnDetailPage } from "@/lib/enquiries/enquiry-detail-actions";
 import {
   declineStoredEnquiry,
   deleteStoredEnquiry,
@@ -28,8 +30,20 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   const enquiry = useStoredEnquiry(enquiryId);
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
+  const [askQuestionOpen, setAskQuestionOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingAction, setPendingAction] = useState(false);
+  const showReviewButton = shouldShowReviewEnquiryOnDetailPage();
+
+  const enquiryStatus = enquiry?.status;
+
+  useEffect(() => {
+    if (!enquiryId || enquiryStatus !== "new") {
+      return;
+    }
+
+    markEnquiryReviewing(enquiryId);
+  }, [enquiryId, enquiryStatus]);
 
   if (!mounted) {
     return <p className="qf-enquiry-empty">Loading enquiry…</p>;
@@ -217,20 +231,23 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         </div>
 
         <div className="qf-enquiry-actions qf-enquiry-detail-actions">
+          {showReviewButton ? (
+            <button
+              type="button"
+              className="qf-btn-primary qf-enquiry-action-primary"
+              onClick={() => markEnquiryReviewing(enquiry.id)}
+              disabled={isDeclined}
+            >
+              Review Enquiry
+            </button>
+          ) : null}
           <button
             type="button"
-            className="qf-btn-primary qf-enquiry-action-primary"
-            onClick={() => {
-              markEnquiryReviewing(enquiry.id);
-              setNotice("Marked as reviewing — saved locally for now.");
-            }}
-            disabled={isDeclined}
-          >
-            Review Enquiry
-          </button>
-          <button
-            type="button"
-            className="qf-btn-secondary qf-enquiry-action"
+            className={
+              showReviewButton
+                ? "qf-btn-secondary qf-enquiry-action"
+                : "qf-btn-primary qf-enquiry-action-primary"
+            }
             onClick={() => setSiteVisitOpen(true)}
             disabled={isDeclined}
           >
@@ -239,9 +256,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           <button
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
-            onClick={() =>
-              setNotice("Ask Question is coming soon — messages will be saved here.")
-            }
+            onClick={() => setAskQuestionOpen(true)}
             disabled={isDeclined}
           >
             Ask Question
@@ -277,6 +292,13 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         open={siteVisitOpen}
         onClose={() => setSiteVisitOpen(false)}
         onBooked={setNotice}
+      />
+
+      <AskQuestionDialog
+        enquiry={enquiry}
+        open={askQuestionOpen}
+        onClose={() => setAskQuestionOpen(false)}
+        onAction={setNotice}
       />
 
       <ProposalConfirmDialog

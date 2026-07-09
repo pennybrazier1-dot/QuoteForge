@@ -7,6 +7,10 @@ import type {
   TradeType,
 } from "@/lib/customer-journey/types";
 import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
+import {
+  formatTimelineEnquiryReceived,
+  formatTimelinePhotosAdded,
+} from "@/lib/enquiries/timeline-messages";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
 
 function propertyTypeLabel(value: PropertyType | null): string | null {
@@ -57,6 +61,24 @@ export function buildEnquiryFromJourney(
     tradesperson.services[0] ||
     tradesperson.tradeType;
 
+  const photoCount = photos.length || formData.photos.length;
+  const timeline = [
+    {
+      id: crypto.randomUUID(),
+      label: formatTimelineEnquiryReceived(formData.name.trim()),
+      at: receivedAt,
+    },
+    ...(photoCount > 0
+      ? [
+          {
+            id: crypto.randomUUID(),
+            label: formatTimelinePhotosAdded(),
+            at: receivedAt,
+          },
+        ]
+      : []),
+  ];
+
   return {
     id: crypto.randomUUID(),
     status: "new",
@@ -72,7 +94,7 @@ export function buildEnquiryFromJourney(
     postcode: formData.postcode.trim(),
     propertyType: propertyTypeLabel(formData.propertyType),
     projectDescription: formData.projectDescription.trim(),
-    photoCount: photos.length || formData.photos.length,
+    photoCount,
     photos,
     hasMeasurements: hasMeasurementValues(formData),
     measurements: formData.measurements.filter((field) => field.value.trim()),
@@ -81,12 +103,6 @@ export function buildEnquiryFromJourney(
     suggestedNextAction:
       "Review the customer details and project description, then decide whether to book a site visit.",
     siteVisitSlot: null,
-    timeline: [
-      {
-        id: crypto.randomUUID(),
-        label: "Enquiry received",
-        at: receivedAt,
-      },
-    ],
+    timeline,
   };
 }

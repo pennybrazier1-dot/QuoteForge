@@ -1,5 +1,6 @@
 "use client";
 
+import { upsertSiteVisitCalendarEvent, removeSiteVisitCalendarEventsForEnquiry } from "@/lib/calendar/local-calendar-store";
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import { buildPhotoMetadataFromFiles } from "@/lib/enquiries/photo-metadata";
 import { parseStoredEnquiries } from "@/lib/enquiries/normalize-enquiry";
@@ -13,6 +14,17 @@ import {
   isStorageQuotaError,
   toEnquiryPersistError,
 } from "@/lib/enquiries/persist-errors";
+import {
+  formatTimelineCustomerCalled,
+  formatTimelineCustomerEmailPrepared,
+  formatTimelineCustomerMessageCopied,
+  formatTimelineCustomerMessagePrepared,
+  formatTimelineCustomerTextPrepared,
+  formatTimelineEnquiryDeclined,
+  formatTimelineEnquiryReviewed,
+  formatTimelineSiteVisitBooked,
+  formatTimelineSiteVisitRequested,
+} from "@/lib/enquiries/timeline-messages";
 import type {
   EnquiryStatus,
   EnquiryTimelineEvent,
@@ -27,6 +39,17 @@ const STORAGE_KEY = "quoteforge:enquiries";
 const ENQUIRIES_UPDATED_EVENT = "quoteforge:enquiries-updated";
 
 export const EMPTY_ENQUIRIES: StoredEnquiry[] = [];
+
+export type SiteVisitBookingInput = {
+  slotId: string;
+  slotLabel: string;
+  confirmationLine: string;
+  dateIso: string;
+  startsAt: string;
+};
+
+export type EnquiryContactMethod = "call" | "text" | "email" | "copy";
+export type EnquiryContactContext = "question" | "site_visit";
 
 let enquiriesSnapshot: StoredEnquiry[] = EMPTY_ENQUIRIES;
 let enquiriesSnapshotKey = "";
@@ -178,6 +201,47 @@ function writeEnquiryWithFallback(
   );
 }
 
+function appendTimeline(
+  enquiry: StoredEnquiry,
+  label: string
+): EnquiryTimelineEvent[] {
+  const event: EnquiryTimelineEvent = {
+    id: crypto.randomUUID(),
+    label,
+    at: new Date().toISOString(),
+  };
+
+  return [event, ...enquiry.timeline];
+}
+
+function enquiryHasTimelineLabel(enquiry: StoredEnquiry, label: string): boolean {
+  return enquiry.timeline.some((event) => event.label === label);
+}
+
+function updateEnquiryAtIndex(
+  enquiries: StoredEnquiry[],
+  index: number,
+  updater: (current: StoredEnquiry) => StoredEnquiry
+): StoredEnquiry {
+  const nextEnquiries = [...enquiries];
+  nextEnquiries[index] = updater(enquiries[index]);
+  writeEnquiries(nextEnquiries);
+  return nextEnquiries[index];
+}
+
+function suggestedActionForStatus(status: EnquiryStatus): string {
+  switch (status) {
+    case "new":
+      return "Review the customer details and project description, then decide whether to book a site visit.";
+    case "reviewing":
+      return "Call or message the customer if you need more detail, then book a site visit or prepare a quote.";
+    case "site_visit_booked":
+      return "Confirm the visit date and time with the customer before you attend.";
+    case "declined":
+      return "No action needed. The enquiry has been declined.";
+  }
+}
+
 export function getStoredEnquiries(): StoredEnquiry[] {
   return readEnquiries();
 }
@@ -206,30 +270,75 @@ export async function persistEnquiryFromJourney(
   }
 }
 
-function appendTimeline(
-  enquiry: StoredEnquiry,
+export function appendEnquiryTimelineEvent(
+  id: string,
   label: string
-): EnquiryTimelineEvent[] {
-  const event: EnquiryTimelineEvent = {
-    id: crypto.randomUUID(),
-    label,
-    at: new Date().toISOString(),
-  };
+): StoredEnquiry | null {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
 
-  return [event, ...enquiry.timeline];
+  if (index === -1) {
+    return null;
+  }
+
+  const current = enquiries[index];
+
+  if (enquiryHasTimelineLabel(current, label)) {
+    return current;
+  }
+
+  return updateEnquiryAtIndex(enquiries, index, (entry) => ({
+    ...entry,
+    timeline: appendTimeline(entry, label),
+  }));
 }
 
-function suggestedActionForStatus(status: EnquiryStatus): string {
-  switch (status) {
-    case "new":
-      return "Review the customer details and project description, then decide whether to book a site visit.";
-    case "reviewing":
-      return "Call or message the customer if you need more detail, then book a site visit or prepare a quote.";
-    case "site_visit_booked":
-      return "Confirm the visit date and time with the customer before you attend.";
-    case "declined":
-      return "No action needed. The enquiry has been declined.";
+export function markEnquiryReviewing(id: string): StoredEnquiry | null {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
+
+  if (index === -1) {
+    return null;
   }
+
+  const current = enquiries[index];
+  const timelineLabel = formatTimelineEnquiryReviewed(current.customerName);
+
+  if (current.status === "reviewing" && enquiryHasTimelineLabel(current, timelineLabel)) {
+    return current;
+  }
+
+  return updateEnquiryAtIndex(enquiries, index, (entry) => ({
+    ...entry,
+    status: "reviewing",
+    suggestedNextAction: suggestedActionForStatus("reviewing"),
+    timeline: enquiryHasTimelineLabel(entry, timelineLabel)
+      ? entry.timeline
+      : appendTimeline(entry, timelineLabel),
+  }));
+}
+
+export function recordSiteVisitRequested(id: string): StoredEnquiry | null {
+  return appendEnquiryTimelineEvent(id, formatTimelineSiteVisitRequested());
+}
+
+export function recordEnquiryCustomerContact(
+  id: string,
+  method: EnquiryContactMethod,
+  context: EnquiryContactContext
+): StoredEnquiry | null {
+  const label =
+    method === "call"
+      ? formatTimelineCustomerCalled()
+      : method === "text"
+        ? formatTimelineCustomerTextPrepared()
+        : method === "email"
+          ? formatTimelineCustomerEmailPrepared()
+          : context === "site_visit"
+            ? formatTimelineCustomerMessageCopied()
+            : formatTimelineCustomerMessagePrepared();
+
+  return appendEnquiryTimelineEvent(id, label);
 }
 
 export function updateStoredEnquiryStatus(
@@ -244,27 +353,17 @@ export function updateStoredEnquiryStatus(
     return null;
   }
 
-  const current = enquiries[index];
-  const updated: StoredEnquiry = {
+  return updateEnquiryAtIndex(enquiries, index, (current) => ({
     ...current,
     status,
     suggestedNextAction: suggestedActionForStatus(status),
     timeline: appendTimeline(current, timelineLabel),
-  };
-
-  const nextEnquiries = [...enquiries];
-  nextEnquiries[index] = updated;
-  writeEnquiries(nextEnquiries);
-  return updated;
-}
-
-export function markEnquiryReviewing(id: string): StoredEnquiry | null {
-  return updateStoredEnquiryStatus(id, "reviewing", "Marked as reviewing");
+  }));
 }
 
 export function bookEnquirySiteVisit(
   id: string,
-  slotLabel?: string
+  booking: SiteVisitBookingInput
 ): StoredEnquiry | null {
   const enquiries = readEnquiries();
   const index = enquiries.findIndex((enquiry) => enquiry.id === id);
@@ -273,26 +372,32 @@ export function bookEnquirySiteVisit(
     return null;
   }
 
-  const current = enquiries[index];
-  const timelineLabel = slotLabel
-    ? `Site visit booked (${slotLabel})`
-    : "Site visit booked";
-  const updated: StoredEnquiry = {
-    ...current,
+  const timelineLabel = formatTimelineSiteVisitBooked(booking.confirmationLine);
+  const updated = updateEnquiryAtIndex(enquiries, index, (entry) => ({
+    ...entry,
     status: "site_visit_booked",
-    siteVisitSlot: slotLabel ?? current.siteVisitSlot,
+    siteVisitSlot: booking.slotLabel,
     suggestedNextAction: suggestedActionForStatus("site_visit_booked"),
-    timeline: appendTimeline(current, timelineLabel),
-  };
+    timeline: enquiryHasTimelineLabel(entry, timelineLabel)
+      ? entry.timeline
+      : appendTimeline(entry, timelineLabel),
+  }));
 
-  const nextEnquiries = [...enquiries];
-  nextEnquiries[index] = updated;
-  writeEnquiries(nextEnquiries);
+  upsertSiteVisitCalendarEvent(updated, {
+    slotLabel: booking.slotLabel,
+    dateIso: booking.dateIso,
+    startsAt: booking.startsAt,
+  });
+
   return updated;
 }
 
 export function declineStoredEnquiry(id: string): StoredEnquiry | null {
-  return updateStoredEnquiryStatus(id, "declined", "Enquiry declined");
+  return updateStoredEnquiryStatus(
+    id,
+    "declined",
+    formatTimelineEnquiryDeclined()
+  );
 }
 
 export async function deleteStoredEnquiry(id: string): Promise<boolean> {
@@ -309,6 +414,7 @@ export async function deleteStoredEnquiry(id: string): Promise<boolean> {
   const photoIds = removed.photos.map((photo) => photo.id);
   clearSessionPhotosForEnquiry(id, photoIds);
   await deleteEnquiryPhotoBlobs(id, photoIds);
+  removeSiteVisitCalendarEventsForEnquiry(id);
 
   return true;
 }
