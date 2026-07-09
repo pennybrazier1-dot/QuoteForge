@@ -1,7 +1,8 @@
 "use client";
 
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
-import { buildPhotoMetadataFromFiles, normalizePhotoReference } from "@/lib/enquiries/photo-metadata";
+import { buildPhotoMetadataFromFiles } from "@/lib/enquiries/photo-metadata";
+import { parseStoredEnquiries } from "@/lib/enquiries/normalize-enquiry";
 import { registerSessionPhotosFromFiles } from "@/lib/enquiries/photo-session-store";
 import {
   EnquiryPersistError,
@@ -25,6 +26,18 @@ export const EMPTY_ENQUIRIES: StoredEnquiry[] = [];
 
 let enquiriesSnapshot: StoredEnquiry[] = EMPTY_ENQUIRIES;
 let enquiriesSnapshotKey = "";
+let migrationWriteScheduled = false;
+
+export function clearLocalTestEnquiries(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.removeItem(STORAGE_KEY);
+  enquiriesSnapshot = EMPTY_ENQUIRIES;
+  enquiriesSnapshotKey = "";
+  notifyEnquiriesUpdated();
+}
 
 export function subscribeToEnquiries(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") {
@@ -59,85 +72,41 @@ function sortEnquiries(enquiries: StoredEnquiry[]): StoredEnquiry[] {
   );
 }
 
-function normalizeEnquiry(value: unknown): StoredEnquiry | null {
-  if (!value || typeof value !== "object") {
-    return null;
+function scheduleMigrationWrite(enquiries: StoredEnquiry[]): void {
+  if (typeof window === "undefined" || migrationWriteScheduled) {
+    return;
   }
 
-  const raw = value as Partial<StoredEnquiry>;
+  migrationWriteScheduled = true;
 
-  if (
-    typeof raw.id !== "string" ||
-    typeof raw.status !== "string" ||
-    typeof raw.receivedAt !== "string"
-  ) {
-    return null;
-  }
+  queueMicrotask(() => {
+    migrationWriteScheduled = false;
 
-  return {
-    id: raw.id,
-    status: raw.status as EnquiryStatus,
-    receivedAt: raw.receivedAt,
-    customerName: raw.customerName ?? "",
-    customerMobile: raw.customerMobile ?? "",
-    customerEmail: raw.customerEmail ?? "",
-    serviceRequested: raw.serviceRequested ?? "",
-    addressLine1: raw.addressLine1 ?? "",
-    addressLine2: raw.addressLine2 ?? "",
-    city: raw.city ?? "",
-    postcode: raw.postcode ?? "",
-    propertyType: raw.propertyType ?? null,
-    projectDescription: raw.projectDescription ?? "",
-    photoCount:
-      typeof raw.photoCount === "number"
-        ? raw.photoCount
-        : Array.isArray(raw.photos)
-          ? raw.photos.length
-          : Array.isArray((raw as { photoPreviews?: unknown[] }).photoPreviews)
-            ? (raw as { photoPreviews: unknown[] }).photoPreviews.length
-            : 0,
-    photos: normalizeStoredPhotos(raw),
-    hasMeasurements: Boolean(raw.hasMeasurements),
-    measurements: Array.isArray(raw.measurements) ? raw.measurements : [],
-    tradeAnswers: Array.isArray(raw.tradeAnswers) ? raw.tradeAnswers : [],
-    tradespersonBusiness: raw.tradespersonBusiness ?? "",
-    suggestedNextAction: raw.suggestedNextAction ?? "",
-    siteVisitSlot:
-      typeof raw.siteVisitSlot === "string" ? raw.siteVisitSlot : null,
-    timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
-  };
-}
+    try {
+      const sorted = sortEnquiries(enquiries);
+      const json = JSON.stringify(sorted);
 
-function normalizeStoredPhotos(
-  raw: Partial<StoredEnquiry> & { photoPreviews?: unknown[] }
-): StoredEnquiry["photos"] {
-  const source = Array.isArray(raw.photos)
-    ? raw.photos
-    : Array.isArray(raw.photoPreviews)
-      ? raw.photoPreviews
-      : [];
+      if (json === enquiriesSnapshotKey) {
+        return;
+      }
 
-  return source
-    .map((photo) => normalizePhotoReference(photo))
-    .filter((photo): photo is StoredEnquiry["photos"][number] => photo !== null);
+      window.localStorage.setItem(STORAGE_KEY, json);
+      enquiriesSnapshot = sorted;
+      enquiriesSnapshotKey = json;
+    } catch {
+      // Keep in-memory normalized data even if rewrite fails.
+    }
+  });
 }
 
 function parseEnquiries(raw: string): StoredEnquiry[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
+  const { enquiries, needsMigration } = parseStoredEnquiries(raw);
 
-    if (!Array.isArray(parsed)) {
-      return EMPTY_ENQUIRIES;
-    }
-
-    return sortEnquiries(
-      parsed
-        .map((entry) => normalizeEnquiry(entry))
-        .filter((entry): entry is StoredEnquiry => entry !== null)
-    );
-  } catch {
-    return EMPTY_ENQUIRIES;
+  if (needsMigration && enquiries.length > 0) {
+    scheduleMigrationWrite(enquiries);
   }
+
+  return enquiries.length === 0 ? EMPTY_ENQUIRIES : sortEnquiries(enquiries);
 }
 
 function readEnquiries(): StoredEnquiry[] {

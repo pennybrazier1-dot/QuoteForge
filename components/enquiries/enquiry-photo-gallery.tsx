@@ -1,13 +1,16 @@
 "use client";
 
-import { formatEnquiryPhotoCount } from "@/lib/enquiries/photo-metadata";
+import {
+  formatEnquiryPhotoCount,
+  formatEnquiryPhotoSummary,
+} from "@/lib/enquiries/photo-metadata";
 import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
 import { useEnquiryPhotoDisplays } from "@/lib/enquiries/use-enquiry-photo-displays";
 
 type EnquiryPhotoGalleryProps = {
   enquiryId: string;
-  photos: EnquiryPhotoReference[];
-  photoCount: number;
+  photos?: EnquiryPhotoReference[] | null;
+  photoCount?: number | null;
   variant?: "card" | "detail";
 };
 
@@ -17,8 +20,14 @@ export function EnquiryPhotoGallery({
   photoCount,
   variant = "detail",
 }: EnquiryPhotoGalleryProps) {
-  const displays = useEnquiryPhotoDisplays(enquiryId, photos);
-  const count = photoCount || photos.length;
+  const safePhotos = Array.isArray(photos) ? photos : [];
+  const displays = useEnquiryPhotoDisplays(enquiryId, safePhotos);
+  const count = Math.max(
+    typeof photoCount === "number" && Number.isFinite(photoCount)
+      ? photoCount
+      : 0,
+    safePhotos.length
+  );
 
   if (count === 0) {
     return variant === "detail" ? (
@@ -32,8 +41,9 @@ export function EnquiryPhotoGallery({
     variant === "card" && thumbnails.length > visiblePhotos.length
       ? thumbnails.length - visiblePhotos.length
       : 0;
+  const photosUnavailable = thumbnails.length === 0;
 
-  if (visiblePhotos.length === 0) {
+  if (photosUnavailable) {
     return (
       <p
         className={
@@ -42,7 +52,9 @@ export function EnquiryPhotoGallery({
             : "qf-enquiry-detail-copy qf-enquiry-photo-summary"
         }
       >
-        {formatEnquiryPhotoCount(count)}
+        {safePhotos.length === 0 && count > 0
+          ? formatEnquiryPhotoSummary(count, { unavailable: true })
+          : formatEnquiryPhotoCount(count)}
       </p>
     );
   }

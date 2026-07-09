@@ -1997,6 +1997,19 @@ a.qf-card-inset:hover {
   color: var(--muted);
 }
 
+.qf-enquiry-dev-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.qf-enquiry-dev-clear {
+  width: auto;
+  min-height: 2.5rem;
+  padding-inline: 1rem;
+  font-size: 0.8125rem;
+}
+
 .qf-enquiry-site-visit-booked {
   margin-top: 0.5rem;
   color: var(--accent);

@@ -122,7 +122,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             <h2 className="qf-enquiry-detail-section-title">Uploaded photos</h2>
             <EnquiryPhotoGallery
               enquiryId={enquiry.id}
-              photos={enquiry.photos}
+              photos={enquiry.photos ?? []}
               photoCount={enquiry.photoCount}
               variant="detail"
             />

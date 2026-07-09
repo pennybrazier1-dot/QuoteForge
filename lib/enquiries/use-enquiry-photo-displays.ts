@@ -8,9 +8,11 @@ import {
   type EnquiryPhotoDisplay,
 } from "@/lib/enquiries/photo-session-store";
 
+const SERVER_PHOTO_DISPLAYS: EnquiryPhotoDisplay[] = [];
+
 export function useEnquiryPhotoDisplays(
   enquiryId: string,
-  photos: EnquiryPhotoReference[]
+  photos: EnquiryPhotoReference[] | null | undefined
 ): EnquiryPhotoDisplay[] {
   const getSnapshot = useCallback(
     () => getEnquiryPhotoDisplaySnapshot(enquiryId, photos),
@@ -20,6 +22,6 @@ export function useEnquiryPhotoDisplays(
   return useSyncExternalStore(
     subscribeToPhotoSession,
     getSnapshot,
-    getSnapshot
+    () => SERVER_PHOTO_DISPLAYS
   );
 }

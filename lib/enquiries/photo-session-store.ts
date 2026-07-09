@@ -4,13 +4,14 @@ import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
 
 const previewUrls = new Map<string, string>();
 const listeners = new Set<() => void>();
+const displayCache = new Map<string, EnquiryPhotoDisplay[]>();
 
 function sessionKey(enquiryId: string, photoId: string): string {
   return `${enquiryId}:${photoId}`;
 }
 
 function notifyPhotoSessionChange(): void {
-  invalidateDisplaySnapshot();
+  displayCache.clear();
   listeners.forEach((listener) => listener());
 }
 
@@ -26,6 +27,10 @@ export function registerSessionPhotosFromFiles(
   photos: EnquiryPhotoReference[],
   files: File[]
 ): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
   photos.forEach((photo, index) => {
     const file = files[index];
     if (!file || !file.type.startsWith("image/")) {
@@ -56,50 +61,48 @@ export function resolvePhotoDisplayUrl(
   enquiryId: string,
   photo: EnquiryPhotoReference
 ): string | null {
-  return (
-    getSessionPreviewUrl(enquiryId, photo.id) ??
-    photo.thumbnailUrl ??
-    photo.imageUrl ??
-    null
-  );
-}
+  const sessionUrl = getSessionPreviewUrl(enquiryId, photo.id);
+  if (sessionUrl) {
+    return sessionUrl;
+  }
 
-export function hasDisplayablePhotoPreviews(
-  enquiryId: string,
-  photos: EnquiryPhotoReference[]
-): boolean {
-  return photos.some((photo) => resolvePhotoDisplayUrl(enquiryId, photo) !== null);
+  const thumbnailUrl = photo.thumbnailUrl?.trim() ?? "";
+  if (thumbnailUrl && !thumbnailUrl.startsWith("data:")) {
+    return thumbnailUrl;
+  }
+
+  const imageUrl = photo.imageUrl?.trim() ?? "";
+  if (imageUrl && !imageUrl.startsWith("data:")) {
+    return imageUrl;
+  }
+
+  return null;
 }
 
 export type EnquiryPhotoDisplay = EnquiryPhotoReference & {
   displayUrl: string | null;
 };
 
-let cachedDisplays: EnquiryPhotoDisplay[] = [];
-let cachedDisplaysKey = "";
-
 export function getEnquiryPhotoDisplaySnapshot(
   enquiryId: string,
-  photos: EnquiryPhotoReference[]
+  photos: EnquiryPhotoReference[] | null | undefined
 ): EnquiryPhotoDisplay[] {
-  const urlsKey = photos
+  const safePhotos = Array.isArray(photos) ? photos : [];
+  const urlsKey = safePhotos
     .map((photo) => resolvePhotoDisplayUrl(enquiryId, photo) ?? "")
     .join("|");
-  const key = `${enquiryId}:${photos.map((photo) => photo.id).join(",")}:${urlsKey}`;
+  const cacheKey = `${enquiryId}:${safePhotos.map((photo) => photo.id).join(",")}:${urlsKey}`;
 
-  if (key === cachedDisplaysKey) {
-    return cachedDisplays;
+  const cached = displayCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
 
-  cachedDisplaysKey = key;
-  cachedDisplays = photos.map((photo) => ({
+  const snapshot = safePhotos.map((photo) => ({
     ...photo,
     displayUrl: resolvePhotoDisplayUrl(enquiryId, photo),
   }));
 
-  return cachedDisplays;
-}
-
-function invalidateDisplaySnapshot(): void {
-  cachedDisplaysKey = "";
+  displayCache.set(cacheKey, snapshot);
+  return snapshot;
 }

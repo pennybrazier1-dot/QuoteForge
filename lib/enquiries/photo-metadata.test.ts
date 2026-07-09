@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildPhotoMetadataFromFiles,
   formatEnquiryPhotoCount,
+  formatEnquiryPhotoSummary,
   normalizePhotoReference,
 } from "@/lib/enquiries/photo-metadata";
 
@@ -49,6 +50,25 @@ describe("photo metadata", () => {
       thumbnailUrl: null,
     });
     expect(photo).not.toHaveProperty("dataUrl");
+  });
+
+  it("creates a fallback id for malformed legacy photos", () => {
+    const photo = normalizePhotoReference(
+      {
+        name: "bathroom.jpg",
+        dataUrl: "data:image/jpeg;base64,huge-payload",
+      },
+      { fallbackId: "legacy-photo-0" }
+    );
+
+    expect(photo?.id).toBe("legacy-photo-0");
+  });
+
+  it("formats photo summaries for unavailable previews", () => {
+    expect(formatEnquiryPhotoSummary(4, { unavailable: true })).toBe(
+      "Photos unavailable"
+    );
+    expect(formatEnquiryPhotoSummary(4)).toBe("4 photos uploaded");
   });
 
   it("formats photo counts for summary text", () => {

@@ -53,7 +53,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
         {enquiry.photoCount > 0 ? (
           <EnquiryPhotoGallery
             enquiryId={enquiry.id}
-            photos={enquiry.photos}
+            photos={enquiry.photos ?? []}
             photoCount={enquiry.photoCount}
             variant="card"
           />
