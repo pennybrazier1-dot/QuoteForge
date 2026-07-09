@@ -39,7 +39,13 @@ describe("buildEnquiryFromJourney", () => {
       photos: [{ name: "kitchen.jpg" } as File],
     };
 
-    const enquiry = buildEnquiryFromJourney(formData, PLACEHOLDER_TRADESPERSON);
+    const enquiry = buildEnquiryFromJourney(formData, PLACEHOLDER_TRADESPERSON, [
+      {
+        id: "photo-1",
+        name: "kitchen.jpg",
+        dataUrl: "data:image/jpeg;base64,abc",
+      },
+    ]);
 
     expect(enquiry).toMatchObject({
       id: "enquiry-id",
@@ -56,6 +62,7 @@ describe("buildEnquiryFromJourney", () => {
       hasMeasurements: true,
       tradespersonBusiness: PLACEHOLDER_TRADESPERSON.businessName,
     });
+    expect(enquiry.photoPreviews).toHaveLength(1);
     expect(enquiry.tradeAnswers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

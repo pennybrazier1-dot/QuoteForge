@@ -18,6 +18,12 @@ export type EnquiryTradeAnswer = {
   answer: string;
 };
 
+export type EnquiryPhotoPreview = {
+  id: string;
+  name: string;
+  dataUrl: string;
+};
+
 export type StoredEnquiry = {
   id: string;
   status: EnquiryStatus;
@@ -33,11 +39,13 @@ export type StoredEnquiry = {
   propertyType: string | null;
   projectDescription: string;
   photoCount: number;
+  photoPreviews: EnquiryPhotoPreview[];
   hasMeasurements: boolean;
   measurements: MeasurementField[];
   tradeAnswers: EnquiryTradeAnswer[];
   tradespersonBusiness: string;
   suggestedNextAction: string;
+  siteVisitSlot: string | null;
   timeline: EnquiryTimelineEvent[];
 };
 

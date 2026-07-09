@@ -1,6 +1,7 @@
 "use client";
 
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
+import { encodeJourneyPhotoPreviews } from "@/lib/enquiries/encode-photo-previews";
 import type {
   EnquiryStatus,
   EnquiryTimelineEvent,
@@ -81,12 +82,30 @@ function normalizeEnquiry(value: unknown): StoredEnquiry | null {
     postcode: raw.postcode ?? "",
     propertyType: raw.propertyType ?? null,
     projectDescription: raw.projectDescription ?? "",
-    photoCount: typeof raw.photoCount === "number" ? raw.photoCount : 0,
+    photoCount:
+      typeof raw.photoCount === "number"
+        ? raw.photoCount
+        : Array.isArray(raw.photoPreviews)
+          ? raw.photoPreviews.length
+          : 0,
+    photoPreviews: Array.isArray(raw.photoPreviews)
+      ? raw.photoPreviews.filter(
+          (preview): preview is StoredEnquiry["photoPreviews"][number] =>
+            Boolean(
+              preview &&
+                typeof preview === "object" &&
+                typeof (preview as { id?: string }).id === "string" &&
+                typeof (preview as { dataUrl?: string }).dataUrl === "string"
+            )
+        )
+      : [],
     hasMeasurements: Boolean(raw.hasMeasurements),
     measurements: Array.isArray(raw.measurements) ? raw.measurements : [],
     tradeAnswers: Array.isArray(raw.tradeAnswers) ? raw.tradeAnswers : [],
     tradespersonBusiness: raw.tradespersonBusiness ?? "",
     suggestedNextAction: raw.suggestedNextAction ?? "",
+    siteVisitSlot:
+      typeof raw.siteVisitSlot === "string" ? raw.siteVisitSlot : null,
     timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
   };
 }
@@ -148,11 +167,12 @@ export function getStoredEnquiry(id: string): StoredEnquiry | null {
   return readEnquiries().find((enquiry) => enquiry.id === id) ?? null;
 }
 
-export function persistEnquiryFromJourney(
+export async function persistEnquiryFromJourney(
   formData: JourneyFormData,
   tradesperson: TradespersonInfo
-): StoredEnquiry {
-  const enquiry = buildEnquiryFromJourney(formData, tradesperson);
+): Promise<StoredEnquiry> {
+  const photoPreviews = await encodeJourneyPhotoPreviews(formData.photos);
+  const enquiry = buildEnquiryFromJourney(formData, tradesperson, photoPreviews);
   const enquiries = readEnquiries();
   writeEnquiries([enquiry, ...enquiries]);
   return enquiry;
@@ -214,12 +234,33 @@ export function markEnquiryReviewing(id: string): StoredEnquiry | null {
   return updateStoredEnquiryStatus(id, "reviewing", "Marked as reviewing");
 }
 
-export function bookEnquirySiteVisit(id: string): StoredEnquiry | null {
-  return updateStoredEnquiryStatus(
-    id,
-    "site_visit_booked",
-    "Site visit booked"
-  );
+export function bookEnquirySiteVisit(
+  id: string,
+  slotLabel?: string
+): StoredEnquiry | null {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
+
+  if (index === -1) {
+    return null;
+  }
+
+  const current = enquiries[index];
+  const timelineLabel = slotLabel
+    ? `Site visit booked (${slotLabel})`
+    : "Site visit booked";
+  const updated: StoredEnquiry = {
+    ...current,
+    status: "site_visit_booked",
+    siteVisitSlot: slotLabel ?? current.siteVisitSlot,
+    suggestedNextAction: suggestedActionForStatus("site_visit_booked"),
+    timeline: appendTimeline(current, timelineLabel),
+  };
+
+  const nextEnquiries = [...enquiries];
+  nextEnquiries[index] = updated;
+  writeEnquiries(nextEnquiries);
+  return updated;
 }
 
 export function declineStoredEnquiry(id: string): StoredEnquiry | null {

@@ -43,7 +43,8 @@ type JourneyContextValue = {
   goNext: () => void;
   goBack: () => void;
   canContinue: boolean;
-  submit: () => void;
+  submit: () => Promise<void>;
+  isSubmitting: boolean;
 };
 
 const JourneyContext = createContext<JourneyContextValue | null>(null);
@@ -137,10 +138,22 @@ export function JourneyProvider({
     }
   }, [state.currentStepId, tradesperson]);
 
-  const submit = useCallback(() => {
-    persistEnquiryFromJourney(state.formData, tradesperson);
-    dispatch({ type: "SET_STEP", stepId: "thank_you" });
-  }, [state.formData, tradesperson]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submit = useCallback(async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      await persistEnquiryFromJourney(state.formData, tradesperson);
+      dispatch({ type: "SET_STEP", stepId: "thank_you" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [isSubmitting, state.formData, tradesperson]);
 
   const canContinue = canProceed(state.currentStepId, state.formData, tradesperson);
 
@@ -161,6 +174,7 @@ export function JourneyProvider({
       goBack,
       canContinue,
       submit,
+      isSubmitting,
     }),
     [
       state,
@@ -178,6 +192,7 @@ export function JourneyProvider({
       goBack,
       canContinue,
       submit,
+      isSubmitting,
     ]
   );
 

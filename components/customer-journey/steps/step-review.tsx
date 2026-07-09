@@ -53,7 +53,7 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 export function StepReview() {
-  const { state, tradesperson, setStep, submit } = useJourney();
+  const { state, tradesperson, setStep, submit, isSubmitting } = useJourney();
   const { formData } = state;
   const trade = getEffectiveTrade(formData, tradesperson);
   const propertyLabel =
@@ -156,8 +156,9 @@ export function StepReview() {
       </div>
 
       <JourneyContinueButton
-        onClick={submit}
-        label="Send my request"
+        onClick={() => void submit()}
+        disabled={isSubmitting}
+        label={isSubmitting ? "Sending…" : "Send my request"}
         hint={`${contactName} will be in touch soon`}
         onBack={() => setStep("trade_questions")}
         showBack
