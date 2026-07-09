@@ -1,5 +1,9 @@
 import { redirect } from "next/navigation";
 import type { SidebarDraftItem } from "@/components/layout/app-sidebar";
+import {
+  isPlatformAdmin,
+  resolveAuthEmail,
+} from "@/lib/admin/platform-admin";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
 import { createClient } from "@/lib/supabase/server";
@@ -41,9 +45,12 @@ export async function loadAppShellContext() {
     status: draft.status,
   }));
 
+  const email = resolveAuthEmail(user);
+
   return {
     fullName: profile?.full_name ?? null,
-    email: user.email ?? null,
+    email,
+    platformAdmin: isPlatformAdmin(email),
     recentDrafts,
   };
 }

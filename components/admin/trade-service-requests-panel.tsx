@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSection } from "@/components/admin/admin-section";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import type { RequestStatus, TradeServiceRequest } from "@/lib/admin/types";
@@ -29,10 +30,13 @@ export function TradeServiceRequestsPanel({
   }
 
   return (
-    <AdminSection
-      title="Trade / Service Requests"
-      description="Placeholder requests from tradespeople for unsupported trades or services."
-    >
+    <div className="qf-admin-page">
+      <AdminPageHeader
+        title="Service Requests"
+        description="Requests from tradespeople for unsupported trades or services."
+      />
+
+      <AdminSection title="Incoming requests">
       <div className="qf-admin-table-wrap">
         <table className="qf-admin-table">
           <thead>
@@ -79,6 +83,7 @@ export function TradeServiceRequestsPanel({
       <p className="qf-admin-local-note">
         Placeholder data only — status changes are not saved yet.
       </p>
-    </AdminSection>
+      </AdminSection>
+    </div>
   );
 }

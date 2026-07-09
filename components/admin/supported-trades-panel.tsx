@@ -1,4 +1,5 @@
 import type { SupportedPlatformTrade } from "@/lib/admin/types";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSection } from "@/components/admin/admin-section";
 
 export function SupportedTradesPanel({
@@ -7,10 +8,13 @@ export function SupportedTradesPanel({
   trades: SupportedPlatformTrade[];
 }) {
   return (
-    <AdminSection
-      title="Supported Trades"
-      description="Trades and services the platform currently supports for customer enquiries."
-    >
+    <div className="qf-admin-page">
+      <AdminPageHeader
+        title="Supported Trades"
+        description="Trades and services the platform supports for customer enquiries."
+      />
+
+      <AdminSection title="Platform catalogue">
       <div className="qf-admin-table-wrap">
         <table className="qf-admin-table">
           <thead>
@@ -45,6 +49,7 @@ export function SupportedTradesPanel({
           </tbody>
         </table>
       </div>
-    </AdminSection>
+      </AdminSection>
+    </div>
   );
 }

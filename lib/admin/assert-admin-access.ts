@@ -1,5 +1,8 @@
 import { redirect } from "next/navigation";
-import { isPlatformAdmin } from "@/lib/admin/platform-admin";
+import {
+  isPlatformAdmin,
+  resolveAuthEmail,
+} from "@/lib/admin/platform-admin";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -15,7 +18,9 @@ export async function assertAdminAccess(): Promise<void> {
     redirect("/login");
   }
 
-  if (!isPlatformAdmin(user.email)) {
+  const email = resolveAuthEmail(user);
+
+  if (!isPlatformAdmin(email)) {
     redirect("/dashboard");
   }
 }

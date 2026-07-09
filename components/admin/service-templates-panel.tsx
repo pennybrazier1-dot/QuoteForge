@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminSection } from "@/components/admin/admin-section";
 import { resolveServiceTradeType } from "@/lib/customer-journey/business-services";
 import { TRADE_OPTIONS } from "@/lib/customer-journey/constants";
@@ -54,10 +55,13 @@ export function ServiceTemplatesPanel({ serviceLabels }: ServiceTemplatesPanelPr
   const hasLocalEdits = Boolean(drafts[selectedLabel]);
 
   return (
-    <AdminSection
-      title="Service Templates"
-      description="Customer enquiry questions attached to each trade or service."
-    >
+    <div className="qf-admin-page">
+      <AdminPageHeader
+        title="Question Templates"
+        description="Customer enquiry questions attached to each trade or service."
+      />
+
+      <AdminSection title="Template editor">
       <div className="qf-admin-template-toolbar">
         <label htmlFor="admin-template-select" className="qf-admin-field-label">
           View template for
@@ -136,6 +140,7 @@ export function ServiceTemplatesPanel({ serviceLabels }: ServiceTemplatesPanelPr
           Editing is placeholder UI only — changes stay in this browser session.
         </p>
       </div>
-    </AdminSection>
+      </AdminSection>
+    </div>
   );
 }
