@@ -255,6 +255,15 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           >
             Book Site Visit
           </button>
+          {enquiry.status === "site_visit_booked" ||
+          enquiry.status === "site_visit_completed" ? (
+            <Link
+              href={`/site-visit/${enquiry.id}`}
+              className="qf-btn-secondary qf-enquiry-action"
+            >
+              Open Site Visit Mode
+            </Link>
+          ) : null}
           <button
             type="button"
             className="qf-btn-secondary qf-enquiry-action"

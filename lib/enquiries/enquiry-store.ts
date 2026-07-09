@@ -1,6 +1,7 @@
 "use client";
 
 import { upsertSiteVisitCalendarEvent, removeSiteVisitCalendarEventsForEnquiry } from "@/lib/calendar/local-calendar-store";
+import { markSiteVisitSessionCompleted, removeSiteVisitSession } from "@/lib/site-visit/site-visit-session-store";
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import { buildPhotoMetadataFromFiles } from "@/lib/enquiries/photo-metadata";
 import { parseStoredEnquiries } from "@/lib/enquiries/normalize-enquiry";
@@ -24,6 +25,7 @@ import {
   formatTimelineEnquiryDeclined,
   formatTimelineEnquiryReviewed,
   formatTimelineSiteVisitBooked,
+  formatTimelineSiteVisitCompleted,
   formatTimelineSiteVisitRequested,
 } from "@/lib/enquiries/timeline-messages";
 import type {
@@ -238,6 +240,8 @@ function suggestedActionForStatus(status: EnquiryStatus): string {
       return "Call or message the customer if you need more detail, then book a site visit or prepare a quote.";
     case "site_visit_booked":
       return "Confirm the visit date and time with the customer before you attend.";
+    case "site_visit_completed":
+      return "Prepare a quote using the site visit notes, photos, and measurements.";
     case "declined":
       return "No action needed. The enquiry has been declined.";
   }
@@ -407,6 +411,28 @@ export function bookEnquirySiteVisit(
   return updated;
 }
 
+export function completeSiteVisit(id: string): StoredEnquiry | null {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
+
+  if (index === -1) {
+    return null;
+  }
+
+  const timelineLabel = formatTimelineSiteVisitCompleted();
+  const updated = updateEnquiryAtIndex(enquiries, index, (entry) => ({
+    ...entry,
+    status: "site_visit_completed",
+    suggestedNextAction: suggestedActionForStatus("site_visit_completed"),
+    timeline: enquiryHasTimelineLabel(entry, timelineLabel)
+      ? entry.timeline
+      : appendTimeline(entry, timelineLabel),
+  }));
+
+  markSiteVisitSessionCompleted(id);
+  return updated;
+}
+
 export function declineStoredEnquiry(id: string): StoredEnquiry | null {
   return updateStoredEnquiryStatus(
     id,
@@ -430,6 +456,7 @@ export async function deleteStoredEnquiry(id: string): Promise<boolean> {
   clearSessionPhotosForEnquiry(id, photoIds);
   await deleteEnquiryPhotoBlobs(id, photoIds);
   removeSiteVisitCalendarEventsForEnquiry(id);
+  removeSiteVisitSession(id);
 
   return true;
 }

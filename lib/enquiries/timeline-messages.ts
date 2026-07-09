@@ -24,6 +24,38 @@ export function formatTimelineCustomerConfirmationLinkCreated(): string {
   return "Customer confirmation link created.";
 }
 
+export function formatTimelineSiteVisitStarted(): string {
+  return "Site visit started.";
+}
+
+export function formatTimelineSiteVisitVoiceNoteCaptured(): string {
+  return "Voice note captured on site.";
+}
+
+export function formatTimelineSiteVisitPhotoAdded(): string {
+  return "Site visit photo added.";
+}
+
+export function formatTimelineSiteVisitMeasurementsRecorded(): string {
+  return "Measurements recorded on site.";
+}
+
+export function formatTimelineSiteVisitNotesAdded(): string {
+  return "Visit notes added.";
+}
+
+export function formatTimelineSiteVisitChecklistUpdated(): string {
+  return "Site visit checklist updated.";
+}
+
+export function formatTimelineSiteVisitChecklistCompleted(): string {
+  return "Site visit checklist completed.";
+}
+
+export function formatTimelineSiteVisitCompleted(): string {
+  return "Site visit completed.";
+}
+
 export function formatTimelineCustomerMessagePrepared(): string {
   return "Customer message prepared.";
 }

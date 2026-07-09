@@ -43,6 +43,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/proposals") ||
     pathname.startsWith("/customers") ||
     pathname.startsWith("/enquiries") ||
+    pathname.startsWith("/site-visit") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/admin");
 
@@ -80,6 +81,12 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (pathname.startsWith("/enquiries") && !hasProfile) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/onboarding";
+      return NextResponse.redirect(url);
+    }
+
+    if (pathname.startsWith("/site-visit") && !hasProfile) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);

@@ -14,6 +14,7 @@ const VALID_STATUSES: EnquiryStatus[] = [
   "new",
   "reviewing",
   "site_visit_booked",
+  "site_visit_completed",
   "declined",
 ];
 

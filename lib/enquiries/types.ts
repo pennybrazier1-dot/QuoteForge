@@ -5,6 +5,7 @@ export type EnquiryStatus =
   | "new"
   | "reviewing"
   | "site_visit_booked"
+  | "site_visit_completed"
   | "declined";
 
 export type EnquiryTimelineEvent = {
@@ -52,6 +53,7 @@ export const ENQUIRY_STATUS_LABELS: Record<EnquiryStatus, string> = {
   new: "New",
   reviewing: "Reviewing",
   site_visit_booked: "Site Visit Booked",
+  site_visit_completed: "Site Visit Completed",
   declined: "Declined",
 };
 
@@ -62,5 +64,6 @@ export const ENQUIRY_STATUS_TONES: Record<
   new: "blue",
   reviewing: "amber",
   site_visit_booked: "green",
+  site_visit_completed: "green",
   declined: "red",
 };
