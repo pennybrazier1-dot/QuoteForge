@@ -17,6 +17,7 @@ export const APP_NAV_ITEMS: AppNavItem[] = [
 export const DESKTOP_SIDEBAR_ITEMS: AppNavItem[] = [
   { href: "/dashboard", label: "Home" },
   { href: "/customers", label: "Customers" },
+  { href: "/enquiries", label: "Enquiries" },
   { href: "/proposals/new", label: "New Proposal" },
   { href: "/proposals", label: "Proposals" },
   { href: "/calendar", label: "Calendar" },
@@ -46,6 +47,10 @@ export function isAppNavActive(pathname: string, href: string): boolean {
 
   if (href === "/calendar") {
     return pathname === "/calendar" || pathname.startsWith("/calendar/");
+  }
+
+  if (href === "/enquiries") {
+    return pathname === "/enquiries" || pathname.startsWith("/enquiries/");
   }
 
   if (href === "/dashboard") {

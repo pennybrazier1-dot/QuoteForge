@@ -14,6 +14,7 @@ import {
   type JourneyPreviewProfileId,
 } from "./constants";
 import { resolveServiceTradeType } from "./business-services";
+import { persistEnquiryFromJourney } from "@/lib/enquiries/enquiry-store";
 import {
   canProceed,
   createInitialState,
@@ -125,12 +126,6 @@ export function JourneyProvider({
 
   const goNext = useCallback(() => {
     const next = getNextStepId(state.currentStepId, tradesperson);
-
-    if (state.currentStepId === "review") {
-      dispatch({ type: "SET_STEP", stepId: "thank_you" });
-      return;
-    }
-
     dispatch({ type: "SET_STEP", stepId: next });
   }, [state.currentStepId, tradesperson]);
 
@@ -143,8 +138,9 @@ export function JourneyProvider({
   }, [state.currentStepId, tradesperson]);
 
   const submit = useCallback(() => {
+    persistEnquiryFromJourney(state.formData, tradesperson);
     dispatch({ type: "SET_STEP", stepId: "thank_you" });
-  }, []);
+  }, [state.formData, tradesperson]);
 
   const canContinue = canProceed(state.currentStepId, state.formData, tradesperson);
 
