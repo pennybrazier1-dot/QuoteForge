@@ -1,7 +1,8 @@
 "use client";
 
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
-import { encodeJourneyPhotoPreviews } from "@/lib/enquiries/encode-photo-previews";
+import { buildPhotoMetadataFromFiles, normalizePhotoReference } from "@/lib/enquiries/photo-metadata";
+import { registerSessionPhotosFromFiles } from "@/lib/enquiries/photo-session-store";
 import {
   EnquiryPersistError,
   isStorageQuotaError,
@@ -90,20 +91,12 @@ function normalizeEnquiry(value: unknown): StoredEnquiry | null {
     photoCount:
       typeof raw.photoCount === "number"
         ? raw.photoCount
-        : Array.isArray(raw.photoPreviews)
-          ? raw.photoPreviews.length
-          : 0,
-    photoPreviews: Array.isArray(raw.photoPreviews)
-      ? raw.photoPreviews.filter(
-          (preview): preview is StoredEnquiry["photoPreviews"][number] =>
-            Boolean(
-              preview &&
-                typeof preview === "object" &&
-                typeof (preview as { id?: string }).id === "string" &&
-                typeof (preview as { dataUrl?: string }).dataUrl === "string"
-            )
-        )
-      : [],
+        : Array.isArray(raw.photos)
+          ? raw.photos.length
+          : Array.isArray((raw as { photoPreviews?: unknown[] }).photoPreviews)
+            ? (raw as { photoPreviews: unknown[] }).photoPreviews.length
+            : 0,
+    photos: normalizeStoredPhotos(raw),
     hasMeasurements: Boolean(raw.hasMeasurements),
     measurements: Array.isArray(raw.measurements) ? raw.measurements : [],
     tradeAnswers: Array.isArray(raw.tradeAnswers) ? raw.tradeAnswers : [],
@@ -113,6 +106,20 @@ function normalizeEnquiry(value: unknown): StoredEnquiry | null {
       typeof raw.siteVisitSlot === "string" ? raw.siteVisitSlot : null,
     timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
   };
+}
+
+function normalizeStoredPhotos(
+  raw: Partial<StoredEnquiry> & { photoPreviews?: unknown[] }
+): StoredEnquiry["photos"] {
+  const source = Array.isArray(raw.photos)
+    ? raw.photos
+    : Array.isArray(raw.photoPreviews)
+      ? raw.photoPreviews
+      : [];
+
+  return source
+    .map((photo) => normalizePhotoReference(photo))
+    .filter((photo): photo is StoredEnquiry["photos"][number] => photo !== null);
 }
 
 function parseEnquiries(raw: string): StoredEnquiry[] {
@@ -173,27 +180,19 @@ function writeEnquiryWithFallback(
   enquiry: StoredEnquiry,
   existingEnquiries: StoredEnquiry[]
 ): StoredEnquiry {
-  const attempts: StoredEnquiry[] = [
-    enquiry,
-    { ...enquiry, photoPreviews: [] },
-  ];
-
-  for (const candidate of attempts) {
-    try {
-      writeEnquiries([candidate, ...existingEnquiries]);
-      return candidate;
-    } catch (error) {
-      if (!isStorageQuotaError(error)) {
-        throw toEnquiryPersistError(error);
-      }
+  try {
+    writeEnquiries([enquiry, ...existingEnquiries]);
+    return enquiry;
+  } catch (error) {
+    if (!isStorageQuotaError(error)) {
+      throw toEnquiryPersistError(error);
     }
   }
 
   for (const keepCount of [8, 4, 1, 0]) {
     try {
-      const trimmedExisting = existingEnquiries.slice(0, keepCount);
-      writeEnquiries([{ ...enquiry, photoPreviews: [] }, ...trimmedExisting]);
-      return { ...enquiry, photoPreviews: [] };
+      writeEnquiries([enquiry, ...existingEnquiries.slice(0, keepCount)]);
+      return enquiry;
     } catch (error) {
       if (!isStorageQuotaError(error)) {
         throw toEnquiryPersistError(error);
@@ -202,7 +201,7 @@ function writeEnquiryWithFallback(
   }
 
   throw new EnquiryPersistError(
-    "We couldn't save your request because this browser's storage is full. Try again with fewer photos, or clear older site data in your browser settings."
+    "We couldn't save your request because this browser's storage is full. Please clear older site data in your browser settings and try again."
   );
 }
 
@@ -219,8 +218,9 @@ export async function persistEnquiryFromJourney(
   tradesperson: TradespersonInfo
 ): Promise<StoredEnquiry> {
   try {
-    const photoPreviews = await encodeJourneyPhotoPreviews(formData.photos);
-    const enquiry = buildEnquiryFromJourney(formData, tradesperson, photoPreviews);
+    const photos = buildPhotoMetadataFromFiles(formData.photos);
+    const enquiry = buildEnquiryFromJourney(formData, tradesperson, photos);
+    registerSessionPhotosFromFiles(enquiry.id, photos, formData.photos);
     const enquiries = readEnquiries();
 
     return writeEnquiryWithFallback(enquiry, enquiries);

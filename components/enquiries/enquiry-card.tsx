@@ -50,8 +50,13 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
           <EnquiryStatusBadge status={enquiry.status} />
         </div>
 
-        {enquiry.photoPreviews.length > 0 ? (
-          <EnquiryPhotoGallery photos={enquiry.photoPreviews} variant="card" />
+        {enquiry.photoCount > 0 ? (
+          <EnquiryPhotoGallery
+            enquiryId={enquiry.id}
+            photos={enquiry.photos}
+            photoCount={enquiry.photoCount}
+            variant="card"
+          />
         ) : null}
 
         <dl className="qf-enquiry-meta">

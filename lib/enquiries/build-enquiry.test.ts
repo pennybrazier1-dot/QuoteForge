@@ -43,7 +43,11 @@ describe("buildEnquiryFromJourney", () => {
       {
         id: "photo-1",
         name: "kitchen.jpg",
-        dataUrl: "data:image/jpeg;base64,abc",
+        size: 1_024,
+        type: "image/jpeg",
+        imageUrl: null,
+        storageKey: null,
+        thumbnailUrl: null,
       },
     ]);
 
@@ -62,7 +66,8 @@ describe("buildEnquiryFromJourney", () => {
       hasMeasurements: true,
       tradespersonBusiness: PLACEHOLDER_TRADESPERSON.businessName,
     });
-    expect(enquiry.photoPreviews).toHaveLength(1);
+    expect(enquiry.photos).toHaveLength(1);
+    expect(enquiry.photos[0]).not.toHaveProperty("dataUrl");
     expect(enquiry.tradeAnswers).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

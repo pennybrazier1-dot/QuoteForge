@@ -1,24 +1,51 @@
-import type { EnquiryPhotoPreview } from "@/lib/enquiries/types";
+"use client";
+
+import { formatEnquiryPhotoCount } from "@/lib/enquiries/photo-metadata";
+import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
+import { useEnquiryPhotoDisplays } from "@/lib/enquiries/use-enquiry-photo-displays";
 
 type EnquiryPhotoGalleryProps = {
-  photos: EnquiryPhotoPreview[];
+  enquiryId: string;
+  photos: EnquiryPhotoReference[];
+  photoCount: number;
   variant?: "card" | "detail";
 };
 
 export function EnquiryPhotoGallery({
+  enquiryId,
   photos,
+  photoCount,
   variant = "detail",
 }: EnquiryPhotoGalleryProps) {
-  if (photos.length === 0) {
-    return null;
+  const displays = useEnquiryPhotoDisplays(enquiryId, photos);
+  const count = photoCount || photos.length;
+
+  if (count === 0) {
+    return variant === "detail" ? (
+      <p className="qf-enquiry-detail-copy">No photos uploaded.</p>
+    ) : null;
   }
 
-  const visiblePhotos =
-    variant === "card" ? photos.slice(0, 3) : photos;
+  const thumbnails = displays.filter((photo) => photo.displayUrl);
+  const visiblePhotos = variant === "card" ? thumbnails.slice(0, 3) : thumbnails;
   const extraCount =
-    variant === "card" && photos.length > visiblePhotos.length
-      ? photos.length - visiblePhotos.length
+    variant === "card" && thumbnails.length > visiblePhotos.length
+      ? thumbnails.length - visiblePhotos.length
       : 0;
+
+  if (visiblePhotos.length === 0) {
+    return (
+      <p
+        className={
+          variant === "card"
+            ? "qf-enquiry-photo-summary"
+            : "qf-enquiry-detail-copy qf-enquiry-photo-summary"
+        }
+      >
+        {formatEnquiryPhotoCount(count)}
+      </p>
+    );
+  }
 
   return (
     <div
@@ -39,7 +66,7 @@ export function EnquiryPhotoGallery({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={photo.dataUrl}
+            src={photo.displayUrl ?? ""}
             alt={photo.name || "Customer photo"}
             className={
               variant === "card"
@@ -59,6 +86,11 @@ export function EnquiryPhotoGallery({
         <div className="qf-enquiry-photo-more" aria-label={`${extraCount} more photos`}>
           +{extraCount}
         </div>
+      ) : null}
+      {variant === "detail" && thumbnails.length < count ? (
+        <p className="qf-enquiry-photo-summary qf-enquiry-detail-wide">
+          {formatEnquiryPhotoCount(count)}
+        </p>
       ) : null}
     </div>
   );

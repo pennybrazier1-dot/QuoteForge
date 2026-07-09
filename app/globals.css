@@ -1991,6 +1991,12 @@ a.qf-card-inset:hover {
   white-space: nowrap;
 }
 
+.qf-enquiry-photo-summary {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
 .qf-enquiry-site-visit-booked {
   margin-top: 0.5rem;
   color: var(--accent);

@@ -19,7 +19,7 @@ export function toEnquiryPersistError(error: unknown): EnquiryPersistError {
 
   if (isStorageQuotaError(error)) {
     return new EnquiryPersistError(
-      "We couldn't save your request because this browser's storage is full. Try again with fewer photos, or clear older site data in your browser settings."
+      "We couldn't save your request because this browser's storage is full. Please clear older site data in your browser settings and try again."
     );
   }
 

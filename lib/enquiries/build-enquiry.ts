@@ -6,7 +6,8 @@ import type {
   TradespersonInfo,
   TradeType,
 } from "@/lib/customer-journey/types";
-import type { StoredEnquiry, EnquiryPhotoPreview } from "@/lib/enquiries/types";
+import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
+import type { StoredEnquiry } from "@/lib/enquiries/types";
 
 function propertyTypeLabel(value: PropertyType | null): string | null {
   if (!value) {
@@ -47,7 +48,7 @@ function hasMeasurementValues(formData: JourneyFormData): boolean {
 export function buildEnquiryFromJourney(
   formData: JourneyFormData,
   tradesperson: TradespersonInfo,
-  photoPreviews: EnquiryPhotoPreview[] = []
+  photos: EnquiryPhotoReference[] = []
 ): StoredEnquiry {
   const receivedAt = new Date().toISOString();
   const trade = resolveTrade(formData, tradesperson);
@@ -70,8 +71,8 @@ export function buildEnquiryFromJourney(
     postcode: formData.postcode.trim(),
     propertyType: propertyTypeLabel(formData.propertyType),
     projectDescription: formData.projectDescription.trim(),
-    photoCount: photoPreviews.length || formData.photos.length,
-    photoPreviews,
+    photoCount: photos.length || formData.photos.length,
+    photos,
     hasMeasurements: hasMeasurementValues(formData),
     measurements: formData.measurements.filter((field) => field.value.trim()),
     tradeAnswers: buildTradeAnswers(formData, trade),

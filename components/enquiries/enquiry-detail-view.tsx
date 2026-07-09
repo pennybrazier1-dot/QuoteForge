@@ -120,11 +120,12 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
 
           <section className="qf-card qf-enquiry-detail-card qf-enquiry-detail-wide">
             <h2 className="qf-enquiry-detail-section-title">Uploaded photos</h2>
-            {enquiry.photoPreviews.length === 0 ? (
-              <p className="qf-enquiry-detail-copy">No photos uploaded.</p>
-            ) : (
-              <EnquiryPhotoGallery photos={enquiry.photoPreviews} variant="detail" />
-            )}
+            <EnquiryPhotoGallery
+              enquiryId={enquiry.id}
+              photos={enquiry.photos}
+              photoCount={enquiry.photoCount}
+              variant="detail"
+            />
           </section>
 
           <section className="qf-card qf-enquiry-detail-card">

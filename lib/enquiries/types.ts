@@ -1,4 +1,5 @@
 import type { MeasurementField } from "@/lib/customer-journey/types";
+import type { EnquiryPhotoReference } from "@/lib/enquiries/photo-metadata";
 
 export type EnquiryStatus =
   | "new"
@@ -18,12 +19,6 @@ export type EnquiryTradeAnswer = {
   answer: string;
 };
 
-export type EnquiryPhotoPreview = {
-  id: string;
-  name: string;
-  dataUrl: string;
-};
-
 export type StoredEnquiry = {
   id: string;
   status: EnquiryStatus;
@@ -39,7 +34,7 @@ export type StoredEnquiry = {
   propertyType: string | null;
   projectDescription: string;
   photoCount: number;
-  photoPreviews: EnquiryPhotoPreview[];
+  photos: EnquiryPhotoReference[];
   hasMeasurements: boolean;
   measurements: MeasurementField[];
   tradeAnswers: EnquiryTradeAnswer[];
