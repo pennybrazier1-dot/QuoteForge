@@ -1,3 +1,5 @@
+"use client";
+
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import type {
   EnquiryStatus,
@@ -11,6 +13,11 @@ import type {
 
 const STORAGE_KEY = "quoteforge:enquiries";
 const ENQUIRIES_UPDATED_EVENT = "quoteforge:enquiries-updated";
+
+export const EMPTY_ENQUIRIES: StoredEnquiry[] = [];
+
+let enquiriesSnapshot: StoredEnquiry[] = EMPTY_ENQUIRIES;
+let enquiriesSnapshotKey = "";
 
 export function subscribeToEnquiries(onStoreChange: () => void): () => void {
   if (typeof window === "undefined") {
@@ -35,22 +42,88 @@ function notifyEnquiriesUpdated(): void {
   window.dispatchEvent(new Event(ENQUIRIES_UPDATED_EVENT));
 }
 
-function readEnquiries(): StoredEnquiry[] {
-  if (typeof window === "undefined") {
-    return [];
+function sortEnquiries(enquiries: StoredEnquiry[]): StoredEnquiry[] {
+  if (enquiries.length === 0) {
+    return EMPTY_ENQUIRIES;
   }
 
+  return [...enquiries].sort(
+    (a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt)
+  );
+}
+
+function normalizeEnquiry(value: unknown): StoredEnquiry | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const raw = value as Partial<StoredEnquiry>;
+
+  if (
+    typeof raw.id !== "string" ||
+    typeof raw.status !== "string" ||
+    typeof raw.receivedAt !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    id: raw.id,
+    status: raw.status as EnquiryStatus,
+    receivedAt: raw.receivedAt,
+    customerName: raw.customerName ?? "",
+    customerMobile: raw.customerMobile ?? "",
+    customerEmail: raw.customerEmail ?? "",
+    serviceRequested: raw.serviceRequested ?? "",
+    addressLine1: raw.addressLine1 ?? "",
+    addressLine2: raw.addressLine2 ?? "",
+    city: raw.city ?? "",
+    postcode: raw.postcode ?? "",
+    propertyType: raw.propertyType ?? null,
+    projectDescription: raw.projectDescription ?? "",
+    photoCount: typeof raw.photoCount === "number" ? raw.photoCount : 0,
+    hasMeasurements: Boolean(raw.hasMeasurements),
+    measurements: Array.isArray(raw.measurements) ? raw.measurements : [],
+    tradeAnswers: Array.isArray(raw.tradeAnswers) ? raw.tradeAnswers : [],
+    tradespersonBusiness: raw.tradespersonBusiness ?? "",
+    suggestedNextAction: raw.suggestedNextAction ?? "",
+    timeline: Array.isArray(raw.timeline) ? raw.timeline : [],
+  };
+}
+
+function parseEnquiries(raw: string): StoredEnquiry[] {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return [];
+    const parsed = JSON.parse(raw) as unknown;
+
+    if (!Array.isArray(parsed)) {
+      return EMPTY_ENQUIRIES;
     }
 
-    const parsed = JSON.parse(raw) as StoredEnquiry[];
-    return Array.isArray(parsed) ? parsed : [];
+    return sortEnquiries(
+      parsed
+        .map((entry) => normalizeEnquiry(entry))
+        .filter((entry): entry is StoredEnquiry => entry !== null)
+    );
   } catch {
-    return [];
+    return EMPTY_ENQUIRIES;
   }
+}
+
+function readEnquiries(): StoredEnquiry[] {
+  if (typeof window === "undefined") {
+    return EMPTY_ENQUIRIES;
+  }
+
+  const raw = window.localStorage.getItem(STORAGE_KEY) ?? "[]";
+
+  if (raw === enquiriesSnapshotKey) {
+    return enquiriesSnapshot;
+  }
+
+  enquiriesSnapshot = parseEnquiries(raw);
+  enquiriesSnapshotKey = raw;
+
+  return enquiriesSnapshot;
 }
 
 function writeEnquiries(enquiries: StoredEnquiry[]): void {
@@ -58,14 +131,17 @@ function writeEnquiries(enquiries: StoredEnquiry[]): void {
     return;
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(enquiries));
+  const sorted = sortEnquiries(enquiries);
+  const json = JSON.stringify(sorted);
+
+  window.localStorage.setItem(STORAGE_KEY, json);
+  enquiriesSnapshot = sorted;
+  enquiriesSnapshotKey = json;
   notifyEnquiriesUpdated();
 }
 
 export function getStoredEnquiries(): StoredEnquiry[] {
-  return readEnquiries().sort(
-    (a, b) => Date.parse(b.receivedAt) - Date.parse(a.receivedAt)
-  );
+  return readEnquiries();
 }
 
 export function getStoredEnquiry(id: string): StoredEnquiry | null {
@@ -128,8 +204,9 @@ export function updateStoredEnquiryStatus(
     timeline: appendTimeline(current, timelineLabel),
   };
 
-  enquiries[index] = updated;
-  writeEnquiries(enquiries);
+  const nextEnquiries = [...enquiries];
+  nextEnquiries[index] = updated;
+  writeEnquiries(nextEnquiries);
   return updated;
 }
 

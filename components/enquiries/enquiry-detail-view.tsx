@@ -2,30 +2,25 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import {
   bookEnquirySiteVisit,
   declineStoredEnquiry,
-  getStoredEnquiry,
   markEnquiryReviewing,
-  subscribeToEnquiries,
 } from "@/lib/enquiries/enquiry-store";
 import {
   formatEnquiryAddress,
   formatEnquiryReceivedDate,
   formatEnquiryTimelineDate,
 } from "@/lib/enquiries/format";
+import { useStoredEnquiry } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
 export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   const router = useRouter();
   const mounted = useClientMounted();
-  const enquiry = useSyncExternalStore(
-    subscribeToEnquiries,
-    () => getStoredEnquiry(enquiryId),
-    () => null
-  );
+  const enquiry = useStoredEnquiry(enquiryId);
   const [notice, setNotice] = useState<string | null>(null);
 
   if (!mounted) {

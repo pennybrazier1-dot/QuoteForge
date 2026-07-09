@@ -1,20 +1,12 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
 import { EnquiryCard } from "@/components/enquiries/enquiry-card";
-import {
-  getStoredEnquiries,
-  subscribeToEnquiries,
-} from "@/lib/enquiries/enquiry-store";
+import { useStoredEnquiries } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
 export function EnquiriesBrowser() {
   const mounted = useClientMounted();
-  const enquiries = useSyncExternalStore(
-    subscribeToEnquiries,
-    getStoredEnquiries,
-    () => []
-  );
+  const enquiries = useStoredEnquiries();
 
   const newEnquiries = enquiries.filter((enquiry) => enquiry.status === "new");
   const otherEnquiries = enquiries.filter((enquiry) => enquiry.status !== "new");
