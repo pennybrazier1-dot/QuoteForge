@@ -1042,6 +1042,17 @@
   gap: 0.5625rem;
 }
 
+.cj-submit-error {
+  margin-top: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.1);
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #fecaca;
+}
+
 .cj-review-row {
   display: flex;
   flex-direction: column;

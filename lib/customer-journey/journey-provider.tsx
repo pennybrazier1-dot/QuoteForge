@@ -6,6 +6,7 @@ import {
   useContext,
   useMemo,
   useReducer,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -45,6 +46,7 @@ type JourneyContextValue = {
   canContinue: boolean;
   submit: () => Promise<void>;
   isSubmitting: boolean;
+  submitError: string | null;
 };
 
 const JourneyContext = createContext<JourneyContextValue | null>(null);
@@ -139,21 +141,33 @@ export function JourneyProvider({
   }, [state.currentStepId, tradesperson]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const isSubmittingRef = useRef(false);
 
   const submit = useCallback(async () => {
-    if (isSubmitting) {
+    if (isSubmittingRef.current) {
       return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
       await persistEnquiryFromJourney(state.formData, tradesperson);
       dispatch({ type: "SET_STEP", stepId: "thank_you" });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't save your request right now. Please try again.";
+
+      setSubmitError(message);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [isSubmitting, state.formData, tradesperson]);
+  }, [state.formData, tradesperson]);
 
   const canContinue = canProceed(state.currentStepId, state.formData, tradesperson);
 
@@ -175,6 +189,7 @@ export function JourneyProvider({
       canContinue,
       submit,
       isSubmitting,
+      submitError,
     }),
     [
       state,
@@ -193,6 +208,7 @@ export function JourneyProvider({
       canContinue,
       submit,
       isSubmitting,
+      submitError,
     ]
   );
 

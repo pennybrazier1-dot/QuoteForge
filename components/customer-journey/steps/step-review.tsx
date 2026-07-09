@@ -53,7 +53,8 @@ function ReviewRow({ label, value }: { label: string; value: string }) {
 }
 
 export function StepReview() {
-  const { state, tradesperson, setStep, submit, isSubmitting } = useJourney();
+  const { state, tradesperson, setStep, submit, isSubmitting, submitError } =
+    useJourney();
   const { formData } = state;
   const trade = getEffectiveTrade(formData, tradesperson);
   const propertyLabel =
@@ -154,6 +155,12 @@ export function StepReview() {
             ))}
         </ReviewSection>
       </div>
+
+      {submitError ? (
+        <p className="cj-submit-error" role="alert">
+          {submitError}
+        </p>
+      ) : null}
 
       <JourneyContinueButton
         onClick={() => void submit()}

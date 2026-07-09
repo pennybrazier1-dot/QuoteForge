@@ -12,11 +12,11 @@ export function StepThankYou() {
       <div className="cj-thankyou-icon-wrap">
         <CheckIcon className="cj-thankyou-icon" />
       </div>
-      <h1 className="cj-thankyou-title">You&apos;re all done</h1>
+      <h1 className="cj-thankyou-title">Your request has been sent</h1>
       <p className="cj-thankyou-lead">
-        Thanks — your request is with {tradesperson.contactName} at{" "}
-        {tradesperson.businessName}. He&apos;ll review what you&apos;ve shared
-        and be in touch soon.
+        We&apos;ve received your enquiry and your tradesperson will review it
+        shortly. {tradesperson.contactName} at {tradesperson.businessName} will
+        be in touch using the contact details you provided.
       </p>
 
       <JourneyCard inset className="cj-thankyou-card">

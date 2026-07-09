@@ -2,6 +2,11 @@
 
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import { encodeJourneyPhotoPreviews } from "@/lib/enquiries/encode-photo-previews";
+import {
+  EnquiryPersistError,
+  isStorageQuotaError,
+  toEnquiryPersistError,
+} from "@/lib/enquiries/persist-errors";
 import type {
   EnquiryStatus,
   EnquiryTimelineEvent,
@@ -153,10 +158,52 @@ function writeEnquiries(enquiries: StoredEnquiry[]): void {
   const sorted = sortEnquiries(enquiries);
   const json = JSON.stringify(sorted);
 
-  window.localStorage.setItem(STORAGE_KEY, json);
+  try {
+    window.localStorage.setItem(STORAGE_KEY, json);
+  } catch (error) {
+    throw toEnquiryPersistError(error);
+  }
+
   enquiriesSnapshot = sorted;
   enquiriesSnapshotKey = json;
   notifyEnquiriesUpdated();
+}
+
+function writeEnquiryWithFallback(
+  enquiry: StoredEnquiry,
+  existingEnquiries: StoredEnquiry[]
+): StoredEnquiry {
+  const attempts: StoredEnquiry[] = [
+    enquiry,
+    { ...enquiry, photoPreviews: [] },
+  ];
+
+  for (const candidate of attempts) {
+    try {
+      writeEnquiries([candidate, ...existingEnquiries]);
+      return candidate;
+    } catch (error) {
+      if (!isStorageQuotaError(error)) {
+        throw toEnquiryPersistError(error);
+      }
+    }
+  }
+
+  for (const keepCount of [8, 4, 1, 0]) {
+    try {
+      const trimmedExisting = existingEnquiries.slice(0, keepCount);
+      writeEnquiries([{ ...enquiry, photoPreviews: [] }, ...trimmedExisting]);
+      return { ...enquiry, photoPreviews: [] };
+    } catch (error) {
+      if (!isStorageQuotaError(error)) {
+        throw toEnquiryPersistError(error);
+      }
+    }
+  }
+
+  throw new EnquiryPersistError(
+    "We couldn't save your request because this browser's storage is full. Try again with fewer photos, or clear older site data in your browser settings."
+  );
 }
 
 export function getStoredEnquiries(): StoredEnquiry[] {
@@ -171,11 +218,15 @@ export async function persistEnquiryFromJourney(
   formData: JourneyFormData,
   tradesperson: TradespersonInfo
 ): Promise<StoredEnquiry> {
-  const photoPreviews = await encodeJourneyPhotoPreviews(formData.photos);
-  const enquiry = buildEnquiryFromJourney(formData, tradesperson, photoPreviews);
-  const enquiries = readEnquiries();
-  writeEnquiries([enquiry, ...enquiries]);
-  return enquiry;
+  try {
+    const photoPreviews = await encodeJourneyPhotoPreviews(formData.photos);
+    const enquiry = buildEnquiryFromJourney(formData, tradesperson, photoPreviews);
+    const enquiries = readEnquiries();
+
+    return writeEnquiryWithFallback(enquiry, enquiries);
+  } catch (error) {
+    throw toEnquiryPersistError(error);
+  }
 }
 
 function appendTimeline(
