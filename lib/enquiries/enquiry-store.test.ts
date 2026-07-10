@@ -265,6 +265,16 @@ describe("enquiry workflow actions", () => {
     expect(buildCustomerJobUrl("enquiry-1", "https://quoteforge.test")).toBe(
       "https://quoteforge.test/customer/job/enquiry-1"
     );
+    const { shouldShowSiteVisitModeLink } = await import(
+      "@/lib/enquiries/site-visit-mode-link"
+    );
+    const { buildSiteVisitModePath } = await import(
+      "@/lib/enquiries/site-visit-mode-link"
+    );
+    expect(shouldShowSiteVisitModeLink(getStoredEnquiry("enquiry-1")!)).toBe(
+      true
+    );
+    expect(buildSiteVisitModePath("enquiry-1")).toBe("/site-visit/enquiry-1");
     expect(getLocalSiteVisitEvents()).toHaveLength(1);
     expect(getLocalSiteVisitEvents()[0]).toMatchObject({
       enquiryId: "enquiry-1",

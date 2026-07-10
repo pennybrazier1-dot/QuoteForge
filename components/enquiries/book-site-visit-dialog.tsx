@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
+import { SiteVisitModeLinkPanel } from "@/components/enquiries/site-visit-mode-link-panel";
 import {
   bookEnquirySiteVisit,
   recordEnquiryCustomerContact,
@@ -327,11 +328,14 @@ export function BookSiteVisitDialog({
           ) : null}
 
           {isBooked ? (
-            <CustomerJobLinkPanel
-              enquiry={activeEnquiry}
-              compact
-              onNotice={setNotice}
-            />
+            <div className="qf-enquiry-visit-links">
+              <CustomerJobLinkPanel
+                enquiry={activeEnquiry}
+                compact
+                onNotice={setNotice}
+              />
+              <SiteVisitModeLinkPanel enquiry={activeEnquiry} compact />
+            </div>
           ) : (
             <p className="qf-enquiry-site-visit-future-note">
               After booking, a customer confirmation link will be ready to copy

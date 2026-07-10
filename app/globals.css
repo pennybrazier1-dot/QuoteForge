@@ -2248,6 +2248,48 @@ a.qf-card-inset:hover {
   }
 }
 
+.qf-enquiry-visit-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-top: 0.875rem;
+}
+
+.qf-enquiry-site-visit-mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 106, 26, 0.45);
+  background: rgba(255, 106, 26, 0.1);
+}
+
+.qf-enquiry-site-visit-mode-panel-compact {
+  margin-top: 0;
+}
+
+.qf-enquiry-site-visit-mode-title {
+  margin: 0 0 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.qf-enquiry-site-visit-mode-description {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.qf-enquiry-site-visit-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  text-decoration: none;
+}
+
 /* Site visit mode */
 
 .qf-site-visit-root {

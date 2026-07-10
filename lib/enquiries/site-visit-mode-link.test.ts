@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { shouldShowReviewEnquiryOnDetailPage } from "@/lib/enquiries/enquiry-detail-actions";
-import { shouldShowCustomerJobLink } from "@/lib/enquiries/customer-job-link";
-import { shouldShowSiteVisitModeLink } from "@/lib/enquiries/site-visit-mode-link";
+import {
+  buildSiteVisitModePath,
+  shouldShowSiteVisitModeLink,
+} from "@/lib/enquiries/site-visit-mode-link";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
 
 function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
@@ -41,25 +42,16 @@ function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
   };
 }
 
-function bookedEnquiry(): StoredEnquiry {
-  return sampleEnquiry("site_visit_booked");
-}
-
-describe("enquiry detail actions", () => {
-  it("hides Review Enquiry on the detail page", () => {
-    expect(shouldShowReviewEnquiryOnDetailPage()).toBe(false);
-  });
-
-  it("shows the customer link on the detail page after booking", () => {
-    expect(shouldShowCustomerJobLink(sampleEnquiry("reviewing"))).toBe(false);
-    expect(shouldShowCustomerJobLink(sampleEnquiry("site_visit_booked"))).toBe(
-      true
-    );
+describe("site visit mode link", () => {
+  it("builds the site visit mode path", () => {
+    expect(buildSiteVisitModePath("enquiry-1")).toBe("/site-visit/enquiry-1");
   });
 
   it("shows the site visit mode link after booking or completion", () => {
     expect(shouldShowSiteVisitModeLink(sampleEnquiry("reviewing"))).toBe(false);
-    expect(shouldShowSiteVisitModeLink(bookedEnquiry())).toBe(true);
+    expect(shouldShowSiteVisitModeLink(sampleEnquiry("site_visit_booked"))).toBe(
+      true
+    );
     expect(
       shouldShowSiteVisitModeLink(sampleEnquiry("site_visit_completed"))
     ).toBe(true);
