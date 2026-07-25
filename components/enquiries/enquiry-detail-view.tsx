@@ -13,16 +13,16 @@ import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge"
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
 import { shouldShowReviewEnquiryOnDetailPage } from "@/lib/enquiries/enquiry-detail-actions";
 import {
-  declineStoredEnquiry,
-  deleteStoredEnquiry,
-  markEnquiryReviewing,
-} from "@/lib/enquiries/enquiry-store";
+  declineEnquiryAction,
+  deleteEnquiryAction,
+  markEnquiryReviewingAction,
+} from "@/lib/enquiries/server/actions";
+import { useWorkspaceEnquiry } from "@/lib/enquiries/server/use-workspace-enquiries";
 import {
   formatEnquiryReceivedDate,
   formatEnquiryTimelineDate,
 } from "@/lib/enquiries/format";
 import { getEnquiryPropertyDetailRows } from "@/lib/enquiries/property-details";
-import { useStoredEnquiry } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 
 type ConfirmAction = "decline" | "delete" | null;
@@ -30,7 +30,7 @@ type ConfirmAction = "decline" | "delete" | null;
 export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   const router = useRouter();
   const mounted = useClientMounted();
-  const enquiry = useStoredEnquiry(enquiryId);
+  const { enquiry, state, error, refresh } = useWorkspaceEnquiry(enquiryId);
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
   const [askQuestionOpen, setAskQuestionOpen] = useState(false);
@@ -45,11 +45,30 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
       return;
     }
 
-    markEnquiryReviewing(enquiryId);
-  }, [enquiryId, enquiryStatus]);
+    void markEnquiryReviewingAction(enquiryId).then((result) => {
+      if (result.ok) {
+        void refresh();
+      }
+    });
+  }, [enquiryId, enquiryStatus, refresh]);
 
-  if (!mounted) {
+  if (!mounted || state === "loading") {
     return <p className="qf-enquiry-empty">Loading enquiry…</p>;
+  }
+
+  if (state === "error") {
+    return (
+      <div className="qf-enquiry-empty-card">
+        <h2 className="qf-enquiry-empty-title">Could not load enquiry</h2>
+        <p className="qf-enquiry-empty-copy">{error ?? "Something went wrong."}</p>
+        <button type="button" className="qf-btn-secondary" onClick={() => void refresh()}>
+          Try again
+        </button>
+        <Link href="/enquiries" className="qf-btn-secondary qf-enquiry-back-link">
+          Back to enquiries
+        </Link>
+      </div>
+    );
   }
 
   if (!enquiry) {
@@ -57,8 +76,8 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
       <div className="qf-enquiry-empty-card">
         <h2 className="qf-enquiry-empty-title">Enquiry not found</h2>
         <p className="qf-enquiry-empty-copy">
-          This enquiry is not in local browser storage. It may have been cleared
-          or created in a different browser.
+          This enquiry is not in your workspace. It may have been deleted or belong
+          to a different account.
         </p>
         <Link href="/enquiries" className="qf-btn-secondary qf-enquiry-back-link">
           Back to enquiries
@@ -79,18 +98,38 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
 
     try {
       if (confirmAction === "decline") {
-        declineStoredEnquiry(enquiryId);
+        const result = await declineEnquiryAction(enquiryId);
+        if (result.ok) {
+          await refresh();
+        } else {
+          setNotice(result.error);
+        }
         setConfirmAction(null);
         return;
       }
 
-      const deleted = await deleteStoredEnquiry(enquiryId);
+      const result = await deleteEnquiryAction(enquiryId);
 
-      if (deleted) {
+      if (result.ok) {
         router.push("/enquiries");
+      } else {
+        setNotice(result.error);
       }
     } finally {
       setPendingAction(false);
+    }
+  }
+
+  async function handleReviewEnquiry() {
+    if (!enquiry) {
+      return;
+    }
+
+    const result = await markEnquiryReviewingAction(enquiry.id);
+    if (result.ok) {
+      await refresh();
+    } else {
+      setNotice(result.error);
     }
   }
 
@@ -261,7 +300,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             <button
               type="button"
               className="qf-btn-primary qf-enquiry-action-primary"
-              onClick={() => markEnquiryReviewing(enquiry.id)}
+              onClick={() => void handleReviewEnquiry()}
               disabled={isDeclined}
             >
               Review Enquiry
@@ -317,7 +356,10 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         enquiry={enquiry}
         open={siteVisitOpen}
         onClose={() => setSiteVisitOpen(false)}
-        onBooked={setNotice}
+        onBooked={(message) => {
+          setNotice(message);
+          void refresh();
+        }}
       />
 
       <AskQuestionDialog
@@ -349,8 +391,8 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         title="Delete this enquiry?"
         description={
           <>
-            This removes <strong>{enquiry.customerName}</strong> from this
-            browser, including any saved photo previews. This cannot be undone.
+            This removes <strong>{enquiry.customerName}</strong> from your
+            workspace, including any saved photos. This cannot be undone.
           </>
         }
         confirmLabel="Delete enquiry"

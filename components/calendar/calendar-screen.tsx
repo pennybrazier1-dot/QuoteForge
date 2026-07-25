@@ -26,7 +26,7 @@ import {
   type CalendarView,
 } from "@/lib/calendar/calendar-data";
 import { mergeCalendarJobs } from "@/lib/calendar/local-calendar-data";
-import { useLocalSiteVisitJobs } from "@/lib/calendar/use-local-site-visit-jobs";
+import { useServerSiteVisitJobs } from "@/lib/calendar/use-server-site-visit-jobs";
 import { formatSpanLabel } from "@/lib/calendar/job-span";
 
 const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
@@ -400,10 +400,10 @@ export function CalendarScreen({
   const [anchor, setAnchor] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(todayIso);
 
-  const localSiteVisitJobs = useLocalSiteVisitJobs();
+  const siteVisitJobs = useServerSiteVisitJobs();
   const allJobs = useMemo(
-    () => mergeCalendarJobs(buildCalendarJobs(proposals), localSiteVisitJobs),
-    [proposals, localSiteVisitJobs]
+    () => mergeCalendarJobs(buildCalendarJobs(proposals), siteVisitJobs),
+    [proposals, siteVisitJobs]
   );
   const jobCounts = useMemo(() => getJobCountsByDate(allJobs), [allJobs]);
 
@@ -462,9 +462,9 @@ export function CalendarScreen({
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          Sent quotes with a planned start date, plus local site visits booked
-          from enquiries. Amber holds the date while you wait; green is a
-          confirmed booking; orange is a booked site visit.
+          Sent quotes with a planned start date, plus site visits booked from
+          enquiries. Amber holds the date while you wait; green is a confirmed
+          booking; orange is a booked site visit.
         </p>
       </header>
 

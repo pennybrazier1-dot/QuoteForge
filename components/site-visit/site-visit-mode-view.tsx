@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { useEffect, useId, useRef, useState } from "react";
-import { completeSiteVisit } from "@/lib/enquiries/enquiry-store";
+import { uploadSiteVisitPhotoAction } from "@/lib/enquiries/server/actions";
+import { useWorkspaceEnquiry } from "@/lib/enquiries/server/use-workspace-enquiries";
 import { formatEnquiryAddress, formatEnquiryTimelineDate } from "@/lib/enquiries/format";
-import { useStoredEnquiry } from "@/lib/enquiries/use-stored-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import {
   canAccessSiteVisitMode,
@@ -15,16 +15,14 @@ import {
   getSiteVisitOrganisingSteps,
   isSiteVisitOrganisingComplete,
 } from "@/lib/site-visit/site-visit-mode-data";
-import {
-  addSiteVisitPhoto,
-  addSiteVisitVoiceNote,
-  ensureSiteVisitSession,
-  updateSiteVisitChecklist,
-  updateSiteVisitMeasurements,
-  updateSiteVisitNotes,
-} from "@/lib/site-visit/site-visit-session-store";
-import { useSiteVisitSession } from "@/lib/site-visit/use-site-visit-session";
-import type { SiteVisitActionId } from "@/lib/site-visit/types";
+import { useWorkspaceSiteVisit } from "@/lib/site-visit/use-workspace-site-visit";
+import type {
+  SiteVisitActionId,
+  SiteVisitCapturedPhoto,
+  SiteVisitChecklistItem,
+  SiteVisitMeasurement,
+  SiteVisitVoiceNote,
+} from "@/lib/site-visit/types";
 
 const ACTION_CARDS: Array<{
   id: SiteVisitActionId;
@@ -61,24 +59,46 @@ const ACTION_CARDS: Array<{
 export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
   const router = useRouter();
   const mounted = useClientMounted();
-  const enquiry = useStoredEnquiry(enquiryId);
-  const session = useSiteVisitSession(enquiryId);
+  const {
+    enquiry,
+    state: enquiryState,
+    error: enquiryError,
+    refresh: refreshEnquiry,
+  } = useWorkspaceEnquiry(enquiryId);
+  const {
+    session,
+    siteVisitId,
+    state: visitState,
+    error: visitError,
+    save,
+    complete,
+  } = useWorkspaceSiteVisit(enquiryId);
   const photoInputId = useId();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [activeAction, setActiveAction] = useState<SiteVisitActionId | null>(null);
   const [elapsed, setElapsed] = useState("00:00");
   const [notice, setNotice] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [localNotes, setLocalNotes] = useState("");
+  const [localMeasurements, setLocalMeasurements] = useState<SiteVisitMeasurement[]>(
+    []
+  );
+  const [localChecklist, setLocalChecklist] = useState<SiteVisitChecklistItem[]>([]);
+  const [localVoiceNotes, setLocalVoiceNotes] = useState<SiteVisitVoiceNote[]>([]);
+  const [localPhotos, setLocalPhotos] = useState<SiteVisitCapturedPhoto[]>([]);
+  const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
+
+  if (session && draftSessionId !== session.id) {
+    setDraftSessionId(session.id);
+    setLocalNotes(session.notes);
+    setLocalMeasurements(session.measurements);
+    setLocalChecklist(session.checklist);
+    setLocalVoiceNotes(session.voiceNotes);
+    setLocalPhotos(session.photos);
+  }
 
   const visitCompleted = enquiry?.status === "site_visit_completed";
   const address = enquiry ? formatEnquiryAddress(enquiry) : "";
-
-  useEffect(() => {
-    if (!enquiry || !canAccessSiteVisitMode(enquiry.status) || visitCompleted) {
-      return;
-    }
-
-    ensureSiteVisitSession(enquiryId);
-  }, [enquiry, enquiryId, visitCompleted]);
 
   useEffect(() => {
     const startedAt = session?.startedAt;
@@ -91,14 +111,32 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
       setElapsed(formatVisitElapsed(startedAt));
     };
 
-    updateElapsed();
     const intervalId = window.setInterval(updateElapsed, 1000);
+    queueMicrotask(updateElapsed);
 
     return () => window.clearInterval(intervalId);
   }, [session?.startedAt]);
 
-  if (!mounted) {
+  if (!mounted || enquiryState === "loading" || visitState === "loading") {
     return <p className="qf-site-visit-loading">Loading site visit…</p>;
+  }
+
+  if (enquiryState === "error" || visitState === "error") {
+    return (
+      <div className="qf-site-visit-empty">
+        <h1 className="qf-site-visit-empty-title">Could not load site visit</h1>
+        <p className="qf-site-visit-empty-copy">
+          {enquiryError ?? visitError ?? "Something went wrong."}
+        </p>
+        <button
+          type="button"
+          className="qf-btn-secondary"
+          onClick={() => void refreshEnquiry()}
+        >
+          Try again
+        </button>
+      </div>
+    );
   }
 
   if (!enquiry || !canAccessSiteVisitMode(enquiry.status)) {
@@ -116,37 +154,112 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
     );
   }
 
+  const draftSession =
+    session ??
+    createDefaultSiteVisitSession(enquiryId);
   const organisingSteps = getSiteVisitOrganisingSteps(
-    session ?? createDefaultSiteVisitSession(enquiryId),
+    {
+      ...draftSession,
+      notes: localNotes,
+      measurements: localMeasurements,
+      checklist: localChecklist,
+      voiceNotes: localVoiceNotes,
+      photos: localPhotos,
+    },
     visitCompleted
   );
   const organisingComplete = isSiteVisitOrganisingComplete(organisingSteps);
 
-  function handleFinishVisit() {
-    const updated = completeSiteVisit(enquiryId);
+  async function handleSaveProgress() {
+    setSaving(true);
 
-    if (!updated) {
-      setNotice("Could not finish the site visit.");
+    try {
+      const result = await save({
+        notes: localNotes,
+        measurements: localMeasurements,
+        checklist: localChecklist,
+        voiceNotes: localVoiceNotes,
+      });
+
+      if (!result.ok) {
+        setNotice(result.error);
+        return;
+      }
+
+      setNotice("Progress saved to your workspace.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleFinishVisit() {
+    const saveResult = await save({
+      notes: localNotes,
+      measurements: localMeasurements,
+      checklist: localChecklist,
+      voiceNotes: localVoiceNotes,
+    });
+
+    if (!saveResult.ok) {
+      setNotice(saveResult.error);
       return;
     }
 
+    const result = await complete();
+
+    if (!result.ok) {
+      setNotice(result.error);
+      return;
+    }
+
+    await refreshEnquiry();
     setNotice("Site visit completed. Quote information is ready to prepare.");
   }
 
   function handleVoiceNote() {
-    addSiteVisitVoiceNote(enquiryId);
-    setNotice("Voice note captured.");
+    const capturedAt = new Date().toISOString();
+    setLocalVoiceNotes((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        label: `Voice note ${current.length + 1}`,
+        capturedAt,
+        durationSeconds: 0,
+      },
+    ]);
+    setNotice("Voice note added. Tap Save progress when you are ready.");
     setActiveAction(null);
   }
 
-  function handlePhotoSelected(fileList: FileList | null) {
+  async function handlePhotoSelected(fileList: FileList | null) {
     const file = fileList?.[0];
 
     if (!file) {
       return;
     }
 
-    addSiteVisitPhoto(enquiryId, file.name);
+    const formData = new FormData();
+    formData.set("enquiryId", enquiryId);
+    if (siteVisitId) {
+      formData.set("siteVisitId", siteVisitId);
+    }
+    formData.set("file", file);
+
+    const result = await uploadSiteVisitPhotoAction(formData);
+
+    if (!result.ok) {
+      setNotice(result.error);
+      return;
+    }
+
+    setLocalPhotos((current) => [
+      ...current,
+      {
+        id: result.data.id,
+        name: result.data.fileName,
+        capturedAt: new Date().toISOString(),
+      },
+    ]);
     setNotice("Photo added to the site visit.");
     setActiveAction(null);
   }
@@ -165,13 +278,23 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
             <span className="qf-site-visit-timer-value">{elapsed}</span>
           </div>
           {!visitCompleted ? (
-            <button
-              type="button"
-              className="qf-btn-primary qf-site-visit-finish-btn"
-              onClick={handleFinishVisit}
-            >
-              Finish Visit
-            </button>
+            <>
+              <button
+                type="button"
+                className="qf-btn-secondary qf-site-visit-save-btn"
+                onClick={() => void handleSaveProgress()}
+                disabled={saving}
+              >
+                {saving ? "Saving…" : "Save progress"}
+              </button>
+              <button
+                type="button"
+                className="qf-btn-primary qf-site-visit-finish-btn"
+                onClick={() => void handleFinishVisit()}
+              >
+                Finish Visit
+              </button>
+            </>
           ) : (
             <Link
               href={buildQuotePreparationPath(enquiryId)}
@@ -218,8 +341,8 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
         <section className="qf-site-visit-panel">
           <h2 className="qf-site-visit-panel-title">Voice note</h2>
           <p className="qf-site-visit-panel-copy">
-            Placeholder capture for now. This saves a voice note entry locally and
-            updates the timeline.
+            Placeholder capture for now. Add a voice note entry, then save progress
+            to store it in your workspace.
           </p>
           <button
             type="button"
@@ -229,9 +352,9 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
           >
             Capture voice note
           </button>
-          {session?.voiceNotes.length ? (
+          {localVoiceNotes.length ? (
             <ul className="qf-site-visit-list">
-              {session.voiceNotes.map((note) => (
+              {localVoiceNotes.map((note) => (
                 <li key={note.id}>{note.label}</li>
               ))}
             </ul>
@@ -243,7 +366,8 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
         <section className="qf-site-visit-panel">
           <h2 className="qf-site-visit-panel-title">Take photo</h2>
           <p className="qf-site-visit-panel-copy">
-            Add a photo from the work area. Files stay in browser storage for now.
+            Add a photo from the work area. Photos upload to your workspace right
+            away; your notes stay on this page until you save progress.
           </p>
           <input
             ref={photoInputRef}
@@ -252,7 +376,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
             accept="image/*"
             capture="environment"
             className="qf-site-visit-file-input"
-            onChange={(event) => handlePhotoSelected(event.target.files)}
+            onChange={(event) => void handlePhotoSelected(event.target.files)}
             disabled={visitCompleted}
           />
           <button
@@ -263,9 +387,9 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
           >
             Take photo
           </button>
-          {session?.photos.length ? (
+          {localPhotos.length ? (
             <ul className="qf-site-visit-list">
-              {session.photos.map((photo) => (
+              {localPhotos.map((photo) => (
                 <li key={photo.id}>{photo.name}</li>
               ))}
             </ul>
@@ -277,7 +401,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
         <section className="qf-site-visit-panel">
           <h2 className="qf-site-visit-panel-title">Measurements</h2>
           <div className="qf-site-visit-measurements">
-            {(session?.measurements ?? []).map((field) => (
+            {localMeasurements.map((field) => (
               <label key={field.id} className="qf-site-visit-measurement-field">
                 <span>{field.label}</span>
                 <input
@@ -287,13 +411,13 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
                   value={field.value}
                   disabled={visitCompleted}
                   onChange={(event) => {
-                    const nextMeasurements = (session?.measurements ?? []).map(
-                      (entry) =>
+                    setLocalMeasurements((current) =>
+                      current.map((entry) =>
                         entry.id === field.id
                           ? { ...entry, value: event.target.value }
                           : entry
+                      )
                     );
-                    updateSiteVisitMeasurements(enquiryId, nextMeasurements);
                   }}
                 />
                 <span className="qf-site-visit-measurement-unit">{field.unit}</span>
@@ -309,10 +433,10 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
           <textarea
             className="form-textarea qf-site-visit-notes"
             rows={6}
-            value={session?.notes ?? ""}
+            value={localNotes}
             disabled={visitCompleted}
             placeholder="Write what you found on site…"
-            onChange={(event) => updateSiteVisitNotes(enquiryId, event.target.value)}
+            onChange={(event) => setLocalNotes(event.target.value)}
           />
         </section>
       ) : null}
@@ -321,7 +445,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
         <section className="qf-site-visit-panel">
           <h2 className="qf-site-visit-panel-title">Checklist</h2>
           <ul className="qf-site-visit-checklist">
-            {(session?.checklist ?? []).map((item) => (
+            {localChecklist.map((item) => (
               <li key={item.id}>
                 <label className="qf-site-visit-checklist-item">
                   <input
@@ -329,13 +453,13 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
                     checked={item.checked}
                     disabled={visitCompleted}
                     onChange={(event) => {
-                      const nextChecklist = (session?.checklist ?? []).map(
-                        (entry) =>
+                      setLocalChecklist((current) =>
+                        current.map((entry) =>
                           entry.id === item.id
                             ? { ...entry, checked: event.target.checked }
                             : entry
+                        )
                       );
-                      updateSiteVisitChecklist(enquiryId, nextChecklist);
                     }}
                   />
                   <span>{item.label}</span>
@@ -388,6 +512,16 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
       </section>
 
       <div className="qf-site-visit-footer-actions">
+        {!visitCompleted ? (
+          <button
+            type="button"
+            className="qf-btn-secondary qf-site-visit-save-btn"
+            onClick={() => void handleSaveProgress()}
+            disabled={saving}
+          >
+            {saving ? "Saving…" : "Save progress"}
+          </button>
+        ) : null}
         {visitCompleted ? (
           <Link href={buildQuotePreparationPath(enquiryId)} className="qf-btn-primary qf-site-visit-prepare-quote">
             Prepare Quote

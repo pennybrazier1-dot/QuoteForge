@@ -5,10 +5,10 @@ import { createPortal } from "react-dom";
 import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
 import { SiteVisitModeLinkPanel } from "@/components/enquiries/site-visit-mode-link-panel";
 import {
-  bookEnquirySiteVisit,
   recordEnquiryCustomerContact,
   recordSiteVisitRequested,
 } from "@/lib/enquiries/enquiry-store";
+import { bookSiteVisitAction } from "@/lib/enquiries/server/actions";
 import { formatEnquiryAddress } from "@/lib/enquiries/format";
 import {
   buildSiteVisitConfirmationMessage,
@@ -158,7 +158,7 @@ export function BookSiteVisitDialog({
     window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(activeMessage)}`;
   }
 
-  function handleMarkBooked() {
+  async function handleMarkBooked() {
     if (!selectedSlot) {
       setNotice("Choose a time slot before marking the visit as booked.");
       return;
@@ -171,7 +171,7 @@ export function BookSiteVisitDialog({
       return;
     }
 
-    const updated = bookEnquirySiteVisit(enquiry.id, {
+    const result = await bookSiteVisitAction(enquiry.id, {
       slotId: selectedSlot.id,
       slotLabel: resolved.slotLabel,
       confirmationLine: resolved.confirmationLine,
@@ -179,12 +179,12 @@ export function BookSiteVisitDialog({
       startsAt: resolved.startsAt,
     });
 
-    if (!updated) {
-      setNotice("Could not save the site visit booking.");
+    if (!result.ok) {
+      setNotice(result.error);
       return;
     }
 
-    setBookedEnquiry(updated);
+    setBookedEnquiry(result.data);
     onBooked?.(
       `Site visit marked as booked for ${resolved.slotLabel} — customer link ready to share.`
     );
@@ -362,7 +362,7 @@ export function BookSiteVisitDialog({
             <button
               type="button"
               className="qf-mgmt-dialog-btn qf-mgmt-dialog-btn-primary"
-              onClick={handleMarkBooked}
+              onClick={() => void handleMarkBooked()}
             >
               Mark as Site Visit Booked
             </button>

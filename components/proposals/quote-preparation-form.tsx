@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { QuotePreparationReview } from "@/components/proposals/quote-preparation-review";
 import {
-  markEnquiryQuoteInPreparation,
-  recordQuotePreparationStarted,
-  getStoredEnquiry,
-} from "@/lib/enquiries/enquiry-store";
+  getSiteVisitForEnquiryAction,
+  markQuoteInPreparationAction,
+  markQuotePreparationStartedAction,
+} from "@/lib/enquiries/server/actions";
+import { useWorkspaceEnquiry } from "@/lib/enquiries/server/use-workspace-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
 import { buildQuotePreparationDraftSafe } from "@/lib/proposals/quote-preparation/build-quote-draft";
@@ -23,12 +24,16 @@ import {
   QUOTE_PREPARATION_LOCAL_SAVE_SUCCESS,
   type QuotePreparationDraft,
 } from "@/lib/proposals/quote-preparation/types";
-import { getSiteVisitSession } from "@/lib/site-visit/site-visit-session-store";
+import type { SiteVisitSession } from "@/lib/site-visit/types";
 
 export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const mounted = useClientMounted();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const preparationStartedFor = useRef<string | null>(null);
+  const { enquiry, state, error, refresh } = useWorkspaceEnquiry(enquiryId);
+  const [siteVisit, setSiteVisit] = useState<
+    (SiteVisitSession & { id: string }) | null | undefined
+  >(undefined);
   const [editedDraft, setEditedDraft] = useState<{
     enquiryId: string;
     draft: QuotePreparationDraft;
@@ -36,54 +41,72 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  const baseDraft = useMemo(() => {
-    if (!mounted) {
-      return null;
-    }
-
-    const enquiry = getStoredEnquiry(enquiryId);
-    if (!enquiry) {
-      return null;
-    }
-
-    const existing = getLocalProposalDraftByEnquiry(enquiryId);
-    if (existing?.draft?.enquiryId === enquiryId) {
-      return existing.draft;
-    }
-
-    const session = getSiteVisitSession(enquiryId);
-    return buildQuotePreparationDraftSafe(enquiry, session);
-  }, [mounted, enquiryId]);
-
-  const draft =
-    editedDraft?.enquiryId === enquiryId ? editedDraft.draft : baseDraft;
-
   useEffect(() => {
-    if (!mounted || preparationStartedFor.current === enquiryId) {
+    if (!mounted || !enquiryId || state !== "ready" || !enquiry) {
       return;
     }
 
-    const enquiry = getStoredEnquiry(enquiryId);
+    void getSiteVisitForEnquiryAction(enquiryId).then((result) => {
+      if (result.ok) {
+        setSiteVisit(result.data);
+      } else {
+        setSiteVisit(null);
+      }
+    });
+  }, [mounted, enquiryId, state, enquiry]);
+
+  useEffect(() => {
+    if (!mounted || preparationStartedFor.current === enquiryId || state !== "ready") {
+      return;
+    }
+
     if (!enquiry) {
       return;
     }
 
     preparationStartedFor.current = enquiryId;
-    recordQuotePreparationStarted(enquiryId);
-  }, [mounted, enquiryId]);
+    void markQuotePreparationStartedAction(enquiryId);
+  }, [mounted, enquiryId, state, enquiry]);
 
-  if (!mounted) {
+  const baseDraft =
+    enquiry && siteVisit !== undefined
+      ? (() => {
+          const existing = getLocalProposalDraftByEnquiry(enquiryId);
+          if (existing?.draft?.enquiryId === enquiryId) {
+            return existing.draft;
+          }
+
+          return buildQuotePreparationDraftSafe(enquiry, siteVisit);
+        })()
+      : null;
+
+  const draft =
+    editedDraft?.enquiryId === enquiryId ? editedDraft.draft : baseDraft;
+
+  if (!mounted || state === "loading" || (state === "ready" && siteVisit === undefined)) {
     return <p className="qf-quote-prep-loading">Loading quote preparation…</p>;
   }
 
-  if (!draft) {
+  if (state === "error") {
+    return (
+      <div className="qf-quote-prep-empty">
+        <h1 className="qf-proposal-title">Could not load enquiry</h1>
+        <p className="qf-proposal-subtitle">{error ?? "Something went wrong."}</p>
+        <button type="button" className="qf-btn-secondary" onClick={() => void refresh()}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (!enquiry || !draft) {
     return (
       <div className="qf-quote-prep-empty">
         <h1 className="qf-proposal-title">Quote preparation unavailable</h1>
         <p className="qf-proposal-subtitle">
-          This enquiry could not be loaded from storage on this device. Open the
-          enquiry again from Enquiries, or complete the site visit first, then
-          try Prepare Quote once more.
+          This enquiry could not be found in your workspace. Open it again from
+          Enquiries, or complete the site visit first, then try Prepare Quote once
+          more.
         </p>
         <Link href={`/enquiries/${enquiryId}`} className="qf-btn-secondary">
           Back to enquiry
@@ -92,7 +115,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
     );
   }
 
-  function handleSaveDraft() {
+  async function handleSaveDraft() {
     if (!draft || draft.enquiryId !== enquiryId) {
       setNotice(
         "This draft does not match the current enquiry. Go back and open Prepare Quote again."
@@ -101,7 +124,12 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
     }
 
     const saved = saveLocalProposalDraft(draft);
-    markEnquiryQuoteInPreparation(enquiryId, saved.id);
+    const result = await markQuoteInPreparationAction(enquiryId, saved.id);
+    if (!result.ok) {
+      setNotice(result.error);
+      return;
+    }
+
     setNotice(QUOTE_PREPARATION_LOCAL_SAVE_SUCCESS);
   }
 
@@ -149,7 +177,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
         <button
           type="button"
           className="qf-btn-primary qf-touch-target-comfortable"
-          onClick={handleSaveDraft}
+          onClick={() => void handleSaveDraft()}
         >
           {QUOTE_PREPARATION_LOCAL_SAVE_BUTTON}
         </button>
