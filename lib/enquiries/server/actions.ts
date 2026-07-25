@@ -10,7 +10,7 @@ import {
   formatTimelineSiteVisitBooked,
   formatTimelineSiteVisitCompleted,
 } from "@/lib/enquiries/timeline-messages";
-import type { EnquiryStatus, StoredEnquiry } from "@/lib/enquiries/types";
+import type { StoredEnquiry } from "@/lib/enquiries/types";
 import {
   buildSiteVisitPhotoPath,
   createPublicEnquirySlug,
@@ -945,5 +945,3 @@ export async function appendEnquiryTimelineAction(
 
   return { ok: true, data: true };
 }
-
-export type { EnquiryStatus };

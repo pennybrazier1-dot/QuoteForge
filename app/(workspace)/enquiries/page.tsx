@@ -13,8 +13,8 @@ export default function EnquiriesPage() {
         Enquiries
       </h1>
       <p className="mt-2 text-sm text-muted">
-        New customer requests from your quote journey. Saved locally in this
-        browser for now.
+        New customer requests for your business. These are saved in your
+        QuoteForge account and available on any signed-in device.
       </p>
 
       <div className="mt-8">
