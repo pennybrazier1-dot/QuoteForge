@@ -294,11 +294,11 @@ Use `allocate_proposal_number(workspace_id)` from a server action. It returns va
 
 ## 5. Proposal status events
 
-**Planned.** Not in the current migration files.
+**Implemented in:** `20260630220000_create_proposal_status_events.sql`
 
-`proposal_status_events` will store an audit trail when a proposal status changes, including optional notes.
+`proposal_status_events` stores an audit trail when a proposal status changes, including optional notes.
 
-### Planned fields
+### Fields
 
 | Field | Purpose |
 |-------|---------|
@@ -311,9 +311,9 @@ Use `allocate_proposal_number(workspace_id)` from a server action. It returns va
 | `created_by` | User who made the change |
 | `created_at` | When the change happened |
 
-### Why it will exist
+### Why it exists
 
-Status events support customer history, follow-up tracking, and team accountability without overloading the `proposals` row with notes on every change.
+Status events support customer history, follow-up tracking, and accountability without overloading the `proposals` row.
 
 ---
 
@@ -361,8 +361,9 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 - `current_workspace_id()`
 - Atomic proposal numbering
 - Customer snapshot fields on proposals
-- Proposal statuses: `draft`, `sent`, `accepted`, `declined`, `expired`
-- Proposal dates: `created_at`, `updated_at`, `sent_at`, `accepted_at`, `expires_at`
+- Proposal lifecycle statuses (including `ready_to_send`, `waiting_for_customer`, `booked`, `completed`, `cancelled`; reserved `invoiced` / `paid`)
+- `proposal_status_events` table with RLS
+- Money columns on proposals (`subtotal_amount`, `vat_amount`, `total_amount` in pence) — **note:** current save paths still force `vat_amount` to `0`
 - Signup bootstrap and onboarding requirement in app code
 - Onboarding fields: `workspaces.trade_type`, `profiles.heard_about`
 
@@ -370,6 +371,22 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 
 - Profile roles `admin` and `member`
 - `is_workspace_member()` and `has_workspace_role()`
-- Additional proposal statuses: `ready`, `cancelled`, `completed`
-- Additional proposal dates: `declined_at`, `expired_at`, `completed_at`, `valid_until`
-- `proposal_status_events` table
+- Enquiries, site visits, and Prepare Quote drafts moved from browser storage into workspace tables
+- Invoice tables
+- Storage buckets for logos and enquiry photos
+
+---
+
+## Browser-local prototype storage (not Supabase)
+
+These remain **prototype-only** until Phase 2. They are **not** workspace-isolated in the database.
+
+| Storage | Purpose |
+|---------|---------|
+| `localStorage` `quoteforge:enquiries` | Enquiry inbox |
+| `localStorage` `quoteforge:site-visit-sessions` | Site visit capture |
+| `localStorage` `quoteforge:calendar-events` | Site visit calendar events |
+| `localStorage` `quoteforge:proposal-drafts` | Prepare Quote drafts |
+| IndexedDB `quoteforge-enquiry-photos` | Enquiry / site visit photo blobs |
+
+See also `docs/PREPARE_QUOTE.md`.

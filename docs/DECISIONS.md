@@ -103,3 +103,13 @@ We are building a business.
 Not just software.
 
 The dashboard should reduce stress, not create it.
+
+---
+
+## Decision 011
+
+QuoteForge is a **Next.js web application**.
+
+It is not an Expo / React Native app in this repository.
+
+A stray Expo `app.json` was removed during Phase 1 stabilisation (2026-07-25). Native apps, if ever needed, will be a separate deliberate project — not accidental config.
