@@ -7,6 +7,7 @@ import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
 import { SiteVisitModeLinkPanel } from "@/components/enquiries/site-visit-mode-link-panel";
+import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
@@ -126,6 +127,25 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             <CustomerJobLinkPanel enquiry={enquiry} onNotice={setNotice} />
             <SiteVisitModeLinkPanel enquiry={enquiry} />
           </div>
+          {enquiry.status === "site_visit_completed" ||
+          enquiry.status === "quote_in_preparation" ? (
+            <section className="qf-enquiry-site-visit-mode-panel">
+              <div className="qf-enquiry-site-visit-mode-copy">
+                <h3 className="qf-enquiry-site-visit-mode-title">Prepare quote</h3>
+                <p className="qf-enquiry-site-visit-mode-description">
+                  Turn the completed site visit into a draft quote you can review
+                  and price. For now it saves on this device only — it is not a
+                  sent QuoteForge proposal yet.
+                </p>
+              </div>
+              <Link
+                href={buildQuotePreparationPath(enquiry.id)}
+                className="qf-btn-primary qf-enquiry-site-visit-mode-btn"
+              >
+                Prepare Quote
+              </Link>
+            </section>
+          ) : null}
         </section>
 
         {notice ? (

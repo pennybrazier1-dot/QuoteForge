@@ -15,6 +15,7 @@ const VALID_STATUSES: EnquiryStatus[] = [
   "reviewing",
   "site_visit_booked",
   "site_visit_completed",
+  "quote_in_preparation",
   "declined",
 ];
 
@@ -258,6 +259,10 @@ export function normalizeEnquiry(value: unknown): StoredEnquiry | null {
       typeof raw.siteVisitSlot === "string" ? raw.siteVisitSlot : null,
     siteVisitStartsAt:
       typeof raw.siteVisitStartsAt === "string" ? raw.siteVisitStartsAt : null,
+    linkedProposalDraftId:
+      typeof raw.linkedProposalDraftId === "string"
+        ? raw.linkedProposalDraftId
+        : null,
     timeline: normalizeTimeline(raw.timeline),
   };
 }

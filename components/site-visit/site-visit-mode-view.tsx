@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { useEffect, useId, useRef, useState } from "react";
 import { completeSiteVisit } from "@/lib/enquiries/enquiry-store";
 import { formatEnquiryAddress, formatEnquiryTimelineDate } from "@/lib/enquiries/format";
@@ -173,7 +174,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
             </button>
           ) : (
             <Link
-              href="/proposals/new"
+              href={buildQuotePreparationPath(enquiryId)}
               className="qf-btn-primary qf-site-visit-finish-btn"
             >
               Prepare Quote
@@ -388,7 +389,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
 
       <div className="qf-site-visit-footer-actions">
         {visitCompleted ? (
-          <Link href="/proposals/new" className="qf-btn-primary qf-site-visit-prepare-quote">
+          <Link href={buildQuotePreparationPath(enquiryId)} className="qf-btn-primary qf-site-visit-prepare-quote">
             Prepare Quote
           </Link>
         ) : null}

@@ -106,6 +106,7 @@ export function buildEnquiryFromJourney(
       "Review the customer details and project description, then decide whether to book a site visit.",
     siteVisitSlot: null,
     siteVisitStartsAt: null,
+    linkedProposalDraftId: null,
     timeline,
   };
 }

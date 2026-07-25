@@ -60,6 +60,7 @@ function sampleEnquiry(overrides: Record<string, unknown> = {}) {
     suggestedNextAction: "Review the enquiry",
     siteVisitSlot: null,
     siteVisitStartsAt: null,
+    linkedProposalDraftId: null,
     timeline: [
       {
         id: "timeline-1",
@@ -312,5 +313,63 @@ describe("enquiry workflow actions", () => {
 
     expect(getStoredEnquiries()).toHaveLength(1);
     expect(getStoredEnquiries()[0]?.id).toBe("enquiry-2");
+  });
+});
+
+describe("quote preparation timeline", () => {
+  let localStorage = createLocalStorageMock();
+
+  beforeEach(async () => {
+    localStorage = createLocalStorageMock();
+    vi.stubGlobal("window", {
+      localStorage,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    });
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function loadStore() {
+    return import("@/lib/enquiries/enquiry-store");
+  }
+
+  it("records quote preparation started on the enquiry timeline", async () => {
+    const { recordQuotePreparationStarted, getStoredEnquiry } = await loadStore();
+
+    seedLocalStorage(
+      [sampleEnquiry({ status: "site_visit_completed" })],
+      localStorage
+    );
+
+    recordQuotePreparationStarted("enquiry-1");
+
+    const enquiry = getStoredEnquiry("enquiry-1");
+    expect(enquiry?.timeline.map((event) => event.label)).toContain(
+      "Quote preparation started."
+    );
+    expect(enquiry?.status).toBe("site_visit_completed");
+  });
+
+  it("marks enquiry as quote in preparation when draft is saved", async () => {
+    const { markEnquiryQuoteInPreparation, getStoredEnquiry } = await loadStore();
+
+    seedLocalStorage(
+      [sampleEnquiry({ status: "site_visit_completed" })],
+      localStorage
+    );
+
+    markEnquiryQuoteInPreparation("enquiry-1", "draft-1");
+
+    const enquiry = getStoredEnquiry("enquiry-1");
+    expect(enquiry?.status).toBe("quote_in_preparation");
+    expect(enquiry?.linkedProposalDraftId).toBe("draft-1");
+    expect(enquiry?.timeline.map((event) => event.label)).toContain(
+      "Draft quote saved."
+    );
   });
 });

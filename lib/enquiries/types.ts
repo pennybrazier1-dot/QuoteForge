@@ -6,6 +6,7 @@ export type EnquiryStatus =
   | "reviewing"
   | "site_visit_booked"
   | "site_visit_completed"
+  | "quote_in_preparation"
   | "declined";
 
 export type EnquiryTimelineEvent = {
@@ -46,6 +47,7 @@ export type StoredEnquiry = {
   suggestedNextAction: string;
   siteVisitSlot: string | null;
   siteVisitStartsAt: string | null;
+  linkedProposalDraftId: string | null;
   timeline: EnquiryTimelineEvent[];
 };
 
@@ -54,6 +56,7 @@ export const ENQUIRY_STATUS_LABELS: Record<EnquiryStatus, string> = {
   reviewing: "Reviewing",
   site_visit_booked: "Site Visit Booked",
   site_visit_completed: "Site Visit Completed",
+  quote_in_preparation: "Quote in Preparation",
   declined: "Declined",
 };
 
@@ -65,5 +68,6 @@ export const ENQUIRY_STATUS_TONES: Record<
   reviewing: "amber",
   site_visit_booked: "green",
   site_visit_completed: "green",
+  quote_in_preparation: "amber",
   declined: "red",
 };

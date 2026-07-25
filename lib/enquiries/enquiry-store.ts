@@ -2,6 +2,7 @@
 
 import { upsertSiteVisitCalendarEvent, removeSiteVisitCalendarEventsForEnquiry } from "@/lib/calendar/local-calendar-store";
 import { markSiteVisitSessionCompleted, removeSiteVisitSession } from "@/lib/site-visit/site-visit-session-store";
+import { removeLocalProposalDraftsForEnquiry } from "@/lib/proposals/quote-preparation/local-proposal-drafts";
 import { buildEnquiryFromJourney } from "@/lib/enquiries/build-enquiry";
 import { buildPhotoMetadataFromFiles } from "@/lib/enquiries/photo-metadata";
 import { parseStoredEnquiries } from "@/lib/enquiries/normalize-enquiry";
@@ -27,6 +28,8 @@ import {
   formatTimelineSiteVisitBooked,
   formatTimelineSiteVisitCompleted,
   formatTimelineSiteVisitRequested,
+  formatTimelineQuoteDraftSaved,
+  formatTimelineQuotePreparationStarted,
 } from "@/lib/enquiries/timeline-messages";
 import type {
   EnquiryStatus,
@@ -242,6 +245,8 @@ function suggestedActionForStatus(status: EnquiryStatus): string {
       return "Confirm the visit date and time with the customer before you attend.";
     case "site_visit_completed":
       return "Prepare a quote using the site visit notes, photos, and measurements.";
+    case "quote_in_preparation":
+      return "Review the draft quote, add pricing, and save before sending to the customer.";
     case "declined":
       return "No action needed. The enquiry has been declined.";
   }
@@ -433,6 +438,36 @@ export function completeSiteVisit(id: string): StoredEnquiry | null {
   return updated;
 }
 
+export function recordQuotePreparationStarted(id: string): StoredEnquiry | null {
+  return appendEnquiryTimelineEvent(
+    id,
+    formatTimelineQuotePreparationStarted()
+  );
+}
+
+export function markEnquiryQuoteInPreparation(
+  id: string,
+  proposalDraftId: string
+): StoredEnquiry | null {
+  const enquiries = readEnquiries();
+  const index = enquiries.findIndex((enquiry) => enquiry.id === id);
+
+  if (index === -1) {
+    return null;
+  }
+
+  const timelineLabel = formatTimelineQuoteDraftSaved();
+  return updateEnquiryAtIndex(enquiries, index, (entry) => ({
+    ...entry,
+    status: "quote_in_preparation",
+    linkedProposalDraftId: proposalDraftId,
+    suggestedNextAction: suggestedActionForStatus("quote_in_preparation"),
+    timeline: enquiryHasTimelineLabel(entry, timelineLabel)
+      ? entry.timeline
+      : appendTimeline(entry, timelineLabel),
+  }));
+}
+
 export function declineStoredEnquiry(id: string): StoredEnquiry | null {
   return updateStoredEnquiryStatus(
     id,
@@ -457,6 +492,7 @@ export async function deleteStoredEnquiry(id: string): Promise<boolean> {
   await deleteEnquiryPhotoBlobs(id, photoIds);
   removeSiteVisitCalendarEventsForEnquiry(id);
   removeSiteVisitSession(id);
+  removeLocalProposalDraftsForEnquiry(id);
 
   return true;
 }

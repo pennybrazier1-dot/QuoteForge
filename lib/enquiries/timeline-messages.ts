@@ -56,6 +56,14 @@ export function formatTimelineSiteVisitCompleted(): string {
   return "Site visit completed.";
 }
 
+export function formatTimelineQuotePreparationStarted(): string {
+  return "Quote preparation started.";
+}
+
+export function formatTimelineQuoteDraftSaved(): string {
+  return "Draft quote saved.";
+}
+
 export function formatTimelineCustomerMessagePrepared(): string {
   return "Customer message prepared.";
 }
