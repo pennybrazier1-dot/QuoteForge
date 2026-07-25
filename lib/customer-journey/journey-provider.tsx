@@ -16,6 +16,7 @@ import {
 } from "./constants";
 import { resolveServiceTradeType } from "./business-services";
 import { persistEnquiryFromJourney } from "@/lib/enquiries/enquiry-store";
+import { submitPublicEnquiryAction } from "@/lib/enquiries/server/public-actions";
 import {
   canProceed,
   createInitialState,
@@ -54,16 +55,26 @@ const JourneyContext = createContext<JourneyContextValue | null>(null);
 type JourneyProviderProps = {
   children: ReactNode;
   initialProfileId?: JourneyPreviewProfileId;
+  /** Workspace public intake slug — submits to Supabase instead of local storage. */
+  publicSlug?: string;
+  /** Fixed business identity for public intake links. */
+  fixedTradesperson?: TradespersonInfo;
+  allowPreviewSwitch?: boolean;
 };
 
 export function JourneyProvider({
   children,
   initialProfileId = "single-trade",
+  publicSlug,
+  fixedTradesperson,
+  allowPreviewSwitch = true,
 }: JourneyProviderProps) {
   const [activePreviewProfileId, setActivePreviewProfileId] =
     useState<JourneyPreviewProfileId>(initialProfileId);
   const [tradesperson, setTradesperson] = useState<TradespersonInfo>(
-    () => JOURNEY_PREVIEW_PROFILES[initialProfileId].tradesperson
+    () =>
+      fixedTradesperson ??
+      JOURNEY_PREVIEW_PROFILES[initialProfileId].tradesperson
   );
 
   const [state, dispatch] = useReducer(
@@ -72,12 +83,19 @@ export function JourneyProvider({
     createInitialState
   );
 
-  const switchPreviewProfile = useCallback((profileId: JourneyPreviewProfileId) => {
-    const profile = JOURNEY_PREVIEW_PROFILES[profileId].tradesperson;
-    setActivePreviewProfileId(profileId);
-    setTradesperson(profile);
-    dispatch({ type: "RESET", tradesperson: profile });
-  }, []);
+  const switchPreviewProfile = useCallback(
+    (profileId: JourneyPreviewProfileId) => {
+      if (!allowPreviewSwitch || publicSlug || fixedTradesperson) {
+        return;
+      }
+
+      const profile = JOURNEY_PREVIEW_PROFILES[profileId].tradesperson;
+      setActivePreviewProfileId(profileId);
+      setTradesperson(profile);
+      dispatch({ type: "RESET", tradesperson: profile });
+    },
+    [allowPreviewSwitch, publicSlug, fixedTradesperson]
+  );
 
   const setStep = useCallback((stepId: JourneyStepId) => {
     dispatch({ type: "SET_STEP", stepId });
@@ -154,7 +172,26 @@ export function JourneyProvider({
     setSubmitError(null);
 
     try {
-      await persistEnquiryFromJourney(state.formData, tradesperson);
+      if (publicSlug) {
+        const serviceRequested =
+          state.formData.selectedService?.trim() ||
+          tradesperson.services[0] ||
+          "General enquiry";
+        const result = await submitPublicEnquiryAction({
+          slug: publicSlug,
+          formData: state.formData,
+          serviceRequested,
+          trade: state.formData.trade ?? tradesperson.tradeType,
+        });
+
+        if (!result.ok) {
+          setSubmitError(result.error);
+          return;
+        }
+      } else {
+        await persistEnquiryFromJourney(state.formData, tradesperson);
+      }
+
       dispatch({ type: "SET_STEP", stepId: "thank_you" });
     } catch (error) {
       const message =
@@ -167,7 +204,7 @@ export function JourneyProvider({
       isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
-  }, [state.formData, tradesperson]);
+  }, [state.formData, tradesperson, publicSlug]);
 
   const canContinue = canProceed(state.currentStepId, state.formData, tradesperson);
 

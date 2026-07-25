@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BusinessSettings } from "@/components/settings/business-settings";
 import { ComingSoonSettings } from "@/components/settings/coming-soon-settings";
+import { LocalEnquiryMigrationSettings } from "@/components/settings/local-enquiry-migration-settings";
 import { MyAccountSettings } from "@/components/settings/my-account-settings";
 import { MyServicesSettings } from "@/components/settings/my-services-settings";
+import { PublicEnquiryLinkSettings } from "@/components/settings/public-enquiry-link-settings";
 import { createClient } from "@/lib/supabase/server";
 import { getPlaceholderServicesFromTradeType } from "@/lib/settings/placeholder-services";
 
@@ -53,6 +55,8 @@ export default async function SettingsPage() {
 
       <div className="mt-8 qf-stack">
         <BusinessSettings workspace={workspace} />
+        <PublicEnquiryLinkSettings />
+        <LocalEnquiryMigrationSettings />
         <MyServicesSettings initialServices={initialServices} />
         <MyAccountSettings
           account={{
