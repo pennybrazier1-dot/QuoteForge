@@ -159,3 +159,65 @@ export async function deleteEnquiryPhotoBlobs(
     photoIds.map((photoId) => deleteEnquiryPhotoBlob(enquiryId, photoId))
   );
 }
+
+export async function listPhotoBlobIdsForEnquiry(
+  enquiryId: string
+): Promise<string[]> {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  try {
+    const database = await openPhotoBlobDatabase();
+
+    return await new Promise<string[]>((resolve, reject) => {
+      const transaction = database.transaction(STORE_NAME, "readonly");
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.openCursor();
+      const ids: string[] = [];
+      const prefix = `${enquiryId}:`;
+
+      request.onerror = () => {
+        reject(request.error ?? new Error("Failed to list enquiry photo blobs"));
+      };
+
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          return;
+        }
+
+        const record = cursor.value as PhotoBlobRecord;
+        if (record.enquiryId === enquiryId || record.key.startsWith(prefix)) {
+          ids.push(record.photoId);
+        }
+        cursor.continue();
+      };
+
+      transaction.oncomplete = () => {
+        database.close();
+        resolve(ids);
+      };
+
+      transaction.onerror = () => {
+        reject(
+          transaction.error ?? new Error("Failed to list enquiry photo blobs")
+        );
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+export async function countPhotoBlobsForEnquiries(
+  enquiryIds: string[]
+): Promise<number> {
+  const unique = Array.from(new Set(enquiryIds.filter(Boolean)));
+  const counts = await Promise.all(
+    unique.map(
+      async (enquiryId) => (await listPhotoBlobIdsForEnquiry(enquiryId)).length
+    )
+  );
+  return counts.reduce((sum, value) => sum + value, 0);
+}

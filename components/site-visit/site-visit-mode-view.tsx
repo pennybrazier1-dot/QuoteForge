@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { useEffect, useId, useRef, useState } from "react";
 import { uploadSiteVisitPhotoAction } from "@/lib/enquiries/server/actions";
+import { notifyEnquiryPhotosChanged } from "@/lib/enquiries/photo-display-events";
+import { registerSessionPhotosFromFiles } from "@/lib/enquiries/photo-session-store";
 import { useWorkspaceEnquiry } from "@/lib/enquiries/server/use-workspace-enquiries";
 import { formatEnquiryAddress, formatEnquiryTimelineDate } from "@/lib/enquiries/format";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
@@ -260,6 +262,25 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
         capturedAt: new Date().toISOString(),
       },
     ]);
+
+    // Keep a local preview until server signed URLs refresh the gallery.
+    registerSessionPhotosFromFiles(
+      enquiryId,
+      [
+        {
+          id: result.data.id,
+          name: result.data.fileName || "Photo",
+          size: file.size,
+          type: file.type || "image/jpeg",
+          imageUrl: null,
+          storageKey: result.data.storagePath,
+          thumbnailUrl: null,
+        },
+      ],
+      [file]
+    );
+    notifyEnquiryPhotosChanged(enquiryId);
+    await refreshEnquiry();
     setNotice("Photo added to the site visit.");
     setActiveAction(null);
   }
