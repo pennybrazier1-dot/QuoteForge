@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isDevTestingEnabled,
   isDevTestingEnabledClient,
+  isDevTestingEnabledFromSignals,
 } from "@/lib/env/dev-testing";
 
 describe("isDevTestingEnabled", () => {
@@ -23,16 +24,14 @@ describe("isDevTestingEnabled", () => {
     process.env.VERCEL_ENV = originalVercelEnv;
   });
 
-  it("is enabled when NODE_ENV is development", () => {
-    const originalVercelEnv = process.env.VERCEL_ENV;
-    const originalNodeEnv = process.env.NODE_ENV;
-    delete process.env.VERCEL_ENV;
-    process.env.NODE_ENV = "development";
-
-    expect(isDevTestingEnabled()).toBe(true);
-
-    process.env.VERCEL_ENV = originalVercelEnv;
-    process.env.NODE_ENV = originalNodeEnv;
+  it("is enabled when NODE_ENV signal is development", () => {
+    expect(
+      isDevTestingEnabledFromSignals({
+        vercelEnv: undefined,
+        nodeEnv: "development",
+        publicDevTestingFlag: undefined,
+      })
+    ).toBe(true);
   });
 });
 

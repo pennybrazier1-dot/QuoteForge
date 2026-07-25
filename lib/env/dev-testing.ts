@@ -3,7 +3,8 @@
  * Disabled on Vercel production — never expose lifecycle simulation there.
  */
 
-function isDevTestingEnabledFromSignals(options: {
+/** Pure signal check — exported so tests do not need to mutate `process.env.NODE_ENV`. */
+export function isDevTestingEnabledFromSignals(options: {
   vercelEnv: string | undefined;
   nodeEnv: string | undefined;
   publicDevTestingFlag: string | undefined;

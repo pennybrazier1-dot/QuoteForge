@@ -32,6 +32,7 @@ function bookedEnquiry(): StoredEnquiry {
     suggestedNextAction: "Confirm the visit",
     siteVisitSlot: "Thursday 09:30",
     siteVisitStartsAt: "2026-07-10T08:30:00.000Z",
+    linkedProposalDraftId: null,
     timeline: [],
   };
 }

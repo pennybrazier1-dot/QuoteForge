@@ -36,6 +36,7 @@ function sampleEnquiry(
     siteVisitSlot: status === "site_visit_booked" ? "Thursday 09:30" : null,
     siteVisitStartsAt:
       status === "site_visit_booked" ? "2026-07-10T08:30:00.000Z" : null,
+    linkedProposalDraftId: null,
     timeline: [],
   };
 }

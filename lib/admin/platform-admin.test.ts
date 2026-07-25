@@ -24,7 +24,6 @@ describe("resolveAuthEmail", () => {
 describe("isPlatformAdmin", () => {
   const originalAllowlist = process.env.PLATFORM_ADMIN_EMAILS;
   const originalVercelEnv = process.env.VERCEL_ENV;
-  const originalNodeEnv = process.env.NODE_ENV;
   const originalDevFlag = process.env.NEXT_PUBLIC_QF_DEV_TESTING;
 
   afterEach(() => {
@@ -40,12 +39,6 @@ describe("isPlatformAdmin", () => {
       process.env.VERCEL_ENV = originalVercelEnv;
     }
 
-    if (originalNodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = originalNodeEnv;
-    }
-
     if (originalDevFlag === undefined) {
       delete process.env.NEXT_PUBLIC_QF_DEV_TESTING;
     } else {
@@ -55,7 +48,6 @@ describe("isPlatformAdmin", () => {
 
   function useProductionSignals() {
     process.env.VERCEL_ENV = "production";
-    process.env.NODE_ENV = "production";
     delete process.env.NEXT_PUBLIC_QF_DEV_TESTING;
   }
 
@@ -91,8 +83,8 @@ describe("isPlatformAdmin", () => {
 
   it("allows admin access in local development even without allowlist", () => {
     delete process.env.PLATFORM_ADMIN_EMAILS;
-    process.env.NODE_ENV = "development";
     delete process.env.VERCEL_ENV;
+    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
 
     expect(isPlatformAdmin("anyone@example.com")).toBe(true);
     expect(isPlatformAdmin(null)).toBe(true);

@@ -37,6 +37,7 @@ function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
       status === "site_visit_booked" || status === "site_visit_completed"
         ? "2026-07-10T08:30:00.000Z"
         : null,
+    linkedProposalDraftId: null,
     timeline: [],
   };
 }
