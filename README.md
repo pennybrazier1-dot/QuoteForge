@@ -16,9 +16,9 @@ This is a **web application**, not a native Expo/React Native app.
 
 **Early MVP (Phase 2 data backbone)**
 
-Implemented against Supabase: auth, onboarding, customers, AI proposals, PDF, proposal email, dashboard, **enquiries, site visits, site-visit photos, calendar site visits, public request-quote links**.
+Implemented against Supabase: auth, onboarding, customers, AI proposals, PDF, proposal email, dashboard, **enquiries, site visits, site-visit photos (private Storage + signed URL display), calendar site visits, public request-quote links**.
 
-Still local: Prepare Quote **drafts** (`quoteforge:proposal-drafts`). Demo `/request-quote` without a workspace slug also remains local for testing.
+Still local: Prepare Quote **drafts** (`quoteforge:proposal-drafts`). Demo `/request-quote` without a workspace slug also remains local for testing. IndexedDB photo blobs are only a fallback for unsynced local photos.
 
 See `docs/PHASE_2_DATA.md` for schema, RLS, storage, and migration steps.
 

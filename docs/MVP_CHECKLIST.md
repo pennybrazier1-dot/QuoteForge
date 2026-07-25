@@ -19,10 +19,11 @@ Enquiries and site visits persist in Supabase (Phase 2). Prepare Quote **drafts*
 - [x] Email UI
 - [x] Real proposal email sending (Resend + PDF attachment)
 - [x] Enquiries inbox and timeline (Supabase + RLS)
-- [x] Site Visit Mode (Supabase + private photo storage)
+- [x] Site Visit Mode (Supabase + private photo storage + signed URL display)
 - [x] Calendar site visits from server `site_visits`
 - [x] Public request-quote link (`/request-quote/w/[slug]`)
 - [x] Local → account enquiry migration utility (Settings)
+- [x] Local photo blob migration into private Storage (Settings)
 
 ## Still local / Phase 3
 

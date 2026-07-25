@@ -127,3 +127,17 @@ Public customer intake uses `workspaces.public_enquiry_slug` and security-define
 Prepare Quote **reads** server enquiry/site-visit data but still **saves drafts locally** until Phase 3 creates real proposals.
 
 See `docs/PHASE_2_DATA.md`.
+
+---
+
+## Decision 013
+
+**Site-visit photo display uses private Storage signed URLs (Phase 2).**
+
+Metadata lives in `enquiry_media`. Image bytes live in the private `site-visit-photos` bucket.
+
+The app creates short-lived signed URLs on the server after checking workspace ownership. Signed URLs are never persisted in Postgres.
+
+IndexedDB remains only as a temporary fallback for photos that have not yet uploaded from this device.
+
+Cross-workspace access remains blocked by RLS and Storage path policies.

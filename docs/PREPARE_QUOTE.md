@@ -25,7 +25,10 @@
 | Layer | Contents |
 |-------|----------|
 | Supabase `enquiries` / `site_visits` | Source data for Prepare Quote |
+| Supabase `enquiry_media` + private Storage | Photo metadata and files (signed URL display) |
 | `localStorage` `quoteforge:proposal-drafts` | Prepare Quote drafts (still local) |
+
+Photo count on Prepare Quote comes from server enquiry/site-visit media. Gallery viewing uses short-lived signed URLs (see `docs/PHASE_2_DATA.md`).
 
 See also `docs/PHASE_2_DATA.md`.
 

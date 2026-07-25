@@ -66,6 +66,18 @@ Public intake never accepts a client-supplied workspace id — only a validated 
 - Demo `/request-quote` without a workspace slug
 - Legacy local keys kept until migration succeeds (not auto-deleted)
 
+## Site-visit photos (private Storage)
+
+| Concern | Behaviour |
+|---------|-----------|
+| Source of truth | `enquiry_media` metadata + private `site-visit-photos` objects |
+| Display | Server action creates **short-lived signed URLs** (~1 hour). URLs are **not** stored in the database |
+| Refresh | Client refreshes signed URLs shortly before expiry |
+| IndexedDB | Fallback only for **unsynced** local blobs on this device; not the primary gallery source |
+| Delete | Removes Storage object + `enquiry_media` row (with confirmation). Missing Storage objects can still clean metadata |
+| Migration | Settings migrates enquiry text, then uploads IndexedDB photo blobs. Completion is not marked while unresolved photos remain |
+| Cross-workspace | RLS + Storage path policies; other workspaces cannot list or sign another workspace’s objects |
+
 ## Time zone
 
 Site visit `starts_at` is stored as `timestamptz`. Calendar day grouping uses the `date_iso` field (UK calendar date chosen at booking). Display formatting uses the existing UK-friendly calendar helpers.

@@ -385,7 +385,7 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 |---------|---------|----------------|
 | `localStorage` `quoteforge:proposal-drafts` | Prepare Quote drafts | Still local (Phase 3) |
 | `localStorage` `quoteforge:enquiries` etc. | Legacy prototype data | Migration utility in Settings; not auto-deleted |
-| IndexedDB `quoteforge-enquiry-photos` | Legacy photo blobs | Prefer Supabase Storage going forward |
+| IndexedDB `quoteforge-enquiry-photos` | Unsynced / legacy photo blobs | Fallback only; gallery prefers signed URLs from private Storage |
 
 Site-visit calendar events now come from `site_visits`, not `quoteforge:calendar-events`.
 
