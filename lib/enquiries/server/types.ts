@@ -241,6 +241,10 @@ export function createPublicEnquirySlug(): string {
   return slug;
 }
 
+export type EnquiryActionResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
+
 export const SITE_VISIT_PHOTOS_BUCKET = "site-visit-photos";
 
 export function buildSiteVisitPhotoPath(options: {

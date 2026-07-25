@@ -17,72 +17,21 @@ import {
   mapEnquiryRowToStoredEnquiry,
   mapSiteVisitRowToSession,
   SITE_VISIT_PHOTOS_BUCKET,
+  type EnquiryActionResult,
   type EnquiryMediaRow,
   type EnquiryRow,
   type EnquiryTimelineRow,
   type SiteVisitRow,
 } from "@/lib/enquiries/server/types";
+import {
+  mapMediaRowToServerDisplay,
+  signedUrlExpiresAtFromNow,
+  SITE_VISIT_PHOTO_SIGNED_URL_SECONDS,
+} from "@/lib/enquiries/server/photo-display";
+import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import type { SiteVisitSession } from "@/lib/site-visit/types";
 import { createDefaultSiteVisitSession } from "@/lib/site-visit/site-visit-mode-data";
 
-export type EnquiryActionResult<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: string };
-
-async function requireWorkspaceContext(): Promise<
-  | {
-      ok: true;
-      supabase: Awaited<ReturnType<typeof createClient>>;
-      user: { id: string };
-      workspaceId: string;
-      workspace: {
-        id: string;
-        business_name: string;
-        phone: string | null;
-        contact_email: string | null;
-        trade_type: string | null;
-        public_enquiry_slug: string | null;
-      };
-    }
-  | { ok: false; error: string }
-> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { ok: false, error: "You must be signed in." };
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("workspace_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.workspace_id) {
-    return { ok: false, error: "Complete onboarding before managing enquiries." };
-  }
-
-  const { data: workspace } = await supabase
-    .from("workspaces")
-    .select("id, business_name, phone, contact_email, trade_type, public_enquiry_slug")
-    .eq("id", profile.workspace_id)
-    .maybeSingle();
-
-  if (!workspace) {
-    return { ok: false, error: "Workspace not found." };
-  }
-
-  return {
-    ok: true,
-    supabase,
-    user: { id: user.id },
-    workspaceId: profile.workspace_id as string,
-    workspace,
-  };
-}
 
 async function ensurePublicEnquirySlug(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -830,6 +779,7 @@ export async function uploadSiteVisitPhotoAction(formData: FormData): Promise<
     id: string;
     storagePath: string;
     fileName: string;
+    display: ReturnType<typeof mapMediaRowToServerDisplay> | null;
   }>
 > {
   const context = await requireWorkspaceContext();
@@ -843,6 +793,18 @@ export async function uploadSiteVisitPhotoAction(formData: FormData): Promise<
 
   if (!enquiryId || !(file instanceof File)) {
     return { ok: false, error: "Photo upload is missing required fields." };
+  }
+
+  const { data: enquiry } = await context.supabase
+    .from("enquiries")
+    .select("id")
+    .eq("workspace_id", context.workspaceId)
+    .eq("id", enquiryId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  if (!enquiry) {
+    return { ok: false, error: "Enquiry not found." };
   }
 
   const ensured = siteVisitId
@@ -862,11 +824,14 @@ export async function uploadSiteVisitPhotoAction(formData: FormData): Promise<
     mediaId,
     extension,
   });
+  const capturedAt = new Date().toISOString();
+  const fileName = file.name || `${mediaId}.jpg`;
+  const mimeType = file.type || "image/jpeg";
 
   const { error: uploadError } = await context.supabase.storage
     .from(SITE_VISIT_PHOTOS_BUCKET)
     .upload(storagePath, file, {
-      contentType: file.type || "image/jpeg",
+      contentType: mimeType,
       upsert: false,
     });
 
@@ -880,23 +845,51 @@ export async function uploadSiteVisitPhotoAction(formData: FormData): Promise<
     enquiry_id: enquiryId,
     site_visit_id: ensured.data.id,
     kind: "photo",
-    file_name: file.name || `${mediaId}.jpg`,
-    mime_type: file.type || "image/jpeg",
+    file_name: fileName,
+    mime_type: mimeType,
     byte_size: file.size,
     storage_path: storagePath,
-    captured_at: new Date().toISOString(),
+    captured_at: capturedAt,
   });
 
   if (insertError) {
     await context.supabase.storage
       .from(SITE_VISIT_PHOTOS_BUCKET)
       .remove([storagePath]);
-    return { ok: false, error: "Could not save photo details." };
+    return {
+      ok: false,
+      error:
+        "Photo file uploaded, but details could not be saved. The file was removed — please try again.",
+    };
   }
+
+  const { data: signed, error: signedError } = await context.supabase.storage
+    .from(SITE_VISIT_PHOTOS_BUCKET)
+    .createSignedUrl(storagePath, SITE_VISIT_PHOTO_SIGNED_URL_SECONDS);
+
+  const display =
+    !signedError && signed?.signedUrl
+      ? mapMediaRowToServerDisplay(
+          {
+            id: mediaId,
+            enquiry_id: enquiryId,
+            site_visit_id: ensured.data.id,
+            file_name: fileName,
+            mime_type: mimeType,
+            byte_size: file.size,
+            storage_path: storagePath,
+            captured_at: capturedAt,
+            created_at: capturedAt,
+            sort_order: 0,
+          },
+          signed.signedUrl,
+          signedUrlExpiresAtFromNow(SITE_VISIT_PHOTO_SIGNED_URL_SECONDS)
+        )
+      : null;
 
   return {
     ok: true,
-    data: { id: mediaId, storagePath, fileName: file.name },
+    data: { id: mediaId, storagePath, fileName, display },
   };
 }
 
