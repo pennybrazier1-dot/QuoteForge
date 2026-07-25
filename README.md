@@ -14,11 +14,13 @@ This is a **web application**, not a native Expo/React Native app.
 
 ## Current stage
 
-**Early MVP**
+**Early MVP (Phase 2 data backbone)**
 
-Implemented against Supabase: auth, onboarding, customers, AI proposals, PDF, proposal email, dashboard.
+Implemented against Supabase: auth, onboarding, customers, AI proposals, PDF, proposal email, dashboard, **enquiries, site visits, site-visit photos, calendar site visits, public request-quote links**.
 
-Prototype (this browser only): customer enquiry journey, site visits, Prepare Quote drafts.
+Still local: Prepare Quote **drafts** (`quoteforge:proposal-drafts`). Demo `/request-quote` without a workspace slug also remains local for testing.
+
+See `docs/PHASE_2_DATA.md` for schema, RLS, storage, and migration steps.
 
 ## Getting started
 
@@ -44,5 +46,6 @@ Copy `.env.example` to `.env.local` and add Supabase, OpenAI, and Resend values.
 
 - `docs/PRODUCT_VISION.md` — product intent
 - `docs/MVP_CHECKLIST.md` — implemented vs prototype vs planned
-- `docs/PREPARE_QUOTE.md` — Prepare Quote local draft behaviour
+- `docs/PREPARE_QUOTE.md` — Prepare Quote behaviour (server inputs, local draft)
+- `docs/PHASE_2_DATA.md` — Enquiries / site visits / photos / public intake
 - `docs/DATABASE.md` — Supabase schema notes

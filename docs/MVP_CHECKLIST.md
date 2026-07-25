@@ -3,7 +3,7 @@
 QuoteForge is currently an **early MVP**.
 
 Core proposal creation, PDF, and email sending work against Supabase.
-Enquiries, site visits, and Prepare Quote drafts are still **browser-local prototypes**.
+Enquiries and site visits persist in Supabase (Phase 2). Prepare Quote **drafts** are still browser-local.
 
 ## Core — implemented
 
@@ -18,14 +18,17 @@ Enquiries, site visits, and Prepare Quote drafts are still **browser-local proto
 - [x] Proposal Workflow / timeline
 - [x] Email UI
 - [x] Real proposal email sending (Resend + PDF attachment)
+- [x] Enquiries inbox and timeline (Supabase + RLS)
+- [x] Site Visit Mode (Supabase + private photo storage)
+- [x] Calendar site visits from server `site_visits`
+- [x] Public request-quote link (`/request-quote/w/[slug]`)
+- [x] Local → account enquiry migration utility (Settings)
 
-## Prototype — browser local only
+## Still local / Phase 3
 
-- [x] Customer request-quote journey (local)
-- [x] Enquiries inbox and timeline (local)
-- [x] Site Visit Mode (local + IndexedDB photos)
-- [x] Prepare Quote from site visit (local draft only)
-- [ ] Persist enquiries / site visits / Prepare Quote drafts to Supabase (Phase 2+)
+- [x] Prepare Quote from site visit (**reads** server enquiry/visit; **saves** local draft only)
+- [ ] Prepare Quote → create real Supabase proposal
+- [ ] Honest VAT calculation persisted on proposals
 
 ## Remaining before paid launch
 
@@ -33,7 +36,6 @@ Enquiries, site visits, and Prepare Quote drafts are still **browser-local proto
 - [ ] Editable business settings after onboarding
 - [ ] Password recovery
 - [ ] Customer portal / online acceptance
-- [ ] Honest VAT calculation persisted on proposals
 - [ ] Account deletion / privacy basics
 - [ ] QuoteForge subscription billing
 

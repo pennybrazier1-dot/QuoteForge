@@ -113,3 +113,17 @@ QuoteForge is a **Next.js web application**.
 It is not an Expo / React Native app in this repository.
 
 A stray Expo `app.json` was removed during Phase 1 stabilisation (2026-07-25). Native apps, if ever needed, will be a separate deliberate project — not accidental config.
+
+---
+
+## Decision 012
+
+**Enquiries and site visits are workspace-owned Supabase data (Phase 2).**
+
+Calendar site visits use the `site_visits` table as the single source of truth (no duplicate calendar event table).
+
+Public customer intake uses `workspaces.public_enquiry_slug` and security-definer RPCs so the client cannot choose an arbitrary workspace id.
+
+Prepare Quote **reads** server enquiry/site-visit data but still **saves drafts locally** until Phase 3 creates real proposals.
+
+See `docs/PHASE_2_DATA.md`.

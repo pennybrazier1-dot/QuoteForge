@@ -352,6 +352,7 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 | `supabase/migrations/20260630122600_create_workspace_and_profiles.sql` | `set_updated_at()`, `current_workspace_id()`, `workspaces`, `profiles`, RLS |
 | `supabase/migrations/20260630122700_create_customers_and_proposals.sql` | `customers`, `proposals`, `allocate_proposal_number()`, RLS |
 | `supabase/migrations/20260630130000_add_onboarding_fields.sql` | `workspaces.trade_type`, `profiles.heard_about` |
+| `supabase/migrations/20260725120000_enquiries_site_visits_backbone.sql` | Enquiries, timeline, site visits, media, storage, public intake RPCs |
 
 ### Implemented now
 
@@ -366,27 +367,26 @@ When `is_workspace_member()` and `has_workspace_role()` are added:
 - Money columns on proposals (`subtotal_amount`, `vat_amount`, `total_amount` in pence) — **note:** current save paths still force `vat_amount` to `0`
 - Signup bootstrap and onboarding requirement in app code
 - Onboarding fields: `workspaces.trade_type`, `profiles.heard_about`
+- **Phase 2:** `enquiries`, `enquiry_timeline_events`, `site_visits`, `enquiry_media`, private `site-visit-photos` bucket, `workspaces.public_enquiry_slug`, public intake RPCs — see `docs/PHASE_2_DATA.md`
 
 ### Planned in future migrations
 
 - Profile roles `admin` and `member`
 - `is_workspace_member()` and `has_workspace_role()`
-- Enquiries, site visits, and Prepare Quote drafts moved from browser storage into workspace tables
+- Prepare Quote drafts moved from browser storage into real proposals (Phase 3)
 - Invoice tables
-- Storage buckets for logos and enquiry photos
+- Storage buckets for logos
 
 ---
 
-## Browser-local prototype storage (not Supabase)
+## Browser-local leftovers
 
-These remain **prototype-only** until Phase 2. They are **not** workspace-isolated in the database.
+| Storage | Purpose | Phase 2 status |
+|---------|---------|----------------|
+| `localStorage` `quoteforge:proposal-drafts` | Prepare Quote drafts | Still local (Phase 3) |
+| `localStorage` `quoteforge:enquiries` etc. | Legacy prototype data | Migration utility in Settings; not auto-deleted |
+| IndexedDB `quoteforge-enquiry-photos` | Legacy photo blobs | Prefer Supabase Storage going forward |
 
-| Storage | Purpose |
-|---------|---------|
-| `localStorage` `quoteforge:enquiries` | Enquiry inbox |
-| `localStorage` `quoteforge:site-visit-sessions` | Site visit capture |
-| `localStorage` `quoteforge:calendar-events` | Site visit calendar events |
-| `localStorage` `quoteforge:proposal-drafts` | Prepare Quote drafts |
-| IndexedDB `quoteforge-enquiry-photos` | Enquiry / site visit photo blobs |
+Site-visit calendar events now come from `site_visits`, not `quoteforge:calendar-events`.
 
-See also `docs/PREPARE_QUOTE.md`.
+See also `docs/PREPARE_QUOTE.md` and `docs/PHASE_2_DATA.md`.
