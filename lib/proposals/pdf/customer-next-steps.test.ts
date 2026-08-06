@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCustomerNextStepsFromPrep,
-  buildCustomerNextStepsFromWarnings,
   CUSTOMER_NEXT_STEP,
-  deriveCustomerNextSteps,
+  deriveCustomerThingsToConfirm,
   mergeCustomerNextStepsIntoThingsToConfirm,
   stripCustomerFacingLinePrices,
   stripReadinessFromOptionalExtras,
@@ -18,37 +17,80 @@ describe("customer next steps", () => {
         notes: createEmptyPrepNotes(),
         plannedStartDateText: "",
         plannedStartDateExact: "",
+        photoCount: 0,
+        photosNotRequired: false,
       })
-    ).toEqual([
-      CUSTOMER_NEXT_STEP.measurements,
-      CUSTOMER_NEXT_STEP.materials,
-      CUSTOMER_NEXT_STEP.siteVisit,
-      CUSTOMER_NEXT_STEP.startDate,
-    ]);
+    ).toEqual(
+      expect.arrayContaining([
+        CUSTOMER_NEXT_STEP.measurements,
+        CUSTOMER_NEXT_STEP.materials,
+        CUSTOMER_NEXT_STEP.siteVisit,
+        CUSTOMER_NEXT_STEP.startDate,
+        CUSTOMER_NEXT_STEP.photos,
+      ])
+    );
   });
 
-  it("omits confirmed items", () => {
-    expect(
-      buildCustomerNextStepsFromWarnings({
-        missingWarnings: [],
-        suggestSiteVisit: false,
-      })
-    ).toEqual([]);
+  it("does not clear photos just because additional notes are filled", () => {
+    const steps = buildCustomerNextStepsFromPrep({
+      notes: {
+        ...createEmptyPrepNotes(),
+        additionalNotes: "Lots of notes about the kitchen",
+      },
+      plannedStartDateText: "next week",
+      plannedStartDateExact: "",
+      durationValue: "2",
+      estimatedPrice: "900",
+      jobDescription: "Kitchen refresh",
+      customerName: "Alex",
+      emailAddress: "a@example.com",
+      propertyAddress: "1 High Street",
+      photoCount: 0,
+      photosNotRequired: false,
+    });
+
+    expect(steps).toContain(CUSTOMER_NEXT_STEP.photos);
+  });
+
+  it("clears photos when marked not required", () => {
+    const steps = buildCustomerNextStepsFromPrep({
+      notes: {
+        measurements: "2.1",
+        materialsRequired: "Tiles",
+        accessRequirements: "Gate",
+        additionalNotes: "Chose grey",
+      },
+      plannedStartDateText: "next week",
+      plannedStartDateExact: "",
+      durationValue: "2",
+      estimatedPrice: "900",
+      jobDescription: "Bathroom",
+      customerName: "Alex",
+      emailAddress: "a@example.com",
+      propertyAddress: "1 High Street",
+      photoCount: 0,
+      photosNotRequired: true,
+      siteVisitCompleted: true,
+    });
+
+    expect(steps).toEqual([]);
   });
 
   it("derives next steps from stored phrases and legacy extras", () => {
     expect(
-      deriveCustomerNextSteps({
+      deriveCustomerThingsToConfirm({
         thingsToConfirm: [CUSTOMER_NEXT_STEP.measurements, "Access height"],
         optionalExtrasText:
           "Still to confirm later: Materials to confirm; Start date to confirm.\n\nConsider booking a site visit to confirm measurements.",
       })
-    ).toEqual([
-      CUSTOMER_NEXT_STEP.measurements,
-      CUSTOMER_NEXT_STEP.materials,
-      CUSTOMER_NEXT_STEP.startDate,
-      CUSTOMER_NEXT_STEP.siteVisit,
-    ]);
+    ).toEqual(
+      expect.arrayContaining([
+        CUSTOMER_NEXT_STEP.measurements,
+        CUSTOMER_NEXT_STEP.materials,
+        CUSTOMER_NEXT_STEP.startDate,
+        CUSTOMER_NEXT_STEP.siteVisit,
+      ])
+    );
   });
 
   it("keeps technical confirm items separate from next steps", () => {

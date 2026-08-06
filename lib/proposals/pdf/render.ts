@@ -739,31 +739,25 @@ function acceptanceSection(): TechSection {
   };
 }
 
-function thingsToConfirmSection(flow: PdfFlow, data: ProposalPdfData): TechSection {
-  return {
-    title: "Things to Confirm",
-    drawIcon: iconInfo,
-    renderContent: (pdfFlow, x, cursor, w) => {
-      if (data.thingsToConfirm.length > 0) {
-        return drawBulletsFlowing(
-          pdfFlow,
-          data.thingsToConfirm,
-          x,
-          cursor,
-          w,
-          "None listed."
-        );
-      }
+function thingsToConfirmBeforeWorkSection(
+  data: ProposalPdfData
+): TechSection | null {
+  if (data.thingsToConfirmBeforeWork.length === 0) {
+    return null;
+  }
 
-      return drawBodyFlowing(
+  return {
+    title: "Things to confirm before work begins",
+    drawIcon: iconInfo,
+    renderContent: (pdfFlow, x, cursor, w) =>
+      drawBulletsFlowing(
         pdfFlow,
-        data.thingsToConfirmText?.trim() || "None listed.",
+        data.thingsToConfirmBeforeWork,
         x,
         cursor,
         w,
-        { size: TYPE.bullet, color: PDF_COLORS.muted }
-      );
-    },
+        "None listed."
+      ),
   };
 }
 
@@ -873,6 +867,8 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
   const startY = flow.y();
   const startPage = flow.currentPageIndex();
 
+  const confirmSection = thingsToConfirmBeforeWorkSection(data);
+
   const leftSections: TechSection[] = [
     {
       title: "Scope of Work",
@@ -900,29 +896,7 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
           "None listed."
         ),
     },
-    thingsToConfirmSection(flow, data),
-    ...(data.nextSteps.length > 0
-      ? [
-          {
-            title: "Next Steps",
-            drawIcon: iconCalendar,
-            renderContent: (
-              pdfFlow: PdfFlow,
-              x: number,
-              cursor: ColumnCursor,
-              w: number
-            ) =>
-              drawBulletsFlowing(
-                pdfFlow,
-                data.nextSteps,
-                x,
-                cursor,
-                w,
-                "None listed."
-              ),
-          } satisfies TechSection,
-        ]
-      : []),
+    ...(confirmSection ? [confirmSection] : []),
   ];
 
   const rightSections: TechSection[] = [

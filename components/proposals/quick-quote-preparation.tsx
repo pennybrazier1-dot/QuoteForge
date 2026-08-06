@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useId, useRef, useState } from "react";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
 import {
-  getQuickQuoteMissingWarnings,
-  QUICK_QUOTE_SITE_VISIT_HINT,
-  shouldSuggestSiteVisitForMeasurements,
+  groupIncompleteReadinessByCategory,
+  getIncompleteQuoteReadinessItems,
+} from "@/lib/proposals/quote-readiness";
+import {
   type QuickQuotePrepNotes,
 } from "@/lib/proposals/quick-quote-preparation";
 import {
@@ -104,11 +106,27 @@ function MoneyField({
   );
 }
 
+export type QuickQuoteLocalPhoto = {
+  id: string;
+  name: string;
+  previewUrl: string;
+};
+
 export function QuickQuotePreparation({
+  customerName,
+  emailAddress,
+  phoneNumber,
+  propertyAddress,
   jobDescription,
   onJobDescriptionChange,
   prepNotes,
   onPrepNotesChange,
+  photos,
+  onPhotosChange,
+  photosNotRequired,
+  onPhotosNotRequiredChange,
+  siteVisitCompleted,
+  onSiteVisitCompletedChange,
   durationValue,
   onDurationValueChange,
   durationUnit,
@@ -131,10 +149,20 @@ export function QuickQuotePreparation({
   onSuggestCustomerTotal,
   jobDescriptionMaxLength,
 }: {
+  customerName: string;
+  emailAddress: string;
+  phoneNumber: string;
+  propertyAddress: string;
   jobDescription: string;
   onJobDescriptionChange: (value: string) => void;
   prepNotes: QuickQuotePrepNotes;
   onPrepNotesChange: (next: QuickQuotePrepNotes) => void;
+  photos: QuickQuoteLocalPhoto[];
+  onPhotosChange: (next: QuickQuoteLocalPhoto[]) => void;
+  photosNotRequired: boolean;
+  onPhotosNotRequiredChange: (value: boolean) => void;
+  siteVisitCompleted: boolean;
+  onSiteVisitCompletedChange: (value: boolean) => void;
   durationValue: string;
   onDurationValueChange: (value: string) => void;
   durationUnit: DurationUnit;
@@ -157,19 +185,77 @@ export function QuickQuotePreparation({
   onSuggestCustomerTotal: () => void;
   jobDescriptionMaxLength: number;
 }) {
-  const missingWarnings = getQuickQuoteMissingWarnings({
+  const fileInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
+  const incomplete = getIncompleteQuoteReadinessItems({
+    customerName,
+    emailAddress,
+    phoneNumber,
+    propertyAddress,
     notes: prepNotes,
+    jobDescription,
+    photoCount: photos.length,
+    photosNotRequired,
+    siteVisitCompleted,
     durationValue,
     plannedStartDateText,
     plannedStartDateExact,
+    estimatedPrice: customerTotal,
+    paymentTermsSupported: false,
   });
-  const suggestSiteVisit = shouldSuggestSiteVisitForMeasurements(prepNotes);
+  const grouped = groupIncompleteReadinessByCategory(incomplete);
+  const showSiteVisitToggle = !prepNotes.measurements.trim();
+
+  useEffect(() => {
+    return () => {
+      // Preview URLs are owned by the parent and revoked there on remove/unmount.
+    };
+  }, []);
 
   function updateNote<K extends keyof QuickQuotePrepNotes>(
     key: K,
     value: QuickQuotePrepNotes[K]
   ) {
     onPrepNotesChange({ ...prepNotes, [key]: value });
+  }
+
+  function handlePhotoFiles(fileList: FileList | null) {
+    if (!fileList?.length) {
+      return;
+    }
+
+    setPhotoError(null);
+    const next: QuickQuoteLocalPhoto[] = [...photos];
+
+    for (const file of Array.from(fileList)) {
+      if (!file.type.startsWith("image/")) {
+        setPhotoError("Please choose image files only.");
+        continue;
+      }
+      next.push({
+        id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+        name: file.name,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+
+    onPhotosChange(next);
+    if (next.length > 0) {
+      onPhotosNotRequiredChange(false);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  function removePhoto(id: string) {
+    const target = photos.find((photo) => photo.id === id);
+    if (target) {
+      URL.revokeObjectURL(target.previewUrl);
+    }
+    onPhotosChange(photos.filter((photo) => photo.id !== id));
   }
 
   return (
@@ -239,6 +325,78 @@ export function QuickQuotePreparation({
             placeholder="Anything else before you quote…"
           />
 
+          <div className="qf-qq-photos">
+            <p className="qf-field-label">Photos / site conditions</p>
+            <p className="qf-qq-photos-hint">
+              Soft optional check — upload a photo, or mark that photos are not
+              needed. Extra notes alone do not clear this.
+            </p>
+            <input
+              ref={fileInputRef}
+              id={fileInputId}
+              type="file"
+              accept="image/*"
+              multiple
+              className="qf-qq-photos-input"
+              onChange={(event) => handlePhotoFiles(event.target.files)}
+            />
+            <div className="qf-qq-photos-actions">
+              <label htmlFor={fileInputId} className="qf-btn-secondary qf-qq-photos-add">
+                Add photos
+              </label>
+              <label className="qf-qq-photos-skip">
+                <input
+                  type="checkbox"
+                  checked={photosNotRequired}
+                  onChange={(event) => {
+                    onPhotosNotRequiredChange(event.target.checked);
+                  }}
+                />
+                No photos needed
+              </label>
+            </div>
+            {photoError ? (
+              <p className="qf-qq-photos-error" role="alert">
+                {photoError}
+              </p>
+            ) : null}
+            {photos.length > 0 ? (
+              <ul className="qf-qq-photos-list">
+                {photos.map((photo) => (
+                  <li key={photo.id} className="qf-qq-photos-item">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photo.previewUrl}
+                      alt={photo.name}
+                      className="qf-qq-photos-thumb"
+                    />
+                    <span className="qf-qq-photos-name">{photo.name}</span>
+                    <button
+                      type="button"
+                      className="qf-qq-photos-remove"
+                      onClick={() => removePhoto(photo.id)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          {showSiteVisitToggle ? (
+            <label className="qf-qq-photos-skip">
+              <input
+                type="checkbox"
+                checked={siteVisitCompleted}
+                onChange={(event) =>
+                  onSiteVisitCompletedChange(event.target.checked)
+                }
+              />
+              Site visit completed / not needed right now
+            </label>
+          ) : null}
+
           <div>
             <label htmlFor="durationValue" className="qf-field-label">
               Estimated duration
@@ -285,7 +443,7 @@ export function QuickQuotePreparation({
         </div>
       </SectionCard>
 
-      {missingWarnings.length > 0 || suggestSiteVisit ? (
+      {grouped.length > 0 ? (
         <section
           className="qf-qq-readiness"
           aria-live="polite"
@@ -293,26 +451,25 @@ export function QuickQuotePreparation({
         >
           <h2 className="qf-qq-readiness-title">Quote readiness</h2>
           <p className="qf-qq-readiness-copy">
-            Optional prep check — nothing here blocks creating or sending the
-            quote.
+            Soft reminders for what a tradesperson usually confirms before a
+            job. Nothing here blocks creating or sending the quote.
           </p>
 
-          {missingWarnings.length > 0 ? (
-            <ul className="qf-qq-readiness-list">
-              {missingWarnings.map((item) => (
-                <li key={item.id} className="qf-qq-readiness-item">
-                  <p className="qf-qq-readiness-label">{item.label}</p>
-                  <p className="qf-qq-readiness-detail">{item.detail}</p>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {suggestSiteVisit ? (
-            <p className="qf-qq-readiness-visit" role="note">
-              {QUICK_QUOTE_SITE_VISIT_HINT}
-            </p>
-          ) : null}
+          <div className="qf-qq-readiness-groups">
+            {grouped.map((group) => (
+              <div key={group.category} className="qf-qq-readiness-group">
+                <h3 className="qf-qq-readiness-group-title">{group.label}</h3>
+                <ul className="qf-qq-readiness-list">
+                  {group.items.map((entry) => (
+                    <li key={entry.id} className="qf-qq-readiness-item">
+                      <p className="qf-qq-readiness-label">{entry.traderLabel}</p>
+                      <p className="qf-qq-readiness-detail">{entry.detail}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

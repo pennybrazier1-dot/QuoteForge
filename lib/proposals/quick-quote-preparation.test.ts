@@ -8,21 +8,32 @@ import {
 } from "@/lib/proposals/quick-quote-preparation";
 
 describe("quick quote preparation helpers", () => {
-  it("builds a soft quote readiness list from empty prep fields", () => {
+  it("builds soft readiness warnings from empty prep fields", () => {
     const warnings = getQuickQuoteMissingWarnings({
+      customerName: "",
+      emailAddress: "",
+      phoneNumber: "",
+      propertyAddress: "",
       notes: createEmptyPrepNotes(),
+      jobDescription: "",
+      photoCount: 0,
+      photosNotRequired: false,
+      siteVisitCompleted: false,
       durationValue: "",
       plannedStartDateText: "",
       plannedStartDateExact: "",
+      estimatedPrice: "",
+      paymentTermsSupported: false,
     });
 
-    expect(warnings.map((item) => item.label)).toEqual([
-      "Measurements to confirm",
-      "Materials to confirm",
-      "Access requirements to confirm",
-      "Duration to confirm",
-      "Start date to confirm",
-    ]);
+    expect(warnings.map((item) => item.label)).toEqual(
+      expect.arrayContaining([
+        "Customer contact details to confirm",
+        "Measurements/dimensions to confirm",
+        "Photos/site conditions to confirm",
+        "Start date to confirm",
+      ])
+    );
     expect(
       warnings.every((item) => item.detail.toLowerCase().includes("later"))
     ).toBe(true);
@@ -30,15 +41,25 @@ describe("quick quote preparation helpers", () => {
 
   it("clears readiness items when prep fields are filled", () => {
     const warnings = getQuickQuoteMissingWarnings({
+      customerName: "Alex",
+      emailAddress: "a@example.com",
+      phoneNumber: "",
+      propertyAddress: "1 High Street",
       notes: {
         measurements: "3.2m wall",
         materialsRequired: "Grey tiles",
         accessRequirements: "Side gate only",
-        additionalNotes: "",
+        additionalNotes: "Chose grey",
       },
+      jobDescription: "Bathroom job",
+      photoCount: 0,
+      photosNotRequired: true,
+      siteVisitCompleted: true,
       durationValue: "2",
       plannedStartDateText: "week commencing 18 September",
       plannedStartDateExact: "",
+      estimatedPrice: "950",
+      paymentTermsSupported: false,
     });
 
     expect(warnings).toEqual([]);

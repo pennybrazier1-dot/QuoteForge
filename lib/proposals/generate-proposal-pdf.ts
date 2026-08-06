@@ -4,7 +4,7 @@ import { resolveProposalPricePence } from "@/lib/proposals/money";
 import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import {
-  deriveCustomerNextSteps,
+  deriveCustomerThingsToConfirm,
   stripCustomerFacingLinePrices,
   stripReadinessFromOptionalExtras,
   withoutCustomerNextSteps,
@@ -120,11 +120,18 @@ export function buildProposalPdfData(
     "No optional extras included.";
 
   const structuredConfirm = structured?.thingsToConfirm ?? [];
-  const nextSteps = deriveCustomerNextSteps({
+  const readinessCustomer = deriveCustomerThingsToConfirm({
     thingsToConfirm: structuredConfirm,
     optionalExtrasText: rawOptionalExtras,
   });
-  const thingsToConfirm = withoutCustomerNextSteps(structuredConfirm);
+  const remainingTechnical = withoutCustomerNextSteps(structuredConfirm);
+  const thingsToConfirmBeforeWork = [
+    ...readinessCustomer,
+    ...remainingTechnical,
+  ].filter((value, index, list) => {
+    const key = value.trim().toLowerCase();
+    return key.length > 0 && list.findIndex((entry) => entry.trim().toLowerCase() === key) === index;
+  });
 
   return {
     businessName: resolveCustomerFacingBusinessName(workspace.business_name),
@@ -146,9 +153,7 @@ export function buildProposalPdfData(
     scopeOfWork: structured?.scopeOfWork ?? [],
     materials: stripCustomerFacingLinePrices(structured?.materials ?? []),
     labour: structured?.labour ?? proposal.rough_notes,
-    thingsToConfirm,
-    thingsToConfirmText: proposal.things_to_confirm,
-    nextSteps,
+    thingsToConfirmBeforeWork,
     optionalExtras,
     estimatedPrice: resolveProposalPricePence(
       proposal.total_amount,
@@ -161,7 +166,7 @@ export function buildProposalPdfData(
     estimatedDuration,
     durationNote: buildDurationNote(
       estimatedDuration,
-      thingsToConfirm,
+      remainingTechnical,
       proposal.things_to_confirm
     ),
     paymentTerms:

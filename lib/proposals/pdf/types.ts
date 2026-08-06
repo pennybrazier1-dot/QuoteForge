@@ -14,10 +14,11 @@ export type ProposalPdfData = {
   scopeOfWork: string[];
   materials: string[];
   labour: string | null;
-  thingsToConfirm: string[];
-  thingsToConfirmText: string | null;
-  /** Soft customer-facing readiness — omit section when empty. Never blocks send. */
-  nextSteps: string[];
+  /**
+   * Friendly customer bullets for incomplete readiness items (+ remaining
+   * technical confirms). Omit the PDF section when empty. Never blocks send.
+   */
+  thingsToConfirmBeforeWork: string[];
   optionalExtras: string;
   estimatedPrice: number;
   estimatedDuration: string;

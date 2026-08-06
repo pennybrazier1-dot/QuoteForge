@@ -1,10 +1,17 @@
 import { formatPenceForInput, parsePriceToPence } from "@/lib/proposals/money";
+import {
+  getIncompleteQuoteReadinessItems,
+  type QuoteReadinessInput,
+  type QuoteReadinessItem,
+} from "@/lib/proposals/quote-readiness";
 
 export type QuickQuoteMissingWarning = {
   id: string;
   label: string;
   /** Soft guidance — never blocks generate/save. */
   detail: string;
+  category?: string;
+  categoryLabel?: string;
 };
 
 export type QuickQuotePrepNotes = {
@@ -29,55 +36,20 @@ export function createEmptyPrepNotes(): QuickQuotePrepNotes {
   };
 }
 
-function warning(
-  id: string,
-  label: string
-): QuickQuoteMissingWarning {
-  return {
-    id,
-    label,
-    detail: QUICK_QUOTE_CONFIRM_LATER,
-  };
-}
-
 /**
  * Soft quote-readiness guidance only — never blocks generate/save.
+ * Prefer getIncompleteQuoteReadinessItems for new UI.
  */
-export function getQuickQuoteMissingWarnings(options: {
-  notes: QuickQuotePrepNotes;
-  durationValue: string;
-  plannedStartDateText: string;
-  plannedStartDateExact: string;
-}): QuickQuoteMissingWarning[] {
-  const warnings: QuickQuoteMissingWarning[] = [];
-
-  if (!options.notes.measurements.trim()) {
-    warnings.push(warning("measurements", "Measurements to confirm"));
-  }
-
-  if (!options.notes.materialsRequired.trim()) {
-    warnings.push(warning("materials", "Materials to confirm"));
-  }
-
-  if (!options.notes.accessRequirements.trim()) {
-    warnings.push(
-      warning("access", "Access requirements to confirm")
-    );
-  }
-
-  if (!options.durationValue.trim()) {
-    warnings.push(warning("duration", "Duration to confirm"));
-  }
-
-  const hasStartDate =
-    Boolean(options.plannedStartDateText.trim()) ||
-    Boolean(options.plannedStartDateExact.trim());
-
-  if (!hasStartDate) {
-    warnings.push(warning("start_date", "Start date to confirm"));
-  }
-
-  return warnings;
+export function getQuickQuoteMissingWarnings(
+  input: QuoteReadinessInput
+): QuickQuoteMissingWarning[] {
+  return getIncompleteQuoteReadinessItems(input).map((entry) => ({
+    id: entry.id,
+    label: entry.traderLabel,
+    detail: entry.detail,
+    category: entry.category,
+    categoryLabel: entry.categoryLabel,
+  }));
 }
 
 export function shouldSuggestSiteVisitForMeasurements(
@@ -118,7 +90,7 @@ export function sumQuickQuoteCosts(
 /**
  * Packs preparation notes into optionalExtras for generate/save.
  * Internal £ breakdown is excluded.
- * Readiness / next-steps belong on the PDF Next Steps section — not here.
+ * Readiness / PDF confirms are handled separately.
  */
 export function buildQuickQuoteOptionalExtras(options: {
   notes: QuickQuotePrepNotes;
@@ -144,3 +116,5 @@ export function buildQuickQuoteOptionalExtras(options: {
 
   return parts.join("\n\n");
 }
+
+export type { QuoteReadinessInput, QuoteReadinessItem };

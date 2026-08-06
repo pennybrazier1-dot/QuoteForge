@@ -20,7 +20,10 @@ import { EditableProposalReview } from "@/components/proposals/editable-proposal
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { MobileQuoteCapture } from "@/components/proposals/mobile-quote-capture";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
-import { QuickQuotePreparation } from "@/components/proposals/quick-quote-preparation";
+import {
+  QuickQuotePreparation,
+  type QuickQuoteLocalPhoto,
+} from "@/components/proposals/quick-quote-preparation";
 import { SectionCard } from "@/components/ui/section-card";
 import type { GeneratedProposal } from "@/lib/ai";
 import { logProposalFormMapping } from "@/lib/ai/proposal-debug";
@@ -35,15 +38,15 @@ import {
   type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
 import {
+  buildCustomerThingsToConfirmFromInput,
+  mergeCustomerNextStepsIntoThingsToConfirm,
+} from "@/lib/proposals/pdf/customer-next-steps";
+import {
   buildQuickQuoteOptionalExtras,
   createEmptyPrepNotes,
   sumQuickQuoteCosts,
   type QuickQuotePrepNotes,
 } from "@/lib/proposals/quick-quote-preparation";
-import {
-  buildCustomerNextStepsFromPrep,
-  mergeCustomerNextStepsIntoThingsToConfirm,
-} from "@/lib/proposals/pdf/customer-next-steps";
 
 const saveInitialState: SaveDraftProposalState = {};
 const generateInitialState: GenerateProposalState = {};
@@ -249,10 +252,23 @@ export function NewProposalForm({
   const [prepNotes, setPrepNotes] = useState<QuickQuotePrepNotes>(() =>
     createEmptyPrepNotes()
   );
+  const [localPhotos, setLocalPhotos] = useState<QuickQuoteLocalPhoto[]>([]);
+  const [photosNotRequired, setPhotosNotRequired] = useState(false);
+  const [siteVisitCompleted, setSiteVisitCompleted] = useState(false);
   const [materialsCost, setMaterialsCost] = useState("");
   const [labourCost, setLabourCost] = useState("");
   const [additionalCost, setAdditionalCost] = useState("");
   const [marginCost, setMarginCost] = useState("");
+
+  useEffect(() => {
+    return () => {
+      for (const photo of localPhotos) {
+        URL.revokeObjectURL(photo.previewUrl);
+      }
+    };
+    // Only revoke leftovers on unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const quickQuoteOptionalExtras =
     mode === "create"
@@ -272,10 +288,21 @@ export function NewProposalForm({
     const proposal = generateState.proposal;
     const nextSteps =
       mode === "create"
-        ? buildCustomerNextStepsFromPrep({
+        ? buildCustomerThingsToConfirmFromInput({
+            customerName,
+            emailAddress,
+            phoneNumber,
+            propertyAddress,
             notes: prepNotes,
+            jobDescription,
+            photoCount: localPhotos.length,
+            photosNotRequired,
+            siteVisitCompleted,
+            durationValue,
             plannedStartDateText,
             plannedStartDateExact,
+            estimatedPrice,
+            paymentTermsSupported: false,
           })
         : [];
     const proposalWithNextSteps =
@@ -545,10 +572,20 @@ export function NewProposalForm({
                     value={quickQuoteOptionalExtras}
                   />
                   <QuickQuotePreparation
+                    customerName={customerName}
+                    emailAddress={emailAddress}
+                    phoneNumber={phoneNumber}
+                    propertyAddress={propertyAddress}
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
                     prepNotes={prepNotes}
                     onPrepNotesChange={setPrepNotes}
+                    photos={localPhotos}
+                    onPhotosChange={setLocalPhotos}
+                    photosNotRequired={photosNotRequired}
+                    onPhotosNotRequiredChange={setPhotosNotRequired}
+                    siteVisitCompleted={siteVisitCompleted}
+                    onSiteVisitCompletedChange={setSiteVisitCompleted}
                     durationValue={durationValue}
                     onDurationValueChange={setDurationValue}
                     durationUnit={durationUnit}

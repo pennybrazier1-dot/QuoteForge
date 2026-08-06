@@ -1,159 +1,108 @@
 import {
-  shouldSuggestSiteVisitForMeasurements,
-  type QuickQuoteMissingWarning,
-  type QuickQuotePrepNotes,
-} from "@/lib/proposals/quick-quote-preparation";
+  buildCustomerThingsToConfirm,
+  getIncompleteQuoteReadinessItems,
+  isKnownCustomerThingToConfirm,
+  type QuoteReadinessInput,
+  type QuoteReadinessItem,
+} from "@/lib/proposals/quote-readiness";
+import type { QuickQuotePrepNotes } from "@/lib/proposals/quick-quote-preparation";
 
-/** Customer-friendly readiness wording for proposal PDFs. Soft only — never blocks send. */
-export const CUSTOMER_NEXT_STEP = {
-  measurements: "Measurements to be confirmed",
-  materials: "Materials / specification to be confirmed",
-  siteVisit: "Site visit required",
-  startDate: "Start date to be confirmed",
-} as const;
-
-const CUSTOMER_NEXT_STEP_VALUES = new Set<string>(
-  Object.values(CUSTOMER_NEXT_STEP)
-);
-
-export function buildCustomerNextStepsFromWarnings(options: {
-  missingWarnings: QuickQuoteMissingWarning[];
-  suggestSiteVisit: boolean;
-}): string[] {
-  const ids = new Set(options.missingWarnings.map((item) => item.id));
-  const steps: string[] = [];
-
-  if (ids.has("measurements")) {
-    steps.push(CUSTOMER_NEXT_STEP.measurements);
-  }
-
-  if (ids.has("materials")) {
-    steps.push(CUSTOMER_NEXT_STEP.materials);
-  }
-
-  if (options.suggestSiteVisit || ids.has("measurements")) {
-    steps.push(CUSTOMER_NEXT_STEP.siteVisit);
-  }
-
-  if (ids.has("start_date")) {
-    steps.push(CUSTOMER_NEXT_STEP.startDate);
-  }
-
-  return dedupeSteps(steps);
-}
-
+/** @deprecated Prefer buildCustomerThingsToConfirm — kept for clear call sites. */
 export function buildCustomerNextStepsFromPrep(options: {
   notes: QuickQuotePrepNotes;
   plannedStartDateText: string;
   plannedStartDateExact: string;
+  customerName?: string;
+  emailAddress?: string;
+  phoneNumber?: string;
+  propertyAddress?: string;
+  jobDescription?: string;
+  photoCount?: number;
+  photosNotRequired?: boolean;
+  siteVisitCompleted?: boolean;
+  durationValue?: string;
+  estimatedPrice?: string;
 }): string[] {
-  const missingWarnings: QuickQuoteMissingWarning[] = [];
-
-  if (!options.notes.measurements.trim()) {
-    missingWarnings.push({
-      id: "measurements",
-      label: "Measurements to confirm",
-      detail: "",
-    });
-  }
-
-  if (!options.notes.materialsRequired.trim()) {
-    missingWarnings.push({
-      id: "materials",
-      label: "Materials to confirm",
-      detail: "",
-    });
-  }
-
-  const hasStartDate =
-    Boolean(options.plannedStartDateText.trim()) ||
-    Boolean(options.plannedStartDateExact.trim());
-
-  if (!hasStartDate) {
-    missingWarnings.push({
-      id: "start_date",
-      label: "Start date to confirm",
-      detail: "",
-    });
-  }
-
-  return buildCustomerNextStepsFromWarnings({
-    missingWarnings,
-    suggestSiteVisit: shouldSuggestSiteVisitForMeasurements(options.notes),
+  const incomplete = getIncompleteQuoteReadinessItems({
+    customerName: options.customerName ?? "",
+    emailAddress: options.emailAddress ?? "",
+    phoneNumber: options.phoneNumber ?? "",
+    propertyAddress: options.propertyAddress ?? "",
+    notes: options.notes,
+    jobDescription: options.jobDescription ?? " ",
+    photoCount: options.photoCount ?? 0,
+    photosNotRequired: options.photosNotRequired ?? false,
+    siteVisitCompleted: options.siteVisitCompleted ?? false,
+    durationValue: options.durationValue ?? " ",
+    plannedStartDateText: options.plannedStartDateText,
+    plannedStartDateExact: options.plannedStartDateExact,
+    estimatedPrice: options.estimatedPrice ?? "1",
+    paymentTermsSupported: false,
   });
+
+  return buildCustomerThingsToConfirm(incomplete);
+}
+
+export function buildCustomerThingsToConfirmFromInput(
+  input: QuoteReadinessInput
+): string[] {
+  return buildCustomerThingsToConfirm(getIncompleteQuoteReadinessItems(input));
 }
 
 /**
- * Resolve customer next-steps for a saved proposal.
- * Uses stored customer phrases first, then legacy readiness blurbs in extras.
+ * Resolve customer-facing "Things to confirm before work begins" for a saved proposal.
  */
-export function deriveCustomerNextSteps(options: {
+export function deriveCustomerThingsToConfirm(options: {
   thingsToConfirm: string[];
   optionalExtrasText: string;
 }): string[] {
   const steps: string[] = [];
 
-  for (const item of options.thingsToConfirm) {
-    const trimmed = item.trim();
-    if (CUSTOMER_NEXT_STEP_VALUES.has(trimmed)) {
-      steps.push(trimmed);
+  for (const entry of options.thingsToConfirm) {
+    const trimmed = entry.trim();
+    if (isKnownCustomerThingToConfirm(trimmed)) {
+      steps.push(normalizeCustomerPhrase(trimmed));
     }
   }
 
   const extras = options.optionalExtrasText;
 
   if (/still to confirm later:/i.test(extras)) {
-    if (
-      /measurements/i.test(extras) &&
-      !steps.includes(CUSTOMER_NEXT_STEP.measurements)
-    ) {
-      steps.push(CUSTOMER_NEXT_STEP.measurements);
+    if (/measurements/i.test(extras)) {
+      steps.push("Measurements to be confirmed");
     }
-    if (
-      /materials/i.test(extras) &&
-      !steps.includes(CUSTOMER_NEXT_STEP.materials)
-    ) {
-      steps.push(CUSTOMER_NEXT_STEP.materials);
+    if (/materials/i.test(extras)) {
+      steps.push("Materials / specification to be confirmed");
     }
-    if (
-      /start date/i.test(extras) &&
-      !steps.includes(CUSTOMER_NEXT_STEP.startDate)
-    ) {
-      steps.push(CUSTOMER_NEXT_STEP.startDate);
+    if (/start date/i.test(extras)) {
+      steps.push("Start date to be confirmed");
+    }
+    if (/access/i.test(extras)) {
+      steps.push("Site access to be confirmed");
+    }
+    if (/photo/i.test(extras)) {
+      steps.push("Site photos / conditions to be confirmed");
     }
   }
 
   if (
-    (/consider booking a site visit/i.test(extras) ||
-      steps.includes(CUSTOMER_NEXT_STEP.measurements)) &&
-    !steps.includes(CUSTOMER_NEXT_STEP.siteVisit)
+    (/consider booking a site visit|site visit required|site visit may be needed/i.test(
+      extras
+    ) ||
+      steps.includes("Measurements to be confirmed")) &&
+    !steps.some((step) => /site visit/i.test(step))
   ) {
-    steps.push(CUSTOMER_NEXT_STEP.siteVisit);
-  }
-
-  // Also recognise freestanding customer phrases that may already be stored.
-  for (const phrase of Object.values(CUSTOMER_NEXT_STEP)) {
-    if (
-      extras.toLowerCase().includes(phrase.toLowerCase()) &&
-      !steps.includes(phrase)
-    ) {
-      steps.push(phrase);
-    }
+    steps.push("A site visit may be needed before work begins");
   }
 
   return dedupeSteps(steps);
 }
 
-/**
- * Keep technical "Things to Confirm" free of the dedicated next-steps copy.
- */
+/** Keep technical AI confirms free of readiness / customer PDF copy. */
 export function withoutCustomerNextSteps(items: string[]): string[] {
-  return items.filter((item) => !CUSTOMER_NEXT_STEP_VALUES.has(item.trim()));
+  return items.filter((item) => !isKnownCustomerThingToConfirm(item));
 }
 
-/**
- * Remove readiness blurbs previously packed into optional extras.
- */
 export function stripReadinessFromOptionalExtras(text: string): string {
   return text
     .split(/\n{2,}/)
@@ -166,10 +115,7 @@ export function stripReadinessFromOptionalExtras(text: string): string {
       if (/consider booking a site visit/i.test(block)) {
         return false;
       }
-      if (
-        CUSTOMER_NEXT_STEP_VALUES.has(block) ||
-        /^next steps?:/i.test(block)
-      ) {
+      if (isKnownCustomerThingToConfirm(block) || /^next steps?:/i.test(block)) {
         return false;
       }
       return true;
@@ -177,7 +123,6 @@ export function stripReadinessFromOptionalExtras(text: string): string {
     .join("\n\n");
 }
 
-/** Strip line-item £ amounts so only the final agreed price remains customer-facing. */
 export function stripCustomerFacingLinePrices(items: string[]): string[] {
   return items
     .map((item) =>
@@ -196,16 +141,49 @@ export function mergeCustomerNextStepsIntoThingsToConfirm(
   return dedupeSteps([...nextSteps, ...thingsToConfirm]);
 }
 
+/** @deprecated Use deriveCustomerThingsToConfirm */
+export function deriveCustomerNextSteps(options: {
+  thingsToConfirm: string[];
+  optionalExtrasText: string;
+}): string[] {
+  return deriveCustomerThingsToConfirm(options);
+}
+
+export function readinessItemsToCustomerLabels(
+  items: QuoteReadinessItem[]
+): string[] {
+  return buildCustomerThingsToConfirm(items);
+}
+
+function normalizeCustomerPhrase(value: string): string {
+  const lower = value.trim().toLowerCase();
+  if (lower === "site visit required") {
+    return "A site visit may be needed before work begins";
+  }
+  return value.trim();
+}
+
 function dedupeSteps(steps: string[]): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const step of steps) {
-    const key = step.trim();
-    if (!key || seen.has(key)) {
+    const key = normalizeCustomerPhrase(step);
+    if (!key || seen.has(key.toLowerCase())) {
       continue;
     }
-    seen.add(key);
+    seen.add(key.toLowerCase());
     result.push(key);
   }
   return result;
 }
+
+// Re-export legacy constant name used by older tests/callers during transition.
+export const CUSTOMER_NEXT_STEP = {
+  measurements: "Measurements to be confirmed",
+  materials: "Materials / specification to be confirmed",
+  siteVisit: "A site visit may be needed before work begins",
+  startDate: "Start date to be confirmed",
+  photos: "Site photos / conditions to be confirmed",
+  access: "Site access to be confirmed",
+  choices: "Final choices (for example finishes) to be confirmed",
+} as const;

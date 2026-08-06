@@ -45,15 +45,32 @@ describe("buildProposalPdfData", () => {
     expect(data.businessName).toBe(CUSTOMER_FACING_BUSINESS_NAME_FALLBACK);
   });
 
-  it("moves readiness phrases into next steps and strips material line prices", () => {
+  it("builds friendly things-to-confirm-before-work and strips material line prices", () => {
     const data = buildProposalPdfData(baseProposal, traderWorkspace);
 
-    expect(data.nextSteps).toContain(CUSTOMER_NEXT_STEP.measurements);
-    expect(data.nextSteps).toContain(CUSTOMER_NEXT_STEP.siteVisit);
-    expect(data.thingsToConfirm).toEqual(["Confirm tile colour"]);
+    expect(data.thingsToConfirmBeforeWork).toContain(
+      CUSTOMER_NEXT_STEP.measurements
+    );
+    expect(data.thingsToConfirmBeforeWork).toContain(
+      CUSTOMER_NEXT_STEP.siteVisit
+    );
+    expect(data.thingsToConfirmBeforeWork).toContain("Confirm tile colour");
     expect(data.materials).toEqual(["Grey tiles", "Adhesive"]);
     expect(data.estimatedPrice).toBe(250000);
     expect(JSON.stringify(data)).not.toMatch(/£120/);
+  });
+
+  it("hides the confirm section content when nothing is incomplete", () => {
+    const data = buildProposalPdfData(
+      {
+        ...baseProposal,
+        things_to_confirm_items: [],
+        optional_extras: ["Supply and fit optional heated towel rail."],
+      },
+      traderWorkspace
+    );
+
+    expect(data.thingsToConfirmBeforeWork).toEqual([]);
   });
 
   it("strips legacy readiness blurbs from optional extras", () => {
@@ -72,7 +89,7 @@ describe("buildProposalPdfData", () => {
       traderWorkspace
     );
 
-    expect(data.nextSteps).toEqual(
+    expect(data.thingsToConfirmBeforeWork).toEqual(
       expect.arrayContaining([
         CUSTOMER_NEXT_STEP.materials,
         CUSTOMER_NEXT_STEP.startDate,
