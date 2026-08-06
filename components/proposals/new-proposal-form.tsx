@@ -36,9 +36,10 @@ import {
 } from "@/lib/proposals/proposal-form-helpers";
 import {
   buildQuickQuoteOptionalExtras,
-  createEmptyConfirmState,
+  createEmptyPrepNotes,
+  getQuickQuoteMissingWarnings,
   sumQuickQuoteCosts,
-  type QuickQuoteConfirmState,
+  type QuickQuotePrepNotes,
 } from "@/lib/proposals/quick-quote-preparation";
 
 const saveInitialState: SaveDraftProposalState = {};
@@ -64,15 +65,15 @@ const HOW_IT_WORKS_STEPS = [
   },
   {
     title: "Prepare the quote",
-    description: "Job notes, checklist, and your pricing.",
+    description: "Job notes, reminders, and your internal costing.",
   },
   {
-    title: "Generate proposal",
-    description: "Turn your prep into a clear proposal to review.",
+    title: "Set the customer price",
+    description: "One final price for the proposal — not your cost breakdown.",
   },
   {
-    title: "Review and send",
-    description: "Check the draft, then save or email the customer.",
+    title: "Generate and send",
+    description: "Review the draft, then save or email the customer.",
   },
 ] as const;
 
@@ -242,24 +243,24 @@ export function NewProposalForm({
   const [plannedStartDateExact, setPlannedStartDateExact] = useState(
     initialValues?.plannedStartDateExact ?? ""
   );
-  const [quoteNotes, setQuoteNotes] = useState(
-    mode === "create" ? "" : (initialValues?.optionalExtras ?? "")
-  );
-  const [confirmChecks, setConfirmChecks] = useState<QuickQuoteConfirmState>(
-    () => createEmptyConfirmState()
+  const [prepNotes, setPrepNotes] = useState<QuickQuotePrepNotes>(() =>
+    createEmptyPrepNotes()
   );
   const [materialsCost, setMaterialsCost] = useState("");
   const [labourCost, setLabourCost] = useState("");
   const [additionalCost, setAdditionalCost] = useState("");
+  const [marginCost, setMarginCost] = useState("");
 
   const quickQuoteOptionalExtras =
     mode === "create"
       ? buildQuickQuoteOptionalExtras({
-          notes: quoteNotes,
-          confirmed: confirmChecks,
-          materials: materialsCost,
-          labour: labourCost,
-          additional: additionalCost,
+          notes: prepNotes,
+          missingWarnings: getQuickQuoteMissingWarnings({
+            notes: prepNotes,
+            durationValue,
+            plannedStartDateText,
+            plannedStartDateExact,
+          }),
         })
       : optionalExtras;
 
@@ -531,8 +532,8 @@ export function NewProposalForm({
                   <QuickQuotePreparation
                     jobDescription={jobDescription}
                     onJobDescriptionChange={setJobDescription}
-                    quoteNotes={quoteNotes}
-                    onQuoteNotesChange={setQuoteNotes}
+                    prepNotes={prepNotes}
+                    onPrepNotesChange={setPrepNotes}
                     durationValue={durationValue}
                     onDurationValueChange={setDurationValue}
                     durationUnit={durationUnit}
@@ -558,22 +559,23 @@ export function NewProposalForm({
                         });
                       }
                     }}
-                    confirmed={confirmChecks}
-                    onConfirmedChange={setConfirmChecks}
                     materialsCost={materialsCost}
                     onMaterialsCostChange={setMaterialsCost}
                     labourCost={labourCost}
                     onLabourCostChange={setLabourCost}
                     additionalCost={additionalCost}
                     onAdditionalCostChange={setAdditionalCost}
-                    totalCost={estimatedPrice}
-                    onTotalCostChange={setEstimatedPrice}
-                    onAddUpCosts={() =>
+                    marginCost={marginCost}
+                    onMarginCostChange={setMarginCost}
+                    customerTotal={estimatedPrice}
+                    onCustomerTotalChange={setEstimatedPrice}
+                    onSuggestCustomerTotal={() =>
                       setEstimatedPrice(
                         sumQuickQuoteCosts(
                           materialsCost,
                           labourCost,
-                          additionalCost
+                          additionalCost,
+                          marginCost
                         )
                       )
                     }
@@ -801,7 +803,7 @@ export function NewProposalForm({
                     </svg>
                     {desktopProposal
                       ? "Use Save as Draft or Mark Ready to Send above after reviewing the quote."
-                      : "Prepare the checklist and pricing, then generate a proposal — or save a draft first."}
+                      : "Prepare the job notes and set the customer price, then generate — or save a draft first."}
                   </p>
                 </div>
               </SectionCard>

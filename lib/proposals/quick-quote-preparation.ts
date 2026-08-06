@@ -1,44 +1,99 @@
 import { formatPenceForInput, parsePriceToPence } from "@/lib/proposals/money";
 
-export type QuickQuoteConfirmItem = {
+export type QuickQuoteMissingWarning = {
   id: string;
   label: string;
+  /** Soft guidance — never blocks generate/save. */
+  detail: string;
 };
 
-/** Manual checklist — traders tick items they have covered. Not an enquiry form. */
-export const QUICK_QUOTE_CONFIRM_ITEMS: QuickQuoteConfirmItem[] = [
-  { id: "measurements", label: "Measurements" },
-  { id: "materials", label: "Materials / specification" },
-  { id: "labour", label: "Labour estimate" },
-  { id: "duration", label: "Duration" },
-  { id: "start_date", label: "Start date" },
-  { id: "access", label: "Access requirements" },
-  { id: "expectations", label: "Customer expectations" },
-];
+export type QuickQuotePrepNotes = {
+  measurements: string;
+  materialsRequired: string;
+  accessRequirements: string;
+  additionalNotes: string;
+};
 
-export type QuickQuoteConfirmState = Record<string, boolean>;
+export const QUICK_QUOTE_CONFIRM_LATER =
+  "You can confirm this later — it does not block creating or sending the quote.";
 
-export function createEmptyConfirmState(): QuickQuoteConfirmState {
-  return Object.fromEntries(
-    QUICK_QUOTE_CONFIRM_ITEMS.map((item) => [item.id, false])
-  );
+export const QUICK_QUOTE_SITE_VISIT_HINT =
+  "Consider booking a site visit to confirm measurements.";
+
+export function createEmptyPrepNotes(): QuickQuotePrepNotes {
+  return {
+    measurements: "",
+    materialsRequired: "",
+    accessRequirements: "",
+    additionalNotes: "",
+  };
 }
 
-/** Labels the trader has not yet ticked — useful context for the proposal draft. */
-export function getUnconfirmedLabels(
-  confirmed: QuickQuoteConfirmState
-): string[] {
-  return QUICK_QUOTE_CONFIRM_ITEMS.filter((item) => !confirmed[item.id]).map(
-    (item) => item.label
-  );
+function warning(
+  id: string,
+  label: string
+): QuickQuoteMissingWarning {
+  return {
+    id,
+    label,
+    detail: QUICK_QUOTE_CONFIRM_LATER,
+  };
 }
 
+/**
+ * Soft quote-readiness guidance only — never blocks generate/save.
+ */
+export function getQuickQuoteMissingWarnings(options: {
+  notes: QuickQuotePrepNotes;
+  durationValue: string;
+  plannedStartDateText: string;
+  plannedStartDateExact: string;
+}): QuickQuoteMissingWarning[] {
+  const warnings: QuickQuoteMissingWarning[] = [];
+
+  if (!options.notes.measurements.trim()) {
+    warnings.push(warning("measurements", "Measurements to confirm"));
+  }
+
+  if (!options.notes.materialsRequired.trim()) {
+    warnings.push(warning("materials", "Materials to confirm"));
+  }
+
+  if (!options.notes.accessRequirements.trim()) {
+    warnings.push(
+      warning("access", "Access requirements to confirm")
+    );
+  }
+
+  if (!options.durationValue.trim()) {
+    warnings.push(warning("duration", "Duration to confirm"));
+  }
+
+  const hasStartDate =
+    Boolean(options.plannedStartDateText.trim()) ||
+    Boolean(options.plannedStartDateExact.trim());
+
+  if (!hasStartDate) {
+    warnings.push(warning("start_date", "Start date to confirm"));
+  }
+
+  return warnings;
+}
+
+export function shouldSuggestSiteVisitForMeasurements(
+  notes: QuickQuotePrepNotes
+): boolean {
+  return !notes.measurements.trim();
+}
+
+/** Internal cost build-up (trader only). Does not invent prices. */
 export function sumQuickQuoteCosts(
   materials: string,
   labour: string,
-  additional: string
+  additional: string,
+  margin: string = ""
 ): string {
-  const amounts = [materials, labour, additional].map((value) =>
+  const amounts = [materials, labour, additional, margin].map((value) =>
     parsePriceToPence(value)
   );
 
@@ -46,7 +101,7 @@ export function sumQuickQuoteCosts(
     return "";
   }
 
-  const hasAny = [materials, labour, additional].some((value) =>
+  const hasAny = [materials, labour, additional, margin].some((value) =>
     value.trim()
   );
   if (!hasAny) {
@@ -61,39 +116,43 @@ export function sumQuickQuoteCosts(
 }
 
 /**
- * Packs prep notes + open checklist items into the existing optionalExtras
- * field used by generate/save — no new DB columns.
+ * Packs preparation notes into optionalExtras for generate/save.
+ * Internal £ breakdown is excluded so customer proposals stay on the
+ * single agreed price (estimatedPrice).
  */
 export function buildQuickQuoteOptionalExtras(options: {
-  notes: string;
-  confirmed: QuickQuoteConfirmState;
-  materials: string;
-  labour: string;
-  additional: string;
+  notes: QuickQuotePrepNotes;
+  missingWarnings: QuickQuoteMissingWarning[];
 }): string {
   const parts: string[] = [];
-  const notes = options.notes.trim();
-  if (notes) {
-    parts.push(notes);
+  const { notes } = options;
+
+  if (notes.measurements.trim()) {
+    parts.push(`Measurements / dimensions:\n${notes.measurements.trim()}`);
   }
 
-  const open = getUnconfirmedLabels(options.confirmed);
-  if (open.length > 0) {
-    parts.push(`Still to confirm: ${open.join("; ")}.`);
+  if (notes.materialsRequired.trim()) {
+    parts.push(`Materials required:\n${notes.materialsRequired.trim()}`);
   }
 
-  const pricingBits = [
-    options.materials.trim()
-      ? `Materials: £${options.materials.trim()}`
-      : null,
-    options.labour.trim() ? `Labour: £${options.labour.trim()}` : null,
-    options.additional.trim()
-      ? `Additional: £${options.additional.trim()}`
-      : null,
-  ].filter(Boolean);
+  if (notes.accessRequirements.trim()) {
+    parts.push(`Access requirements:\n${notes.accessRequirements.trim()}`);
+  }
 
-  if (pricingBits.length > 0) {
-    parts.push(`Pricing notes — ${pricingBits.join("; ")}.`);
+  if (notes.additionalNotes.trim()) {
+    parts.push(`Additional notes:\n${notes.additionalNotes.trim()}`);
+  }
+
+  if (options.missingWarnings.length > 0) {
+    parts.push(
+      `Still to confirm later: ${options.missingWarnings
+        .map((item) => item.label)
+        .join("; ")}.`
+    );
+  }
+
+  if (shouldSuggestSiteVisitForMeasurements(notes)) {
+    parts.push(QUICK_QUOTE_SITE_VISIT_HINT);
   }
 
   return parts.join("\n\n");

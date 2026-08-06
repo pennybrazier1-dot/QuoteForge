@@ -3634,6 +3634,90 @@ a.qf-card-inset:hover {
   font-size: 0.8125rem;
 }
 
+.qf-qq-missing {
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(255, 106, 26, 0.08);
+  padding: 1rem 1.15rem;
+}
+
+.qf-qq-missing-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.qf-qq-missing-copy {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-qq-missing-list {
+  margin: 0.75rem 0 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.qf-qq-readiness {
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(255, 106, 26, 0.08);
+  padding: 1rem 1.15rem;
+}
+
+.qf-qq-readiness-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.qf-qq-readiness-copy {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-qq-readiness-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qf-qq-readiness-item {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.65rem;
+  background: rgba(0, 0, 0, 0.16);
+  padding: 0.7rem 0.85rem;
+}
+
+.qf-qq-readiness-label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.qf-qq-readiness-detail {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.qf-qq-readiness-visit {
+  margin: 0.85rem 0 0;
+  border-left: 3px solid var(--accent);
+  padding-left: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
 @media (min-width: 640px) {
   .qf-qq-confirm-list {
     grid-template-columns: 1fr 1fr;

@@ -3,18 +3,61 @@
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
 import {
-  QUICK_QUOTE_CONFIRM_ITEMS,
-  type QuickQuoteConfirmState,
+  getQuickQuoteMissingWarnings,
+  QUICK_QUOTE_SITE_VISIT_HINT,
+  shouldSuggestSiteVisitForMeasurements,
+  type QuickQuotePrepNotes,
 } from "@/lib/proposals/quick-quote-preparation";
 import {
   DURATION_UNITS,
   type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
 
-function SectionHeading({ title }: { title: string }) {
+function SectionHeading({
+  title,
+  hint,
+}: {
+  title: string;
+  hint?: string;
+}) {
   return (
     <div className="qf-qq-prep-head">
-      <h2 className="qf-card-heading">{title}</h2>
+      <div>
+        <h2 className="qf-card-heading">{title}</h2>
+        {hint ? <p className="qf-body-text mt-1 text-muted">{hint}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function NoteField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 3,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="qf-field-label">
+        {label}
+      </label>
+      <textarea
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        rows={rows}
+        placeholder={placeholder}
+        className="form-textarea mt-2"
+      />
     </div>
   );
 }
@@ -26,6 +69,7 @@ function MoneyField({
   value,
   onChange,
   placeholder,
+  helper,
 }: {
   id: string;
   name?: string;
@@ -33,6 +77,7 @@ function MoneyField({
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  helper?: string;
 }) {
   return (
     <div>
@@ -54,6 +99,7 @@ function MoneyField({
           className="form-input"
         />
       </div>
+      {helper ? <p className="mt-2 text-xs text-muted">{helper}</p> : null}
     </div>
   );
 }
@@ -61,8 +107,8 @@ function MoneyField({
 export function QuickQuotePreparation({
   jobDescription,
   onJobDescriptionChange,
-  quoteNotes,
-  onQuoteNotesChange,
+  prepNotes,
+  onPrepNotesChange,
   durationValue,
   onDurationValueChange,
   durationUnit,
@@ -72,23 +118,23 @@ export function QuickQuotePreparation({
   onPlannedStartDateTextChange,
   plannedStartDateExact,
   onPlannedStartDateExactChange,
-  confirmed,
-  onConfirmedChange,
   materialsCost,
   onMaterialsCostChange,
   labourCost,
   onLabourCostChange,
   additionalCost,
   onAdditionalCostChange,
-  totalCost,
-  onTotalCostChange,
-  onAddUpCosts,
+  marginCost,
+  onMarginCostChange,
+  customerTotal,
+  onCustomerTotalChange,
+  onSuggestCustomerTotal,
   jobDescriptionMaxLength,
 }: {
   jobDescription: string;
   onJobDescriptionChange: (value: string) => void;
-  quoteNotes: string;
-  onQuoteNotesChange: (value: string) => void;
+  prepNotes: QuickQuotePrepNotes;
+  onPrepNotesChange: (next: QuickQuotePrepNotes) => void;
   durationValue: string;
   onDurationValueChange: (value: string) => void;
   durationUnit: DurationUnit;
@@ -98,59 +144,100 @@ export function QuickQuotePreparation({
   onPlannedStartDateTextChange: (value: string) => void;
   plannedStartDateExact: string;
   onPlannedStartDateExactChange: (value: string) => void;
-  confirmed: QuickQuoteConfirmState;
-  onConfirmedChange: (next: QuickQuoteConfirmState) => void;
   materialsCost: string;
   onMaterialsCostChange: (value: string) => void;
   labourCost: string;
   onLabourCostChange: (value: string) => void;
   additionalCost: string;
   onAdditionalCostChange: (value: string) => void;
-  totalCost: string;
-  onTotalCostChange: (value: string) => void;
-  onAddUpCosts: () => void;
+  marginCost: string;
+  onMarginCostChange: (value: string) => void;
+  customerTotal: string;
+  onCustomerTotalChange: (value: string) => void;
+  onSuggestCustomerTotal: () => void;
   jobDescriptionMaxLength: number;
 }) {
+  const missingWarnings = getQuickQuoteMissingWarnings({
+    notes: prepNotes,
+    durationValue,
+    plannedStartDateText,
+    plannedStartDateExact,
+  });
+  const suggestSiteVisit = shouldSuggestSiteVisitForMeasurements(prepNotes);
+
+  function updateNote<K extends keyof QuickQuotePrepNotes>(
+    key: K,
+    value: QuickQuotePrepNotes[K]
+  ) {
+    onPrepNotesChange({ ...prepNotes, [key]: value });
+  }
+
   return (
     <div className="qf-qq-prep">
       <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading title="Quote details" />
-        <p className="qf-body-text mt-2 text-muted">
-          Capture the job in your own words, then add duration and any notes
-          before generating the proposal.
-        </p>
-
-        <div className="mt-5 space-y-5">
-          <div>
-            <label htmlFor="jobDescription" className="qf-field-label">
-              Job description
-            </label>
-            <p className="qf-body-text mt-1 text-muted">
-              Write freely — materials, measurements, access, and what the
-              customer wants.
+        <SectionHeading
+          title="Job description"
+          hint="Write the job as you heard it — then fill preparation notes below."
+        />
+        <div className="mt-5">
+          <div className="qf-textarea-wrap">
+            <textarea
+              id="jobDescription"
+              name="jobDescription"
+              value={jobDescription}
+              onChange={(event) =>
+                onJobDescriptionChange(
+                  event.target.value.slice(0, jobDescriptionMaxLength)
+                )
+              }
+              rows={12}
+              required
+              maxLength={jobDescriptionMaxLength}
+              placeholder="Replace bathroom suite, move pipes, customer wants grey tiles, measurements…"
+              className="form-textarea qf-site-notes-textarea"
+            />
+            <p className="qf-char-count" aria-live="polite">
+              {jobDescription.length.toLocaleString()} /{" "}
+              {jobDescriptionMaxLength.toLocaleString()}
             </p>
-            <div className="qf-textarea-wrap mt-3">
-              <textarea
-                id="jobDescription"
-                name="jobDescription"
-                value={jobDescription}
-                onChange={(event) =>
-                  onJobDescriptionChange(
-                    event.target.value.slice(0, jobDescriptionMaxLength)
-                  )
-                }
-                rows={12}
-                required
-                maxLength={jobDescriptionMaxLength}
-                placeholder="Replace bathroom suite, move pipes, customer wants grey tiles, measurements…"
-                className="form-textarea qf-site-notes-textarea"
-              />
-              <p className="qf-char-count" aria-live="polite">
-                {jobDescription.length.toLocaleString()} /{" "}
-                {jobDescriptionMaxLength.toLocaleString()}
-              </p>
-            </div>
           </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="qf-card-form qf-qq-prep-card">
+        <SectionHeading
+          title="Preparation notes"
+          hint="Natural job capture — fill what you know. Nothing is required."
+        />
+        <div className="mt-5 space-y-5">
+          <NoteField
+            id="prepMeasurements"
+            label="Measurements / dimensions"
+            value={prepNotes.measurements}
+            onChange={(value) => updateNote("measurements", value)}
+            placeholder="e.g. Bathroom 2.1m × 1.8m, toilet waste through external wall…"
+          />
+          <NoteField
+            id="prepMaterials"
+            label="Materials required"
+            value={prepNotes.materialsRequired}
+            onChange={(value) => updateNote("materialsRequired", value)}
+            placeholder="e.g. Close-coupled suite, grey wall tiles, flexi wastes…"
+          />
+          <NoteField
+            id="prepAccess"
+            label="Access requirements"
+            value={prepNotes.accessRequirements}
+            onChange={(value) => updateNote("accessRequirements", value)}
+            placeholder="e.g. Side gate, park on road, no scaffolding needed…"
+          />
+          <NoteField
+            id="prepAdditional"
+            label="Additional notes"
+            value={prepNotes.additionalNotes}
+            onChange={(value) => updateNote("additionalNotes", value)}
+            placeholder="Anything else before you quote…"
+          />
 
           <div>
             <label htmlFor="durationValue" className="qf-field-label">
@@ -195,67 +282,56 @@ export function QuickQuotePreparation({
             onTextChange={onPlannedStartDateTextChange}
             onExactChange={onPlannedStartDateExactChange}
           />
-
-          <div>
-            <label htmlFor="quoteNotes" className="qf-field-label">
-              Notes
-            </label>
-            <textarea
-              id="quoteNotes"
-              value={quoteNotes}
-              onChange={(event) => onQuoteNotesChange(event.target.value)}
-              rows={4}
-              placeholder="Anything else to remember before quoting…"
-              className="form-textarea mt-2"
-            />
-          </div>
         </div>
       </SectionCard>
 
-      <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading title="Things to confirm" />
-        <p className="qf-body-text mt-2 text-muted">
-          Tick what you have already covered. Unticked items stay on your list
-          when you generate the proposal.
-        </p>
-        <ul className="qf-qq-confirm-list mt-4">
-          {QUICK_QUOTE_CONFIRM_ITEMS.map((item) => (
-            <li key={item.id}>
-              <label className="qf-qq-confirm-item">
-                <input
-                  type="checkbox"
-                  checked={Boolean(confirmed[item.id])}
-                  onChange={(event) =>
-                    onConfirmedChange({
-                      ...confirmed,
-                      [item.id]: event.target.checked,
-                    })
-                  }
-                />
-                <span>{item.label}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </SectionCard>
+      {missingWarnings.length > 0 || suggestSiteVisit ? (
+        <section
+          className="qf-qq-readiness"
+          aria-live="polite"
+          aria-label="Quote readiness"
+        >
+          <h2 className="qf-qq-readiness-title">Quote readiness</h2>
+          <p className="qf-qq-readiness-copy">
+            Optional prep check — nothing here blocks creating or sending the
+            quote.
+          </p>
+
+          {missingWarnings.length > 0 ? (
+            <ul className="qf-qq-readiness-list">
+              {missingWarnings.map((item) => (
+                <li key={item.id} className="qf-qq-readiness-item">
+                  <p className="qf-qq-readiness-label">{item.label}</p>
+                  <p className="qf-qq-readiness-detail">{item.detail}</p>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {suggestSiteVisit ? (
+            <p className="qf-qq-readiness-visit" role="note">
+              {QUICK_QUOTE_SITE_VISIT_HINT}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading title="Pricing" />
-        <p className="qf-body-text mt-2 text-muted">
-          Enter amounts yourself — Reanvil does not invent prices. Use Add up
-          if you want the total from the three fields above.
-        </p>
+        <SectionHeading
+          title="Internal quote breakdown"
+          hint="For your costing only — not shown as line items on the customer proposal."
+        />
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <MoneyField
             id="materialsCost"
-            label="Materials"
+            label="Materials cost"
             value={materialsCost}
             onChange={onMaterialsCostChange}
             placeholder="e.g. 320"
           />
           <MoneyField
             id="labourCost"
-            label="Labour"
+            label="Labour cost"
             value={labourCost}
             onChange={onLabourCostChange}
             placeholder="e.g. 480"
@@ -267,23 +343,38 @@ export function QuickQuotePreparation({
             onChange={onAdditionalCostChange}
             placeholder="e.g. 40"
           />
-          <div>
-            <MoneyField
-              id="estimatedPrice"
-              name="estimatedPrice"
-              label="Total"
-              value={totalCost}
-              onChange={onTotalCostChange}
-              placeholder="e.g. 840"
-            />
-            <button
-              type="button"
-              className="qf-btn-secondary qf-qq-add-up mt-3"
-              onClick={onAddUpCosts}
-            >
-              Add up materials + labour + additional
-            </button>
-          </div>
+          <MoneyField
+            id="marginCost"
+            label="Profit / margin"
+            value={marginCost}
+            onChange={onMarginCostChange}
+            placeholder="e.g. 100"
+            helper="Your mark-up or contingency — stays internal."
+          />
+        </div>
+      </SectionCard>
+
+      <SectionCard className="qf-card-form qf-qq-prep-card">
+        <SectionHeading
+          title="Customer proposal price"
+          hint="This is the agreed/final price customers see on the proposal."
+        />
+        <div className="mt-5 max-w-sm space-y-3">
+          <MoneyField
+            id="estimatedPrice"
+            name="estimatedPrice"
+            label="Final price for customer"
+            value={customerTotal}
+            onChange={onCustomerTotalChange}
+            placeholder="e.g. 940"
+          />
+          <button
+            type="button"
+            className="qf-btn-secondary qf-qq-add-up"
+            onClick={onSuggestCustomerTotal}
+          >
+            Use internal total as customer price
+          </button>
         </div>
       </SectionCard>
     </div>
