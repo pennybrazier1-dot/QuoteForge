@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import type { SidebarDraftItem } from "@/components/layout/app-sidebar";
+import { ensurePlatformAdminBootstrap } from "@/lib/admin/ensure-platform-admin-bootstrap";
 import {
   isPlatformAdmin,
+  isPlatformAdminAllowlisted,
   resolveAuthEmail,
 } from "@/lib/admin/platform-admin";
 import { userHasProfile } from "@/lib/onboarding/status";
@@ -18,7 +20,20 @@ export async function loadAppShellContext() {
     redirect("/login");
   }
 
+  const email = resolveAuthEmail(user);
+  const viewingTraderAsAdmin = isPlatformAdminAllowlisted(email);
+
+  // Ensure the platform admin testing workspace/profile exists before the
+  // trader shell requires a profile (same session — no re-login).
+  if (viewingTraderAsAdmin) {
+    await ensurePlatformAdminBootstrap(supabase, user);
+  }
+
   if (!(await userHasProfile(user.id))) {
+    // Allowlisted admins should never be pushed into trader onboarding.
+    if (viewingTraderAsAdmin) {
+      redirect("/admin");
+    }
     redirect("/onboarding");
   }
 
@@ -45,12 +60,11 @@ export async function loadAppShellContext() {
     status: draft.status,
   }));
 
-  const email = resolveAuthEmail(user);
-
   return {
     fullName: profile?.full_name ?? null,
     email,
     platformAdmin: isPlatformAdmin(email),
+    viewingTraderAsAdmin,
     recentDrafts,
   };
 }

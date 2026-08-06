@@ -2819,6 +2819,38 @@ a.qf-card-inset:hover {
   padding-inline: 1.25rem;
 }
 
+.qf-admin-trader-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.12);
+  padding: 0.625rem 1.25rem;
+}
+
+.qf-admin-trader-banner-text {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--foreground);
+}
+
+.qf-admin-trader-banner-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.qf-admin-trader-banner-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
 .qf-admin-frame {
   display: flex;
   flex-direction: column;

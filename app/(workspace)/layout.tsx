@@ -8,8 +8,13 @@ export default async function WorkspaceLayout({
 }: {
   children: ReactNode;
 }) {
-  const { fullName, email, recentDrafts, platformAdmin } =
-    await loadAppShellContext();
+  const {
+    fullName,
+    email,
+    recentDrafts,
+    platformAdmin,
+    viewingTraderAsAdmin,
+  } = await loadAppShellContext();
 
   return (
     <AppShell
@@ -17,6 +22,7 @@ export default async function WorkspaceLayout({
       email={email}
       recentDrafts={recentDrafts}
       adminNavEnabled={platformAdmin}
+      viewingTraderAsAdmin={viewingTraderAsAdmin}
     >
       {children}
     </AppShell>

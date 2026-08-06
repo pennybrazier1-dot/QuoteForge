@@ -5,6 +5,7 @@ import {
 } from "@/components/layout/app-sidebar";
 import { AppBottomNav } from "@/components/layout/app-bottom-nav";
 import { AppTopNav } from "@/components/layout/app-top-nav";
+import { AdminTraderViewBanner } from "@/components/layout/admin-trader-view-banner";
 import {
   WorkspaceScrollEnd,
   WorkspaceScrollSync,
@@ -15,16 +16,19 @@ export function AppShell({
   email,
   recentDrafts,
   adminNavEnabled = false,
+  viewingTraderAsAdmin = false,
   children,
 }: {
   fullName: string | null;
   email: string | null;
   recentDrafts: SidebarDraftItem[];
   adminNavEnabled?: boolean;
+  viewingTraderAsAdmin?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="qf-app" data-qf-theme="dark">
+      {viewingTraderAsAdmin ? <AdminTraderViewBanner /> : null}
       <AppTopNav fullName={fullName} email={email} />
 
       <div className="qf-app-frame">

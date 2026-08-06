@@ -50,8 +50,8 @@ function resolveBootstrapClient(
 }
 
 /**
- * For PLATFORM_ADMIN_EMAILS only: ensure workspace + profile exist so the
- * admin can skip trader onboarding and use /admin.
+ * For PLATFORM_ADMIN_EMAILS only: ensure an admin testing workspace + profile
+ * exist so the admin can use /admin and "View as trader" without onboarding.
  *
  * Prefers the service-role client so RLS cannot block bootstrap.
  */
@@ -83,7 +83,7 @@ export async function ensurePlatformAdminBootstrap(
       .from("workspaces")
       .insert({
         owner_id: user.id,
-        business_name: "Reanvil Platform Admin",
+        business_name: "Reanvil Admin Testing",
         contact_email: email,
         phone: null,
         trade_type: "Other",
