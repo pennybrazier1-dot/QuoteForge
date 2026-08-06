@@ -144,6 +144,8 @@ For v1, each founding user creates one workspace. Later, multiple profiles (peop
 - `workspaces_owner_id_unique_idx` — one founding workspace per auth user in v1.
 - `owner_id` uses `on delete restrict` so business data is not silently removed if an auth user is deleted.
 
+**Admin cleanup (Phase 29):** call `public.admin_delete_user(target_user_id, confirm_email)` via the service role (or `adminDeleteUser` in `app/admin/actions.ts`). It deletes the owned workspace tree explicitly, then deletes `auth.users`. It does **not** change `ON DELETE RESTRICT`.
+
 ---
 
 ## 2. Profiles
