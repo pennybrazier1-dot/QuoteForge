@@ -20,6 +20,7 @@ import { EditableProposalReview } from "@/components/proposals/editable-proposal
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { MobileQuoteCapture } from "@/components/proposals/mobile-quote-capture";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
+import { QuickQuotePreparation } from "@/components/proposals/quick-quote-preparation";
 import { SectionCard } from "@/components/ui/section-card";
 import type { GeneratedProposal } from "@/lib/ai";
 import { logProposalFormMapping } from "@/lib/ai/proposal-debug";
@@ -33,6 +34,12 @@ import {
   splitDuration,
   type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
+import {
+  buildQuickQuoteOptionalExtras,
+  createEmptyConfirmState,
+  sumQuickQuoteCosts,
+  type QuickQuoteConfirmState,
+} from "@/lib/proposals/quick-quote-preparation";
 
 const saveInitialState: SaveDraftProposalState = {};
 const generateInitialState: GenerateProposalState = {};
@@ -42,7 +49,7 @@ const SITE_NOTES_MAX = 4000;
 const OPTIONAL_EXTRAS_MAX = 1000;
 
 const JOB_DESCRIPTION_HELPER =
-  "Describe the job in your own words — same as you would after a call or visit. Include materials, measurements, access notes, timing, and anything the customer asked for.";
+  "Describe the job in your own words — same as you would after a call or visit. Include materials, measurements, access notes, and what the customer asked for.";
 
 const JOB_DESCRIPTION_PLACEHOLDER =
   "Replace bathroom suite, move pipes, customer wants grey tiles, measurements…";
@@ -56,12 +63,12 @@ const HOW_IT_WORKS_STEPS = [
     description: "Name, email, phone, and address.",
   },
   {
-    title: "Describe the job",
-    description: "Write free-text notes — no forms to work through.",
+    title: "Prepare the quote",
+    description: "Job notes, checklist, and your pricing.",
   },
   {
     title: "Generate proposal",
-    description: "Turn your notes into a clear quote to price and send.",
+    description: "Turn your prep into a clear proposal to review.",
   },
   {
     title: "Review and send",
@@ -235,6 +242,26 @@ export function NewProposalForm({
   const [plannedStartDateExact, setPlannedStartDateExact] = useState(
     initialValues?.plannedStartDateExact ?? ""
   );
+  const [quoteNotes, setQuoteNotes] = useState(
+    mode === "create" ? "" : (initialValues?.optionalExtras ?? "")
+  );
+  const [confirmChecks, setConfirmChecks] = useState<QuickQuoteConfirmState>(
+    () => createEmptyConfirmState()
+  );
+  const [materialsCost, setMaterialsCost] = useState("");
+  const [labourCost, setLabourCost] = useState("");
+  const [additionalCost, setAdditionalCost] = useState("");
+
+  const quickQuoteOptionalExtras =
+    mode === "create"
+      ? buildQuickQuoteOptionalExtras({
+          notes: quoteNotes,
+          confirmed: confirmChecks,
+          materials: materialsCost,
+          labour: labourCost,
+          additional: additionalCost,
+        })
+      : optionalExtras;
 
   const [lastSyncedProposal, setLastSyncedProposal] = useState(
     generateState.proposal ?? null
@@ -339,7 +366,7 @@ export function NewProposalForm({
         : "Update the customer details, job notes, or estimate. Your changes are saved when you tap Save Draft."
       : showMobileReview
         ? "Review and edit the organised quote before saving."
-        : "For quotes after a call, visit, WhatsApp, referral, or meeting. Customer enquiries from your public link appear under Enquiries.";
+        : "For quotes after a call, visit, WhatsApp, referral, or meeting. Prepare checklist and pricing, then generate a proposal. Public-link enquiries stay under Enquiries.";
   const saveLabel =
     mode === "edit" && proposalStatus === "ready_to_send"
       ? "Save Changes"
@@ -494,6 +521,67 @@ export function NewProposalForm({
                 </div>
               </SectionCard>
 
+              {mode === "create" ? (
+                <>
+                  <input
+                    type="hidden"
+                    name="optionalExtras"
+                    value={quickQuoteOptionalExtras}
+                  />
+                  <QuickQuotePreparation
+                    jobDescription={jobDescription}
+                    onJobDescriptionChange={setJobDescription}
+                    quoteNotes={quoteNotes}
+                    onQuoteNotesChange={setQuoteNotes}
+                    durationValue={durationValue}
+                    onDurationValueChange={setDurationValue}
+                    durationUnit={durationUnit}
+                    onDurationUnitChange={setDurationUnit}
+                    estimatedDuration={estimatedDuration}
+                    plannedStartDateText={plannedStartDateText}
+                    onPlannedStartDateTextChange={(value) => {
+                      setPlannedStartDateText(value);
+                      if (reviewProposal) {
+                        setReviewProposal({
+                          ...reviewProposal,
+                          plannedStartDate: value,
+                        });
+                      }
+                    }}
+                    plannedStartDateExact={plannedStartDateExact}
+                    onPlannedStartDateExactChange={(value) => {
+                      setPlannedStartDateExact(value);
+                      if (reviewProposal) {
+                        setReviewProposal({
+                          ...reviewProposal,
+                          plannedStartDateExact: value,
+                        });
+                      }
+                    }}
+                    confirmed={confirmChecks}
+                    onConfirmedChange={setConfirmChecks}
+                    materialsCost={materialsCost}
+                    onMaterialsCostChange={setMaterialsCost}
+                    labourCost={labourCost}
+                    onLabourCostChange={setLabourCost}
+                    additionalCost={additionalCost}
+                    onAdditionalCostChange={setAdditionalCost}
+                    totalCost={estimatedPrice}
+                    onTotalCostChange={setEstimatedPrice}
+                    onAddUpCosts={() =>
+                      setEstimatedPrice(
+                        sumQuickQuoteCosts(
+                          materialsCost,
+                          labourCost,
+                          additionalCost
+                        )
+                      )
+                    }
+                    jobDescriptionMaxLength={SITE_NOTES_MAX}
+                  />
+                </>
+              ) : (
+                <>
               <SectionCard className="qf-card-form">
                 <CardHeading
                   title="Job description"
@@ -520,7 +608,6 @@ export function NewProposalForm({
                 </div>
               </SectionCard>
 
-              {mode === "edit" ? (
                 <SectionCard className="qf-card-form">
                   <CardHeading
                     title="Optional Extras"
@@ -544,8 +631,7 @@ export function NewProposalForm({
                     />
                   </div>
                 </SectionCard>
-              ) : (
-                <input type="hidden" name="optionalExtras" value={optionalExtras} />
+                </>
               )}
 
               {desktopProposal ? (
@@ -580,6 +666,7 @@ export function NewProposalForm({
             </div>
 
             <div className="qf-proposal-col-right">
+              {mode === "edit" ? (
               <SectionCard className="qf-card-form">
                 <CardHeading
                   title="Pricing (optional)"
@@ -677,6 +764,7 @@ export function NewProposalForm({
                   />
                 </div>
               </SectionCard>
+              ) : null}
 
               <SectionCard className="qf-card-form">
                 <CardHeading
@@ -713,7 +801,7 @@ export function NewProposalForm({
                     </svg>
                     {desktopProposal
                       ? "Use Save as Draft or Mark Ready to Send above after reviewing the quote."
-                      : "Generate a proposal from your notes, or save a draft first."}
+                      : "Prepare the checklist and pricing, then generate a proposal — or save a draft first."}
                   </p>
                 </div>
               </SectionCard>
