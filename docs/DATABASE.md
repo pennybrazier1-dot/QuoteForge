@@ -144,7 +144,9 @@ For v1, each founding user creates one workspace. Later, multiple profiles (peop
 - `workspaces_owner_id_unique_idx` — one founding workspace per auth user in v1.
 - `owner_id` uses `on delete restrict` so business data is not silently removed if an auth user is deleted.
 
-**Admin cleanup (Phase 29):** call `public.admin_delete_user(target_user_id, confirm_email)` via the service role (or `adminDeleteUser` in `app/admin/actions.ts`). It deletes the owned workspace tree explicitly, then deletes `auth.users`. It does **not** change `ON DELETE RESTRICT`.
+**Admin cleanup (Phase 29):** call `public.admin_delete_user(target_user_id, confirm_email)` via the service role (or `adminDeleteUser` in `app/admin/actions.ts`). It deletes the owned workspace tree explicitly, then deletes `auth.users`. It does **not** change `ON DELETE RESTRICT`. It does **not** delete Storage objects (hosted Supabase blocks SQL deletes on `storage.objects` — use the Storage API separately if needed).
+
+**Abandoned (Phase 30):** The temporary `auth.users` BEFORE DELETE trigger approach does not work on hosted Supabase (project role cannot create that trigger). The migration file was moved to `supabase/archived/20260806170000_testing_mode_auth_user_workspace_cleanup.sql` and is **not** part of future `db push`. Use Phase 29 `admin_delete_user` / `/admin/test-users` instead. Manual cleanup SQL (if anything was installed by hand) remains in `supabase/rollbacks/20260806170000_testing_mode_auth_user_workspace_cleanup.rollback.sql`.
 
 ---
 

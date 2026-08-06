@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { userHasProfileForClient } from "@/lib/onboarding/status";
+import { resolvePostAuthPathForUser } from "@/lib/onboarding/status";
 import { NextResponse } from "next/server";
 
 /**
@@ -20,8 +20,7 @@ export async function GET(request: Request) {
       } = await supabase.auth.getUser();
 
       if (user) {
-        const hasProfile = await userHasProfileForClient(supabase, user.id);
-        const destination = hasProfile ? "/dashboard" : "/onboarding";
+        const destination = await resolvePostAuthPathForUser(supabase, user);
         return NextResponse.redirect(`${origin}${destination}`);
       }
     }

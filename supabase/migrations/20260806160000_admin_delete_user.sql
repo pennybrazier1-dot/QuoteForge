@@ -2,6 +2,11 @@
 -- Intentionally keeps public.workspaces.owner_id ON DELETE RESTRICT.
 -- Callers must delete workspace data first via this function (explicit),
 -- then this function deletes auth.users.
+--
+-- Storage note:
+--   Do NOT delete from storage.objects in SQL. Hosted Supabase blocks
+--   direct table deletes ("Use the Storage API instead"). Site-visit
+--   photo cleanup must be done separately via the Storage API if needed.
 
 create or replace function public.admin_delete_user(
   target_user_id uuid,
@@ -16,7 +21,6 @@ declare
   found_email text;
   workspace_ids uuid[];
   deleted_workspace_count integer := 0;
-  deleted_storage_count integer := 0;
   deleted_auth_count integer := 0;
 begin
   if target_user_id is null then
@@ -50,15 +54,8 @@ begin
   where w.owner_id = target_user_id;
 
   if coalesce(cardinality(workspace_ids), 0) > 0 then
-    -- Remove private site-visit photos before workspace rows cascade away.
-    delete from storage.objects as object_row
-    using unnest(workspace_ids) as workspace_id(id)
-    where object_row.bucket_id = 'site-visit-photos'
-      and (storage.foldername(object_row.name))[1] = workspace_id.id::text;
-
-    get diagnostics deleted_storage_count = row_count;
-
     -- Cascades customers, proposals, enquiries, site visits, media metadata, profiles, etc.
+    -- Storage objects are NOT deleted here — use the Storage API separately if needed.
     delete from public.workspaces as w
     where w.id = any (workspace_ids);
 
@@ -85,7 +82,8 @@ begin
     'userId', target_user_id,
     'email', found_email,
     'deletedWorkspaces', deleted_workspace_count,
-    'deletedStorageObjects', deleted_storage_count
+    -- Always 0: SQL cannot delete storage.objects on hosted Supabase.
+    'deletedStorageObjects', 0
   );
 exception
   when foreign_key_violation then
@@ -97,7 +95,7 @@ end;
 $$;
 
 comment on function public.admin_delete_user(uuid, text) is
-  'Admin/service-role helper: deletes owned workspace tree, then auth.users. Does not weaken workspaces.owner_id ON DELETE RESTRICT.';
+  'Admin/service-role helper: deletes owned workspace tree, then auth.users. Does not delete Storage objects (use Storage API). Does not weaken workspaces.owner_id ON DELETE RESTRICT.';
 
 revoke all on function public.admin_delete_user(uuid, text) from public;
 revoke all on function public.admin_delete_user(uuid, text) from anon;
