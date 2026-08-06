@@ -6,8 +6,8 @@ import { customerToFormValues } from "@/lib/customers/form-values";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Edit Customer — QuoteForge",
-  description: "Update customer details in QuoteForge.",
+  title: "Edit Customer",
+  description: "Update customer details in Reanvil.",
 };
 
 type PageProps = {

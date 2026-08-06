@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { QuotePreparationEntry } from "@/components/proposals/quote-preparation-entry";
 
 export const metadata: Metadata = {
-  title: "New Quote — QuoteForge",
-  description: "Create a new quote in QuoteForge.",
+  title: "New Quote",
+  description: "Create a new quote in Reanvil.",
 };
 
 export default async function NewProposalPage({

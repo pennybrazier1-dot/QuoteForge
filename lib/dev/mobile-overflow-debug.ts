@@ -28,12 +28,12 @@ export function logMobileOverflowElements(context = "page"): void {
   }
 
   if (offenders.length === 0) {
-    console.log(`[QuoteForge overflow] ${context}: no elements wider than viewport`);
+    console.log(`[Reanvil overflow] ${context}: no elements wider than viewport`);
     return;
   }
 
   console.warn(
-    `[QuoteForge overflow] ${context}: ${offenders.length} element(s) wider than ${viewportWidth}px`,
+    `[Reanvil overflow] ${context}: ${offenders.length} element(s) wider than ${viewportWidth}px`,
     offenders.slice(0, 12)
   );
 }

@@ -10,8 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getPlaceholderServicesFromTradeType } from "@/lib/settings/placeholder-services";
 
 export const metadata: Metadata = {
-  title: "Settings — QuoteForge",
-  description: "Manage your QuoteForge business and account settings.",
+  title: "Settings",
+  description: "Manage your Reanvil business and account settings.",
 };
 
 export default async function SettingsPage() {

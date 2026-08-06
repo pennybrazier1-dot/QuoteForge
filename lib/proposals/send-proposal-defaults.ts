@@ -10,7 +10,7 @@ export type SendProposalContext = {
 
 export function buildSendProposalSubject(customerName: string): string {
   const name = customerName.trim() || "your customer";
-  return `Your QuoteForge Proposal – ${name}`;
+  return `Your Reanvil Proposal – ${name}`;
 }
 
 export function buildSendProposalMessage(

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EnquiryDetailView } from "@/components/enquiries/enquiry-detail-view";
 
 export const metadata: Metadata = {
-  title: "Review Enquiry — QuoteForge",
+  title: "Review Enquiry",
   description: "Review a customer enquiry in detail.",
 };
 

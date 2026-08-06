@@ -56,7 +56,7 @@ export function buildSiteVisitConfirmationMessage(
 }
 
 export function buildSiteVisitEmailSubject(businessName: string): string {
-  const business = businessName.trim() || "QuoteForge";
+  const business = businessName.trim() || "Reanvil";
   return `Site visit for your enquiry — ${business}`;
 }
 

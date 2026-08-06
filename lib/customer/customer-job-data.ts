@@ -65,7 +65,7 @@ function resolveTradespersonEmail(enquiry: StoredEnquiry): string {
     return `hello@${businessSlug}.test`;
   }
 
-  return "hello@quoteforge.test";
+  return "hello@reanvil.test";
 }
 
 export function buildCustomerJobStatusSteps(

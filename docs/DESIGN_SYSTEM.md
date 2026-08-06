@@ -1,8 +1,8 @@
-# QuoteForge Design System
+# Reanvil Design System
 
 ## Brand
 
-QuoteForge should feel:
+Reanvil should feel:
 
 - Premium
 - Modern
@@ -22,7 +22,7 @@ Not cluttered.
 
 Primary Accent
 
-QuoteForge Orange
+Reanvil Orange
 
 Use only as an accent.
 
@@ -132,7 +132,7 @@ Information hierarchy should always be obvious.
 
 ## Phone-first
 
-QuoteForge is a phone-first web application.
+Reanvil is a phone-first web application.
 
 **Do not adapt desktop layouts.** Redesign every screen from first principles for mobile use.
 
@@ -252,7 +252,7 @@ When rebuilding a screen:
 
 ## PDF
 
-The PDF is the most customer-facing part of QuoteForge.
+The PDF is the most customer-facing part of Reanvil.
 
 It should feel professionally designed.
 
@@ -281,7 +281,7 @@ The proposal is often the customer's first impression of the business.
 
 The design should build confidence, trust and professionalism before the customer reads a single word.
 
-QuoteForge should make every tradesperson, from sole traders to established businesses, look organised, credible and premium.
+Reanvil should make every tradesperson, from sole traders to established businesses, look organised, credible and premium.
 
 ## Primary UI Reference
 
@@ -298,7 +298,7 @@ Shared patterns across all screens:
 - Action-first layout (not form-first)
 - Section hierarchy
 
-New pages should reuse existing QuoteForge components wherever possible.
+New pages should reuse existing Reanvil components wherever possible.
 
 Do not invent new layouts or styling for individual pages unless there is a clear functional reason.
 

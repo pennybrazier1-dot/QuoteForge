@@ -1,4 +1,4 @@
-# QuoteForge Future Ideas
+# Reanvil Future Ideas
 
 This file is for good ideas that should not distract from Version 1.
 
@@ -89,7 +89,7 @@ Features:
 
 ## Proposal Sending
 
-Allow tradespeople to send proposals directly from QuoteForge.
+Allow tradespeople to send proposals directly from Reanvil.
 
 Possible options:
 - Email proposal PDF to customer

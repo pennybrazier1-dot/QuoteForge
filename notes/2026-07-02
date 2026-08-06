@@ -1,0 +1,253 @@
+# Development Log – Today
+
+## Proposal System
+
+Completed:
+
+- Finalised the proposal layout.
+- Improved Project Summary so it reads naturally.
+- Scope of Work now acts as a structured checklist instead of repeating the summary.
+- Labour removed from all customer-facing proposal views (still stored internally for future costing).
+- PDF layout refined into a professional proposal.
+- Proposal action buttons simplified to compact mobile-friendly buttons.
+
+---
+
+## AI Improvements
+
+Completed:
+
+- Materials extraction now correctly separates materials from Site Notes.
+- Labour extraction no longer includes prices.
+- Planned Start Date extraction improved.
+- Estimated Duration extraction improved.
+- Built a library of realistic test scenarios covering multiple trades.
+- AI prompt improvements continue to produce more professional proposal wording.
+
+Outstanding:
+
+- Optional Extras extraction still needs improving for some free-form note styles.
+
+---
+
+## Mobile Improvements
+
+Completed:
+
+- Fixed multiple mobile layout issues.
+- Reduced unwanted iPhone zooming.
+- Improved proposal page layouts.
+- Improved mobile scrolling across most pages.
+- Bottom navigation and safe-area handling improved.
+
+Outstanding:
+
+- Final proposal timeline still needs one remaining iPhone safe-area scroll fix on some devices.
+
+---
+
+## Calendar
+
+Phase 1 completed:
+
+- Month view
+- Week view
+- Day view
+- Year view
+
+Phase 2 completed:
+
+- Calendar connected to proposal/job data.
+- Booked jobs displayed.
+- Green = confirmed.
+- Amber = provisional.
+
+Phase 3 completed:
+
+- Booking workflow.
+- Accept → Booking dialog.
+- Edit start date.
+- Edit duration.
+- Book directly into calendar.
+
+Phase 4 completed:
+
+- Clash detection.
+- Suggested next available dates.
+- Booking warnings.
+- Mini week preview.
+- Multi-day bookings.
+
+Calendar is now largely complete.
+
+---
+
+## Proposal Lifecycle
+
+Completed lifecycle:
+
+Draft
+
+↓
+
+Ready to Send
+
+↓
+
+Waiting for Customer
+
+↓
+
+Jobs Needing Attention
+
+↓
+
+Booked
+
+↓
+
+Today's Jobs
+
+↓
+
+Completed
+
+Reserved for later:
+
+- Invoiced
+- Paid
+
+---
+
+## Customer Portal
+
+Decision made:
+
+The customer portal should remain intentionally simple.
+
+Customer can:
+
+- View proposal
+- Accept proposal
+- Ask a question
+- Request changes
+- Decline proposal
+
+No customer login.
+
+No dashboard.
+
+No unnecessary features.
+
+---
+
+## Calendar Workflow
+
+Confirmed workflow:
+
+Ready to Send
+
+↓
+
+Waiting for Customer
+
+↓
+
+Amber provisional booking
+
+↓
+
+Customer accepts
+
+↓
+
+Confirm booking
+
+↓
+
+Green confirmed booking
+
+↓
+
+Today's Jobs
+
+---
+
+## Money (Future)
+
+Future feature agreed:
+
+Money dashboard.
+
+Sections:
+
+- Money In
+- Money Out
+- Estimated Profit
+- Estimated Tax (guidance only)
+
+Purpose:
+
+Help sole traders organise finances without replacing an accountant.
+
+AI should eventually:
+
+- Read receipts.
+- Categorise expenses.
+- Track income.
+- Estimate profit.
+- Estimate tax based on country.
+
+---
+
+## Development Testing
+
+Created preview testing workflow for lifecycle without needing a real domain.
+
+Current blocker:
+
+- Preview testing tools are not appearing on Vercel Preview.
+- Simulated send still requires further investigation.
+- Continue debugging after branding/domain work.
+
+---
+
+# Product Vision
+
+The product has evolved beyond an AI quote generator.
+
+Reanvil (working title) is becoming an operating system for sole traders.
+
+Core modules:
+
+- Quotes
+- Customers
+- Calendar
+- Jobs
+- Customer Portal
+- Invoices
+- Money
+- AI Assistant
+
+Everything should connect naturally through the proposal lifecycle.
+
+---
+
+# Next Focus
+
+For the next couple of days we will pause feature development and focus on branding.
+
+Objectives:
+
+- Decide the final product name.
+- Build the brand identity.
+- Secure the domain.
+- Decide colours and visual identity.
+- Create branded email.
+
+Once branding is complete we will return to:
+
+- Email sending.
+- Customer portal.
+- End-to-end workflow testing.
+- Production launch preparation.

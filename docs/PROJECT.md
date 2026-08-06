@@ -1,14 +1,14 @@
-# QuoteForge Project Blueprint
+# Reanvil Project Blueprint
 
 ## Product Summary
 
-QuoteForge is an AI sales assistant and digital office for self-employed tradespeople and small trade businesses.
+Reanvil is an AI sales assistant and digital office for self-employed tradespeople and small trade businesses.
 
 It helps tradespeople create professional proposals, save time on paperwork, communicate clearly with customers, and win more work.
 
 ## Target Customer
 
-QuoteForge is built first for self-employed tradespeople and small trade businesses with 1–10 people.
+Reanvil is built first for self-employed tradespeople and small trade businesses with 1–10 people.
 
 Initial target trades:
 
@@ -45,7 +45,7 @@ Help self-employed tradespeople look more professional, save time, stay organise
 
 Become the AI-powered digital office for independent tradespeople and small trade businesses.
 
-QuoteForge starts with proposals and quoting, then grows into customer records, job tracking, invoicing, payment tracking, and business insights.
+Reanvil starts with proposals and quoting, then grows into customer records, job tracking, invoicing, payment tracking, and business insights.
 
 ## Core Promise
 
@@ -53,9 +53,9 @@ Spend less time quoting. Win more work.
 
 ## Product Positioning
 
-QuoteForge is not just an AI quote generator.
+Reanvil is not just an AI quote generator.
 
-QuoteForge is an AI sales assistant for tradespeople.
+Reanvil is an AI sales assistant for tradespeople.
 
 It helps users:
 
@@ -92,7 +92,7 @@ Each tradesperson should have their own secure workspace containing their quotes
 
 ### 6. Do Not Type Twice
 
-QuoteForge should avoid making users enter the same information repeatedly.
+Reanvil should avoid making users enter the same information repeatedly.
 
 ## Version 1 Goal
 
@@ -126,7 +126,7 @@ This is required for new accounts. It creates the workspace and profile with rea
 | Trade type | Yes | Selected from the list below |
 | VAT number | No | Optional |
 | Default payment terms | Yes | Used on new proposals |
-| How they heard about QuoteForge | Yes | Selected from the list below |
+| How they heard about Reanvil | Yes | Selected from the list below |
 
 ### Trade type options
 
@@ -149,7 +149,7 @@ This is required for new accounts. It creates the workspace and profile with rea
 - General Handyman
 - Other
 
-### How they heard about QuoteForge options
+### How they heard about Reanvil options
 
 - Google
 - Facebook
@@ -162,7 +162,7 @@ This is required for new accounts. It creates the workspace and profile with rea
 ### Onboarding rules
 
 - Keep the form short and plain English.
-- Do not ask for information QuoteForge does not need yet.
+- Do not ask for information Reanvil does not need yet.
 - After onboarding completes, redirect to the dashboard.
 - Do not make the user enter the same details again later unless they choose to update settings.
 
@@ -223,7 +223,7 @@ A workspace should contain:
 Each profile should contain:
 
 - Full name
-- How they heard about QuoteForge (collected at onboarding)
+- How they heard about Reanvil (collected at onboarding)
 - Role inside the workspace
 
 ## Version 1 Scope
@@ -266,7 +266,7 @@ Do not build yet:
 - Payment history
 - Business branding and logo on PDFs
 - Better proposal templates
-- Email sending directly from QuoteForge
+- Email sending directly from Reanvil
 - Customer acceptance link
 - Convert accepted proposal into job
 
@@ -316,7 +316,7 @@ Initial offer:
 
 ## Success Criteria for MVP
 
-QuoteForge is useful enough when a tradesperson can:
+Reanvil is useful enough when a tradesperson can:
 
 - Create a professional proposal faster than writing it manually
 - Feel confident sending it to a customer

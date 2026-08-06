@@ -55,7 +55,7 @@ When redesigning a page:
 
 ## Phone-first rule
 
-QuoteForge is a **phone-first web application**.
+Reanvil is a **phone-first web application**.
 
 **Do not adapt desktop layouts.** Redesign every screen from first principles for mobile use.
 

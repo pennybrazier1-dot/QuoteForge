@@ -31,7 +31,7 @@ export function logProposalPipelineStage(
     return;
   }
 
-  console.log(`[QuoteForge proposal] ${stage}`, sliceForDebug(proposal));
+  console.log(`[Reanvil proposal] ${stage}`, sliceForDebug(proposal));
 }
 
 export function logProposalFormMapping(
@@ -45,7 +45,7 @@ export function logProposalFormMapping(
     return;
   }
 
-  console.log("[QuoteForge proposal] form field mapping", {
+  console.log("[Reanvil proposal] form field mapping", {
     extractedEstimatedPrice: proposal.extractedEstimatedPrice,
     mappedEstimatedPrice: mapped.estimatedPrice,
     optionalExtrasFromProposal: proposal.optionalExtras,

@@ -54,7 +54,7 @@ export async function completeOnboarding(
   }
 
   if (!heardAbout) {
-    return { error: "Please tell us how you heard about QuoteForge." };
+    return { error: "Please tell us how you heard about Reanvil." };
   }
 
   if (!isTradeType(tradeType)) {

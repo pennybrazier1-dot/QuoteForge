@@ -12,7 +12,7 @@ Before adding any feature, ask:
 
 5. Can this be achieved without adding unnecessary complexity?
 
-If the answer to most of these is "No", reconsider whether the feature belongs in QuoteForge.
+If the answer to most of these is "No", reconsider whether the feature belongs in Reanvil.
 
 Every feature we build should:
 
@@ -35,7 +35,7 @@ Our mission: **Finish work. Not paperwork.**
 
 ## Phone-first
 
-QuoteForge is a phone-first web application.
+Reanvil is a phone-first web application.
 
 Do **not** adapt desktop layouts. Redesign every screen from first principles for mobile.
 

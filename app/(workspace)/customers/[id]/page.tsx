@@ -6,8 +6,8 @@ import { CustomerProposals } from "@/components/customers/customer-proposals";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Customer — QuoteForge",
-  description: "View a QuoteForge customer and their proposals.",
+  title: "Customer",
+  description: "View a Reanvil customer and their proposals.",
 };
 
 type PageProps = {

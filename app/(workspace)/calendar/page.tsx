@@ -5,7 +5,7 @@ import { fetchCalendarProposals } from "@/lib/calendar/calendar-queries";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Calendar — QuoteForge",
+  title: "Calendar",
   description: "Your upcoming jobs and schedule.",
 };
 

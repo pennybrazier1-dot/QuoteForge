@@ -1,8 +1,8 @@
-# QuoteForge Database Plan
+# Reanvil Database Plan
 
-This document describes the database structure for QuoteForge and matches the pending migration files in `supabase/migrations/`.
+This document describes the database structure for Reanvil and matches the pending migration files in `supabase/migrations/`.
 
-QuoteForge is a digital office for self-employed tradespeople and small trade businesses. The database is designed around one core rule:
+Reanvil is a digital office for self-employed tradespeople and small trade businesses. The database is designed around one core rule:
 
 **Every business has its own secure workspace.**
 
@@ -12,7 +12,7 @@ Users should only be able to access data that belongs to their own workspace.
 
 ## Signup bootstrap and onboarding (required app flow)
 
-Supabase Auth handles signup and login, but QuoteForge still needs its own tenant setup.
+Supabase Auth handles signup and login, but Reanvil still needs its own tenant setup.
 
 **We do not use an `auth.users` database trigger in v1.**
 
@@ -29,7 +29,7 @@ After signup, new users must complete onboarding before they can use the dashboa
 | Trade type | `workspaces` | `trade_type` (exists) |
 | VAT number (optional) | `workspaces` | `vat_number` (exists) |
 | Default payment terms | `workspaces` | `default_payment_terms` (exists) |
-| How they heard about QuoteForge | `profiles` | `heard_about` (exists) |
+| How they heard about Reanvil | `profiles` | `heard_about` (exists) |
 
 All onboarding fields are now stored on `workspaces` and `profiles`.
 
@@ -110,7 +110,7 @@ The function:
 
 Workspaces are **business accounts**, not individual user accounts.
 
-A workspace represents the tradesperson's business inside QuoteForge. It holds business details, proposal numbering settings, and is the tenancy boundary for customers and proposals.
+A workspace represents the tradesperson's business inside Reanvil. It holds business details, proposal numbering settings, and is the tenancy boundary for customers and proposals.
 
 For v1, each founding user creates one workspace. Later, multiple profiles (people) can belong to the same workspace when team accounts are added.
 
@@ -150,7 +150,7 @@ For v1, each founding user creates one workspace. Later, multiple profiles (peop
 
 Profiles represent **people/users inside a workspace**.
 
-Supabase Auth stores login credentials. Profiles connect an authenticated person to the QuoteForge workspace they belong to.
+Supabase Auth stores login credentials. Profiles connect an authenticated person to the Reanvil workspace they belong to.
 
 ### Profile roles
 
@@ -169,7 +169,7 @@ Supabase Auth stores login credentials. Profiles connect an authenticated person
 | `id` | UUID primary key, same as Supabase Auth user ID |
 | `workspace_id` | Workspace this person belongs to |
 | `full_name` | Person's full name, collected during onboarding |
-| `heard_about` | How the user found QuoteForge, e.g. Google, Recommendation |
+| `heard_about` | How the user found Reanvil, e.g. Google, Recommendation |
 | `role` | `owner`, `admin`, or `member` (v1: `owner` only) |
 | `created_at` | When the profile was created |
 | `updated_at` | When the profile was last updated |
@@ -209,7 +209,7 @@ Customers are the people and businesses a tradesperson quotes for.
 
 ## 4. Proposals
 
-Proposals are quotes created by the tradesperson. They are the first core workflow in QuoteForge.
+Proposals are quotes created by the tradesperson. They are the first core workflow in Reanvil.
 
 ### Proposal lifecycle statuses
 
@@ -319,7 +319,7 @@ Status events support customer history, follow-up tracking, and accountability w
 
 ## Security model
 
-QuoteForge uses Supabase Row Level Security on all tables.
+Reanvil uses Supabase Row Level Security on all tables.
 
 ### Core rule
 

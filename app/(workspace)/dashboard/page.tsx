@@ -9,7 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Home — QuoteForge",
+  title: "Home",
   description: "What do you need to do today?",
 };
 

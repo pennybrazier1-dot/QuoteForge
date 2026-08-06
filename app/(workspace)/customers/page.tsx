@@ -3,8 +3,8 @@ import { CustomerList } from "@/components/customers/customer-list";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Customers — QuoteForge",
-  description: "View your QuoteForge customers.",
+  title: "Customers",
+  description: "View your Reanvil customers.",
 };
 
 export default async function CustomersPage() {

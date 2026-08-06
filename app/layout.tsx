@@ -14,10 +14,48 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const SITE_DESCRIPTION =
+  "Reanvil is the operating system for modern trades businesses.";
+
 export const metadata: Metadata = {
-  title: "QuoteForge — Spend less time quoting. Win more work.",
-  description:
-    "QuoteForge is an AI sales assistant for self-employed tradespeople and small trade businesses. Turn a few details into polished, professional quotes in minutes.",
+  applicationName: "Reanvil",
+  title: {
+    default: "Reanvil — Finish work. Not paperwork.",
+    template: "%s — Reanvil",
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "Reanvil",
+    "trades",
+    "quotes",
+    "proposals",
+    "invoicing",
+    "tradespeople",
+    "business software",
+  ],
+  authors: [{ name: "Reanvil" }],
+  creator: "Reanvil",
+  publisher: "Reanvil",
+  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
+    : undefined,
+  openGraph: {
+    type: "website",
+    locale: "en_GB",
+    siteName: "Reanvil",
+    title: "Reanvil — Finish work. Not paperwork.",
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Reanvil — Finish work. Not paperwork.",
+    description: SITE_DESCRIPTION,
+  },
+  appleWebApp: {
+    title: "Reanvil",
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -27,6 +65,7 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   // Keep the layout viewport stable when the on-screen keyboard opens (iOS Safari).
   interactiveWidget: "resizes-content",
+  themeColor: "#0b0b0c",
 };
 
 export default function RootLayout({

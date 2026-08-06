@@ -1,4 +1,4 @@
-# QuoteForge Decisions
+# Reanvil Decisions
 
 This document records important product decisions.
 
@@ -8,7 +8,7 @@ The purpose is to avoid revisiting decisions without good reason.
 
 ## Decision 001
 
-QuoteForge is a business management platform for self-employed tradespeople.
+Reanvil is a business management platform for self-employed tradespeople.
 
 It is NOT an AI application.
 
@@ -66,7 +66,7 @@ If a feature does not help us obtain the first ten paying customers it belongs i
 
 ## Decision 007
 
-Every development session should finish with QuoteForge in a working state.
+Every development session should finish with Reanvil in a working state.
 
 No half-finished features.
 
@@ -108,7 +108,7 @@ The dashboard should reduce stress, not create it.
 
 ## Decision 011
 
-QuoteForge is a **Next.js web application**.
+Reanvil is a **Next.js web application**.
 
 It is not an Expo / React Native app in this repository.
 

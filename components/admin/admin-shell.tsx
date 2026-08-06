@@ -8,7 +8,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       <header className="qf-admin-header">
         <div className="qf-admin-header-inner">
           <div>
-            <p className="qf-admin-eyebrow">QuoteForge platform</p>
+            <p className="qf-admin-eyebrow">Reanvil platform</p>
             <h1 className="qf-admin-title">Platform Control Centre</h1>
             <p className="qf-admin-subtitle">
               For Narel and platform owners. Manage businesses, journeys, and

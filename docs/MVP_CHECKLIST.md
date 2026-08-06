@@ -1,6 +1,6 @@
-# QuoteForge MVP
+# Reanvil MVP
 
-QuoteForge is currently an **early MVP**.
+Reanvil is currently an **early MVP**.
 
 Core proposal creation, PDF, and email sending work against Supabase.
 Enquiries and site visits persist in Supabase (Phase 2). Prepare Quote **drafts** are still browser-local.
@@ -38,7 +38,7 @@ Enquiries and site visits persist in Supabase (Phase 2). Prepare Quote **drafts*
 - [ ] Password recovery
 - [ ] Customer portal / online acceptance
 - [ ] Account deletion / privacy basics
-- [ ] QuoteForge subscription billing
+- [ ] Reanvil subscription billing
 
 ## Planned later
 

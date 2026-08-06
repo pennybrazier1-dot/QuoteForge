@@ -734,7 +734,7 @@ export function NewProposalForm({
                       <path d="M12 16v-4M12 8h.01" />
                     </svg>
                   </span>
-                  <h2 className="qf-card-heading">How QuoteForge Works</h2>
+                  <h2 className="qf-card-heading">How Reanvil Works</h2>
                 </div>
                 <ol className="qf-how-it-works mt-5">
                   {HOW_IT_WORKS_STEPS.map((step, index) => (

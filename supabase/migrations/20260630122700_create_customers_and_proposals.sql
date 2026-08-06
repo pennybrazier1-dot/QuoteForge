@@ -1,4 +1,4 @@
--- QuoteForge core product tables:
+-- Reanvil core product tables:
 -- - customers
 -- - proposals
 -- - atomic proposal numbering

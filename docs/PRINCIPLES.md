@@ -1,4 +1,4 @@
-# QuoteForge Design Principles
+# Reanvil Design Principles
 
 These principles guide every product decision.
 
@@ -82,7 +82,7 @@ Choose the simpler solution whenever possible.
 
 ## Finish The Day
 
-The goal of QuoteForge is simple.
+The goal of Reanvil is simple.
 
 A tradesperson should be able to finish their paperwork quickly, close the laptop, and enjoy the rest of their evening.
 
@@ -115,7 +115,7 @@ Every screen should feel calm, obvious, and fast.
 
 ## 1. Mobile First
 
-QuoteForge is a phone-first web application.
+Reanvil is a phone-first web application.
 
 Do not adapt desktop layouts. Redesign every screen from first principles for mobile use.
 

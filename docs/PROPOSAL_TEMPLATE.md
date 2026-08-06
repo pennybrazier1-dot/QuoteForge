@@ -1,8 +1,8 @@
-# QuoteForge Proposal Template
+# Reanvil Proposal Template
 
 ## Purpose
 
-Every QuoteForge proposal should be:
+Every Reanvil proposal should be:
 
 - Clear
 - Professional
@@ -115,7 +115,7 @@ Default:
 
 ## 11. Acceptance
 
-Explain that the customer accepts the proposal by approving it through QuoteForge or by another agreed method.
+Explain that the customer accepts the proposal by approving it through Reanvil or by another agreed method.
 
 ---
 
@@ -135,7 +135,7 @@ Every proposal should:
 
 ---
 
-# QuoteForge Principle
+# Reanvil Principle
 
 The proposal should help both the tradesperson and the customer understand exactly what work is being offered.
 

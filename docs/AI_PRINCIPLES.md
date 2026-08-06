@@ -1,4 +1,4 @@
-# QuoteForge AI Principles
+# Reanvil AI Principles
 
 ## Purpose
 
@@ -16,7 +16,7 @@ The tradesperson is always responsible for reviewing a proposal before sending i
 - Improve readability.
 - Organise information logically.
 - Use plain English.
-- Follow the QuoteForge Proposal Template.
+- Follow the Reanvil Proposal Template.
 - Clearly identify assumptions.
 - Suggest questions under "Things to Confirm".
 

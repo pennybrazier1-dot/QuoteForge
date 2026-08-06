@@ -4,8 +4,8 @@ import { LoginForm } from "@/components/auth/login-form";
 import { AuthShell } from "@/components/auth/auth-shell";
 
 export const metadata: Metadata = {
-  title: "Sign in — QuoteForge",
-  description: "Sign in to your QuoteForge account.",
+  title: "Sign in",
+  description: "Sign in to your Reanvil account.",
 };
 
 export default function LoginPage() {

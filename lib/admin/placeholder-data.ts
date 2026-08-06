@@ -99,9 +99,9 @@ export const PLACEHOLDER_USERS: PlatformUser[] = [
   {
     id: "user-4",
     name: "Narel Admin",
-    email: "narel@quoteforge.example",
+    email: "narel@reanvil.example",
     role: "platform_admin",
-    businessName: "QuoteForge Platform",
+    businessName: "Reanvil Platform",
     status: "active",
   },
   {

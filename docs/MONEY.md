@@ -25,14 +25,14 @@ All tax and profit figures must be clearly marked **as estimates until verified*
 
 ## Core principle: the user should rarely type
 
-QuoteForge should organise finances automatically from sources the tradesperson already has.
+Reanvil should organise finances automatically from sources the tradesperson already has.
 
-### How records get into QuoteForge
+### How records get into Reanvil
 
 - **Receipts** — photograph on site (phone camera)
 - **Supplier invoices** — upload PDF or image
 - **Emails** — import relevant financial emails
-- **Paid invoices** — linked from QuoteForge invoicing when that exists
+- **Paid invoices** — linked from Reanvil invoicing when that exists
 - **Proposals / jobs** — reuse amounts and customer context already in the system
 
 AI categorises everything automatically.
@@ -66,7 +66,7 @@ Country-specific rules live in configuration — not hard-coded assumptions in t
 Display copy must make clear:
 
 - Figures are **estimates**
-- QuoteForge is **not** tax advice
+- Reanvil is **not** tax advice
 - The user should **verify with their accountant** before filing
 
 ---
@@ -80,7 +80,7 @@ Display copy must make clear:
 
 ---
 
-## Connection to the rest of QuoteForge
+## Connection to the rest of Reanvil
 
 Money should reuse data already captured elsewhere:
 
@@ -146,6 +146,6 @@ They simply:
 • receive money
 • record expenses
 
-QuoteForge organises everything else.
+Reanvil organises everything else.
 
 The goal is confidence, not accounting.

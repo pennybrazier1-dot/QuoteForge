@@ -22,7 +22,7 @@ const TOTAL_STEPS = 3;
 const stepCopy = {
   1: {
     title: "Tell us about you",
-    subtitle: "A few quick details so QuoteForge feels like your business from day one.",
+    subtitle: "A few quick details so Reanvil feels like your business from day one.",
   },
   2: {
     title: "Your business details",
@@ -30,7 +30,7 @@ const stepCopy = {
   },
   3: {
     title: "One last thing",
-    subtitle: "This helps us understand how tradespeople are finding QuoteForge.",
+    subtitle: "This helps us understand how tradespeople are finding Reanvil.",
   },
 } as const;
 
@@ -137,7 +137,7 @@ export function OnboardingForm() {
 
         {step === 3 ? (
           <OnboardingSelect
-            label="How did you hear about QuoteForge?"
+            label="How did you hear about Reanvil?"
             id="heardAbout"
             name="heardAbout"
             value={heardAbout}

@@ -4,8 +4,8 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { assertAdminAccess } from "@/lib/admin/assert-admin-access";
 
 export const metadata: Metadata = {
-  title: "Platform Control Centre — QuoteForge",
-  description: "Internal platform administration for QuoteForge owners.",
+  title: "Platform Control Centre",
+  description: "Internal platform administration for Reanvil owners.",
   robots: { index: false, follow: false },
 };
 

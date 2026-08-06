@@ -82,7 +82,7 @@ export async function sendProposalByEmail(
     .eq("id", user.id)
     .maybeSingle();
 
-  const senderName = profile?.full_name?.trim() || user.email || "QuoteForge user";
+  const senderName = profile?.full_name?.trim() || user.email || "Reanvil user";
   const sentAt = new Date().toISOString();
 
   let pdfBuffer: Buffer;
@@ -121,7 +121,7 @@ export async function sendProposalByEmail(
     console.error("Proposal status update failed after email send:", updateError);
     return {
       error:
-        "The email was sent, but QuoteForge could not update the proposal status. Please refresh and check the proposal.",
+        "The email was sent, but Reanvil could not update the proposal status. Please refresh and check the proposal.",
     };
   }
 

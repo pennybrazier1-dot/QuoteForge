@@ -1,10 +1,12 @@
-# QuoteForge Product Vision
+# Reanvil Product Vision
 
 Our customers don’t buy software because they love software.
 
 They buy it because they want to stop thinking about paperwork.
 
-QuoteForge exists to help tradespeople create professional proposals in minutes.
+Reanvil is the operating system for modern trades businesses.
+
+Reanvil exists to help tradespeople create professional proposals in minutes.
 
 The software should remove paperwork, not create more of it.
 
@@ -52,7 +54,7 @@ The tradesperson should never need to think about the software.
 
 They should simply describe the work.
 
-QuoteForge should do the organisation — automatically, in the background.
+Reanvil should do the organisation — automatically, in the background.
 
 The workflow should feel effortless: calm, obvious, and fast.
 
@@ -62,7 +64,7 @@ Design around **actions**, not forms.
 
 ## Long-Term Vision
 
-QuoteForge should become the operating system for small trade businesses.
+Reanvil should become the operating system for small trade businesses.
 
 Not by adding hundreds of features.
 
@@ -70,7 +72,7 @@ But by making the essential features exceptional.
 
 ## Phone-first product
 
-QuoteForge is a phone-first web application.
+Reanvil is a phone-first web application.
 
 Do not adapt desktop layouts. Redesign every screen from first principles for mobile.
 
@@ -113,7 +115,7 @@ If the answer to most of these questions is "No", it should not be a priority.
 
 ## Invisible Quality
 
-QuoteForge should quietly improve the user's work without requiring extra effort.
+Reanvil should quietly improve the user's work without requiring extra effort.
 
 Where it is safe to do so, the application should automatically:
 
@@ -127,7 +129,7 @@ Where it is safe to do so, the application should automatically:
 
 The tradesperson should never need to think about formatting.
 
-QuoteForge should handle presentation automatically so the user can focus on the job.
+Reanvil should handle presentation automatically so the user can focus on the job.
 
 # Product Vision
 
@@ -233,13 +235,13 @@ We build one product for independent tradespeople. We adapt it to different trad
 
 Future Feature — Money
 
-QuoteForge helps independent tradespeople stay organised throughout the year.
+Reanvil helps independent tradespeople stay organised throughout the year.
 
 Money In is calculated automatically from invoices.
 
 Money Out is entered simply by adding expenses.
 
-QuoteForge then provides:
+Reanvil then provides:
 
 • Money In
 • Money Out

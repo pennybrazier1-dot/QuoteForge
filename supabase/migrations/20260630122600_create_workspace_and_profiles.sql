@@ -1,4 +1,4 @@
--- QuoteForge database foundation:
+-- Reanvil database foundation:
 -- - UUID generation
 -- - updated_at trigger helper
 -- - workspaces (the business)

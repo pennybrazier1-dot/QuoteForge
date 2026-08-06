@@ -1,4 +1,6 @@
-# QuoteForge
+# Reanvil
+
+Reanvil is the operating system for modern trades businesses.
 
 Phone-first web app that helps self-employed tradespeople create and send professional quotes.
 
@@ -32,6 +34,8 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000).
 
 Copy `.env.example` to `.env.local` and add Supabase, OpenAI, and Resend values.
+
+In Vercel, set the same environment variables under **Project → Settings → Environment Variables**. Display name for the Vercel project can be **Reanvil**.
 
 ## Scripts
 

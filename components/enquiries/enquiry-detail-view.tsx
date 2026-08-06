@@ -174,7 +174,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
                 <p className="qf-enquiry-site-visit-mode-description">
                   Turn the completed site visit into a draft quote you can review
                   and price. For now it saves on this device only — it is not a
-                  sent QuoteForge proposal yet.
+                  sent Reanvil proposal yet.
                 </p>
               </div>
               <Link

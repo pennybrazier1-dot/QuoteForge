@@ -142,7 +142,7 @@ export function logWorkspaceScrollDiagnostics(context: string): void {
   document.documentElement.dataset.qfScrollContainer =
     diagnostics.scrollContainer;
 
-  console.log("[QuoteForge scroll debug]", diagnostics);
+  console.log("[Reanvil scroll debug]", diagnostics);
 }
 
 export function syncWorkspaceScrollEndHeight(): void {

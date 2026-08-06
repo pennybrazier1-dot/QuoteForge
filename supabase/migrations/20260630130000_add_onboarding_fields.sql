@@ -12,4 +12,4 @@ alter table public.profiles
 add column heard_about text;
 
 comment on column public.profiles.heard_about is
-  'How the user found QuoteForge, e.g. Google, Recommendation, Other. See docs/PROJECT.md for allowed values.';
+  'How the user found Reanvil, e.g. Google, Recommendation, Other. See docs/PROJECT.md for allowed values.';

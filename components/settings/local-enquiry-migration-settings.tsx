@@ -211,7 +211,7 @@ export function LocalEnquiryMigrationSettings() {
         description="No browser-only enquiries were found on this device."
       >
         <p className="text-sm text-muted">
-          New enquiries are saved in your QuoteForge account automatically.
+          New enquiries are saved in your Reanvil account automatically.
         </p>
       </SettingsSection>
     );
@@ -220,7 +220,7 @@ export function LocalEnquiryMigrationSettings() {
   return (
     <SettingsSection
       title="Move local enquiries"
-      description="This browser still has older enquiry records saved only on this device. You can move them into your QuoteForge account."
+      description="This browser still has older enquiry records saved only on this device. You can move them into your Reanvil account."
     >
       <div className="qf-stack gap-3">
         <p className="text-sm">

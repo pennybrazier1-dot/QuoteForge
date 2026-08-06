@@ -15,7 +15,7 @@ const MORE_LINKS = [
 ];
 
 export const metadata: Metadata = {
-  title: "More — QuoteForge",
+  title: "More",
   description: "Proposals, settings, and more.",
 };
 

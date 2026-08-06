@@ -677,7 +677,7 @@ function acceptanceSection(): TechSection {
     drawIcon: iconShield,
     renderContent: (pdfFlow, x, cursor, w) => {
       const intro =
-        "By signing below, the customer confirms acceptance of this proposal, including the scope of work, materials, price, and payment terms set out above. Acceptance may also be recorded through QuoteForge or by another method agreed in writing with the tradesperson.";
+        "By signing below, the customer confirms acceptance of this proposal, including the scope of work, materials, price, and payment terms set out above. Acceptance may also be recorded through Reanvil or by another method agreed in writing with the tradesperson.";
       let current = drawBodyFlowing(pdfFlow, intro, x, cursor, w, {
         size: TYPE.bullet,
         lineGap: LINE_GAP,

@@ -3,8 +3,8 @@ import { ProposalsBrowser } from "@/components/proposals/proposals-browser";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Proposals — QuoteForge",
-  description: "Browse and manage your QuoteForge proposals.",
+  title: "Proposals",
+  description: "Browse and manage your Reanvil proposals.",
 };
 
 export default async function ProposalsPage() {

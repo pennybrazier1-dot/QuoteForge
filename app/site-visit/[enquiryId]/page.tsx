@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SiteVisitModeView } from "@/components/site-visit/site-visit-mode-view";
 
 export const metadata: Metadata = {
-  title: "Site Visit — QuoteForge",
+  title: "Site Visit",
   description: "Collect notes, photos, and measurements during a site visit.",
 };
 

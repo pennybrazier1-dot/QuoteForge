@@ -6,8 +6,8 @@ import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Proposal — QuoteForge",
-  description: "Manage your QuoteForge proposal.",
+  title: "Proposal",
+  description: "Manage your Reanvil proposal.",
 };
 
 type PageProps = {

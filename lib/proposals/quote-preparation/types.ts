@@ -11,7 +11,7 @@ export const QUOTE_PREPARATION_LOCAL_SAVE_SUCCESS =
   "Saved on this device. Continue preparing this quote — it is not online or sent yet.";
 
 export const QUOTE_PREPARATION_VAT_HELPER =
-  "Enter VAT yourself for now. These amounts stay on this device until quote saving is connected to your QuoteForge proposals.";
+  "Enter VAT yourself for now. These amounts stay on this device until quote saving is connected to your Reanvil proposals.";
 
 export type QuoteLineItem = {
   id: string;

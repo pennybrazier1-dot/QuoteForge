@@ -62,7 +62,7 @@ function Logo() {
           <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z" />
         </svg>
       </span>
-      <span className="text-lg font-semibold tracking-tight">QuoteForge</span>
+      <span className="text-lg font-semibold tracking-tight">Reanvil</span>
     </a>
   );
 }
@@ -88,6 +88,7 @@ function Hero() {
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted">
+            Reanvil is the operating system for modern trades businesses.
             Quotes, invoices and paperwork sorted in minutes, so you can get
             back to what matters.
           </p>
@@ -371,7 +372,7 @@ function Tradespeople() {
           Built for the way tradespeople actually work
         </h2>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted">
-          QuoteForge is designed for independent tradespeople — on the tools all
+          Reanvil is designed for independent tradespeople — on the tools all
           day, catching up on paperwork in the van or at the kitchen table. Save
           time, stay organised, and look professional without becoming an
           office worker.
@@ -379,7 +380,7 @@ function Tradespeople() {
         <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted">
           Whether you&apos;re a builder, gardener, electrician, window cleaner,
           carpet fitter or dozens of other trades — if you work for yourself,
-          QuoteForge is built for you.
+          Reanvil is built for you.
         </p>
 
         <ul className="mx-auto mt-10 flex max-w-2xl flex-wrap justify-center gap-2">
@@ -415,7 +416,7 @@ const WORKFLOW_STEPS = [
     step: "2",
     title: "We organise everything",
     description:
-      "QuoteForge turns your notes into a clear, professional quote with pricing laid out.",
+      "Reanvil turns your notes into a clear, professional quote with pricing laid out.",
   },
   {
     step: "3",
@@ -556,7 +557,7 @@ function Footer() {
       <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 sm:flex-row">
         <Logo />
         <p className="text-sm text-muted">
-          © {new Date().getFullYear()} QuoteForge. Finish work. Not paperwork.
+          © {new Date().getFullYear()} Reanvil. Finish work. Not paperwork.
         </p>
       </div>
     </footer>

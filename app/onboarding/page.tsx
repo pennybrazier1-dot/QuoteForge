@@ -5,8 +5,8 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Set up your business — QuoteForge",
-  description: "Complete your QuoteForge onboarding and start quoting faster.",
+  title: "Set up your business",
+  description: "Complete your Reanvil onboarding and start quoting faster.",
 };
 
 export default async function OnboardingPage() {

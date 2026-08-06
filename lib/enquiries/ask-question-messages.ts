@@ -7,7 +7,7 @@ export function buildAskQuestionMessage(customerName: string): string {
 }
 
 export function buildAskQuestionEmailSubject(businessName: string): string {
-  const business = businessName.trim() || "QuoteForge";
+  const business = businessName.trim() || "Reanvil";
   return `Quick question about your enquiry — ${business}`;
 }
 

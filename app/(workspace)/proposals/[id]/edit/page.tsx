@@ -10,8 +10,8 @@ import { canEditProposal } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Edit Proposal — QuoteForge",
-  description: "Edit your QuoteForge proposal.",
+  title: "Edit Proposal",
+  description: "Edit your Reanvil proposal.",
 };
 
 type PageProps = {

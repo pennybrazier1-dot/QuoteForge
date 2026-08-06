@@ -91,7 +91,7 @@ export function MyServicesSettings({ initialServices }: MyServicesSettingsProps)
             Request a trade or service we don&apos;t support yet
           </h3>
           <p className="qf-settings-services-secondary-copy">
-            Missing something from QuoteForge&apos;s list? Tell us what you need and we
+            Missing something from Reanvil&apos;s list? Tell us what you need and we
             will review it.
           </p>
           <RequestTradeServiceForm />

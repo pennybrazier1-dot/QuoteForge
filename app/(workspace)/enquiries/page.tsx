@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { EnquiriesBrowser } from "@/components/enquiries/enquiries-browser";
 
 export const metadata: Metadata = {
-  title: "Enquiries — QuoteForge",
+  title: "Enquiries",
   description: "Review new customer enquiries from your quote request journey.",
 };
 
@@ -14,7 +14,7 @@ export default function EnquiriesPage() {
       </h1>
       <p className="mt-2 text-sm text-muted">
         New customer requests for your business. These are saved in your
-        QuoteForge account and available on any signed-in device.
+        Reanvil account and available on any signed-in device.
       </p>
 
       <div className="mt-8">

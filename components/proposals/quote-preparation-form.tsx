@@ -146,7 +146,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
         <p className="qf-proposal-subtitle">
           Review the organised draft from the enquiry and site visit. Add your
           own prices when you are ready — nothing is sent until you use a real
-          QuoteForge proposal.
+          Reanvil proposal.
         </p>
         <p className="qf-quote-prep-local-hint">{QUOTE_PREPARATION_LOCAL_SAVE_HINT}</p>
       </header>
@@ -166,7 +166,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
           <aside className="qf-quote-prep-preview">
             <h2 className="qf-card-heading">Preview</h2>
             <p className="qf-quote-prep-helper">
-              Preview only — this is not a saved QuoteForge proposal yet.
+              Preview only — this is not a saved Reanvil proposal yet.
             </p>
             <GeneratedProposalPreview proposal={previewProposal} />
           </aside>

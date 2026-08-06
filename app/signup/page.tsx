@@ -4,15 +4,15 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { SignupForm } from "@/components/auth/signup-form";
 
 export const metadata: Metadata = {
-  title: "Create account — QuoteForge",
-  description: "Create your QuoteForge account and start quoting faster.",
+  title: "Create account",
+  description: "Create your Reanvil account and start quoting faster.",
 };
 
 export default function SignupPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Join QuoteForge and turn job details into professional quotes in minutes."
+      subtitle="Join Reanvil and turn job details into professional quotes in minutes."
       footer={
         <>
           Already have an account?{" "}

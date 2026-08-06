@@ -41,7 +41,7 @@ export async function simulateSendProposal(
   _prevState: DevLifecycleState,
   formData: FormData
 ): Promise<DevLifecycleState> {
-  console.log("[QuoteForge] simulateSendProposal called");
+  console.log("[Reanvil] simulateSendProposal called");
 
   const guard = assertDevTesting();
 
