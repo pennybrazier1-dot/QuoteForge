@@ -24,12 +24,18 @@ export default async function ConfirmErrorPage({
       subtitle={message}
       footer={
         <>
-          Need a new link?{" "}
+          <Link
+            href="/forgot-password"
+            className="font-medium text-accent hover:text-accent-hover"
+          >
+            Reset password
+          </Link>
+          {" · "}
           <Link
             href="/signup"
             className="font-medium text-accent hover:text-accent-hover"
           >
-            Back to sign up
+            Sign up
           </Link>
           {" · "}
           <Link
@@ -43,8 +49,9 @@ export default async function ConfirmErrorPage({
     >
       <div className="space-y-3 text-sm text-muted">
         <p>
-          Open the newest email from Reanvil, or request another verification
-          email from the check-email screen after signing up again.
+          Open the newest email from Reanvil. For account signup, request
+          another verification email from the check-email screen. For password
+          reset, request a new link from forgot password.
         </p>
       </div>
     </AuthShell>

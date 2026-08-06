@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 import { confirmLinkErrorMessage } from "@/lib/auth/confirm-link";
-import { establishSessionFromLinkParams } from "@/lib/auth/establish-session-from-link";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -37,20 +36,16 @@ export default async function ResetPasswordPage({
     }
   }
 
-  const supabase = await createClient();
+  // Email links still land here. Hand off verification to the Route Handler
+  // so session cookies can be written (Server Components cannot set cookies).
   const hasLinkParams = Boolean(
     query.get("token_hash") || query.get("code") || query.get("type")
   );
-
   if (hasLinkParams) {
-    const result = await establishSessionFromLinkParams(supabase, query);
-    if (!result.ok) {
-      redirect(`/auth/confirm/error?reason=${result.reason}`);
-    }
-    // Drop one-time tokens from the URL after the session cookie is set.
-    redirect("/auth/reset-password");
+    redirect(`/auth/reset-password/confirm?${query.toString()}`);
   }
 
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
