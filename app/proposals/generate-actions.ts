@@ -3,6 +3,7 @@
 import { generateProposal } from "@/lib/ai";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
+import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { formatPersonName } from "@/lib/text/format-name";
 import type { GeneratedProposal } from "@/lib/ai";
 
@@ -67,7 +68,7 @@ export async function generateProposalDraft(
   try {
     const proposal = await generateProposal({
       tradeType: workspace.trade_type,
-      businessName: workspace.business_name,
+      businessName: resolveCustomerFacingBusinessName(workspace.business_name),
       customerName,
       siteNotes,
       optionalExtrasNotes: optionalExtras || null,

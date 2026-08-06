@@ -4,6 +4,7 @@ import {
   resolveAuthEmail,
 } from "@/lib/admin/platform-admin";
 import { DEFAULT_PAYMENT_TERMS } from "@/lib/onboarding/constants";
+import { PLATFORM_ADMIN_DEMO_BUSINESS_NAME } from "@/lib/proposals/pdf/customer-branding";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { formatPersonName } from "@/lib/text/format-name";
 
@@ -83,7 +84,7 @@ export async function ensurePlatformAdminBootstrap(
       .from("workspaces")
       .insert({
         owner_id: user.id,
-        business_name: "Reanvil Admin Testing",
+        business_name: PLATFORM_ADMIN_DEMO_BUSINESS_NAME,
         contact_email: email,
         phone: null,
         trade_type: "Other",

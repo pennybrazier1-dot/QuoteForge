@@ -67,11 +67,35 @@ function formatPdfDate(value: string): string {
   );
 }
 
-function formatTradeTagline(tradeType: string | null): string {
-  if (!tradeType || tradeType === "Other") {
-    return "PROFESSIONAL TRADE SPECIALISTS";
+function fitBusinessNameSize(
+  flow: PdfFlow,
+  name: string,
+  width: number,
+  maxSize: number,
+  minSize: number
+): { size: number; height: number } {
+  let size = maxSize;
+  while (size > minSize) {
+    const height = flow.heightOf(name, width, {
+      font: FONT.serif,
+      size,
+      lineGap: 2,
+    });
+    // Keep long names to roughly two lines so they do not collide with the header rule.
+    if (height <= size * 2.4) {
+      return { size, height };
+    }
+    size -= 1;
   }
-  return `PROFESSIONAL ${tradeType.toUpperCase()}`;
+
+  return {
+    size: minSize,
+    height: flow.heightOf(name, width, {
+      font: FONT.serif,
+      size: minSize,
+      lineGap: 2,
+    }),
+  };
 }
 
 function microLabel(
@@ -283,15 +307,22 @@ function drawHeader(flow: PdfFlow, data: ProposalPdfData): number {
   drawLogoPlaceholder(flow, left, top, LOGO_SIZE);
   drawQrPlaceholder(flow, left + LOGO_SIZE - 10, top + LOGO_SIZE - 10, 10);
 
-  serifText(flow, data.businessName, textX, top, textWidth, TYPE.business);
-  labelCaps(
+  const businessNameFit = fitBusinessNameSize(
     flow,
-    formatTradeTagline(data.tradeType),
-    textX,
-    flow.doc.y + 4,
+    data.businessName,
     textWidth,
-    PDF_COLORS.orange
+    TYPE.business,
+    16
   );
+  serifText(
+    flow,
+    data.businessName,
+    textX,
+    top,
+    textWidth,
+    businessNameFit.size
+  );
+  const nameBottom = top + businessNameFit.height;
 
   labelCaps(flow, "Proposal Number", rightX, top, rightWidth);
   serifText(
@@ -324,7 +355,11 @@ function drawHeader(flow: PdfFlow, data: ProposalPdfData): number {
       lineGap: 2,
     });
 
-  const ruleY = Math.max(top + LOGO_SIZE + SP.xs, dateTextY + dateHeight + 3);
+  const ruleY = Math.max(
+    top + LOGO_SIZE + SP.xs,
+    dateTextY + dateHeight + 3,
+    nameBottom + SP.xs
+  );
   drawThinRule(flow, left, ruleY, width, PDF_COLORS.orange, 0.75);
   return ruleY + SP.sm;
 }
@@ -866,6 +901,28 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
         ),
     },
     thingsToConfirmSection(flow, data),
+    ...(data.nextSteps.length > 0
+      ? [
+          {
+            title: "Next Steps",
+            drawIcon: iconCalendar,
+            renderContent: (
+              pdfFlow: PdfFlow,
+              x: number,
+              cursor: ColumnCursor,
+              w: number
+            ) =>
+              drawBulletsFlowing(
+                pdfFlow,
+                data.nextSteps,
+                x,
+                cursor,
+                w,
+                "None listed."
+              ),
+          } satisfies TechSection,
+        ]
+      : []),
   ];
 
   const rightSections: TechSection[] = [

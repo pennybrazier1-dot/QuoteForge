@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
 import {
   generateFreshProposalPdfBuffer,
@@ -100,7 +101,7 @@ export async function sendProposalByEmail(
     message,
     pdfBuffer,
     replyTo: workspace.contact_email,
-    businessName: workspace.business_name,
+    businessName: resolveCustomerFacingBusinessName(workspace.business_name),
   });
 
   if (!emailResult.ok) {

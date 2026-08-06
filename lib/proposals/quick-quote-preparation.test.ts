@@ -3,7 +3,6 @@ import {
   buildQuickQuoteOptionalExtras,
   createEmptyPrepNotes,
   getQuickQuoteMissingWarnings,
-  QUICK_QUOTE_SITE_VISIT_HINT,
   shouldSuggestSiteVisitForMeasurements,
   sumQuickQuoteCosts,
 } from "@/lib/proposals/quick-quote-preparation";
@@ -63,7 +62,7 @@ describe("quick quote preparation helpers", () => {
     expect(sumQuickQuoteCosts("abc", "10", "", "")).toBe("");
   });
 
-  it("builds optional extras from prep notes without £ breakdown", () => {
+  it("builds optional extras from prep notes only", () => {
     const notes = {
       measurements: "Bathroom 2.1 x 1.8",
       materialsRequired: "Grey tiles, suite pack",
@@ -71,10 +70,7 @@ describe("quick quote preparation helpers", () => {
       additionalNotes: "Customer away mornings",
     };
 
-    const text = buildQuickQuoteOptionalExtras({
-      notes,
-      missingWarnings: [],
-    });
+    const text = buildQuickQuoteOptionalExtras({ notes });
 
     expect(text).toContain("Measurements / dimensions:");
     expect(text).toContain("Bathroom 2.1 x 1.8");
@@ -82,21 +78,7 @@ describe("quick quote preparation helpers", () => {
     expect(text).toContain("Access requirements:");
     expect(text).toContain("Additional notes:");
     expect(text).not.toContain("£");
-    expect(text).not.toContain(QUICK_QUOTE_SITE_VISIT_HINT);
-  });
-
-  it("includes site visit hint in extras when measurements are missing", () => {
-    const text = buildQuickQuoteOptionalExtras({
-      notes: createEmptyPrepNotes(),
-      missingWarnings: [
-        {
-          id: "measurements",
-          label: "Measurements to confirm",
-          detail: "later",
-        },
-      ],
-    });
-
-    expect(text).toContain(QUICK_QUOTE_SITE_VISIT_HINT);
+    expect(text).not.toContain("Still to confirm later");
+    expect(text).not.toContain("site visit");
   });
 });

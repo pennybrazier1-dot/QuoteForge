@@ -117,12 +117,11 @@ export function sumQuickQuoteCosts(
 
 /**
  * Packs preparation notes into optionalExtras for generate/save.
- * Internal £ breakdown is excluded so customer proposals stay on the
- * single agreed price (estimatedPrice).
+ * Internal £ breakdown is excluded.
+ * Readiness / next-steps belong on the PDF Next Steps section — not here.
  */
 export function buildQuickQuoteOptionalExtras(options: {
   notes: QuickQuotePrepNotes;
-  missingWarnings: QuickQuoteMissingWarning[];
 }): string {
   const parts: string[] = [];
   const { notes } = options;
@@ -141,18 +140,6 @@ export function buildQuickQuoteOptionalExtras(options: {
 
   if (notes.additionalNotes.trim()) {
     parts.push(`Additional notes:\n${notes.additionalNotes.trim()}`);
-  }
-
-  if (options.missingWarnings.length > 0) {
-    parts.push(
-      `Still to confirm later: ${options.missingWarnings
-        .map((item) => item.label)
-        .join("; ")}.`
-    );
-  }
-
-  if (shouldSuggestSiteVisitForMeasurements(notes)) {
-    parts.push(QUICK_QUOTE_SITE_VISIT_HINT);
   }
 
   return parts.join("\n\n");

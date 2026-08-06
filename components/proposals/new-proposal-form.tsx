@@ -37,10 +37,13 @@ import {
 import {
   buildQuickQuoteOptionalExtras,
   createEmptyPrepNotes,
-  getQuickQuoteMissingWarnings,
   sumQuickQuoteCosts,
   type QuickQuotePrepNotes,
 } from "@/lib/proposals/quick-quote-preparation";
+import {
+  buildCustomerNextStepsFromPrep,
+  mergeCustomerNextStepsIntoThingsToConfirm,
+} from "@/lib/proposals/pdf/customer-next-steps";
 
 const saveInitialState: SaveDraftProposalState = {};
 const generateInitialState: GenerateProposalState = {};
@@ -255,12 +258,6 @@ export function NewProposalForm({
     mode === "create"
       ? buildQuickQuoteOptionalExtras({
           notes: prepNotes,
-          missingWarnings: getQuickQuoteMissingWarnings({
-            notes: prepNotes,
-            durationValue,
-            plannedStartDateText,
-            plannedStartDateExact,
-          }),
         })
       : optionalExtras;
 
@@ -273,11 +270,29 @@ export function NewProposalForm({
     generateState.proposal !== lastSyncedProposal
   ) {
     const proposal = generateState.proposal;
+    const nextSteps =
+      mode === "create"
+        ? buildCustomerNextStepsFromPrep({
+            notes: prepNotes,
+            plannedStartDateText,
+            plannedStartDateExact,
+          })
+        : [];
+    const proposalWithNextSteps =
+      nextSteps.length > 0
+        ? {
+            ...proposal,
+            thingsToConfirm: mergeCustomerNextStepsIntoThingsToConfirm(
+              proposal.thingsToConfirm,
+              nextSteps
+            ),
+          }
+        : proposal;
     setLastSyncedProposal(proposal);
-    setReviewProposal(proposal);
+    setReviewProposal(proposalWithNextSteps);
 
-    const extracted = applyExtractedProposalFields(proposal);
-    logProposalFormMapping(proposal, {
+    const extracted = applyExtractedProposalFields(proposalWithNextSteps);
+    logProposalFormMapping(proposalWithNextSteps, {
       estimatedPrice: extracted.estimatedPrice,
       optionalExtras: extracted.optionalExtras,
     });
@@ -303,11 +318,11 @@ export function NewProposalForm({
     if (extracted.optionalExtras) {
       setOptionalExtras(extracted.optionalExtras);
     }
-    if (proposal.plannedStartDate) {
-      setPlannedStartDateText(proposal.plannedStartDate);
+    if (proposalWithNextSteps.plannedStartDate) {
+      setPlannedStartDateText(proposalWithNextSteps.plannedStartDate);
     }
-    if (proposal.plannedStartDateExact) {
-      setPlannedStartDateExact(proposal.plannedStartDateExact);
+    if (proposalWithNextSteps.plannedStartDateExact) {
+      setPlannedStartDateExact(proposalWithNextSteps.plannedStartDateExact);
     }
   }
 

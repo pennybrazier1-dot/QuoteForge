@@ -16,6 +16,8 @@ export type ProposalPdfData = {
   labour: string | null;
   thingsToConfirm: string[];
   thingsToConfirmText: string | null;
+  /** Soft customer-facing readiness — omit section when empty. Never blocks send. */
+  nextSteps: string[];
   optionalExtras: string;
   estimatedPrice: number;
   estimatedDuration: string;

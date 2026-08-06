@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { fetchCalendarProposals } from "@/lib/calendar/calendar-queries";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
+import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -64,8 +65,15 @@ export default async function ProposalPage({ params }: PageProps) {
   return (
     <ProposalWorkspace
       proposal={proposal}
-      businessName={workspace?.business_name ?? "Your business"}
-      senderName={profile?.full_name ?? "Your team"}
+      businessName={resolveCustomerFacingBusinessName(
+        workspace?.business_name
+      )}
+      senderName={
+        profile?.full_name &&
+        !/platform\s+admin/i.test(profile.full_name)
+          ? profile.full_name
+          : "Your team"
+      }
       statusEvents={(statusEvents ?? []) as ProposalStatusEventRecord[]}
       calendarProposals={calendarProposals}
     />

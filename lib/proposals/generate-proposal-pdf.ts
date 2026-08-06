@@ -2,6 +2,13 @@ import { createRequire } from "node:module";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import { resolveProposalPricePence } from "@/lib/proposals/money";
 import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
+import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import {
+  deriveCustomerNextSteps,
+  stripCustomerFacingLinePrices,
+  stripReadinessFromOptionalExtras,
+  withoutCustomerNextSteps,
+} from "@/lib/proposals/pdf/customer-next-steps";
 import { FONT, registerPdfFonts } from "@/lib/proposals/pdf/fonts";
 import { PdfFlow } from "@/lib/proposals/pdf/layout";
 import { renderProposalPdfDocument } from "@/lib/proposals/pdf/render";
@@ -104,8 +111,23 @@ export function buildProposalPdfData(
       proposal.things_to_confirm
     ) || "Not specified";
 
+  const rawOptionalExtras = hasStructuredContent
+    ? formatStructuredOptionalExtras(structured?.optionalExtras ?? [])
+    : formatOptionalExtrasForDisplay(proposal.optional_extras) ??
+      "No optional extras included.";
+  const optionalExtras =
+    stripReadinessFromOptionalExtras(rawOptionalExtras) ||
+    "No optional extras included.";
+
+  const structuredConfirm = structured?.thingsToConfirm ?? [];
+  const nextSteps = deriveCustomerNextSteps({
+    thingsToConfirm: structuredConfirm,
+    optionalExtrasText: rawOptionalExtras,
+  });
+  const thingsToConfirm = withoutCustomerNextSteps(structuredConfirm);
+
   return {
-    businessName: workspace.business_name,
+    businessName: resolveCustomerFacingBusinessName(workspace.business_name),
     tradeType: workspace.trade_type,
     contactEmail: workspace.contact_email,
     phone: workspace.phone,
@@ -122,14 +144,12 @@ export function buildProposalPdfData(
       proposal.rough_notes
     ),
     scopeOfWork: structured?.scopeOfWork ?? [],
-    materials: structured?.materials ?? [],
+    materials: stripCustomerFacingLinePrices(structured?.materials ?? []),
     labour: structured?.labour ?? proposal.rough_notes,
-    thingsToConfirm: structured?.thingsToConfirm ?? [],
+    thingsToConfirm,
     thingsToConfirmText: proposal.things_to_confirm,
-    optionalExtras: hasStructuredContent
-      ? formatStructuredOptionalExtras(structured?.optionalExtras ?? [])
-      : formatOptionalExtrasForDisplay(proposal.optional_extras) ??
-        "No optional extras included.",
+    nextSteps,
+    optionalExtras,
     estimatedPrice: resolveProposalPricePence(
       proposal.total_amount,
       proposal.rough_notes,
@@ -141,7 +161,7 @@ export function buildProposalPdfData(
     estimatedDuration,
     durationNote: buildDurationNote(
       estimatedDuration,
-      structured?.thingsToConfirm ?? [],
+      thingsToConfirm,
       proposal.things_to_confirm
     ),
     paymentTerms:
