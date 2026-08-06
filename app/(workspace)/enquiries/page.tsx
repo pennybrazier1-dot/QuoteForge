@@ -3,7 +3,8 @@ import { EnquiriesBrowser } from "@/components/enquiries/enquiries-browser";
 
 export const metadata: Metadata = {
   title: "Enquiries",
-  description: "Review new customer enquiries from your quote request journey.",
+  description:
+    "Review new customer requests submitted through your public quote link.",
 };
 
 export default function EnquiriesPage() {
@@ -13,8 +14,9 @@ export default function EnquiriesPage() {
         Enquiries
       </h1>
       <p className="mt-2 text-sm text-muted">
-        New customer requests for your business. These are saved in your
-        Reanvil account and available on any signed-in device.
+        Incoming customer requests for your business. Share your public quote
+        link from Settings — customers fill that form, and new enquiries land
+        here.
       </p>
 
       <div className="mt-8">

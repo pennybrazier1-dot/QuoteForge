@@ -6,15 +6,15 @@ import { AuthError } from "@/components/auth/auth-shell";
 const SITE_NOTES_MAX = 4000;
 
 const SITE_NOTES_HELPER =
-  "Include customer name, address, phone, email, job details, measurements, materials, when the customer wants work to start, price, duration, optional extras, and anything to confirm — all in one place.";
+  "Describe the job in your own words. Include materials, measurements, access notes, and customer requests — you can also note name, address, and contact details here when editing a draft.";
 
 export function MobileQuoteCapture({
   siteNotes,
   onSiteNotesChange,
   generateError,
   formAction,
-  title = "New Quote",
-  subtitle = "Write everything you know. We'll organise it.",
+  title = "Quick Quote",
+  subtitle = "Write the job details, then generate a proposal.",
 }: {
   siteNotes: string;
   onSiteNotesChange: (value: string) => void;
@@ -32,7 +32,7 @@ export function MobileQuoteCapture({
 
       <div className="qf-mobile-quote-capture-body">
         <label htmlFor="jobDescription" className="qf-field-label">
-          Site Notes
+          Job description
         </label>
         <p className="qf-body-text mt-2 text-muted">{SITE_NOTES_HELPER}</p>
         <div className="qf-textarea-wrap mt-4">
@@ -48,7 +48,7 @@ export function MobileQuoteCapture({
             rows={16}
             required
             maxLength={SITE_NOTES_MAX}
-            placeholder="e.g. Mrs Sarah Whitfield, 14 Riverside Close Bristol. 07700 900123, sarah@example.com. Replace 12m fence, concrete posts, gravel boards. Tight access down side path. Quote around £850, about 2 days. Could add outside socket while on site — separate price."
+            placeholder="Replace bathroom suite, move pipes, customer wants grey tiles, measurements…"
             className="form-textarea qf-site-notes-textarea qf-mobile-site-notes"
           />
           <p className="qf-char-count" aria-live="polite">
@@ -81,22 +81,9 @@ function GenerateQuoteButton({
       type="submit"
       formAction={formAction}
       disabled={pending}
-      className="qf-btn-primary qf-mobile-quote-generate"
+      className="qf-btn-primary qf-mobile-generate-btn mt-6"
     >
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        aria-hidden="true"
-      >
-        <path d="m12 3-1.9 5.8H4l4.9 3.6-1.9 5.8L12 14.6l5 3.8-1.9-5.8L20 8.8h-6.1L12 3z" />
-      </svg>
-      {pending ? "Generating quote…" : "Generate Quote"}
+      {pending ? "Generating proposal…" : "Generate Proposal"}
     </button>
   );
 }

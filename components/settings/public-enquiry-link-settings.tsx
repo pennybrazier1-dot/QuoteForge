@@ -39,7 +39,7 @@ export function PublicEnquiryLinkSettings() {
   return (
     <SettingsSection
       title="Customer quote request link"
-      description="Share this private link so customers can send enquiries into your Reanvil account without signing up."
+      description="Share this private link with customers so they can send you job enquiries. It opens a public form — not part of your trader workspace."
     >
       {loading ? <p className="text-sm text-muted">Preparing your link…</p> : null}
       {error ? (

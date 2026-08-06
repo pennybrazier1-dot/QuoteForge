@@ -18,7 +18,7 @@ export const DESKTOP_SIDEBAR_ITEMS: AppNavItem[] = [
   { href: "/dashboard", label: "Home" },
   { href: "/customers", label: "Customers" },
   { href: "/enquiries", label: "Enquiries" },
-  { href: "/proposals/new", label: "New Proposal" },
+  { href: "/proposals/new", label: "New Quote" },
   { href: "/proposals", label: "Proposals" },
   { href: "/calendar", label: "Calendar" },
   { href: "/settings", label: "Settings" },

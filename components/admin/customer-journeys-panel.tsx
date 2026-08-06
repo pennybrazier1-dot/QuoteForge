@@ -11,11 +11,11 @@ export function CustomerJourneysPanel({
   return (
     <div className="qf-admin-page">
       <AdminPageHeader
-        title="Customer Journeys"
-        description="Preview public enquiry flows and review journey notes."
+        title="Customer journey demos"
+        description="Testing-only previews of the public customer quote forms. Traders should share their Settings link instead."
       />
 
-      <AdminSection title="Journey previews">
+      <AdminSection title="Demo previews">
         <ul className="qf-admin-journey-list">
           {journeys.map((journey) => (
             <li key={journey.id} className="qf-admin-journey-item">
@@ -37,7 +37,7 @@ export function CustomerJourneysPanel({
                 target="_blank"
               >
                 <span className="qf-admin-link-card-url">{journey.href}</span>
-                <span className="qf-admin-journey-open">Open preview →</span>
+                <span className="qf-admin-journey-open">Open customer demo →</span>
               </Link>
             </li>
           ))}

@@ -54,8 +54,6 @@ export function EnquiriesBrowser() {
   }
 
   if (enquiries.length === 0) {
-    const requestPath = publicLinkPath ?? "/request-quote/w/…";
-
     return (
       <div className="qf-enquiry-empty-card">
         {showDevTools ? (
@@ -78,10 +76,15 @@ export function EnquiriesBrowser() {
 
         <h2 className="qf-enquiry-empty-title">No enquiries yet</h2>
         <p className="qf-enquiry-empty-copy">
-          When a customer completes your public quote request form, their enquiry
-          will appear here. Share your link at{" "}
-          <span className="qf-enquiry-inline-path">{requestPath}</span> or try a
-          test submission there.
+          When a customer completes your public quote form, their enquiry will
+          appear here. Share your link from Settings
+          {publicLinkPath ? (
+            <>
+              {" "}
+              (<span className="qf-enquiry-inline-path">{publicLinkPath}</span>)
+            </>
+          ) : null}
+          .
         </p>
       </div>
     );

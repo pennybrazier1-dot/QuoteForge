@@ -3,7 +3,8 @@ import { QuotePreparationEntry } from "@/components/proposals/quote-preparation-
 
 export const metadata: Metadata = {
   title: "New Quote",
-  description: "Create a new quote in Reanvil.",
+  description:
+    "Create a quick quote from a call, visit, message, or referral.",
 };
 
 export default async function NewProposalPage({

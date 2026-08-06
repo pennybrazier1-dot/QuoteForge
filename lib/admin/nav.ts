@@ -12,7 +12,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { href: "/admin/trades", label: "Supported Trades" },
   { href: "/admin/templates", label: "Question Templates" },
   { href: "/admin/service-requests", label: "Service Requests" },
-  { href: "/admin/customer-journeys", label: "Customer Journeys" },
+  { href: "/admin/customer-journeys", label: "Journey Demos" },
   { href: "/admin/support", label: "Support Issues" },
   { href: "/admin/settings", label: "System Settings" },
 ];

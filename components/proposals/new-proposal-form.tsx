@@ -41,28 +41,31 @@ const acceptInitialState: AcceptAiDraftProposalState = {};
 const SITE_NOTES_MAX = 4000;
 const OPTIONAL_EXTRAS_MAX = 1000;
 
-const SITE_NOTES_HELPER =
-  "Write your site notes just as you would on paper. Include the work required, materials or products discussed, measurements, customer requests, when the customer wants work to start, access issues, estimated price or duration if you already know them, and anything that still needs confirming.";
+const JOB_DESCRIPTION_HELPER =
+  "Describe the job in your own words — same as you would after a call or visit. Include materials, measurements, access notes, timing, and anything the customer asked for.";
+
+const JOB_DESCRIPTION_PLACEHOLDER =
+  "Replace bathroom suite, move pipes, customer wants grey tiles, measurements…";
 
 const OPTIONAL_EXTRAS_HELPER =
   "Add possible extra work you noticed on site that is not part of the main quote yet.";
 
 const HOW_IT_WORKS_STEPS = [
   {
-    title: "Write your site notes",
-    description: "Add as much detail as you can.",
+    title: "Add the customer",
+    description: "Name, email, phone, and address.",
+  },
+  {
+    title: "Describe the job",
+    description: "Write free-text notes — no forms to work through.",
   },
   {
     title: "Generate proposal",
-    description: "AI will create a professional proposal.",
+    description: "Turn your notes into a clear quote to price and send.",
   },
   {
-    title: "Review and save",
-    description: "Check the organised quote, then save as draft or mark ready to send.",
-  },
-  {
-    title: "Download or send",
-    description: "Export as PDF or share with customer.",
+    title: "Review and send",
+    description: "Check the draft, then save or email the customer.",
   },
 ] as const;
 
@@ -280,7 +283,7 @@ export function NewProposalForm({
     }
   }
 
-  const showMobileCapture = isMobile && !reviewProposal;
+  const showMobileCapture = isMobile && !reviewProposal && mode === "edit";
   const showMobileReview = isMobile && Boolean(reviewProposal);
 
   useEffect(() => {
@@ -326,19 +329,17 @@ export function NewProposalForm({
       ? proposalStatus === "ready_to_send"
         ? "Edit Proposal"
         : "Edit Draft Proposal"
-      : showMobileCapture || showMobileReview
+      : showMobileReview
         ? "New Quote"
-        : "New Proposal";
+        : "Quick Quote";
   const pageSubtitle =
     mode === "edit"
       ? proposalStatus === "ready_to_send"
-        ? "Update customer details, site notes, or your estimate before sending."
-        : "Update the customer details, site notes, or estimate. Your changes are saved when you tap Save Draft."
-      : showMobileCapture
-        ? "Write everything you know. We'll organise it."
-        : showMobileReview
-          ? "Review and edit the organised quote before saving."
-          : "Write your site notes and let AI create a professional proposal for you.";
+        ? "Update customer details, job notes, or your estimate before sending."
+        : "Update the customer details, job notes, or estimate. Your changes are saved when you tap Save Draft."
+      : showMobileReview
+        ? "Review and edit the organised quote before saving."
+        : "For quotes after a call, visit, WhatsApp, referral, or meeting. Customer enquiries from your public link appear under Enquiries.";
   const saveLabel =
     mode === "edit" && proposalStatus === "ready_to_send"
       ? "Save Changes"
@@ -359,24 +360,14 @@ export function NewProposalForm({
       ) : null}
 
       {showMobileCapture ? (
-        <>
-          {mode === "create" ? (
-            <>
-              <input type="hidden" name="customerName" value="" />
-              <input type="hidden" name="optionalExtras" value="" />
-              <input type="hidden" name="estimatedPrice" value="" />
-              <input type="hidden" name="estimatedDuration" value="" />
-            </>
-          ) : null}
-          <MobileQuoteCapture
-            siteNotes={jobDescription}
-            onSiteNotesChange={setJobDescription}
-            generateError={generateState.error}
-            formAction={generateAction}
-            title={mode === "edit" ? pageTitle : undefined}
-            subtitle={mode === "edit" ? pageSubtitle : undefined}
-          />
-        </>
+        <MobileQuoteCapture
+          siteNotes={jobDescription}
+          onSiteNotesChange={setJobDescription}
+          generateError={generateState.error}
+          formAction={generateAction}
+          title={pageTitle}
+          subtitle={pageSubtitle}
+        />
       ) : null}
 
       {showMobileReview && reviewProposal ? (
@@ -454,7 +445,7 @@ export function NewProposalForm({
             <div className="qf-proposal-col-left">
               <SectionCard className="qf-card-form">
                 <CardHeading
-                  title="Customer Information"
+                  title="Customer details"
                   icon={
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
@@ -464,7 +455,7 @@ export function NewProposalForm({
                 />
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
                   <FormField
-                    label="Customer Name"
+                    label="Name"
                     id="customerName"
                     name="customerName"
                     value={customerName}
@@ -473,15 +464,17 @@ export function NewProposalForm({
                     required
                   />
                   <FormField
-                    label="Property Address"
-                    id="propertyAddress"
-                    name="propertyAddress"
-                    value={propertyAddress}
-                    onChange={setPropertyAddress}
-                    placeholder="e.g. 14 Riverside Close, Bristol"
+                    label="Email"
+                    id="emailAddress"
+                    name="emailAddress"
+                    type="email"
+                    value={emailAddress}
+                    onChange={setEmailAddress}
+                    autoComplete="email"
+                    placeholder="e.g. sarah@example.com"
                   />
                   <FormField
-                    label="Phone Number"
+                    label="Phone"
                     id="phoneNumber"
                     name="phoneNumber"
                     type="tel"
@@ -491,21 +484,19 @@ export function NewProposalForm({
                     placeholder="e.g. 07700 900123"
                   />
                   <FormField
-                    label="Email Address"
-                    id="emailAddress"
-                    name="emailAddress"
-                    type="email"
-                    value={emailAddress}
-                    onChange={setEmailAddress}
-                    autoComplete="email"
-                    placeholder="e.g. sarah@example.com"
+                    label="Address"
+                    id="propertyAddress"
+                    name="propertyAddress"
+                    value={propertyAddress}
+                    onChange={setPropertyAddress}
+                    placeholder="e.g. 14 Riverside Close, Bristol"
                   />
                 </div>
               </SectionCard>
 
               <SectionCard className="qf-card-form">
                 <CardHeading
-                  title="Site Notes"
+                  title="Job description"
                   icon={
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
@@ -519,39 +510,43 @@ export function NewProposalForm({
                     name="jobDescription"
                     value={jobDescription}
                     onChange={setJobDescription}
-                    rows={14}
+                    rows={16}
                     required
                     maxLength={SITE_NOTES_MAX}
-                    helperText={SITE_NOTES_HELPER}
-                    placeholder="e.g. Replace 12m fence, concrete posts, gravel boards. Customer wants same height. Tight access down side path. Quote around £850, about 2 days."
+                    helperText={JOB_DESCRIPTION_HELPER}
+                    placeholder={JOB_DESCRIPTION_PLACEHOLDER}
                     className="qf-site-notes-textarea"
                   />
                 </div>
               </SectionCard>
 
-              <SectionCard className="qf-card-form">
-                <CardHeading
-                  title="Optional Extras"
-                  icon={
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 8v8M8 12h8" />
-                    </svg>
-                  }
-                />
-                <div className="mt-5">
-                  <CountedTextarea
-                    id="optionalExtras"
-                    name="optionalExtras"
-                    value={optionalExtras}
-                    onChange={setOptionalExtras}
-                    rows={5}
-                    maxLength={OPTIONAL_EXTRAS_MAX}
-                    helperText={OPTIONAL_EXTRAS_HELPER}
-                    placeholder="e.g. Outside socket while on site — separate price"
+              {mode === "edit" ? (
+                <SectionCard className="qf-card-form">
+                  <CardHeading
+                    title="Optional Extras"
+                    icon={
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8v8M8 12h8" />
+                      </svg>
+                    }
                   />
-                </div>
-              </SectionCard>
+                  <div className="mt-5">
+                    <CountedTextarea
+                      id="optionalExtras"
+                      name="optionalExtras"
+                      value={optionalExtras}
+                      onChange={setOptionalExtras}
+                      rows={5}
+                      maxLength={OPTIONAL_EXTRAS_MAX}
+                      helperText={OPTIONAL_EXTRAS_HELPER}
+                      placeholder="e.g. Outside socket while on site — separate price"
+                    />
+                  </div>
+                </SectionCard>
+              ) : (
+                <input type="hidden" name="optionalExtras" value={optionalExtras} />
+              )}
 
               {desktopProposal ? (
                 <div className="space-y-4">
@@ -587,7 +582,7 @@ export function NewProposalForm({
             <div className="qf-proposal-col-right">
               <SectionCard className="qf-card-form">
                 <CardHeading
-                  title="Estimate"
+                  title="Pricing (optional)"
                   icon={
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect width="16" height="20" x="4" y="2" rx="2" />
@@ -596,8 +591,8 @@ export function NewProposalForm({
                   }
                 />
                 <p className="qf-body-text mt-2 text-muted">
-                  If you already know the price or duration, enter it here. These
-                  fields override anything mentioned in your site notes.
+                  Skip this if you are still working it out — you can set prices
+                  after you generate the proposal.
                 </p>
                 <div className="mt-5 space-y-5">
                   <div>
@@ -718,7 +713,7 @@ export function NewProposalForm({
                     </svg>
                     {desktopProposal
                       ? "Use Save as Draft or Mark Ready to Send above after reviewing the quote."
-                      : "Saves your site notes as a draft before you generate a quote."}
+                      : "Generate a proposal from your notes, or save a draft first."}
                   </p>
                 </div>
               </SectionCard>
@@ -734,7 +729,9 @@ export function NewProposalForm({
                       <path d="M12 16v-4M12 8h.01" />
                     </svg>
                   </span>
-                  <h2 className="qf-card-heading">How Reanvil Works</h2>
+                  <h2 className="qf-card-heading">
+                    {mode === "create" ? "Quick quote steps" : "How Reanvil Works"}
+                  </h2>
                 </div>
                 <ol className="qf-how-it-works mt-5">
                   {HOW_IT_WORKS_STEPS.map((step, index) => (

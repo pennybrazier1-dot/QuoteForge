@@ -3,7 +3,7 @@
 import { NewProposalForm } from "@/components/proposals/new-proposal-form";
 import { QuotePreparationForm } from "@/components/proposals/quote-preparation-form";
 
-/** Path B only when an enquiry id is present; otherwise keep Path A (NewProposalForm). */
+/** Enquiry path uses QuotePreparationForm; blank /proposals/new is trader quick quote. */
 export function shouldUseQuotePreparation(enquiryId?: string): boolean {
   return Boolean(enquiryId?.trim());
 }
