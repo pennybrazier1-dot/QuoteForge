@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { SignupForm } from "@/components/auth/signup-form";
 
@@ -22,7 +23,9 @@ export default function SignupPage() {
         </>
       }
     >
-      <SignupForm />
+      <Suspense fallback={<p className="text-sm text-muted">Loading…</p>}>
+        <SignupForm />
+      </Suspense>
     </AuthShell>
   );
 }

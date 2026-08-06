@@ -57,6 +57,7 @@ export function AuthField({
   autoComplete,
   required = true,
   minLength,
+  defaultValue,
 }: {
   label: string;
   id: string;
@@ -65,6 +66,7 @@ export function AuthField({
   autoComplete?: string;
   required?: boolean;
   minLength?: number;
+  defaultValue?: string;
 }) {
   return (
     <div>
@@ -78,6 +80,7 @@ export function AuthField({
         autoComplete={autoComplete}
         required={required}
         minLength={minLength}
+        defaultValue={defaultValue}
         className="form-input mt-2"
       />
     </div>

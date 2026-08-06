@@ -56,7 +56,11 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const hasProfile = await userHasProfileForClient(supabase, user.id);
 
-    if (pathname === "/login" || pathname === "/signup") {
+    if (
+      pathname === "/login" ||
+      pathname === "/signup" ||
+      pathname === "/check-email"
+    ) {
       const url = request.nextUrl.clone();
       url.pathname = hasProfile ? "/dashboard" : "/onboarding";
       return NextResponse.redirect(url);

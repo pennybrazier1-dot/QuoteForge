@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { userHasProfileForClient } from "@/lib/onboarding/status";
 import { NextResponse } from "next/server";
 
+/**
+ * Legacy PKCE callback. Prefer /auth/confirm for email verification links.
+ * Kept so older emails that still point here continue to work.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -23,5 +27,7 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  return NextResponse.redirect(
+    `${origin}/auth/confirm/error?reason=invalid`
+  );
 }
