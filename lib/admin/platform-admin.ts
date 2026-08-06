@@ -39,6 +39,17 @@ export function isPlatformAdmin(email: string | null | undefined): boolean {
     return true;
   }
 
+  return isPlatformAdminAllowlisted(email);
+}
+
+/**
+ * True only when the email is on PLATFORM_ADMIN_EMAILS.
+ * Unlike isPlatformAdmin(), this ignores local/preview "allow everyone" mode —
+ * used to protect allowlisted accounts from the test-user delete tool.
+ */
+export function isPlatformAdminAllowlisted(
+  email: string | null | undefined
+): boolean {
   const normalized = email?.trim().toLowerCase();
   if (!normalized) {
     return false;

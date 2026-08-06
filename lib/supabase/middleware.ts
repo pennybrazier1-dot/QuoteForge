@@ -1,5 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
-import { userHasProfileForClient } from "@/lib/onboarding/status";
+import {
+  isPlatformAdminAllowlisted,
+  resolveAuthEmail,
+} from "@/lib/admin/platform-admin";
+import { ensurePlatformAdminBootstrap } from "@/lib/admin/ensure-platform-admin-bootstrap";
+import { resolvePostAuthPathForUser } from "@/lib/onboarding/status";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
@@ -54,67 +59,55 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user) {
-    const hasProfile = await userHasProfileForClient(supabase, user.id);
+    const email = resolveAuthEmail(user);
+    const isAllowlistedAdmin = isPlatformAdminAllowlisted(email);
 
+    // Platform admins: bootstrap FIRST, never send to trader onboarding.
+    if (isAllowlistedAdmin) {
+      await ensurePlatformAdminBootstrap(supabase, user);
+
+      if (
+        pathname === "/login" ||
+        pathname === "/signup" ||
+        pathname === "/check-email" ||
+        pathname === "/forgot-password" ||
+        pathname.startsWith("/onboarding")
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/admin";
+        return NextResponse.redirect(url);
+      }
+
+      return supabaseResponse;
+    }
+
+    const homePath = await resolvePostAuthPathForUser(supabase, user);
+    const hasProfile = homePath !== "/onboarding";
+
+    // Keep users with a recovery session on the reset-password form.
     if (
       pathname === "/login" ||
       pathname === "/signup" ||
-      pathname === "/check-email"
+      pathname === "/check-email" ||
+      pathname === "/forgot-password"
     ) {
       const url = request.nextUrl.clone();
-      url.pathname = hasProfile ? "/dashboard" : "/onboarding";
+      url.pathname = homePath;
       return NextResponse.redirect(url);
     }
 
-    if (pathname.startsWith("/dashboard") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
+    const needsProfile =
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/proposals") ||
+      pathname.startsWith("/customers") ||
+      pathname.startsWith("/enquiries") ||
+      pathname.startsWith("/site-visit") ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/calendar") ||
+      pathname.startsWith("/more");
 
-    if (pathname.startsWith("/proposals") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/customers") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/enquiries") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/site-visit") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/settings") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/admin") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/calendar") && !hasProfile) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/onboarding";
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname.startsWith("/more") && !hasProfile) {
+    if (needsProfile && !hasProfile) {
       const url = request.nextUrl.clone();
       url.pathname = "/onboarding";
       return NextResponse.redirect(url);
@@ -122,7 +115,7 @@ export async function updateSession(request: NextRequest) {
 
     if (pathname.startsWith("/onboarding") && hasProfile) {
       const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
+      url.pathname = homePath;
       return NextResponse.redirect(url);
     }
   }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   isPlatformAdmin,
+  isPlatformAdminAllowlisted,
   resolveAuthEmail,
 } from "@/lib/admin/platform-admin";
 
@@ -95,5 +96,15 @@ describe("isPlatformAdmin", () => {
     process.env.PLATFORM_ADMIN_EMAILS = '"owner@example.com"';
 
     expect(isPlatformAdmin("owner@example.com")).toBe(true);
+  });
+
+  it("allowlist check ignores local open-admin mode", () => {
+    delete process.env.VERCEL_ENV;
+    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
+    process.env.PLATFORM_ADMIN_EMAILS = "owner@example.com";
+
+    expect(isPlatformAdmin("anyone@example.com")).toBe(true);
+    expect(isPlatformAdminAllowlisted("anyone@example.com")).toBe(false);
+    expect(isPlatformAdminAllowlisted("owner@example.com")).toBe(true);
   });
 });

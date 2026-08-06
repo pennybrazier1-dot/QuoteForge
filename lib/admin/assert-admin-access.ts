@@ -3,6 +3,7 @@ import {
   isPlatformAdmin,
   resolveAuthEmail,
 } from "@/lib/admin/platform-admin";
+import { ensurePlatformAdminBootstrap } from "@/lib/admin/ensure-platform-admin-bootstrap";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -22,5 +23,11 @@ export async function assertAdminAccess(): Promise<void> {
 
   if (!isPlatformAdmin(email)) {
     redirect("/dashboard");
+  }
+
+  // Allowlisted admins must have workspace/profile before admin UI loads.
+  // (Local/dev "open admin" mode still benefits when email is allowlisted.)
+  if (email) {
+    await ensurePlatformAdminBootstrap(supabase, user);
   }
 }
