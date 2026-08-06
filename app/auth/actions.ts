@@ -3,6 +3,7 @@
 import {
   buildCheckEmailPath,
   getAuthConfirmUrl,
+  getPasswordResetRedirectUrl,
   isDuplicateSignupUser,
 } from "@/lib/auth/email-redirect";
 import { createClient } from "@/lib/supabase/server";
@@ -113,6 +114,72 @@ export async function resendSignupVerification(
   }
 
   return { ok: true };
+}
+
+export async function requestPasswordReset(
+  _prevState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const email = String(formData.get("email") ?? "").trim();
+
+  if (!email) {
+    return { error: "Email is required." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getPasswordResetRedirectUrl(),
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  // Always show success so we do not reveal whether the email exists.
+  return {
+    success:
+      "If an account exists for that email, we sent a password reset link. Check your inbox.",
+  };
+}
+
+export async function updatePassword(
+  _prevState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!password || !confirmPassword) {
+    return { error: "Enter and confirm your new password." };
+  }
+
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+
+  if (password !== confirmPassword) {
+    return { error: "Passwords do not match." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      error:
+        "Your reset link is missing or expired. Request a new password reset email.",
+    };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect(await getPostAuthRedirectPath());
 }
 
 export async function logout() {

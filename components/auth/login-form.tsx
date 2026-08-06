@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { login, type AuthActionState } from "@/app/auth/actions";
 import { AuthError, AuthField } from "@/components/auth/auth-shell";
@@ -21,13 +22,23 @@ export function LoginForm() {
         type="email"
         autoComplete="email"
       />
-      <AuthField
-        label="Password"
-        id="password"
-        name="password"
-        type="password"
-        autoComplete="current-password"
-      />
+      <div className="space-y-2">
+        <AuthField
+          label="Password"
+          id="password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+        />
+        <div className="flex justify-end">
+          <Link
+            href="/forgot-password"
+            className="text-sm font-medium text-accent hover:text-accent-hover"
+          >
+            Forgot password?
+          </Link>
+        </div>
+      </div>
 
       <AuthSubmitButton label="Sign in" pendingLabel="Signing in…" />
     </form>

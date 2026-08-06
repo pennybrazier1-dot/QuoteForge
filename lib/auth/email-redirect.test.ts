@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCheckEmailPath,
   getAuthConfirmUrl,
+  getPasswordResetRedirectUrl,
   isDuplicateSignupUser,
 } from "@/lib/auth/email-redirect";
 import {
@@ -19,6 +20,12 @@ describe("signup email redirect helpers", () => {
 
   it("builds auth confirm URL from site origin", () => {
     expect(getAuthConfirmUrl().endsWith("/auth/confirm")).toBe(true);
+  });
+
+  it("builds password reset redirect URL from site origin", () => {
+    expect(getPasswordResetRedirectUrl().endsWith("/auth/reset-password")).toBe(
+      true
+    );
   });
 
   it("detects duplicate signup responses with empty identities", () => {

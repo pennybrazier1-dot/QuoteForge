@@ -33,6 +33,12 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: createClientMock,
 }));
 
+vi.mock("@/lib/supabase/admin", () => ({
+  createServiceRoleClient: () => ({
+    from: fromMock,
+  }),
+}));
+
 import { GET } from "@/app/auth/confirm/route";
 
 describe("/auth/confirm", () => {
@@ -99,5 +105,97 @@ describe("/auth/confirm", () => {
     expect(response.headers.get("location")).toContain(
       "/auth/confirm/error?reason=missing"
     );
+  });
+
+  it("redirects recovery confirmations to the reset-password page", async () => {
+    verifyOtpMock.mockResolvedValue({ error: null });
+    getUserMock.mockResolvedValue({
+      data: { user: { id: "user-1" } },
+    });
+
+    const response = await GET(
+      new NextRequest(
+        "https://reanvil.com/auth/confirm?token_hash=abc&type=recovery"
+      )
+    );
+
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      type: "recovery",
+      token_hash: "abc",
+    });
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://reanvil.com/auth/reset-password"
+    );
+  });
+
+  it("redirects allowlisted platform admins to /admin after confirm", async () => {
+    const original = process.env.PLATFORM_ADMIN_EMAILS;
+    process.env.PLATFORM_ADMIN_EMAILS = "owner@example.com";
+
+    verifyOtpMock.mockResolvedValue({ error: null });
+    getUserMock.mockResolvedValue({
+      data: {
+        user: {
+          id: "admin-1",
+          email: "owner@example.com",
+          user_metadata: { full_name: "Owner" },
+        },
+      },
+    });
+
+    // No profile yet → bootstrap inserts workspace + profile
+    let profileLookups = 0;
+    fromMock.mockImplementation((table: string) => {
+      if (table === "profiles") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => {
+                profileLookups += 1;
+                return { data: null };
+              },
+            }),
+          }),
+          insert: async () => ({ error: null }),
+        };
+      }
+      if (table === "workspaces") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({ data: null }),
+            }),
+          }),
+          insert: () => ({
+            select: () => ({
+              single: async () => ({
+                data: { id: "workspace-admin" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      throw new Error(`Unexpected table ${table}`);
+    });
+
+    try {
+      const response = await GET(
+        new NextRequest(
+          "https://reanvil.com/auth/confirm?token_hash=abc&type=signup"
+        )
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe("https://reanvil.com/admin");
+      expect(profileLookups).toBeGreaterThan(0);
+    } finally {
+      if (original === undefined) {
+        delete process.env.PLATFORM_ADMIN_EMAILS;
+      } else {
+        process.env.PLATFORM_ADMIN_EMAILS = original;
+      }
+    }
   });
 });

@@ -5,6 +5,11 @@ export function getAuthConfirmUrl(): string {
   return `${getSiteUrl()}/auth/confirm`;
 }
 
+/** Absolute URL used in password recovery emails. */
+export function getPasswordResetRedirectUrl(): string {
+  return `${getSiteUrl()}/auth/reset-password`;
+}
+
 export function buildCheckEmailPath(email: string): string {
   return `/check-email?email=${encodeURIComponent(email.trim())}`;
 }
