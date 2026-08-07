@@ -12,7 +12,7 @@ function baseInput(
   return {
     customerName: "Mrs Whitfield",
     emailAddress: "sarah@example.com",
-    phoneNumber: "",
+    phoneNumber: "07700 900123",
     propertyAddress: "14 Riverside Close",
     notes: createEmptyPrepNotes(),
     jobDescription: "Bathroom refit",
@@ -29,6 +29,37 @@ function baseInput(
 }
 
 describe("quote readiness checklist", () => {
+  it("flags phone, email, and job address separately when missing", () => {
+    const incomplete = getIncompleteQuoteReadinessItems(
+      baseInput({
+        phoneNumber: "",
+        emailAddress: "",
+        propertyAddress: "",
+      })
+    );
+
+    expect(incomplete.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "customer_phone",
+        "customer_email",
+        "full_address",
+      ])
+    );
+    expect(incomplete.some((item) => item.id === "customer_name")).toBe(false);
+  });
+
+  it("still flags phone when email is present", () => {
+    const incomplete = getIncompleteQuoteReadinessItems(
+      baseInput({
+        phoneNumber: "",
+        emailAddress: "sarah@example.com",
+      })
+    );
+
+    expect(incomplete.some((item) => item.id === "customer_phone")).toBe(true);
+    expect(incomplete.some((item) => item.id === "customer_email")).toBe(false);
+  });
+
   it("with AI notes-first, still lists confirmation items when optional fields are empty", () => {
     const incomplete = getIncompleteQuoteReadinessItems(
       baseInput({
@@ -91,9 +122,7 @@ describe("quote readiness checklist", () => {
         },
       })
     );
-    expect(
-      withNotesOnly.some((item) => item.id === "photos")
-    ).toBe(true);
+    expect(withNotesOnly.some((item) => item.id === "photos")).toBe(true);
 
     const withPhoto = getIncompleteQuoteReadinessItems(
       baseInput({ photoCount: 1 })
@@ -124,15 +153,16 @@ describe("quote readiness checklist", () => {
       baseInput({
         customerName: "",
         emailAddress: "",
+        phoneNumber: "",
         estimatedPrice: "",
       })
     );
 
     const customer = buildCustomerThingsToConfirm(incomplete);
-    expect(customer).toContain("Final measurements to be confirmed.");
+    expect(customer).toContain("Measurements to be confirmed.");
     expect(customer).toContain("Site photos and conditions to be confirmed.");
     expect(customer.join(" ")).not.toMatch(/Pricing to complete/i);
-    expect(customer.join(" ")).not.toMatch(/Customer contact/i);
+    expect(customer.join(" ")).not.toMatch(/Customer phone/i);
   });
 
   it("returns no reminders when the checklist is complete", () => {
@@ -158,12 +188,14 @@ describe("quote readiness checklist", () => {
     expect(buildCustomerThingsToConfirm(incomplete)).toEqual([]);
   });
 
-  it("builds a soft Things to confirm summary (not a duplicate checklist)", () => {
+  it("builds a soft Things to confirm summary with folded related items", () => {
     const summary = buildThingsToConfirmSummary(
       baseInput({
         aiNotesFirst: true,
         customerName: "",
         emailAddress: "",
+        phoneNumber: "",
+        propertyAddress: "",
         notes: createEmptyPrepNotes(),
         photoCount: 0,
         photosNotRequired: true,
@@ -179,14 +211,35 @@ describe("quote readiness checklist", () => {
       "Missing job information",
       "Missing planning information",
     ]);
-    expect(
-      summary.groups.flatMap((group) => group.items.map((item) => item.label))
-    ).toEqual(
+
+    const customerLabels = summary.groups
+      .find((group) => group.id === "customer")
+      ?.items.map((item) => item.label);
+    expect(customerLabels).toEqual(
       expect.arrayContaining([
-        "Name and phone or email",
-        "Measurements",
-        "Start date",
-        "Customer quote total",
+        "Customer name",
+        "Customer phone number",
+        "Customer email",
+        "Job address",
+      ])
+    );
+
+    const measurements = summary.groups
+      .find((group) => group.id === "job")
+      ?.items.find((item) => item.id === "measurements");
+    expect(measurements?.label).toBe("Measurements to be confirmed");
+    expect(measurements?.children).toContain(
+      "Site visit recommended to confirm measurements"
+    );
+
+    const dates = summary.groups
+      .find((group) => group.id === "planning")
+      ?.items.find((item) => item.id === "dates");
+    expect(dates?.label).toBe("Dates to be confirmed");
+    expect(dates?.children).toEqual(
+      expect.arrayContaining([
+        "Duration to be confirmed",
+        "Start date to be confirmed",
       ])
     );
   });

@@ -11,10 +11,8 @@ export function mapQuoteDraftToFormValues(
     phoneNumber: draft.phoneNumber,
     emailAddress: draft.emailAddress,
     jobDescription: draft.jobDescription,
-    optionalExtras: draft.additionalCosts
-      .map((item) => item.description.trim())
-      .filter(Boolean)
-      .join("\n"),
+    // Additional costs are internal pricing — never optional extras.
+    optionalExtras: "",
     estimatedPrice: draft.total.trim(),
     estimatedDuration: draft.estimatedDuration,
     plannedStartDateText: draft.plannedStartDateText,
@@ -45,9 +43,9 @@ export function mapQuoteDraftToGeneratedProposal(
       : `${item.description}${item.price.trim() ? ` — £${item.price.trim()}` : ""}`
   );
 
-  const optionalExtras = draft.additionalCosts
-    .map((item) => item.description.trim())
-    .filter(Boolean);
+  // Additional costs stay in internal pricing. Optional extras only when the
+  // trader (or AI) explicitly marks a customer-facing optional choice.
+  const optionalExtras: string[] = [];
 
   const thingsToConfirm = [
     ...draft.thingsToConfirm,

@@ -612,7 +612,16 @@ export function QuickQuotePreparation({
                   </h3>
                   <ul className="qf-qq-things-confirm-list">
                     {group.items.map((entry) => (
-                      <li key={entry.id}>{entry.label}</li>
+                      <li key={entry.id}>
+                        <span>{entry.label}</span>
+                        {entry.children && entry.children.length > 0 ? (
+                          <ul className="qf-qq-things-confirm-children">
+                            {entry.children.map((child) => (
+                              <li key={child}>{child}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </li>
                     ))}
                   </ul>
                 </div>

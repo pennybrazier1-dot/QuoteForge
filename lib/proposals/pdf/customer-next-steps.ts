@@ -163,7 +163,8 @@ export function stripReadinessFromOptionalExtras(text: string): string {
 
 /**
  * Prepare optional extras for the customer PDF.
- * Returns only real optional items — never prep notes or empty placeholders.
+ * Returns only real optional items — never prep notes, readiness blurbs,
+ * or internal pricing / additional-cost lines.
  */
 export function resolveCustomerOptionalExtras(items: string[]): string[] {
   const cleaned: string[] = [];
@@ -190,10 +191,42 @@ export function resolveCustomerOptionalExtras(items: string[]): string[] {
       continue;
     }
 
+    // Internal pricing must never become "optional extras".
+    if (looksLikeInternalPricingExtra(item)) {
+      continue;
+    }
+
     cleaned.push(item);
   }
 
   return cleaned;
+}
+
+function looksLikeInternalPricingExtra(item: string): boolean {
+  const trimmed = item.trim();
+
+  if (
+    /^(additional costs?|materials(?: cost)?|labour(?: cost)?|labor(?: cost)?|profit|margin(?: \/ profit)?|contingency)\b/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^(materials|labour|labor|additional|margin|profit)\s*[:=-]?\s*£?\s*[\d,]+/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+
+  // Bare money amounts are costing, not optional customer choices.
+  if (/^£?\s*[\d,]+(?:\.\d{1,2})?\s*$/.test(trimmed)) {
+    return true;
+  }
+
+  return false;
 }
 
 export function parseOptionalExtrasSource(value: unknown): string[] {

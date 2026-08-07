@@ -9,7 +9,9 @@ export type QuoteReadinessCategory =
   | "pricing";
 
 export type QuoteReadinessItemId =
-  | "customer_contact"
+  | "customer_name"
+  | "customer_phone"
+  | "customer_email"
   | "full_address"
   | "measurements"
   | "photos"
@@ -92,13 +94,6 @@ function hasText(value: string | undefined): boolean {
   return Boolean(value?.trim());
 }
 
-function hasCustomerContact(input: QuoteReadinessInput): boolean {
-  return (
-    hasText(input.customerName) &&
-    (hasText(input.emailAddress) || hasText(input.phoneNumber))
-  );
-}
-
 function hasStartDate(input: QuoteReadinessInput): boolean {
   return (
     hasText(input.plannedStartDateText) || hasText(input.plannedStartDateExact)
@@ -134,21 +129,33 @@ export function getIncompleteQuoteReadinessItems(
   const missing: QuoteReadinessItem[] = [];
   const hasJobNotes = hasText(input.jobDescription);
 
-  // Customer
-  if (!hasCustomerContact(input)) {
+  // Customer — each essential checked separately
+  if (!hasText(input.customerName)) {
+    missing.push(
+      item("customer_name", "customer", "Customer name to confirm", null)
+    );
+  }
+
+  if (!hasText(input.phoneNumber)) {
     missing.push(
       item(
-        "customer_contact",
+        "customer_phone",
         "customer",
-        "Customer contact details to confirm",
+        "Customer phone number to confirm",
         null
       )
     );
   }
 
+  if (!hasText(input.emailAddress)) {
+    missing.push(
+      item("customer_email", "customer", "Customer email to confirm", null)
+    );
+  }
+
   if (!hasText(input.propertyAddress)) {
     missing.push(
-      item("full_address", "customer", "Full address to confirm", null)
+      item("full_address", "customer", "Job address to confirm", null)
     );
   }
 
@@ -159,7 +166,7 @@ export function getIncompleteQuoteReadinessItems(
         "measurements",
         "site",
         "Measurements to confirm",
-        "Final measurements to be confirmed."
+        "Measurements to be confirmed."
       )
     );
   }
@@ -181,7 +188,7 @@ export function getIncompleteQuoteReadinessItems(
         "site_visit",
         "site",
         "Site inspection to confirm",
-        "Site visit recommended to confirm final measurements."
+        "Site visit recommended to confirm measurements."
       )
     );
   }
@@ -225,7 +232,7 @@ export function getIncompleteQuoteReadinessItems(
         "materials",
         "job",
         "Materials/specifications to confirm",
-        "Materials and finishes to be confirmed."
+        "Materials to be confirmed."
       )
     );
   }
@@ -236,7 +243,7 @@ export function getIncompleteQuoteReadinessItems(
         "customer_choices",
         "job",
         "Customer choices to confirm",
-        "Materials and finishes to be confirmed."
+        "Materials to be confirmed."
       )
     );
   }
@@ -324,9 +331,11 @@ export function buildCustomerThingsToConfirm(
 export const KNOWN_CUSTOMER_THINGS_TO_CONFIRM = new Set(
   [
     "Final measurements to be confirmed.",
+    "Measurements to be confirmed.",
     "Measurements to be confirmed",
     "Site photos and conditions to be confirmed.",
     "Site photos / conditions to be confirmed",
+    "Site visit recommended to confirm measurements.",
     "Site visit recommended to confirm final measurements.",
     "Site visit recommended to confirm final measurements and requirements.",
     "A site visit may be needed before work begins",
@@ -335,13 +344,17 @@ export const KNOWN_CUSTOMER_THINGS_TO_CONFIRM = new Set(
     "Site access arrangements to be confirmed.",
     "Site access to be confirmed",
     "Materials and finishes to be confirmed.",
+    "Materials to be confirmed.",
     "Materials and specification to be confirmed.",
     "Materials / specification to be confirmed",
     "Final finishes and choices to be confirmed.",
     "Final choices (for example finishes) to be confirmed",
+    "Customer choices to be confirmed.",
     "Final job details to be confirmed.",
+    "Dates to be confirmed.",
     "Start date to be confirmed.",
     "Start date to be confirmed",
+    "Timescale to be confirmed.",
   ].map((value) => value.toLowerCase())
 );
 
@@ -351,17 +364,19 @@ export function isKnownCustomerThingToConfirm(value: string): boolean {
 
 /** Short trader summary labels — not a duplicate input checklist. */
 const THINGS_TO_CONFIRM_SUMMARY_LABELS: Record<QuoteReadinessItemId, string> = {
-  customer_contact: "Name and phone or email",
-  full_address: "Address",
-  measurements: "Measurements",
+  customer_name: "Customer name",
+  customer_phone: "Customer phone number",
+  customer_email: "Customer email",
+  full_address: "Job address",
+  measurements: "Measurements to be confirmed",
   photos: "Photos / site conditions",
-  site_visit: "Site inspection",
-  access: "Access requirements",
+  site_visit: "Site visit recommended to confirm measurements",
+  access: "Access to be confirmed",
   scope: "Job notes / scope",
-  materials: "Materials / specification",
-  customer_choices: "Customer choices",
-  duration: "Duration",
-  start_date: "Start date",
+  materials: "Materials to be confirmed",
+  customer_choices: "Customer choices to be confirmed",
+  duration: "Duration to be confirmed",
+  start_date: "Start date to be confirmed",
   pricing: "Customer quote total",
   payment_terms: "Payment terms",
 };
@@ -371,11 +386,143 @@ export type ThingsToConfirmSummaryGroupId =
   | "job"
   | "planning";
 
+export type ThingsToConfirmSummaryItem = {
+  id: string;
+  label: string;
+  children?: string[];
+};
+
 export type ThingsToConfirmSummaryGroup = {
   id: ThingsToConfirmSummaryGroupId;
   title: string;
-  items: Array<{ id: QuoteReadinessItemId; label: string }>;
+  items: ThingsToConfirmSummaryItem[];
 };
+
+function hasId(
+  items: QuoteReadinessItem[],
+  id: QuoteReadinessItemId
+): boolean {
+  return items.some((entry) => entry.id === id);
+}
+
+/** Fold related open items into one parent + optional children. */
+function foldJobSummaryItems(
+  items: QuoteReadinessItem[]
+): ThingsToConfirmSummaryItem[] {
+  const result: ThingsToConfirmSummaryItem[] = [];
+  const used = new Set<QuoteReadinessItemId>();
+
+  if (hasId(items, "measurements") || hasId(items, "site_visit")) {
+    const children: string[] = [];
+    if (hasId(items, "site_visit")) {
+      children.push(
+        THINGS_TO_CONFIRM_SUMMARY_LABELS.site_visit
+      );
+    }
+    result.push({
+      id: "measurements",
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS.measurements,
+      children: children.length > 0 ? children : undefined,
+    });
+    used.add("measurements");
+    used.add("site_visit");
+  }
+
+  if (hasId(items, "access")) {
+    result.push({
+      id: "access",
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS.access,
+    });
+    used.add("access");
+  }
+
+  if (hasId(items, "photos")) {
+    result.push({
+      id: "photos",
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS.photos,
+    });
+    used.add("photos");
+  }
+
+  if (hasId(items, "materials") || hasId(items, "customer_choices")) {
+    const children: string[] = [];
+    if (hasId(items, "customer_choices") && hasId(items, "materials")) {
+      children.push(THINGS_TO_CONFIRM_SUMMARY_LABELS.customer_choices);
+    }
+    result.push({
+      id: hasId(items, "materials") ? "materials" : "customer_choices",
+      label: hasId(items, "materials")
+        ? THINGS_TO_CONFIRM_SUMMARY_LABELS.materials
+        : THINGS_TO_CONFIRM_SUMMARY_LABELS.customer_choices,
+      children: children.length > 0 ? children : undefined,
+    });
+    used.add("materials");
+    used.add("customer_choices");
+  }
+
+  if (hasId(items, "scope")) {
+    result.push({
+      id: "scope",
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS.scope,
+    });
+    used.add("scope");
+  }
+
+  for (const entry of items) {
+    if (used.has(entry.id)) {
+      continue;
+    }
+    result.push({
+      id: entry.id,
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS[entry.id] ?? entry.traderLabel,
+    });
+  }
+
+  return result;
+}
+
+function foldPlanningSummaryItems(
+  items: QuoteReadinessItem[]
+): ThingsToConfirmSummaryItem[] {
+  const result: ThingsToConfirmSummaryItem[] = [];
+  const used = new Set<QuoteReadinessItemId>();
+
+  if (hasId(items, "duration") || hasId(items, "start_date")) {
+    const children: string[] = [];
+    if (hasId(items, "duration")) {
+      children.push(THINGS_TO_CONFIRM_SUMMARY_LABELS.duration);
+    }
+    if (hasId(items, "start_date")) {
+      children.push(THINGS_TO_CONFIRM_SUMMARY_LABELS.start_date);
+    }
+    result.push({
+      id: "dates",
+      label: "Dates to be confirmed",
+      children: children.length > 1 ? children : undefined,
+    });
+    // Single date item — use the specific label instead of the group title alone.
+    if (children.length === 1) {
+      result[result.length - 1] = {
+        id: hasId(items, "start_date") ? "start_date" : "duration",
+        label: children[0],
+      };
+    }
+    used.add("duration");
+    used.add("start_date");
+  }
+
+  for (const entry of items) {
+    if (used.has(entry.id)) {
+      continue;
+    }
+    result.push({
+      id: entry.id,
+      label: THINGS_TO_CONFIRM_SUMMARY_LABELS[entry.id] ?? entry.traderLabel,
+    });
+  }
+
+  return result;
+}
 
 /**
  * Generated “Things to confirm” summary for Quick Quote.
@@ -414,22 +561,34 @@ export function buildThingsToConfirmSummary(
     planning: "Missing planning information",
   };
 
-  const order: ThingsToConfirmSummaryGroupId[] = [
-    "customer",
-    "job",
-    "planning",
-  ];
+  const groups: ThingsToConfirmSummaryGroup[] = [];
 
-  const groups = order
-    .map((id) => ({
-      id,
-      title: titles[id],
-      items: buckets[id].map((entry) => ({
+  if (buckets.customer.length > 0) {
+    groups.push({
+      id: "customer",
+      title: titles.customer,
+      items: buckets.customer.map((entry) => ({
         id: entry.id,
         label: THINGS_TO_CONFIRM_SUMMARY_LABELS[entry.id] ?? entry.traderLabel,
       })),
-    }))
-    .filter((group) => group.items.length > 0);
+    });
+  }
+
+  if (buckets.job.length > 0) {
+    groups.push({
+      id: "job",
+      title: titles.job,
+      items: foldJobSummaryItems(buckets.job),
+    });
+  }
+
+  if (buckets.planning.length > 0) {
+    groups.push({
+      id: "planning",
+      title: titles.planning,
+      items: foldPlanningSummaryItems(buckets.planning),
+    });
+  }
 
   return {
     ready: groups.length === 0,

@@ -87,10 +87,11 @@ describe("customer next steps", () => {
       })
     ).toEqual(
       expect.arrayContaining([
+        CUSTOMER_NEXT_STEP.measurements,
         CUSTOMER_NEXT_STEP.siteVisit,
+        CUSTOMER_NEXT_STEP.access,
         CUSTOMER_NEXT_STEP.materials,
         CUSTOMER_NEXT_STEP.startDate,
-        "Access height to be confirmed.",
       ])
     );
   });
@@ -116,10 +117,13 @@ describe("customer next steps", () => {
     expect(cleaned).toBe("");
   });
 
-  it("keeps only true optional extras", () => {
+  it("keeps only true optional extras and drops internal pricing lines", () => {
     expect(
       resolveCustomerOptionalExtras([
         "Measurements / dimensions:\n2.1 x 1.8",
+        "Additional costs",
+        "Materials cost: £320",
+        "£40",
         "Supply and fit a heated towel rail.",
       ])
     ).toEqual(["Supply and fit a heated towel rail."]);

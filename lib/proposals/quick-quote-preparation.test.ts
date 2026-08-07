@@ -29,7 +29,10 @@ describe("quick quote preparation helpers", () => {
 
     expect(warnings.map((item) => item.label)).toEqual(
       expect.arrayContaining([
-        "Customer contact details to confirm",
+        "Customer name to confirm",
+        "Customer phone number to confirm",
+        "Customer email to confirm",
+        "Job address to confirm",
         "Measurements to confirm",
         "Photos/site conditions to confirm",
         "Site inspection to confirm",
@@ -45,7 +48,7 @@ describe("quick quote preparation helpers", () => {
     const warnings = getQuickQuoteMissingWarnings({
       customerName: "Alex",
       emailAddress: "a@example.com",
-      phoneNumber: "",
+      phoneNumber: "07700900123",
       propertyAddress: "1 High Street",
       notes: {
         measurements: "3.2m wall",

@@ -164,6 +164,7 @@ OPTIONAL EXTRAS RULES:
 - Do not invent optional extras.
 - If no optional extras were provided or mentioned, return an empty optionalExtras array.
 - Never treat preparation notes, measurements, materials, access, or duration as optional extras unless clearly marked optional/extra/add-on.
+- Never put internal pricing lines into optionalExtras (materials cost, labour cost, additional costs, margin/profit, or bare £ amounts). Additional costs are part of the main quote pricing, not optional extras.
 
 ESTIMATED DURATION RULES:
 - estimatedDuration must contain only time wording (hours, days, weeks, half day, full day, morning, afternoon, approximately, around).
