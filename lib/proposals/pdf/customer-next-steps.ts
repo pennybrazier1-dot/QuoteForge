@@ -22,6 +22,7 @@ export function buildCustomerNextStepsFromPrep(options: {
   siteVisitCompleted?: boolean;
   durationValue?: string;
   estimatedPrice?: string;
+  aiNotesFirst?: boolean;
 }): string[] {
   const incomplete = getIncompleteQuoteReadinessItems({
     customerName: options.customerName ?? "",
@@ -38,6 +39,7 @@ export function buildCustomerNextStepsFromPrep(options: {
     plannedStartDateExact: options.plannedStartDateExact,
     estimatedPrice: options.estimatedPrice ?? "1",
     paymentTermsSupported: false,
+    aiNotesFirst: options.aiNotesFirst,
   });
 
   return buildCustomerThingsToConfirm(incomplete);

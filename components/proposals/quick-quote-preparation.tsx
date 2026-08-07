@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
 import {
   groupIncompleteReadinessByCategory,
   getIncompleteQuoteReadinessItems,
 } from "@/lib/proposals/quote-readiness";
-import {
-  type QuickQuotePrepNotes,
-} from "@/lib/proposals/quick-quote-preparation";
+import { type QuickQuotePrepNotes } from "@/lib/proposals/quick-quote-preparation";
 import {
   DURATION_UNITS,
   type DurationUnit,
@@ -112,6 +110,29 @@ export type QuickQuoteLocalPhoto = {
   previewUrl: string;
 };
 
+function hasOptionalDetailContent(options: {
+  prepNotes: QuickQuotePrepNotes;
+  durationValue: string;
+  plannedStartDateText: string;
+  plannedStartDateExact: string;
+  photos: QuickQuoteLocalPhoto[];
+  photosNotRequired: boolean;
+  siteVisitCompleted: boolean;
+}): boolean {
+  return (
+    Boolean(options.prepNotes.measurements.trim()) ||
+    Boolean(options.prepNotes.materialsRequired.trim()) ||
+    Boolean(options.prepNotes.accessRequirements.trim()) ||
+    Boolean(options.prepNotes.additionalNotes.trim()) ||
+    Boolean(options.durationValue.trim()) ||
+    Boolean(options.plannedStartDateText.trim()) ||
+    Boolean(options.plannedStartDateExact.trim()) ||
+    options.photos.length > 0 ||
+    options.photosNotRequired ||
+    options.siteVisitCompleted
+  );
+}
+
 export function QuickQuotePreparation({
   customerName,
   emailAddress,
@@ -189,6 +210,23 @@ export function QuickQuotePreparation({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
+  const defaultDetailsOpen = useMemo(
+    () =>
+      hasOptionalDetailContent({
+        prepNotes,
+        durationValue,
+        plannedStartDateText,
+        plannedStartDateExact,
+        photos,
+        photosNotRequired,
+        siteVisitCompleted,
+      }),
+    // Open by default only from the initial saved/optional content — not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const [detailsOpen, setDetailsOpen] = useState(defaultDetailsOpen);
+
   const incomplete = getIncompleteQuoteReadinessItems({
     customerName,
     emailAddress,
@@ -204,15 +242,11 @@ export function QuickQuotePreparation({
     plannedStartDateExact,
     estimatedPrice: customerTotal,
     paymentTermsSupported: false,
+    // AI extracts structure from the main job notes — don't nag about optional fields.
+    aiNotesFirst: true,
   });
   const grouped = groupIncompleteReadinessByCategory(incomplete);
   const showSiteVisitToggle = !prepNotes.measurements.trim();
-
-  useEffect(() => {
-    return () => {
-      // Preview URLs are owned by the parent and revoked there on remove/unmount.
-    };
-  }, []);
 
   function updateNote<K extends keyof QuickQuotePrepNotes>(
     key: K,
@@ -262,11 +296,14 @@ export function QuickQuotePreparation({
     <div className="qf-qq-prep">
       <SectionCard className="qf-card-form qf-qq-prep-card">
         <SectionHeading
-          title="Job description"
-          hint="Write the job as you heard it — then fill preparation notes below."
+          title="Job notes"
+          hint="Write it the way you heard it — measurements, materials, access, timing, customer requests. AI will organise the quote."
         />
         <div className="mt-5">
           <div className="qf-textarea-wrap">
+            <label htmlFor="jobDescription" className="qf-field-label">
+              What needs doing?
+            </label>
             <textarea
               id="jobDescription"
               name="jobDescription"
@@ -276,11 +313,13 @@ export function QuickQuotePreparation({
                   event.target.value.slice(0, jobDescriptionMaxLength)
                 )
               }
-              rows={12}
+              rows={14}
               required
               maxLength={jobDescriptionMaxLength}
-              placeholder="Replace bathroom suite, move pipes, customer wants grey tiles, measurements…"
-              className="form-textarea qf-site-notes-textarea"
+              placeholder={
+                "e.g. Customer wants full bathroom refit, suite staying roughly where it is, grey tiles, approx 2.1 x 1.8, park on the road, hoping for week commencing 18th, side gate access only…"
+              }
+              className="form-textarea qf-site-notes-textarea mt-2"
             />
             <p className="qf-char-count" aria-live="polite">
               {jobDescription.length.toLocaleString()} /{" "}
@@ -288,158 +327,175 @@ export function QuickQuotePreparation({
             </p>
           </div>
         </div>
-      </SectionCard>
 
-      <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading
-          title="Preparation notes"
-          hint="Natural job capture — fill what you know. Nothing is required."
-        />
-        <div className="mt-5 space-y-5">
-          <NoteField
-            id="prepMeasurements"
-            label="Measurements / dimensions"
-            value={prepNotes.measurements}
-            onChange={(value) => updateNote("measurements", value)}
-            placeholder="e.g. Bathroom 2.1m × 1.8m, toilet waste through external wall…"
-          />
-          <NoteField
-            id="prepMaterials"
-            label="Materials required"
-            value={prepNotes.materialsRequired}
-            onChange={(value) => updateNote("materialsRequired", value)}
-            placeholder="e.g. Close-coupled suite, grey wall tiles, flexi wastes…"
-          />
-          <NoteField
-            id="prepAccess"
-            label="Access requirements"
-            value={prepNotes.accessRequirements}
-            onChange={(value) => updateNote("accessRequirements", value)}
-            placeholder="e.g. Side gate, park on road, no scaffolding needed…"
-          />
-          <NoteField
-            id="prepAdditional"
-            label="Additional notes"
-            value={prepNotes.additionalNotes}
-            onChange={(value) => updateNote("additionalNotes", value)}
-            placeholder="Anything else before you quote…"
-          />
+        <div className="qf-qq-optional">
+          <button
+            type="button"
+            className="qf-qq-optional-toggle"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((open) => !open)}
+          >
+            <span>Add more details (optional)</span>
+            <span className="qf-qq-optional-chevron" aria-hidden="true">
+              {detailsOpen ? "−" : "+"}
+            </span>
+          </button>
+          <p className="qf-qq-optional-hint">
+            Only if you want to split things out — not required. Messy notes in
+            the box above are enough.
+          </p>
 
-          <div className="qf-qq-photos">
-            <p className="qf-field-label">Photos / site conditions</p>
-            <p className="qf-qq-photos-hint">
-              Soft optional check — upload a photo, or mark that photos are not
-              needed. Extra notes alone do not clear this.
-            </p>
-            <input
-              ref={fileInputRef}
-              id={fileInputId}
-              type="file"
-              accept="image/*"
-              multiple
-              className="qf-qq-photos-input"
-              onChange={(event) => handlePhotoFiles(event.target.files)}
-            />
-            <div className="qf-qq-photos-actions">
-              <label htmlFor={fileInputId} className="qf-btn-secondary qf-qq-photos-add">
-                Add photos
-              </label>
-              <label className="qf-qq-photos-skip">
+          {detailsOpen ? (
+            <div className="qf-qq-optional-body space-y-5">
+              <NoteField
+                id="prepMeasurements"
+                label="Measurements"
+                value={prepNotes.measurements}
+                onChange={(value) => updateNote("measurements", value)}
+                placeholder="e.g. Bathroom 2.1m × 1.8m…"
+              />
+              <NoteField
+                id="prepMaterials"
+                label="Materials"
+                value={prepNotes.materialsRequired}
+                onChange={(value) => updateNote("materialsRequired", value)}
+                placeholder="e.g. Close-coupled suite, grey wall tiles…"
+              />
+              <NoteField
+                id="prepAccess"
+                label="Access requirements"
+                value={prepNotes.accessRequirements}
+                onChange={(value) => updateNote("accessRequirements", value)}
+                placeholder="e.g. Side gate, park on road…"
+              />
+              <NoteField
+                id="prepAdditional"
+                label="Additional notes"
+                value={prepNotes.additionalNotes}
+                onChange={(value) => updateNote("additionalNotes", value)}
+                placeholder="Anything else worth capturing…"
+              />
+
+              <div className="qf-qq-photos">
+                <p className="qf-field-label">Photos / site conditions</p>
+                <p className="qf-qq-photos-hint">
+                  Soft optional check — upload a photo, or mark that photos are
+                  not needed.
+                </p>
                 <input
-                  type="checkbox"
-                  checked={photosNotRequired}
-                  onChange={(event) => {
-                    onPhotosNotRequiredChange(event.target.checked);
-                  }}
+                  ref={fileInputRef}
+                  id={fileInputId}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="qf-qq-photos-input"
+                  onChange={(event) => handlePhotoFiles(event.target.files)}
                 />
-                No photos needed
-              </label>
-            </div>
-            {photoError ? (
-              <p className="qf-qq-photos-error" role="alert">
-                {photoError}
-              </p>
-            ) : null}
-            {photos.length > 0 ? (
-              <ul className="qf-qq-photos-list">
-                {photos.map((photo) => (
-                  <li key={photo.id} className="qf-qq-photos-item">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={photo.previewUrl}
-                      alt={photo.name}
-                      className="qf-qq-photos-thumb"
+                <div className="qf-qq-photos-actions">
+                  <label
+                    htmlFor={fileInputId}
+                    className="qf-btn-secondary qf-qq-photos-add"
+                  >
+                    Add photos
+                  </label>
+                  <label className="qf-qq-photos-skip">
+                    <input
+                      type="checkbox"
+                      checked={photosNotRequired}
+                      onChange={(event) => {
+                        onPhotosNotRequiredChange(event.target.checked);
+                      }}
                     />
-                    <span className="qf-qq-photos-name">{photo.name}</span>
-                    <button
-                      type="button"
-                      className="qf-qq-photos-remove"
-                      onClick={() => removePhoto(photo.id)}
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
+                    No photos needed
+                  </label>
+                </div>
+                {photoError ? (
+                  <p className="qf-qq-photos-error" role="alert">
+                    {photoError}
+                  </p>
+                ) : null}
+                {photos.length > 0 ? (
+                  <ul className="qf-qq-photos-list">
+                    {photos.map((photo) => (
+                      <li key={photo.id} className="qf-qq-photos-item">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={photo.previewUrl}
+                          alt={photo.name}
+                          className="qf-qq-photos-thumb"
+                        />
+                        <span className="qf-qq-photos-name">{photo.name}</span>
+                        <button
+                          type="button"
+                          className="qf-qq-photos-remove"
+                          onClick={() => removePhoto(photo.id)}
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
 
-          {showSiteVisitToggle ? (
-            <label className="qf-qq-photos-skip">
-              <input
-                type="checkbox"
-                checked={siteVisitCompleted}
-                onChange={(event) =>
-                  onSiteVisitCompletedChange(event.target.checked)
-                }
-              />
-              Site visit completed / not needed right now
-            </label>
-          ) : null}
+              {showSiteVisitToggle ? (
+                <label className="qf-qq-photos-skip">
+                  <input
+                    type="checkbox"
+                    checked={siteVisitCompleted}
+                    onChange={(event) =>
+                      onSiteVisitCompletedChange(event.target.checked)
+                    }
+                  />
+                  Site visit completed / not needed right now
+                </label>
+              ) : null}
 
-          <div>
-            <label htmlFor="durationValue" className="qf-field-label">
-              Estimated duration
-            </label>
-            <input
-              type="hidden"
-              name="estimatedDuration"
-              value={estimatedDuration}
-            />
-            <div className="qf-duration-input mt-2">
-              <input
-                id="durationValue"
-                type="text"
-                value={durationValue}
-                onChange={(event) =>
-                  onDurationValueChange(event.target.value)
-                }
-                placeholder="e.g. 2"
-                className="form-input"
+              <div>
+                <label htmlFor="durationValue" className="qf-field-label">
+                  Duration
+                </label>
+                <input
+                  type="hidden"
+                  name="estimatedDuration"
+                  value={estimatedDuration}
+                />
+                <div className="qf-duration-input mt-2">
+                  <input
+                    id="durationValue"
+                    type="text"
+                    value={durationValue}
+                    onChange={(event) =>
+                      onDurationValueChange(event.target.value)
+                    }
+                    placeholder="e.g. 2"
+                    className="form-input"
+                  />
+                  <select
+                    aria-label="Duration unit"
+                    value={durationUnit}
+                    onChange={(event) =>
+                      onDurationUnitChange(event.target.value as DurationUnit)
+                    }
+                    className="form-select"
+                  >
+                    {DURATION_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <PlannedStartDateFields
+                textValue={plannedStartDateText}
+                exactValue={plannedStartDateExact}
+                onTextChange={onPlannedStartDateTextChange}
+                onExactChange={onPlannedStartDateExactChange}
               />
-              <select
-                aria-label="Duration unit"
-                value={durationUnit}
-                onChange={(event) =>
-                  onDurationUnitChange(event.target.value as DurationUnit)
-                }
-                className="form-select"
-              >
-                {DURATION_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit.charAt(0).toUpperCase() + unit.slice(1)}
-                  </option>
-                ))}
-              </select>
             </div>
-          </div>
-
-          <PlannedStartDateFields
-            textValue={plannedStartDateText}
-            exactValue={plannedStartDateExact}
-            onTextChange={onPlannedStartDateTextChange}
-            onExactChange={onPlannedStartDateExactChange}
-          />
+          ) : null}
         </div>
       </SectionCard>
 
@@ -451,8 +507,8 @@ export function QuickQuotePreparation({
         >
           <h2 className="qf-qq-readiness-title">Quote readiness</h2>
           <p className="qf-qq-readiness-copy">
-            Soft reminders for what a tradesperson usually confirms before a
-            job. Nothing here blocks creating or sending the quote.
+            Soft reminders only — messy job notes are enough to generate. Nothing
+            here blocks creating or sending the quote.
           </p>
 
           <div className="qf-qq-readiness-groups">

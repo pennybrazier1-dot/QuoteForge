@@ -303,6 +303,7 @@ export function NewProposalForm({
             plannedStartDateExact,
             estimatedPrice,
             paymentTermsSupported: false,
+            aiNotesFirst: true,
           })
         : [];
     const proposalWithNextSteps =
@@ -409,7 +410,7 @@ export function NewProposalForm({
         : "Update the customer details, job notes, or estimate. Your changes are saved when you tap Save Draft."
       : showMobileReview
         ? "Review and edit the organised quote before saving."
-        : "For quotes after a call, visit, WhatsApp, referral, or meeting. Prepare checklist and pricing, then generate a proposal. Public-link enquiries stay under Enquiries.";
+        : "Customer details + messy job notes. AI organises a professional proposal — usually in under a minute.";
   const saveLabel =
     mode === "edit" && proposalStatus === "ready_to_send"
       ? "Save Changes"

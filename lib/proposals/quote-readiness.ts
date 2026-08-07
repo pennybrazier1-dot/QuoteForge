@@ -54,6 +54,11 @@ export type QuoteReadinessInput = {
   /** When false, payment-terms check is omitted (not supported in this flow). */
   paymentTermsSupported?: boolean;
   paymentTerms?: string;
+  /**
+   * AI-first Quick Quote: when job notes are present, skip soft reminders for
+   * fields AI can extract from those notes.
+   */
+  aiNotesFirst?: boolean;
 };
 
 export const QUOTE_READINESS_CONFIRM_LATER =
@@ -124,6 +129,8 @@ export function getIncompleteQuoteReadinessItems(
   input: QuoteReadinessInput
 ): QuoteReadinessItem[] {
   const missing: QuoteReadinessItem[] = [];
+  const notesCarryDetail =
+    Boolean(input.aiNotesFirst) && hasText(input.jobDescription);
 
   // Customer
   if (!hasCustomerContact(input)) {
@@ -144,7 +151,7 @@ export function getIncompleteQuoteReadinessItems(
   }
 
   // Site
-  if (!hasText(input.notes.measurements)) {
+  if (!notesCarryDetail && !hasText(input.notes.measurements)) {
     missing.push(
       item(
         "measurements",
@@ -166,7 +173,11 @@ export function getIncompleteQuoteReadinessItems(
     );
   }
 
-  if (isSiteVisitRelevant(input) && !input.siteVisitCompleted) {
+  if (
+    !notesCarryDetail &&
+    isSiteVisitRelevant(input) &&
+    !input.siteVisitCompleted
+  ) {
     missing.push(
       item(
         "site_visit",
@@ -177,7 +188,7 @@ export function getIncompleteQuoteReadinessItems(
     );
   }
 
-  if (!hasText(input.notes.accessRequirements)) {
+  if (!notesCarryDetail && !hasText(input.notes.accessRequirements)) {
     missing.push(
       item(
         "access",
@@ -195,7 +206,7 @@ export function getIncompleteQuoteReadinessItems(
     );
   }
 
-  if (!hasText(input.notes.materialsRequired)) {
+  if (!notesCarryDetail && !hasText(input.notes.materialsRequired)) {
     missing.push(
       item(
         "materials",
@@ -207,6 +218,7 @@ export function getIncompleteQuoteReadinessItems(
   }
 
   if (
+    !notesCarryDetail &&
     !hasText(input.notes.materialsRequired) &&
     !hasText(input.notes.additionalNotes)
   ) {
@@ -221,13 +233,13 @@ export function getIncompleteQuoteReadinessItems(
   }
 
   // Planning
-  if (!hasText(input.durationValue)) {
+  if (!notesCarryDetail && !hasText(input.durationValue)) {
     missing.push(
       item("duration", "planning", "Duration to confirm", null)
     );
   }
 
-  if (!hasStartDate(input)) {
+  if (!notesCarryDetail && !hasStartDate(input)) {
     missing.push(
       item(
         "start_date",

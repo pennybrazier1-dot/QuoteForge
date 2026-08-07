@@ -28,6 +28,22 @@ function baseInput(
 }
 
 describe("quote readiness checklist", () => {
+  it("with AI notes-first, skips optional-field nags when job notes exist", () => {
+    const incomplete = getIncompleteQuoteReadinessItems(
+      baseInput({
+        aiNotesFirst: true,
+        jobDescription:
+          "Full bathroom refit, grey tiles, approx 2.1 x 1.8, park on road, week commencing 18th",
+        notes: createEmptyPrepNotes(),
+        photoCount: 0,
+        photosNotRequired: true,
+        estimatedPrice: "940",
+      })
+    );
+
+    expect(incomplete.map((item) => item.id)).toEqual([]);
+  });
+
   it("lists soft incomplete items for empty prep", () => {
     const incomplete = getIncompleteQuoteReadinessItems(
       baseInput({
