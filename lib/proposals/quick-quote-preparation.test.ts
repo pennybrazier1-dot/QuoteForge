@@ -50,8 +50,9 @@ describe("quick quote preparation helpers", () => {
       notes: {
         measurements: "3.2m wall",
         materialsRequired: "Grey tiles",
+        customerChoices: "Chose grey",
         accessRequirements: "Side gate only",
-        additionalNotes: "Chose grey",
+        additionalNotes: "",
       },
       jobDescription:
         "Full bathroom refit including suite, tiling, and waterproofing",
@@ -91,6 +92,7 @@ describe("quick quote preparation helpers", () => {
     const notes = {
       measurements: "Bathroom 2.1 x 1.8",
       materialsRequired: "Grey tiles, suite pack",
+      customerChoices: "White suite",
       accessRequirements: "Park on road",
       additionalNotes: "Customer away mornings",
     };
@@ -100,8 +102,9 @@ describe("quick quote preparation helpers", () => {
     expect(text).toContain("Measurements / dimensions:");
     expect(text).toContain("Bathroom 2.1 x 1.8");
     expect(text).toContain("Materials required:");
+    expect(text).toContain("Customer choices:");
     expect(text).toContain("Access requirements:");
-    expect(text).toContain("Additional notes:");
+    expect(text).toContain("Additional requirements:");
     expect(text).not.toContain("£");
     expect(text).not.toContain("Still to confirm later");
     expect(text).not.toContain("site visit");
@@ -113,6 +116,7 @@ describe("quick quote preparation helpers", () => {
       notes: {
         measurements: "2.1 x 1.8",
         materialsRequired: "",
+        customerChoices: "",
         accessRequirements: "Side gate",
         additionalNotes: "",
       },

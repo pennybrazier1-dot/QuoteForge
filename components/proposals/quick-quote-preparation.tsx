@@ -3,10 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import { SectionCard } from "@/components/ui/section-card";
-import {
-  groupIncompleteReadinessByCategory,
-  getIncompleteQuoteReadinessItems,
-} from "@/lib/proposals/quote-readiness";
+import { buildThingsToConfirmSummary } from "@/lib/proposals/quote-readiness";
 import { type QuickQuotePrepNotes } from "@/lib/proposals/quick-quote-preparation";
 import {
   DURATION_UNITS,
@@ -122,6 +119,7 @@ function hasOptionalDetailContent(options: {
   return (
     Boolean(options.prepNotes.measurements.trim()) ||
     Boolean(options.prepNotes.materialsRequired.trim()) ||
+    Boolean(options.prepNotes.customerChoices.trim()) ||
     Boolean(options.prepNotes.accessRequirements.trim()) ||
     Boolean(options.prepNotes.additionalNotes.trim()) ||
     Boolean(options.durationValue.trim()) ||
@@ -227,7 +225,7 @@ export function QuickQuotePreparation({
   );
   const [detailsOpen, setDetailsOpen] = useState(defaultDetailsOpen);
 
-  const incomplete = getIncompleteQuoteReadinessItems({
+  const thingsToConfirm = buildThingsToConfirmSummary({
     customerName,
     emailAddress,
     phoneNumber,
@@ -242,11 +240,8 @@ export function QuickQuotePreparation({
     plannedStartDateExact,
     estimatedPrice: customerTotal,
     paymentTermsSupported: false,
-    // AI-first: job notes can stand in for empty scope; checklist items still run.
     aiNotesFirst: true,
   });
-  const grouped = groupIncompleteReadinessByCategory(incomplete);
-  const showSiteVisitToggle = !prepNotes.measurements.trim();
 
   function updateNote<K extends keyof QuickQuotePrepNotes>(
     key: K,
@@ -345,237 +340,238 @@ export function QuickQuotePreparation({
           </p>
 
           {detailsOpen ? (
-            <div className="qf-qq-optional-body space-y-5">
-              <NoteField
-                id="prepMeasurements"
-                label="Measurements"
-                value={prepNotes.measurements}
-                onChange={(value) => updateNote("measurements", value)}
-                placeholder="e.g. Bathroom 2.1m × 1.8m…"
-              />
-              <NoteField
-                id="prepMaterials"
-                label="Materials"
-                value={prepNotes.materialsRequired}
-                onChange={(value) => updateNote("materialsRequired", value)}
-                placeholder="e.g. Close-coupled suite, grey wall tiles…"
-              />
-              <NoteField
-                id="prepAccess"
-                label="Access requirements"
-                value={prepNotes.accessRequirements}
-                onChange={(value) => updateNote("accessRequirements", value)}
-                placeholder="e.g. Side gate, park on road…"
-              />
-              <NoteField
-                id="prepAdditional"
-                label="Additional notes"
-                value={prepNotes.additionalNotes}
-                onChange={(value) => updateNote("additionalNotes", value)}
-                placeholder="Anything else worth capturing…"
-              />
+            <div className="qf-qq-optional-body space-y-6">
+              <section className="qf-qq-optional-section">
+                <h3 className="qf-qq-optional-section-title">Site information</h3>
+                <div className="space-y-5">
+                  <NoteField
+                    id="prepMeasurements"
+                    label="Measurements"
+                    value={prepNotes.measurements}
+                    onChange={(value) => updateNote("measurements", value)}
+                    placeholder="e.g. Bathroom 2.1m × 1.8m…"
+                  />
 
-              <div className="qf-qq-photos">
-                <p className="qf-field-label">Photos / site conditions</p>
-                <p className="qf-qq-photos-hint">
-                  Soft optional check — upload a photo, or mark that photos are
-                  not needed.
-                </p>
-                <input
-                  ref={fileInputRef}
-                  id={fileInputId}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="qf-qq-photos-input"
-                  onChange={(event) => handlePhotoFiles(event.target.files)}
-                />
-                <div className="qf-qq-photos-actions">
-                  <label
-                    htmlFor={fileInputId}
-                    className="qf-btn-secondary qf-qq-photos-add"
-                  >
-                    Add photos
-                  </label>
-                  <label className="qf-qq-photos-skip">
+                  <div className="qf-qq-photos">
+                    <p className="qf-field-label">Photos</p>
+                    <p className="qf-qq-photos-hint">
+                      Optional — upload a photo, or mark that photos are not
+                      needed.
+                    </p>
                     <input
-                      type="checkbox"
-                      checked={photosNotRequired}
-                      onChange={(event) => {
-                        onPhotosNotRequiredChange(event.target.checked);
-                      }}
+                      ref={fileInputRef}
+                      id={fileInputId}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="qf-qq-photos-input"
+                      onChange={(event) => handlePhotoFiles(event.target.files)}
                     />
-                    No photos needed
-                  </label>
-                </div>
-                {photoError ? (
-                  <p className="qf-qq-photos-error" role="alert">
-                    {photoError}
-                  </p>
-                ) : null}
-                {photos.length > 0 ? (
-                  <ul className="qf-qq-photos-list">
-                    {photos.map((photo) => (
-                      <li key={photo.id} className="qf-qq-photos-item">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={photo.previewUrl}
-                          alt={photo.name}
-                          className="qf-qq-photos-thumb"
+                    <div className="qf-qq-photos-actions">
+                      <label
+                        htmlFor={fileInputId}
+                        className="qf-btn-secondary qf-qq-photos-add"
+                      >
+                        Add photos
+                      </label>
+                      <label className="qf-qq-photos-skip">
+                        <input
+                          type="checkbox"
+                          checked={photosNotRequired}
+                          onChange={(event) => {
+                            onPhotosNotRequiredChange(event.target.checked);
+                          }}
                         />
-                        <span className="qf-qq-photos-name">{photo.name}</span>
-                        <button
-                          type="button"
-                          className="qf-qq-photos-remove"
-                          onClick={() => removePhoto(photo.id)}
-                        >
-                          Remove
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
+                        No photos needed
+                      </label>
+                    </div>
+                    {photoError ? (
+                      <p className="qf-qq-photos-error" role="alert">
+                        {photoError}
+                      </p>
+                    ) : null}
+                    {photos.length > 0 ? (
+                      <ul className="qf-qq-photos-list">
+                        {photos.map((photo) => (
+                          <li key={photo.id} className="qf-qq-photos-item">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={photo.previewUrl}
+                              alt={photo.name}
+                              className="qf-qq-photos-thumb"
+                            />
+                            <span className="qf-qq-photos-name">
+                              {photo.name}
+                            </span>
+                            <button
+                              type="button"
+                              className="qf-qq-photos-remove"
+                              onClick={() => removePhoto(photo.id)}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
 
-              {showSiteVisitToggle ? (
-                <label className="qf-qq-photos-skip">
-                  <input
-                    type="checkbox"
-                    checked={siteVisitCompleted}
-                    onChange={(event) =>
-                      onSiteVisitCompletedChange(event.target.checked)
-                    }
-                  />
-                  Site visit completed / not needed right now
-                </label>
-              ) : null}
+                  <div>
+                    <p className="qf-field-label">Site inspection</p>
+                    <p className="qf-qq-photos-hint">
+                      Optional — not every job needs a site visit.
+                    </p>
+                    <label className="qf-qq-photos-skip mt-2">
+                      <input
+                        type="checkbox"
+                        checked={siteVisitCompleted}
+                        onChange={(event) =>
+                          onSiteVisitCompletedChange(event.target.checked)
+                        }
+                      />
+                      Site visit completed / not needed
+                    </label>
+                  </div>
 
-              <div>
-                <label htmlFor="durationValue" className="qf-field-label">
-                  Duration
-                </label>
-                <input
-                  type="hidden"
-                  name="estimatedDuration"
-                  value={estimatedDuration}
-                />
-                <div className="qf-duration-input mt-2">
-                  <input
-                    id="durationValue"
-                    type="text"
-                    value={durationValue}
-                    onChange={(event) =>
-                      onDurationValueChange(event.target.value)
+                  <NoteField
+                    id="prepAccess"
+                    label="Access requirements"
+                    value={prepNotes.accessRequirements}
+                    onChange={(value) =>
+                      updateNote("accessRequirements", value)
                     }
-                    placeholder="e.g. 2"
-                    className="form-input"
+                    placeholder="e.g. Side gate, park on road…"
                   />
-                  <select
-                    aria-label="Duration unit"
-                    value={durationUnit}
-                    onChange={(event) =>
-                      onDurationUnitChange(event.target.value as DurationUnit)
-                    }
-                    className="form-select"
-                  >
-                    {DURATION_UNITS.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit.charAt(0).toUpperCase() + unit.slice(1)}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-              </div>
+              </section>
 
-              <PlannedStartDateFields
-                textValue={plannedStartDateText}
-                exactValue={plannedStartDateExact}
-                onTextChange={onPlannedStartDateTextChange}
-                onExactChange={onPlannedStartDateExactChange}
-              />
+              <section className="qf-qq-optional-section">
+                <h3 className="qf-qq-optional-section-title">Job details</h3>
+                <div className="space-y-5">
+                  <NoteField
+                    id="prepMaterials"
+                    label="Materials"
+                    value={prepNotes.materialsRequired}
+                    onChange={(value) => updateNote("materialsRequired", value)}
+                    placeholder="e.g. Close-coupled suite, grey wall tiles…"
+                  />
+                  <NoteField
+                    id="prepCustomerChoices"
+                    label="Customer choices"
+                    value={prepNotes.customerChoices}
+                    onChange={(value) => updateNote("customerChoices", value)}
+                    placeholder="e.g. Chose satin finish, prefers white suite…"
+                  />
+                  <NoteField
+                    id="prepAdditional"
+                    label="Additional requirements"
+                    value={prepNotes.additionalNotes}
+                    onChange={(value) => updateNote("additionalNotes", value)}
+                    placeholder="Anything else worth capturing…"
+                  />
+                </div>
+              </section>
+
+              <section className="qf-qq-optional-section">
+                <h3 className="qf-qq-optional-section-title">Planning</h3>
+                <div className="space-y-5">
+                  <div>
+                    <label htmlFor="durationValue" className="qf-field-label">
+                      Duration
+                    </label>
+                    <input
+                      type="hidden"
+                      name="estimatedDuration"
+                      value={estimatedDuration}
+                    />
+                    <div className="qf-duration-input mt-2">
+                      <input
+                        id="durationValue"
+                        type="text"
+                        value={durationValue}
+                        onChange={(event) =>
+                          onDurationValueChange(event.target.value)
+                        }
+                        placeholder="e.g. 2"
+                        className="form-input"
+                      />
+                      <select
+                        aria-label="Duration unit"
+                        value={durationUnit}
+                        onChange={(event) =>
+                          onDurationUnitChange(
+                            event.target.value as DurationUnit
+                          )
+                        }
+                        className="form-select"
+                      >
+                        {DURATION_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {unit.charAt(0).toUpperCase() + unit.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <PlannedStartDateFields
+                    textValue={plannedStartDateText}
+                    exactValue={plannedStartDateExact}
+                    onTextChange={onPlannedStartDateTextChange}
+                    onExactChange={onPlannedStartDateExactChange}
+                  />
+                </div>
+              </section>
             </div>
           ) : null}
         </div>
       </SectionCard>
 
-      {grouped.length > 0 ? (
-        <section
-          className="qf-qq-readiness"
-          aria-live="polite"
-          aria-label="Quote readiness"
-        >
-          <h2 className="qf-qq-readiness-title">Quote readiness checklist</h2>
-          <p className="qf-qq-readiness-copy">
-            Soft reminders for what usually still needs confirming before a job.
-            Nothing here blocks creating or sending the quote.
-          </p>
-
-          <div className="qf-qq-readiness-groups">
-            {grouped.map((group) => (
-              <div key={group.category} className="qf-qq-readiness-group">
-                <h3 className="qf-qq-readiness-group-title">{group.label}</h3>
-                <ul className="qf-qq-readiness-list">
-                  {group.items.map((entry) => (
-                    <li key={entry.id} className="qf-qq-readiness-item">
-                      <p className="qf-qq-readiness-label">{entry.traderLabel}</p>
-                      <p className="qf-qq-readiness-detail">{entry.detail}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+      <SectionCard className="qf-card-form qf-qq-prep-card">
+        <SectionHeading
+          title="Pricing"
+          hint="Internal breakdown stays private. Customers only see the final quote total."
+        />
+        <div className="mt-5">
+          <h3 className="qf-qq-optional-section-title">Internal</h3>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <MoneyField
+              id="materialsCost"
+              label="Materials"
+              value={materialsCost}
+              onChange={onMaterialsCostChange}
+              placeholder="e.g. 320"
+            />
+            <MoneyField
+              id="labourCost"
+              label="Labour"
+              value={labourCost}
+              onChange={onLabourCostChange}
+              placeholder="e.g. 480"
+            />
+            <MoneyField
+              id="additionalCost"
+              label="Additional"
+              value={additionalCost}
+              onChange={onAdditionalCostChange}
+              placeholder="e.g. 40"
+            />
+            <MoneyField
+              id="marginCost"
+              label="Margin / profit"
+              value={marginCost}
+              onChange={onMarginCostChange}
+              placeholder="e.g. 100"
+              helper="Your mark-up or contingency — stays internal."
+            />
           </div>
-        </section>
-      ) : null}
-
-      <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading
-          title="Internal quote breakdown"
-          hint="For your costing only — not shown as line items on the customer proposal."
-        />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <MoneyField
-            id="materialsCost"
-            label="Materials cost"
-            value={materialsCost}
-            onChange={onMaterialsCostChange}
-            placeholder="e.g. 320"
-          />
-          <MoneyField
-            id="labourCost"
-            label="Labour cost"
-            value={labourCost}
-            onChange={onLabourCostChange}
-            placeholder="e.g. 480"
-          />
-          <MoneyField
-            id="additionalCost"
-            label="Additional costs"
-            value={additionalCost}
-            onChange={onAdditionalCostChange}
-            placeholder="e.g. 40"
-          />
-          <MoneyField
-            id="marginCost"
-            label="Profit / margin"
-            value={marginCost}
-            onChange={onMarginCostChange}
-            placeholder="e.g. 100"
-            helper="Your mark-up or contingency — stays internal."
-          />
         </div>
-      </SectionCard>
-
-      <SectionCard className="qf-card-form qf-qq-prep-card">
-        <SectionHeading
-          title="Customer proposal price"
-          hint="This is the agreed/final price customers see on the proposal."
-        />
-        <div className="mt-5 max-w-sm space-y-3">
+        <div className="mt-6 max-w-sm space-y-3">
+          <h3 className="qf-qq-optional-section-title">Customer</h3>
           <MoneyField
             id="estimatedPrice"
             name="estimatedPrice"
-            label="Final price for customer"
+            label="Final quote total"
             value={customerTotal}
             onChange={onCustomerTotalChange}
             placeholder="e.g. 940"
@@ -589,6 +585,42 @@ export function QuickQuotePreparation({
           </button>
         </div>
       </SectionCard>
+
+      <section
+        className={
+          thingsToConfirm.ready
+            ? "qf-qq-things-confirm qf-qq-things-confirm--ready"
+            : "qf-qq-things-confirm"
+        }
+        aria-live="polite"
+        aria-label="Things to confirm"
+      >
+        <h2 className="qf-qq-things-confirm-title">Things to confirm</h2>
+        {thingsToConfirm.ready ? (
+          <p className="qf-qq-things-confirm-ready">Quote ready to send</p>
+        ) : (
+          <>
+            <p className="qf-qq-things-confirm-copy">
+              Soft summary only — fill anything useful in the fields above.
+              Nothing here blocks creating or sending the quote.
+            </p>
+            <div className="qf-qq-things-confirm-groups">
+              {thingsToConfirm.groups.map((group) => (
+                <div key={group.id} className="qf-qq-things-confirm-group">
+                  <h3 className="qf-qq-things-confirm-group-title">
+                    {group.title}
+                  </h3>
+                  <ul className="qf-qq-things-confirm-list">
+                    {group.items.map((entry) => (
+                      <li key={entry.id}>{entry.label}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
     </div>
   );
 }

@@ -230,10 +230,7 @@ export function getIncompleteQuoteReadinessItems(
     );
   }
 
-  if (
-    !hasText(input.notes.materialsRequired) &&
-    !hasText(input.notes.additionalNotes)
-  ) {
+  if (!hasText(input.notes.customerChoices)) {
     missing.push(
       item(
         "customer_choices",
@@ -350,4 +347,92 @@ export const KNOWN_CUSTOMER_THINGS_TO_CONFIRM = new Set(
 
 export function isKnownCustomerThingToConfirm(value: string): boolean {
   return KNOWN_CUSTOMER_THINGS_TO_CONFIRM.has(value.trim().toLowerCase());
+}
+
+/** Short trader summary labels — not a duplicate input checklist. */
+const THINGS_TO_CONFIRM_SUMMARY_LABELS: Record<QuoteReadinessItemId, string> = {
+  customer_contact: "Name and phone or email",
+  full_address: "Address",
+  measurements: "Measurements",
+  photos: "Photos / site conditions",
+  site_visit: "Site inspection",
+  access: "Access requirements",
+  scope: "Job notes / scope",
+  materials: "Materials / specification",
+  customer_choices: "Customer choices",
+  duration: "Duration",
+  start_date: "Start date",
+  pricing: "Customer quote total",
+  payment_terms: "Payment terms",
+};
+
+export type ThingsToConfirmSummaryGroupId =
+  | "customer"
+  | "job"
+  | "planning";
+
+export type ThingsToConfirmSummaryGroup = {
+  id: ThingsToConfirmSummaryGroupId;
+  title: string;
+  items: Array<{ id: QuoteReadinessItemId; label: string }>;
+};
+
+/**
+ * Generated “Things to confirm” summary for Quick Quote.
+ * Soft only — never blocks create/send. No input fields.
+ */
+export function buildThingsToConfirmSummary(
+  input: QuoteReadinessInput
+): {
+  ready: boolean;
+  groups: ThingsToConfirmSummaryGroup[];
+} {
+  const incomplete = getIncompleteQuoteReadinessItems(input);
+
+  const buckets: Record<
+    ThingsToConfirmSummaryGroupId,
+    QuoteReadinessItem[]
+  > = {
+    customer: [],
+    job: [],
+    planning: [],
+  };
+
+  for (const entry of incomplete) {
+    if (entry.category === "customer") {
+      buckets.customer.push(entry);
+    } else if (entry.category === "site" || entry.category === "job") {
+      buckets.job.push(entry);
+    } else if (entry.category === "planning" || entry.category === "pricing") {
+      buckets.planning.push(entry);
+    }
+  }
+
+  const titles: Record<ThingsToConfirmSummaryGroupId, string> = {
+    customer: "Missing customer information",
+    job: "Missing job information",
+    planning: "Missing planning information",
+  };
+
+  const order: ThingsToConfirmSummaryGroupId[] = [
+    "customer",
+    "job",
+    "planning",
+  ];
+
+  const groups = order
+    .map((id) => ({
+      id,
+      title: titles[id],
+      items: buckets[id].map((entry) => ({
+        id: entry.id,
+        label: THINGS_TO_CONFIRM_SUMMARY_LABELS[entry.id] ?? entry.traderLabel,
+      })),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  return {
+    ready: groups.length === 0,
+    groups,
+  };
 }

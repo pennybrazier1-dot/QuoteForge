@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCustomerThingsToConfirm,
+  buildThingsToConfirmSummary,
   getIncompleteQuoteReadinessItems,
 } from "@/lib/proposals/quote-readiness";
 import { createEmptyPrepNotes } from "@/lib/proposals/quick-quote-preparation";
@@ -143,8 +144,9 @@ describe("quote readiness checklist", () => {
         notes: {
           measurements: "2.1 x 1.8",
           materialsRequired: "Grey tiles",
+          customerChoices: "Customer chose satin finish",
           accessRequirements: "Side gate",
-          additionalNotes: "Customer chose satin finish",
+          additionalNotes: "",
         },
         photoCount: 0,
         photosNotRequired: true,
@@ -154,5 +156,61 @@ describe("quote readiness checklist", () => {
 
     expect(incomplete).toEqual([]);
     expect(buildCustomerThingsToConfirm(incomplete)).toEqual([]);
+  });
+
+  it("builds a soft Things to confirm summary (not a duplicate checklist)", () => {
+    const summary = buildThingsToConfirmSummary(
+      baseInput({
+        aiNotesFirst: true,
+        customerName: "",
+        emailAddress: "",
+        notes: createEmptyPrepNotes(),
+        photoCount: 0,
+        photosNotRequired: true,
+        durationValue: "",
+        plannedStartDateText: "",
+        estimatedPrice: "",
+      })
+    );
+
+    expect(summary.ready).toBe(false);
+    expect(summary.groups.map((group) => group.title)).toEqual([
+      "Missing customer information",
+      "Missing job information",
+      "Missing planning information",
+    ]);
+    expect(
+      summary.groups.flatMap((group) => group.items.map((item) => item.label))
+    ).toEqual(
+      expect.arrayContaining([
+        "Name and phone or email",
+        "Measurements",
+        "Start date",
+        "Customer quote total",
+      ])
+    );
+  });
+
+  it("shows Quote ready to send when summary is complete", () => {
+    const summary = buildThingsToConfirmSummary(
+      baseInput({
+        aiNotesFirst: true,
+        jobDescription:
+          "Full bathroom refit including suite, tiling, and waterproofing",
+        notes: {
+          measurements: "2.1 x 1.8",
+          materialsRequired: "Grey tiles",
+          customerChoices: "Satin finish",
+          accessRequirements: "Side gate",
+          additionalNotes: "",
+        },
+        photoCount: 0,
+        photosNotRequired: true,
+        siteVisitCompleted: true,
+      })
+    );
+
+    expect(summary.ready).toBe(true);
+    expect(summary.groups).toEqual([]);
   });
 });

@@ -60,6 +60,7 @@ describe("customer next steps", () => {
         materialsRequired: "Tiles",
         accessRequirements: "Gate",
         additionalNotes: "Chose grey",
+        customerChoices: "Chose grey",
       },
       plannedStartDateText: "next week",
       plannedStartDateExact: "",

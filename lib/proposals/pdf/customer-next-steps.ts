@@ -147,6 +147,12 @@ export function stripReadinessFromOptionalExtras(text: string): string {
       if (/^additional notes:/i.test(block)) {
         return false;
       }
+      if (/^additional requirements:/i.test(block)) {
+        return false;
+      }
+      if (/^customer choices:/i.test(block)) {
+        return false;
+      }
       if (isKnownCustomerThingToConfirm(block) || /^next steps?:/i.test(block)) {
         return false;
       }
@@ -170,7 +176,7 @@ export function resolveCustomerOptionalExtras(items: string[]): string[] {
 
     // Drop whole multi-line prep blocks packed by older Quick Quote flows.
     if (
-      /^(measurements?\s*\/\s*dimensions|materials required|access requirements|additional notes)\s*:/i.test(
+      /^(measurements?\s*\/\s*dimensions|materials required|customer choices|access requirements|additional notes|additional requirements)\s*:/i.test(
         item
       )
     ) {

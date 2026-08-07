@@ -17,6 +17,7 @@ export type QuickQuoteMissingWarning = {
 export type QuickQuotePrepNotes = {
   measurements: string;
   materialsRequired: string;
+  customerChoices: string;
   accessRequirements: string;
   additionalNotes: string;
 };
@@ -31,6 +32,7 @@ export function createEmptyPrepNotes(): QuickQuotePrepNotes {
   return {
     measurements: "",
     materialsRequired: "",
+    customerChoices: "",
     accessRequirements: "",
     additionalNotes: "",
   };
@@ -105,12 +107,16 @@ export function buildQuickQuotePrepNotesSupplement(options: {
     parts.push(`Materials required:\n${notes.materialsRequired.trim()}`);
   }
 
+  if (notes.customerChoices.trim()) {
+    parts.push(`Customer choices:\n${notes.customerChoices.trim()}`);
+  }
+
   if (notes.accessRequirements.trim()) {
     parts.push(`Access requirements:\n${notes.accessRequirements.trim()}`);
   }
 
   if (notes.additionalNotes.trim()) {
-    parts.push(`Additional notes:\n${notes.additionalNotes.trim()}`);
+    parts.push(`Additional requirements:\n${notes.additionalNotes.trim()}`);
   }
 
   return parts.join("\n\n");
