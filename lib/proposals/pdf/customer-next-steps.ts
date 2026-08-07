@@ -43,7 +43,7 @@ export function buildCustomerNextStepsFromPrep(options: {
     plannedStartDateExact: options.plannedStartDateExact,
     estimatedPrice: options.estimatedPrice ?? "1",
     paymentTermsSupported: false,
-    aiNotesFirst: options.aiNotesFirst,
+    aiNotesFirst: options.aiNotesFirst ?? true,
   });
 
   return toCustomerFacingThingsToConfirm(
@@ -60,15 +60,19 @@ export function buildCustomerThingsToConfirmFromInput(
 }
 
 /**
- * Resolve customer-facing "Things to confirm before work begins" for a saved proposal.
- * Rewrites ALL AI/internal wording into professional customer language.
+ * Resolve customer-facing "Before Work Begins" bullets for a saved proposal.
+ * Rewrites AI/internal wording; never shows trader checklist language.
  */
 export function deriveCustomerThingsToConfirm(options: {
   thingsToConfirm: string[];
   optionalExtrasText: string;
+  materials?: string[];
+  plannedStartDateText?: string | null;
+  plannedStartDateExact?: string | null;
 }): string[] {
   const steps: string[] = [...options.thingsToConfirm];
   const extras = options.optionalExtrasText;
+  const materials = options.materials ?? [];
 
   if (/still to confirm later:/i.test(extras)) {
     if (/measurements/i.test(extras)) {
@@ -89,12 +93,26 @@ export function deriveCustomerThingsToConfirm(options: {
   }
 
   if (
-    /consider booking a site visit|site visit required|site visit may be needed|what we find when we visit/i.test(
+    /consider booking a site visit|site visit required|site visit may be needed|what we find when we visit|site inspection/i.test(
       extras
     ) ||
-    steps.some((step) => /measurement/i.test(step))
+    steps.some((step) => /measurement|site visit|site inspection/i.test(step))
   ) {
     steps.push(CUSTOMER_CONFIRM_COPY.siteVisit);
+  }
+
+  if (
+    materials.length === 0 ||
+    materials.some((item) => /to be confirmed|tbc|t\.b\.c/i.test(item))
+  ) {
+    steps.push(CUSTOMER_CONFIRM_COPY.materials);
+  }
+
+  const hasStartDate =
+    Boolean(options.plannedStartDateText?.trim()) ||
+    Boolean(options.plannedStartDateExact?.trim());
+  if (!hasStartDate) {
+    steps.push(CUSTOMER_CONFIRM_COPY.startDate);
   }
 
   return toCustomerFacingThingsToConfirm(steps);

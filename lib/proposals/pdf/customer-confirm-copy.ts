@@ -1,10 +1,12 @@
 /**
  * Rewrites AI / internal confirmation wording into professional
  * customer-facing language for proposal PDFs.
+ *
+ * Internal trader checklist labels stay separate in quote-readiness.ts.
  */
 
 const SITE_VISIT_CUSTOMER =
-  "Site visit recommended to confirm final measurements and requirements.";
+  "Site visit recommended to confirm final measurements.";
 
 const EXACT_REPLACEMENTS: Array<{ match: RegExp; replacement: string | null }> = [
   {
@@ -24,7 +26,15 @@ const EXACT_REPLACEMENTS: Array<{ match: RegExp; replacement: string | null }> =
     replacement: SITE_VISIT_CUSTOMER,
   },
   {
+    match: /^site visit recommended to confirm final measurements.*$/i,
+    replacement: SITE_VISIT_CUSTOMER,
+  },
+  {
     match: /^site visit to confirm\.?$/i,
+    replacement: SITE_VISIT_CUSTOMER,
+  },
+  {
+    match: /^site inspection to confirm\.?$/i,
     replacement: SITE_VISIT_CUSTOMER,
   },
   {
@@ -48,44 +58,64 @@ const EXACT_REPLACEMENTS: Array<{ match: RegExp; replacement: string | null }> =
     replacement: "Final measurements to be confirmed.",
   },
   {
+    match: /^final measurements to be confirmed\.?$/i,
+    replacement: "Final measurements to be confirmed.",
+  },
+  {
     match: /^materials?(\/specifications?)? to (be )?confirm(ed)?\.?$/i,
-    replacement: "Materials and specification to be confirmed.",
+    replacement: "Materials and finishes to be confirmed.",
+  },
+  {
+    match: /^materials and (specification|finishes) to be confirmed\.?$/i,
+    replacement: "Materials and finishes to be confirmed.",
   },
   {
     match: /^materials \/ specification to be confirmed\.?$/i,
-    replacement: "Materials and specification to be confirmed.",
+    replacement: "Materials and finishes to be confirmed.",
   },
   {
     match: /^access requirements? to (be )?confirm(ed)?\.?$/i,
-    replacement: "Site access arrangements to be confirmed.",
+    replacement: "Access arrangements to be confirmed.",
+  },
+  {
+    match: /^(site )?access arrangements? to be confirmed\.?$/i,
+    replacement: "Access arrangements to be confirmed.",
   },
   {
     match: /^site access to be confirmed\.?$/i,
-    replacement: "Site access arrangements to be confirmed.",
+    replacement: "Access arrangements to be confirmed.",
   },
   {
     match: /^photos?\/site conditions? to (be )?confirm(ed)?\.?$/i,
     replacement: "Site photos and conditions to be confirmed.",
   },
   {
-    match: /^site photos \/ conditions to be confirmed\.?$/i,
+    match: /^site photos (and|\/) conditions to be confirmed\.?$/i,
     replacement: "Site photos and conditions to be confirmed.",
   },
   {
     match: /^final choices \(for example finishes\) to be confirmed\.?$/i,
-    replacement: "Final finishes and choices to be confirmed.",
+    replacement: "Materials and finishes to be confirmed.",
+  },
+  {
+    match: /^final finishes and choices to be confirmed\.?$/i,
+    replacement: "Materials and finishes to be confirmed.",
   },
   {
     match: /^customer choices to confirm\.?$/i,
-    replacement: "Final finishes and choices to be confirmed.",
+    replacement: "Materials and finishes to be confirmed.",
+  },
+  {
+    match: /^final (scope|job details)(\/details)? to (be )?confirm(ed)?\.?$/i,
+    replacement: "Final job details to be confirmed.",
   },
   // Trader-only — never show on the customer PDF
   { match: /^customer contact details to confirm\.?$/i, replacement: null },
   { match: /^full address to confirm\.?$/i, replacement: null },
-  { match: /^scope of work to confirm\.?$/i, replacement: null },
   { match: /^pricing to complete\.?$/i, replacement: null },
   { match: /^payment terms to confirm\.?$/i, replacement: null },
   { match: /^still to confirm later:.*$/i, replacement: null },
+  { match: /\b(missing|ai detected|internal readiness)\b/i, replacement: null },
 ];
 
 function ensureSentence(value: string): string {
@@ -110,7 +140,6 @@ function rewriteConfirmPrefix(value: string): string {
     return value;
   }
 
-  // "Confirm tile colour" → "Tile colour to be confirmed."
   const capitalized = rest.charAt(0).toUpperCase() + rest.slice(1);
   return ensureSentence(`${capitalized} to be confirmed`);
 }
@@ -120,7 +149,6 @@ function polishBareConfirmTopic(value: string): string {
     return ensureSentence(value);
   }
 
-  // Short AI topics such as "Access height" → customer confirm language.
   const wordCount = value.trim().split(/\s+/).length;
   if (wordCount > 0 && wordCount <= 8 && !/[.!?]$/.test(value.trim())) {
     const trimmed = value.trim().replace(/\.$/, "");
@@ -141,13 +169,17 @@ export function toCustomerFacingConfirmItem(raw: string): string | null {
     return null;
   }
 
+  if (/\b(missing|ai detected|internal readiness)\b/i.test(trimmed)) {
+    return null;
+  }
+
   for (const rule of EXACT_REPLACEMENTS) {
     if (rule.match.test(trimmed)) {
       return rule.replacement;
     }
   }
 
-  if (/site\s+visit/i.test(trimmed) && /measure|confirm|required|needed|find/i.test(trimmed)) {
+  if (/site\s+visit|site\s+inspection/i.test(trimmed) && /measure|confirm|required|needed|find/i.test(trimmed)) {
     return SITE_VISIT_CUSTOMER;
   }
 
@@ -181,10 +213,11 @@ export function toCustomerFacingThingsToConfirm(items: string[]): string[] {
 export const CUSTOMER_CONFIRM_COPY = {
   siteVisit: SITE_VISIT_CUSTOMER,
   measurements: "Final measurements to be confirmed.",
-  materials: "Materials and specification to be confirmed.",
-  access: "Site access arrangements to be confirmed.",
+  materials: "Materials and finishes to be confirmed.",
+  access: "Access arrangements to be confirmed.",
   photos: "Site photos and conditions to be confirmed.",
-  choices: "Final finishes and choices to be confirmed.",
+  choices: "Materials and finishes to be confirmed.",
   startDate: "Start date to be confirmed.",
   duration: "Timescale to be confirmed.",
+  finalScope: "Final job details to be confirmed.",
 } as const;

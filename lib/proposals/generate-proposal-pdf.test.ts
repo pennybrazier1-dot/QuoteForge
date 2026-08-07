@@ -46,7 +46,13 @@ describe("buildProposalPdfData", () => {
   });
 
   it("rewrites confirm bullets into customer language and strips material prices", () => {
-    const data = buildProposalPdfData(baseProposal, traderWorkspace);
+    const data = buildProposalPdfData(
+      {
+        ...baseProposal,
+        planned_start_date_text: "Next week",
+      },
+      traderWorkspace
+    );
 
     expect(data.thingsToConfirmBeforeWork).toContain(
       CUSTOMER_CONFIRM_COPY.siteVisit
@@ -69,12 +75,34 @@ describe("buildProposalPdfData", () => {
         things_to_confirm_items: [],
         ai_optional_extras: [],
         optional_extras: [],
+        planned_start_date_text: "Week commencing 18 August",
+        planned_start_date: "2026-08-18",
       },
       traderWorkspace
     );
 
     expect(data.thingsToConfirmBeforeWork).toEqual([]);
     expect(data.optionalExtrasItems).toEqual([]);
+  });
+
+  it("soft-fills start date and materials confirms when still open", () => {
+    const data = buildProposalPdfData(
+      {
+        ...baseProposal,
+        materials: [],
+        things_to_confirm_items: [],
+        ai_optional_extras: [],
+        optional_extras: [],
+      },
+      traderWorkspace
+    );
+
+    expect(data.thingsToConfirmBeforeWork).toEqual(
+      expect.arrayContaining([
+        CUSTOMER_CONFIRM_COPY.materials,
+        CUSTOMER_CONFIRM_COPY.startDate,
+      ])
+    );
   });
 
   it("keeps true optional extras separate from included work", () => {

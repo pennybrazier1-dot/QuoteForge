@@ -28,7 +28,7 @@ function baseInput(
 }
 
 describe("quote readiness checklist", () => {
-  it("with AI notes-first, skips optional-field nags when job notes exist", () => {
+  it("with AI notes-first, still lists confirmation items when optional fields are empty", () => {
     const incomplete = getIncompleteQuoteReadinessItems(
       baseInput({
         aiNotesFirst: true,
@@ -41,7 +41,17 @@ describe("quote readiness checklist", () => {
       })
     );
 
-    expect(incomplete.map((item) => item.id)).toEqual([]);
+    expect(incomplete.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "measurements",
+        "site_visit",
+        "access",
+        "materials",
+        "customer_choices",
+      ])
+    );
+    expect(incomplete.some((item) => item.id === "scope")).toBe(false);
+    expect(incomplete.some((item) => item.id === "photos")).toBe(false);
   });
 
   it("lists soft incomplete items for empty prep", () => {
@@ -58,9 +68,9 @@ describe("quote readiness checklist", () => {
 
     expect(incomplete.map((item) => item.traderLabel)).toEqual(
       expect.arrayContaining([
-        "Measurements/dimensions to confirm",
+        "Measurements to confirm",
         "Photos/site conditions to confirm",
-        "Site visit to confirm",
+        "Site inspection to confirm",
         "Access requirements to confirm",
         "Materials/specifications to confirm",
         "Customer choices to confirm",
@@ -127,6 +137,9 @@ describe("quote readiness checklist", () => {
   it("returns no reminders when the checklist is complete", () => {
     const incomplete = getIncompleteQuoteReadinessItems(
       baseInput({
+        aiNotesFirst: true,
+        jobDescription:
+          "Full bathroom refit including suite, tiling, and waterproofing",
         notes: {
           measurements: "2.1 x 1.8",
           materialsRequired: "Grey tiles",

@@ -30,6 +30,8 @@ export type ProposalPdfSource = {
   labour_description: string | null;
   ai_optional_extras: unknown;
   things_to_confirm_items: unknown;
+  planned_start_date_text?: string | null;
+  planned_start_date?: string | null;
 };
 
 export type WorkspacePdfSource = {

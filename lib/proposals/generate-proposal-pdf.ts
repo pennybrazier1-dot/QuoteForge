@@ -75,6 +75,8 @@ export function buildProposalPdfData(
     labour_description?: string | null;
     ai_optional_extras?: unknown;
     things_to_confirm_items?: unknown;
+    planned_start_date_text?: string | null;
+    planned_start_date?: string | null;
   },
   workspace: {
     business_name: string;
@@ -108,10 +110,14 @@ export function buildProposalPdfData(
     ? (structured?.optionalExtras ?? [])
     : parseOptionalExtrasSource(proposal.optional_extras);
   const rawOptionalExtrasText = rawOptionalItems.join("\n\n");
+  const materials = stripCustomerFacingLinePrices(structured?.materials ?? []);
 
   const thingsToConfirmBeforeWork = deriveCustomerThingsToConfirm({
     thingsToConfirm: structuredConfirm,
     optionalExtrasText: rawOptionalExtrasText,
+    materials,
+    plannedStartDateText: proposal.planned_start_date_text,
+    plannedStartDateExact: proposal.planned_start_date,
   });
 
   const optionalExtrasItems = resolveCustomerOptionalExtras(rawOptionalItems);
@@ -134,7 +140,7 @@ export function buildProposalPdfData(
       proposal.rough_notes
     ),
     scopeOfWork: structured?.scopeOfWork ?? [],
-    materials: stripCustomerFacingLinePrices(structured?.materials ?? []),
+    materials,
     labour: structured?.labour ?? proposal.rough_notes,
     thingsToConfirmBeforeWork,
     optionalExtrasItems,

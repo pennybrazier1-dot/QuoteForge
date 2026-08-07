@@ -55,8 +55,8 @@ export type QuoteReadinessInput = {
   paymentTermsSupported?: boolean;
   paymentTerms?: string;
   /**
-   * AI-first Quick Quote: when job notes are present, skip soft reminders for
-   * fields AI can extract from those notes.
+   * AI-first Quick Quote: when job notes are present, skip only the empty
+   * “scope” reminder. Confirmation checklist items still appear.
    */
   aiNotesFirst?: boolean;
 };
@@ -124,13 +124,15 @@ function isPhotosComplete(input: QuoteReadinessInput): boolean {
 /**
  * Soft quote-readiness checklist for traders.
  * Never blocks create/send — returns only incomplete items.
+ *
+ * Trader labels = internal checklist.
+ * customerLabel = PDF wording (null = trader-only).
  */
 export function getIncompleteQuoteReadinessItems(
   input: QuoteReadinessInput
 ): QuoteReadinessItem[] {
   const missing: QuoteReadinessItem[] = [];
-  const notesCarryDetail =
-    Boolean(input.aiNotesFirst) && hasText(input.jobDescription);
+  const hasJobNotes = hasText(input.jobDescription);
 
   // Customer
   if (!hasCustomerContact(input)) {
@@ -151,12 +153,12 @@ export function getIncompleteQuoteReadinessItems(
   }
 
   // Site
-  if (!notesCarryDetail && !hasText(input.notes.measurements)) {
+  if (!hasText(input.notes.measurements)) {
     missing.push(
       item(
         "measurements",
         "site",
-        "Measurements/dimensions to confirm",
+        "Measurements to confirm",
         "Final measurements to be confirmed."
       )
     );
@@ -173,52 +175,62 @@ export function getIncompleteQuoteReadinessItems(
     );
   }
 
-  if (
-    !notesCarryDetail &&
-    isSiteVisitRelevant(input) &&
-    !input.siteVisitCompleted
-  ) {
+  if (isSiteVisitRelevant(input) && !input.siteVisitCompleted) {
     missing.push(
       item(
         "site_visit",
         "site",
-        "Site visit to confirm",
-        "Site visit recommended to confirm final measurements and requirements."
+        "Site inspection to confirm",
+        "Site visit recommended to confirm final measurements."
       )
     );
   }
 
-  if (!notesCarryDetail && !hasText(input.notes.accessRequirements)) {
+  if (!hasText(input.notes.accessRequirements)) {
     missing.push(
       item(
         "access",
         "site",
         "Access requirements to confirm",
-        "Site access arrangements to be confirmed."
+        "Access arrangements to be confirmed."
       )
     );
   }
 
   // Job
-  if (!hasText(input.jobDescription)) {
+  // AI-first: job notes count as scope capture — still soft-remind if blank.
+  if (!hasJobNotes) {
     missing.push(
-      item("scope", "job", "Scope of work to confirm", null)
+      item(
+        "scope",
+        "job",
+        "Final scope/details to confirm",
+        "Final job details to be confirmed."
+      )
+    );
+  } else if (!input.aiNotesFirst && input.jobDescription.trim().length < 40) {
+    missing.push(
+      item(
+        "scope",
+        "job",
+        "Final scope/details to confirm",
+        "Final job details to be confirmed."
+      )
     );
   }
 
-  if (!notesCarryDetail && !hasText(input.notes.materialsRequired)) {
+  if (!hasText(input.notes.materialsRequired)) {
     missing.push(
       item(
         "materials",
         "job",
         "Materials/specifications to confirm",
-        "Materials and specification to be confirmed."
+        "Materials and finishes to be confirmed."
       )
     );
   }
 
   if (
-    !notesCarryDetail &&
     !hasText(input.notes.materialsRequired) &&
     !hasText(input.notes.additionalNotes)
   ) {
@@ -227,19 +239,19 @@ export function getIncompleteQuoteReadinessItems(
         "customer_choices",
         "job",
         "Customer choices to confirm",
-        "Final finishes and choices to be confirmed."
+        "Materials and finishes to be confirmed."
       )
     );
   }
 
   // Planning
-  if (!notesCarryDetail && !hasText(input.durationValue)) {
+  if (!hasText(input.durationValue)) {
     missing.push(
       item("duration", "planning", "Duration to confirm", null)
     );
   }
 
-  if (!notesCarryDetail && !hasStartDate(input)) {
+  if (!hasStartDate(input)) {
     missing.push(
       item(
         "start_date",
@@ -318,15 +330,19 @@ export const KNOWN_CUSTOMER_THINGS_TO_CONFIRM = new Set(
     "Measurements to be confirmed",
     "Site photos and conditions to be confirmed.",
     "Site photos / conditions to be confirmed",
+    "Site visit recommended to confirm final measurements.",
     "Site visit recommended to confirm final measurements and requirements.",
     "A site visit may be needed before work begins",
     "Site visit required",
+    "Access arrangements to be confirmed.",
     "Site access arrangements to be confirmed.",
     "Site access to be confirmed",
+    "Materials and finishes to be confirmed.",
     "Materials and specification to be confirmed.",
     "Materials / specification to be confirmed",
     "Final finishes and choices to be confirmed.",
     "Final choices (for example finishes) to be confirmed",
+    "Final job details to be confirmed.",
     "Start date to be confirmed.",
     "Start date to be confirmed",
   ].map((value) => value.toLowerCase())

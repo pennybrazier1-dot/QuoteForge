@@ -30,8 +30,9 @@ describe("quick quote preparation helpers", () => {
     expect(warnings.map((item) => item.label)).toEqual(
       expect.arrayContaining([
         "Customer contact details to confirm",
-        "Measurements/dimensions to confirm",
+        "Measurements to confirm",
         "Photos/site conditions to confirm",
+        "Site inspection to confirm",
         "Start date to confirm",
       ])
     );
@@ -52,7 +53,8 @@ describe("quick quote preparation helpers", () => {
         accessRequirements: "Side gate only",
         additionalNotes: "Chose grey",
       },
-      jobDescription: "Bathroom job",
+      jobDescription:
+        "Full bathroom refit including suite, tiling, and waterproofing",
       photoCount: 0,
       photosNotRequired: true,
       siteVisitCompleted: true,
@@ -61,6 +63,7 @@ describe("quick quote preparation helpers", () => {
       plannedStartDateExact: "",
       estimatedPrice: "950",
       paymentTermsSupported: false,
+      aiNotesFirst: true,
     });
 
     expect(warnings).toEqual([]);

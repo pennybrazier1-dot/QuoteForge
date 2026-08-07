@@ -242,7 +242,7 @@ export function QuickQuotePreparation({
     plannedStartDateExact,
     estimatedPrice: customerTotal,
     paymentTermsSupported: false,
-    // AI extracts structure from the main job notes — don't nag about optional fields.
+    // AI-first: job notes can stand in for empty scope; checklist items still run.
     aiNotesFirst: true,
   });
   const grouped = groupIncompleteReadinessByCategory(incomplete);
@@ -504,10 +504,10 @@ export function QuickQuotePreparation({
           aria-live="polite"
           aria-label="Quote readiness"
         >
-          <h2 className="qf-qq-readiness-title">Quote readiness</h2>
+          <h2 className="qf-qq-readiness-title">Quote readiness checklist</h2>
           <p className="qf-qq-readiness-copy">
-            Soft reminders only — messy job notes are enough to generate. Nothing
-            here blocks creating or sending the quote.
+            Soft reminders for what usually still needs confirming before a job.
+            Nothing here blocks creating or sending the quote.
           </p>
 
           <div className="qf-qq-readiness-groups">
