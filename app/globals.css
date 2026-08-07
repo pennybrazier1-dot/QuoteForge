@@ -6173,3 +6173,140 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   line-height: 1.45;
   white-space: pre-wrap;
 }
+
+/* Phase 50 — Job preparation checklist (accepted proposals → jobs) */
+.qf-job-prep-card {
+  margin-bottom: 1.25rem;
+}
+
+.qf-job-prep-banner {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.1);
+}
+
+.qf-job-prep-banner-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.qf-job-prep-banner-copy {
+  margin: 0.3rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-job-prep-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.qf-job-prep-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.qf-job-prep-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-job-prep-error {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #f87171;
+}
+
+.qf-job-prep-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qf-job-prep-item {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--border-card);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (min-width: 768px) {
+  .qf-job-prep-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+.qf-job-prep-item-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.qf-job-prep-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.qf-job-prep-mark-done {
+  background: rgba(34, 160, 107, 0.18);
+  color: #4ade80;
+}
+
+.qf-job-prep-mark-skip {
+  background: rgba(161, 161, 170, 0.16);
+  color: var(--muted);
+}
+
+.qf-job-prep-mark-open {
+  border: 1px solid rgba(255, 106, 26, 0.45);
+  color: var(--accent);
+}
+
+.qf-job-prep-item-label {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.qf-job-prep-item-status {
+  margin: 0.2rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-job-prep-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.qf-job-prep-action {
+  min-height: 2.5rem;
+  padding-inline: 0.9rem;
+  font-size: 0.8125rem;
+  text-decoration: none;
+}

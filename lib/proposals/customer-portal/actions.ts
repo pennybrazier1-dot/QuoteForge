@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { formatAttentionReason } from "@/lib/proposals/attention";
 import { loadPublicProposalByToken } from "@/lib/proposals/customer-portal/load-public-proposal";
+import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 export type CustomerPortalActionState = {
@@ -97,6 +98,31 @@ export async function acceptPublicProposal(
     created_by: null,
     created_at: acceptedAt,
   });
+
+  const jobResult = await ensureJobForAcceptedProposal(
+    supabase,
+    {
+      id: loaded.proposal.id,
+      workspace_id: loaded.workspaceId,
+      customer_id: loaded.proposal.customer_id ?? null,
+      customer_name: loaded.proposal.customer_name ?? null,
+      customer_email: loaded.proposal.customer_email ?? null,
+      customer_phone: loaded.proposal.customer_phone ?? null,
+      customer_address: loaded.proposal.customer_address ?? null,
+      job_address: loaded.proposal.job_address ?? null,
+      planned_start_date: loaded.proposal.planned_start_date ?? null,
+      materials: loaded.proposal.materials,
+    },
+    { acceptedAt }
+  );
+
+  if (!jobResult.ok) {
+    return {
+      error:
+        jobResult.error ||
+        "Proposal was accepted, but the job could not be created.",
+    };
+  }
 
   await revalidateTraderViews(loaded.proposal.id);
   revalidatePath(`/p/${token}`);

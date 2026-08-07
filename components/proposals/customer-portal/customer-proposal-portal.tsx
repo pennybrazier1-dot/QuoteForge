@@ -114,8 +114,8 @@ export function CustomerProposalPortal({
           <p className="cj-job-eyebrow">Accepted</p>
           <h1 className="cj-job-title">Thank you</h1>
           <p className="cj-job-copy">
-            We’ve told {view.businessName}. They’ll be in touch about next
-            steps and scheduling.
+            Thanks, your proposal has been accepted. The trader will contact
+            you about next steps.
           </p>
           <a
             className="cj-btn-secondary cj-portal-pdf"

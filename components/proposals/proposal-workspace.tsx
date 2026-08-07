@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
+import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalCustomerMessagesPanel } from "@/components/proposals/proposal-customer-messages";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
@@ -18,6 +19,7 @@ import {
 import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
+import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
@@ -281,6 +283,7 @@ export function ProposalWorkspace({
   statusEvents,
   calendarProposals,
   customerMessages = [],
+  jobPrep = null,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
@@ -288,6 +291,7 @@ export function ProposalWorkspace({
   statusEvents: ProposalStatusEventRecord[];
   calendarProposals: CalendarProposal[];
   customerMessages?: ProposalCustomerMessage[];
+  jobPrep?: ProposalJobPrepView | null;
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const devTestingEnabled = isDevTestingEnabled();
@@ -377,6 +381,12 @@ export function ProposalWorkspace({
           devTestingEnabled={devTestingEnabled}
         />
       </Suspense>
+
+      {jobPrep ? (
+        <SectionCard className="qf-card-form qf-job-prep-card">
+          <JobPreparationPanel view={jobPrep} />
+        </SectionCard>
+      ) : null}
 
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />

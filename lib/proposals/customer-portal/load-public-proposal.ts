@@ -44,6 +44,8 @@ type PortalProposalRow = ProposalPdfSource & {
   workspace_id: string;
   title: string | null;
   accepted_at: string | null;
+  customer_id: string | null;
+  job_address: string | null;
 };
 
 function createPortalClient() {
@@ -82,7 +84,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, customer_id, job_address`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();

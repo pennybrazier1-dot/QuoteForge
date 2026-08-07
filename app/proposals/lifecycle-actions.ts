@@ -14,6 +14,8 @@ import {
   isBookingConfirmation,
   isProvisionalBooking,
 } from "@/lib/proposals/booking";
+import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
+import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -73,7 +75,9 @@ export async function confirmBooking(
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, workspace_id, booking_confirmation, accepted_at")
+    .select(
+      "id, status, workspace_id, booking_confirmation, accepted_at, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, materials"
+    )
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -151,6 +155,42 @@ export async function confirmBooking(
     },
   });
 
+  const jobResult = await ensureJobForAcceptedProposal(supabase, {
+    id: proposal.id,
+    workspace_id: proposal.workspace_id,
+    customer_id: proposal.customer_id,
+    customer_name: proposal.customer_name,
+    customer_email: proposal.customer_email,
+    customer_phone: proposal.customer_phone,
+    customer_address: proposal.customer_address,
+    job_address: proposal.job_address,
+    planned_start_date:
+      plannedFields.planned_start_date ?? proposal.planned_start_date,
+    materials: proposal.materials,
+  }, { acceptedAt: now });
+
+  if (!jobResult.ok) {
+    return {
+      error:
+        jobResult.error ||
+        "Booking was saved, but the job could not be created.",
+    };
+  }
+
+  if (bookingConfirmation === "confirmed") {
+    await syncJobStatusForProposal(supabase, proposal.id, "scheduled");
+    await supabase
+      .from("job_prep_items")
+      .update({
+        status: "confirmed",
+        confirmed_at: now,
+      })
+      .eq("job_id", jobResult.job.id)
+      .eq("item_key", "start_date");
+  } else if (jobResult.job.status === "accepted") {
+    await syncJobStatusForProposal(supabase, proposal.id, "preparing");
+  }
+
   revalidateAll(proposalId);
   redirect(`/proposals/${proposalId}`);
 }
@@ -218,6 +258,10 @@ export async function markJobComplete(
     fromStatus: currentStatus,
     toStatus: "completed",
     note: "Job completed",
+  });
+
+  await syncJobStatusForProposal(supabase, proposal.id, "completed", {
+    completed_at: now,
   });
 
   revalidateAll(proposalId);

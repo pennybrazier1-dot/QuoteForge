@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { fetchCalendarProposals } from "@/lib/calendar/calendar-queries";
+import { loadJobPrepForProposal } from "@/lib/jobs/load-job-for-proposal";
 import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
@@ -39,6 +40,7 @@ export default async function ProposalPage({ params }: PageProps) {
     { data: statusEvents },
     calendarProposals,
     customerMessages,
+    jobPrep,
   ] = await Promise.all([
     supabase
       .from("proposals")
@@ -63,6 +65,7 @@ export default async function ProposalPage({ params }: PageProps) {
       .order("created_at", { ascending: true }),
     fetchCalendarProposals(supabase),
     loadProposalCustomerMessages(supabase, id),
+    loadJobPrepForProposal(supabase, id),
   ]);
 
   if (error || !proposal) {
@@ -84,6 +87,7 @@ export default async function ProposalPage({ params }: PageProps) {
       statusEvents={(statusEvents ?? []) as ProposalStatusEventRecord[]}
       calendarProposals={calendarProposals}
       customerMessages={customerMessages}
+      jobPrep={jobPrep}
     />
   );
 }
