@@ -7,6 +7,8 @@ import {
 import { userHasProfile } from "@/lib/onboarding/status";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import { SIMULATED_SEND_MESSAGE } from "@/lib/proposals/simulated-send-constants";
+import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
+import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
 
 export type SimulatedSendResult = {
   success?: boolean;
@@ -78,6 +80,14 @@ export async function executeSimulatedSend(
 
   const sentAt = new Date().toISOString();
 
+  const tokenResult = await ensureProposalCustomerAccessToken(
+    supabase,
+    proposalId
+  );
+  const portalUrl = tokenResult.ok
+    ? buildCustomerProposalPortalUrl(tokenResult.token)
+    : null;
+
   const { error: updateError } = await supabase
     .from("proposals")
     .update({
@@ -100,11 +110,14 @@ export async function executeSimulatedSend(
     event_type: "emailed",
     from_status: "ready_to_send",
     to_status: "waiting_for_customer",
-    note: `Test send to ${customerEmail} (no email sent)`,
+    note: portalUrl
+      ? `Test send to ${customerEmail} (portal: ${portalUrl})`
+      : `Test send to ${customerEmail} (no email sent)`,
     metadata: {
       recipient_email: customerEmail,
       provider: "simulated",
       simulated: true,
+      portal_url: portalUrl,
     },
     created_by: user.id,
     created_at: sentAt,

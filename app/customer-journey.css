@@ -1607,3 +1607,92 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Customer proposal portal (/p/[token]) */
+.cj-portal-page {
+  width: min(40rem, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 3rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.cj-portal-price {
+  margin: 1rem 0 0;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--cj-text);
+}
+
+.cj-portal-pdf {
+  display: inline-flex;
+  margin-top: 1rem;
+}
+
+.cj-portal-list {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--cj-text);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.cj-portal-muted {
+  margin: 0;
+  color: var(--cj-text-secondary);
+  font-size: 0.9375rem;
+}
+
+.cj-portal-actions {
+  border-color: var(--cj-accent);
+}
+
+.cj-portal-action-row {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.cj-portal-form {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.cj-portal-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cj-text);
+}
+
+.cj-portal-textarea {
+  width: 100%;
+  min-height: 6rem;
+  border: 1px solid var(--cj-border-strong);
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  background: #fff;
+  color: var(--cj-text);
+  font: inherit;
+  resize: vertical;
+}
+
+.cj-portal-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.cj-portal-error {
+  margin: 0.75rem 0 0;
+  color: #b42318;
+  font-size: 0.875rem;
+}
+
+.cj-portal-success {
+  border-color: rgba(34, 160, 107, 0.45);
+}
+

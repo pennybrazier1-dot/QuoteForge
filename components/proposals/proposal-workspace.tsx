@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
+import { ProposalCustomerMessagesPanel } from "@/components/proposals/proposal-customer-messages";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
@@ -17,6 +18,7 @@ import {
 import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
+import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import {
@@ -232,9 +234,11 @@ function ProposalWorkspaceLeft({
 function ProposalWorkspaceRight({
   proposal,
   statusEvents,
+  customerMessages,
 }: {
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
+  customerMessages: ProposalCustomerMessage[];
 }) {
   return (
     <div className="qf-proposal-col-right">
@@ -249,6 +253,13 @@ function ProposalWorkspaceRight({
             value={proposal.customer_address ?? proposal.job_address}
           />
         </dl>
+      </SectionCard>
+
+      <SectionCard className="qf-card-form">
+        <WorkspaceCardHeading title="Customer replies" icon={USER_ICON} />
+        <div className="mt-4">
+          <ProposalCustomerMessagesPanel messages={customerMessages} />
+        </div>
       </SectionCard>
 
       <div id="proposal-timeline">
@@ -269,12 +280,14 @@ export function ProposalWorkspace({
   senderName,
   statusEvents,
   calendarProposals,
+  customerMessages = [],
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
   senderName: string;
   statusEvents: ProposalStatusEventRecord[];
   calendarProposals: CalendarProposal[];
+  customerMessages?: ProposalCustomerMessage[];
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const devTestingEnabled = isDevTestingEnabled();
@@ -370,6 +383,7 @@ export function ProposalWorkspace({
         <ProposalWorkspaceRight
           proposal={proposal}
           statusEvents={statusEvents}
+          customerMessages={customerMessages}
         />
       </div>
 

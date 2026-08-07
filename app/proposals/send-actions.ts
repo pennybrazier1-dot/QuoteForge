@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
+import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
+import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
 import {
   generateFreshProposalPdfBuffer,
   loadProposalPdfContext,
@@ -86,6 +88,20 @@ export async function sendProposalByEmail(
   const senderName = profile?.full_name?.trim() || user.email || "Reanvil user";
   const sentAt = new Date().toISOString();
 
+  const tokenResult = await ensureProposalCustomerAccessToken(
+    supabase,
+    proposalId
+  );
+  if (!tokenResult.ok) {
+    return { error: tokenResult.error };
+  }
+  const portalUrl = buildCustomerProposalPortalUrl(tokenResult.token);
+
+  // Always include the secure respond link, even if trader edits the message.
+  const messageWithLink = /\/p\/[A-Za-z0-9]+/.test(message)
+    ? message
+    : `${message.trim()}\n\nView & respond to your proposal:\n${portalUrl}`;
+
   let pdfBuffer: Buffer;
 
   try {
@@ -98,10 +114,12 @@ export async function sendProposalByEmail(
   const emailResult = await sendProposalEmail({
     to: customerEmail,
     subject,
-    message,
+    message: messageWithLink,
     pdfBuffer,
     replyTo: workspace.contact_email,
     businessName: resolveCustomerFacingBusinessName(workspace.business_name),
+    ctaUrl: portalUrl,
+    ctaLabel: "View & respond to proposal",
   });
 
   if (!emailResult.ok) {
