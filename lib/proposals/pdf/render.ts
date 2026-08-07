@@ -746,8 +746,8 @@ function thingsToConfirmBeforeWorkSection(
   }
 
   return {
-    // Short title matches Scope of Work / Materials so heading wrap stays tidy.
-    title: "Before Work Begins",
+    // Same TechSection style as Scope of Work / Materials (orange title + divider).
+    title: "Things to Confirm",
     drawIcon: iconClipboard,
     renderContent: (pdfFlow, x, cursor, w) =>
       drawBulletsFlowing(

@@ -115,7 +115,7 @@ export function buildProposalThingsToConfirmFromInput(
 }
 
 /**
- * Resolve customer-facing "Before Work Begins" bullets for a saved proposal.
+ * Resolve customer-facing "Things to Confirm" bullets for a saved proposal PDF.
  * Rewrites AI/internal wording; never shows trader checklist language.
  */
 export function deriveCustomerThingsToConfirm(options: {
