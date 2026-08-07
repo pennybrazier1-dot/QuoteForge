@@ -163,6 +163,7 @@ OPTIONAL EXTRAS RULES:
 - Do not move optional extras into scopeOfWork, materials, or labour.
 - Do not invent optional extras.
 - If no optional extras were provided or mentioned, return an empty optionalExtras array.
+- Never treat preparation notes, measurements, materials, access, or duration as optional extras unless clearly marked optional/extra/add-on.
 
 ESTIMATED DURATION RULES:
 - estimatedDuration must contain only time wording (hours, days, weeks, half day, full day, morning, afternoon, approximately, around).
@@ -244,7 +245,7 @@ export function buildProposalUserPrompt(input: GenerateProposalInput): string {
     "- scopeOfWork: tradesperson work-plan checklist — one task per bullet in logical order; include normal workflow steps to complete the requested work professionally; do not repeat jobSummary; do not add paid extras, upgrades, or scope changes.",
     "- labour: describe work effort only; never include price, £ amounts, or payment terms; derive from scope when labour detail is thin.",
     "- materials: physical materials and consumables only; never copy site notes, scope bullets, customer details, or addresses.",
-    "- thingsToConfirm: only genuinely missing or uncertain technical details; never confirm customer details already clearly stated.",
+    "- thingsToConfirm: only genuinely missing or uncertain details customers should know before work begins; phrase professionally for homeowners (not internal checklist language).",
     "- optionalExtras: professional quote language only; remove please, thanks, ASAP, and similar conversational wording.",
     "- extractedEstimatedPrice: digits only when a main quote price is clearly stated (e.g. £3,000 estimate price, around £3,000, 3000 pounds, estimated at £3,000); otherwise empty string.",
     "- plannedStartDate: when the customer wants work to start, preserve flexible UK wording from Site Notes; empty if not mentioned.",

@@ -306,7 +306,6 @@ export function QuickQuotePreparation({
             </label>
             <textarea
               id="jobDescription"
-              name="jobDescription"
               value={jobDescription}
               onChange={(event) =>
                 onJobDescriptionChange(

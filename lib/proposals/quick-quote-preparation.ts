@@ -88,11 +88,10 @@ export function sumQuickQuoteCosts(
 }
 
 /**
- * Packs preparation notes into optionalExtras for generate/save.
- * Internal £ breakdown is excluded.
- * Readiness / PDF confirms are handled separately.
+ * Packs preparation notes into site-notes context for AI extraction.
+ * These are main-job details — never optional extras.
  */
-export function buildQuickQuoteOptionalExtras(options: {
+export function buildQuickQuotePrepNotesSupplement(options: {
   notes: QuickQuotePrepNotes;
 }): string {
   const parts: string[] = [];
@@ -115,6 +114,40 @@ export function buildQuickQuoteOptionalExtras(options: {
   }
 
   return parts.join("\n\n");
+}
+
+/**
+ * Combines the main job notes with optional structured prep fields
+ * for AI proposal generation.
+ */
+export function buildQuickQuoteSiteNotesForGenerate(options: {
+  jobDescription: string;
+  notes: QuickQuotePrepNotes;
+}): string {
+  const base = options.jobDescription.trim();
+  const supplement = buildQuickQuotePrepNotesSupplement({
+    notes: options.notes,
+  });
+
+  if (!supplement) {
+    return base;
+  }
+
+  if (!base) {
+    return supplement;
+  }
+
+  return `${base}\n\n${supplement}`;
+}
+
+/**
+ * @deprecated Prep notes are no longer optional extras.
+ * Prefer buildQuickQuotePrepNotesSupplement / buildQuickQuoteSiteNotesForGenerate.
+ */
+export function buildQuickQuoteOptionalExtras(options: {
+  notes: QuickQuotePrepNotes;
+}): string {
+  return buildQuickQuotePrepNotesSupplement(options);
 }
 
 export type { QuoteReadinessInput, QuoteReadinessItem };

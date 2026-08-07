@@ -17,7 +17,6 @@ import {
   iconClipboard,
   iconDocument,
   iconEmail,
-  iconInfo,
   iconPersonFilled,
   iconPhone,
   iconPound,
@@ -702,7 +701,7 @@ type TechSection = {
 };
 
 const TECH_TITLE_HEIGHT = 13;
-const TECH_HEADER_HEIGHT = TECH_TITLE_HEIGHT + 3;
+const TECH_HEADER_GAP = 3;
 const TECH_SECTION_GAP = 3;
 const TECH_SEPARATOR_HEIGHT = 3;
 
@@ -747,12 +746,33 @@ function thingsToConfirmBeforeWorkSection(
   }
 
   return {
-    title: "Things to confirm before work begins",
-    drawIcon: iconInfo,
+    // Short title matches Scope of Work / Materials so heading wrap stays tidy.
+    title: "Before Work Begins",
+    drawIcon: iconClipboard,
     renderContent: (pdfFlow, x, cursor, w) =>
       drawBulletsFlowing(
         pdfFlow,
         data.thingsToConfirmBeforeWork,
+        x,
+        cursor,
+        w,
+        "None listed."
+      ),
+  };
+}
+
+function optionalExtrasSection(data: ProposalPdfData): TechSection | null {
+  if (data.optionalExtrasItems.length === 0) {
+    return null;
+  }
+
+  return {
+    title: "Optional Extras",
+    drawIcon: iconStar,
+    renderContent: (pdfFlow, x, cursor, w) =>
+      drawBulletsFlowing(
+        pdfFlow,
+        data.optionalExtrasItems,
         x,
         cursor,
         w,
@@ -771,6 +791,20 @@ function technicalColumnLayout(flow: PdfFlow) {
   return { leftX, rightX, colWidth, dividerX };
 }
 
+function measureSectionHeaderHeight(
+  flow: PdfFlow,
+  title: string,
+  width: number
+): number {
+  const textWidth = Math.max(width - 20, 40);
+  const titleHeight = flow.heightOf(title.toUpperCase(), textWidth, {
+    font: FONT.sans,
+    size: TYPE.section,
+    lineGap: 1,
+  });
+  return Math.max(TECH_TITLE_HEIGHT, titleHeight) + TECH_HEADER_GAP;
+}
+
 function drawSectionHeader(
   flow: PdfFlow,
   section: TechSection,
@@ -778,18 +812,19 @@ function drawSectionHeader(
   y: number,
   width: number
 ): number {
+  const textWidth = Math.max(width - 20, 40);
   section.drawIcon(flow.doc, x, y, ICON_SIZE);
   flow.doc
     .font(FONT.sans)
     .fontSize(TYPE.section)
     .fillColor(PDF_COLORS.orange)
     .text(section.title.toUpperCase(), x + 20, y + 1, {
-      width: width - 20,
+      width: textWidth,
       characterSpacing: 0.9,
-      lineGap: 0,
+      lineGap: 1,
     });
 
-  return y + TECH_HEADER_HEIGHT;
+  return y + measureSectionHeaderHeight(flow, section.title, width);
 }
 
 function renderFlowingColumn(
@@ -804,15 +839,27 @@ function renderFlowingColumn(
   for (let i = 0; i < sections.length; i += 1) {
     const section = sections[i];
     const isLast = i === sections.length - 1;
+    const headerH = measureSectionHeaderHeight(flow, section.title, colWidth);
 
-    cursor = breakColumnIfNeeded(flow, cursor, TECH_HEADER_HEIGHT);
+    cursor = breakColumnIfNeeded(flow, cursor, headerH);
     flow.doc.switchToPage(cursor.page);
 
-    const contentStartY = drawSectionHeader(flow, section, colX, cursor.y, colWidth);
-    cursor = section.renderContent(flow, colX, {
-      page: cursor.page,
-      y: contentStartY,
-    }, colWidth);
+    const contentStartY = drawSectionHeader(
+      flow,
+      section,
+      colX,
+      cursor.y,
+      colWidth
+    );
+    cursor = section.renderContent(
+      flow,
+      colX,
+      {
+        page: cursor.page,
+        y: contentStartY,
+      },
+      colWidth
+    );
 
     if (!isLast) {
       cursor = {
@@ -868,6 +915,7 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
   const startPage = flow.currentPageIndex();
 
   const confirmSection = thingsToConfirmBeforeWorkSection(data);
+  const extrasSection = optionalExtrasSection(data);
 
   const leftSections: TechSection[] = [
     {
@@ -900,15 +948,7 @@ function renderFlowingTechnicalColumns(flow: PdfFlow, data: ProposalPdfData) {
   ];
 
   const rightSections: TechSection[] = [
-    {
-      title: "Optional Extras",
-      drawIcon: iconStar,
-      renderContent: (pdfFlow, x, cursor, w) =>
-        drawBodyFlowing(pdfFlow, data.optionalExtras, x, cursor, w, {
-          size: TYPE.bullet,
-          lineGap: LINE_GAP,
-        }),
-    },
+    ...(extrasSection ? [extrasSection] : []),
     {
       title: "Payment Terms",
       drawIcon: iconDocument,

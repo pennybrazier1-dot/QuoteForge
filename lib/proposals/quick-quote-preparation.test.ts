@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildQuickQuoteOptionalExtras,
+  buildQuickQuoteSiteNotesForGenerate,
   createEmptyPrepNotes,
   getQuickQuoteMissingWarnings,
   shouldSuggestSiteVisitForMeasurements,
@@ -101,5 +102,21 @@ describe("quick quote preparation helpers", () => {
     expect(text).not.toContain("£");
     expect(text).not.toContain("Still to confirm later");
     expect(text).not.toContain("site visit");
+  });
+
+  it("appends prep notes into site notes for AI, not optional extras", () => {
+    const merged = buildQuickQuoteSiteNotesForGenerate({
+      jobDescription: "Bathroom refit for Mrs Whitfield",
+      notes: {
+        measurements: "2.1 x 1.8",
+        materialsRequired: "",
+        accessRequirements: "Side gate",
+        additionalNotes: "",
+      },
+    });
+
+    expect(merged).toContain("Bathroom refit for Mrs Whitfield");
+    expect(merged).toContain("Measurements / dimensions:");
+    expect(merged).toContain("Access requirements:");
   });
 });

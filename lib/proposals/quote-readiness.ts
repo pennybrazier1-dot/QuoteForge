@@ -157,7 +157,7 @@ export function getIncompleteQuoteReadinessItems(
         "measurements",
         "site",
         "Measurements/dimensions to confirm",
-        "Measurements to be confirmed"
+        "Final measurements to be confirmed."
       )
     );
   }
@@ -168,7 +168,7 @@ export function getIncompleteQuoteReadinessItems(
         "photos",
         "site",
         "Photos/site conditions to confirm",
-        "Site photos / conditions to be confirmed"
+        "Site photos and conditions to be confirmed."
       )
     );
   }
@@ -183,7 +183,7 @@ export function getIncompleteQuoteReadinessItems(
         "site_visit",
         "site",
         "Site visit to confirm",
-        "A site visit may be needed before work begins"
+        "Site visit recommended to confirm final measurements and requirements."
       )
     );
   }
@@ -194,7 +194,7 @@ export function getIncompleteQuoteReadinessItems(
         "access",
         "site",
         "Access requirements to confirm",
-        "Site access to be confirmed"
+        "Site access arrangements to be confirmed."
       )
     );
   }
@@ -212,7 +212,7 @@ export function getIncompleteQuoteReadinessItems(
         "materials",
         "job",
         "Materials/specifications to confirm",
-        "Materials / specification to be confirmed"
+        "Materials and specification to be confirmed."
       )
     );
   }
@@ -227,7 +227,7 @@ export function getIncompleteQuoteReadinessItems(
         "customer_choices",
         "job",
         "Customer choices to confirm",
-        "Final choices (for example finishes) to be confirmed"
+        "Final finishes and choices to be confirmed."
       )
     );
   }
@@ -245,7 +245,7 @@ export function getIncompleteQuoteReadinessItems(
         "start_date",
         "planning",
         "Start date to confirm",
-        "Start date to be confirmed"
+        "Start date to be confirmed."
       )
     );
   }
@@ -314,16 +314,21 @@ export function buildCustomerThingsToConfirm(
 
 export const KNOWN_CUSTOMER_THINGS_TO_CONFIRM = new Set(
   [
+    "Final measurements to be confirmed.",
     "Measurements to be confirmed",
+    "Site photos and conditions to be confirmed.",
     "Site photos / conditions to be confirmed",
+    "Site visit recommended to confirm final measurements and requirements.",
     "A site visit may be needed before work begins",
-    "Site access to be confirmed",
-    "Materials / specification to be confirmed",
-    "Final choices (for example finishes) to be confirmed",
-    "Start date to be confirmed",
-    // Legacy Phase 41 phrases
     "Site visit required",
+    "Site access arrangements to be confirmed.",
+    "Site access to be confirmed",
+    "Materials and specification to be confirmed.",
     "Materials / specification to be confirmed",
+    "Final finishes and choices to be confirmed.",
+    "Final choices (for example finishes) to be confirmed",
+    "Start date to be confirmed.",
+    "Start date to be confirmed",
   ].map((value) => value.toLowerCase())
 );
 

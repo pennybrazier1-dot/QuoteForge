@@ -4,6 +4,7 @@ import {
   CUSTOMER_NEXT_STEP,
   deriveCustomerThingsToConfirm,
   mergeCustomerNextStepsIntoThingsToConfirm,
+  resolveCustomerOptionalExtras,
   stripCustomerFacingLinePrices,
   stripReadinessFromOptionalExtras,
   withoutCustomerNextSteps,
@@ -76,24 +77,24 @@ describe("customer next steps", () => {
     expect(steps).toEqual([]);
   });
 
-  it("derives next steps from stored phrases and legacy extras", () => {
+  it("derives and rewrites next steps from stored phrases and legacy extras", () => {
     expect(
       deriveCustomerThingsToConfirm({
-        thingsToConfirm: [CUSTOMER_NEXT_STEP.measurements, "Access height"],
+        thingsToConfirm: ["What we find when we visit", "Access height"],
         optionalExtrasText:
-          "Still to confirm later: Materials to confirm; Start date to confirm.\n\nConsider booking a site visit to confirm measurements.",
+          "Still to confirm later: Materials to confirm; Start date to confirm.",
       })
     ).toEqual(
       expect.arrayContaining([
-        CUSTOMER_NEXT_STEP.measurements,
+        CUSTOMER_NEXT_STEP.siteVisit,
         CUSTOMER_NEXT_STEP.materials,
         CUSTOMER_NEXT_STEP.startDate,
-        CUSTOMER_NEXT_STEP.siteVisit,
+        "Access height to be confirmed.",
       ])
     );
   });
 
-  it("keeps technical confirm items separate from next steps", () => {
+  it("keeps technical confirm items separate from known readiness phrases", () => {
     expect(
       withoutCustomerNextSteps([
         CUSTOMER_NEXT_STEP.measurements,
@@ -102,7 +103,7 @@ describe("customer next steps", () => {
     ).toEqual(["Confirm tile colour"]);
   });
 
-  it("strips readiness blurbs from optional extras", () => {
+  it("strips readiness and prep-note blurbs from optional extras text", () => {
     const cleaned = stripReadinessFromOptionalExtras(
       [
         "Measurements / dimensions:\n2.1 x 1.8",
@@ -111,9 +112,16 @@ describe("customer next steps", () => {
       ].join("\n\n")
     );
 
-    expect(cleaned).toContain("Measurements / dimensions:");
-    expect(cleaned).not.toContain("Still to confirm later");
-    expect(cleaned).not.toContain("site visit");
+    expect(cleaned).toBe("");
+  });
+
+  it("keeps only true optional extras", () => {
+    expect(
+      resolveCustomerOptionalExtras([
+        "Measurements / dimensions:\n2.1 x 1.8",
+        "Supply and fit a heated towel rail.",
+      ])
+    ).toEqual(["Supply and fit a heated towel rail."]);
   });
 
   it("strips line-item prices from materials", () => {
@@ -132,6 +140,6 @@ describe("customer next steps", () => {
         ["Confirm tile colour"],
         [CUSTOMER_NEXT_STEP.startDate]
       )
-    ).toEqual([CUSTOMER_NEXT_STEP.startDate, "Confirm tile colour"]);
+    ).toEqual([CUSTOMER_NEXT_STEP.startDate, "Tile colour to be confirmed."]);
   });
 });

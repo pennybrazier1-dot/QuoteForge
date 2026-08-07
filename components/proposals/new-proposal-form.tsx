@@ -42,7 +42,7 @@ import {
   mergeCustomerNextStepsIntoThingsToConfirm,
 } from "@/lib/proposals/pdf/customer-next-steps";
 import {
-  buildQuickQuoteOptionalExtras,
+  buildQuickQuoteSiteNotesForGenerate,
   createEmptyPrepNotes,
   sumQuickQuoteCosts,
   type QuickQuotePrepNotes,
@@ -270,12 +270,16 @@ export function NewProposalForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const quickQuoteOptionalExtras =
+  const quickQuoteSiteNotes =
     mode === "create"
-      ? buildQuickQuoteOptionalExtras({
+      ? buildQuickQuoteSiteNotesForGenerate({
+          jobDescription,
           notes: prepNotes,
         })
-      : optionalExtras;
+      : jobDescription;
+
+  // Optional extras stay empty on Quick Quote create unless AI finds true add-ons later.
+  const quickQuoteOptionalExtras = mode === "create" ? "" : optionalExtras;
 
   const [lastSyncedProposal, setLastSyncedProposal] = useState(
     generateState.proposal ?? null
@@ -567,6 +571,11 @@ export function NewProposalForm({
 
               {mode === "create" ? (
                 <>
+                  <input
+                    type="hidden"
+                    name="jobDescription"
+                    value={quickQuoteSiteNotes}
+                  />
                   <input
                     type="hidden"
                     name="optionalExtras"

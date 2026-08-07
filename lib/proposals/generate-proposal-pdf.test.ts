@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildProposalPdfData } from "@/lib/proposals/generate-proposal-pdf";
 import { CUSTOMER_FACING_BUSINESS_NAME_FALLBACK } from "@/lib/proposals/pdf/customer-branding";
-import { CUSTOMER_NEXT_STEP } from "@/lib/proposals/pdf/customer-next-steps";
+import { CUSTOMER_CONFIRM_COPY } from "@/lib/proposals/pdf/customer-confirm-copy";
 
 const baseProposal = {
   proposal_number: "PROP-1",
@@ -22,7 +22,7 @@ const baseProposal = {
   labour_description: "Supply and fit labour.",
   ai_optional_extras: [],
   things_to_confirm_items: [
-    CUSTOMER_NEXT_STEP.measurements,
+    "What we find when we visit",
     "Confirm tile colour",
   ],
 };
@@ -45,35 +45,57 @@ describe("buildProposalPdfData", () => {
     expect(data.businessName).toBe(CUSTOMER_FACING_BUSINESS_NAME_FALLBACK);
   });
 
-  it("builds friendly things-to-confirm-before-work and strips material line prices", () => {
+  it("rewrites confirm bullets into customer language and strips material prices", () => {
     const data = buildProposalPdfData(baseProposal, traderWorkspace);
 
     expect(data.thingsToConfirmBeforeWork).toContain(
-      CUSTOMER_NEXT_STEP.measurements
+      CUSTOMER_CONFIRM_COPY.siteVisit
     );
     expect(data.thingsToConfirmBeforeWork).toContain(
-      CUSTOMER_NEXT_STEP.siteVisit
+      "Tile colour to be confirmed."
     );
-    expect(data.thingsToConfirmBeforeWork).toContain("Confirm tile colour");
+    expect(data.thingsToConfirmBeforeWork.join(" ")).not.toMatch(
+      /What we find when we visit/i
+    );
     expect(data.materials).toEqual(["Grey tiles", "Adhesive"]);
     expect(data.estimatedPrice).toBe(250000);
-    expect(JSON.stringify(data)).not.toMatch(/£120/);
+    expect(data.optionalExtrasItems).toEqual([]);
   });
 
-  it("hides the confirm section content when nothing is incomplete", () => {
+  it("hides confirm and optional extras when nothing applies", () => {
     const data = buildProposalPdfData(
       {
         ...baseProposal,
         things_to_confirm_items: [],
-        optional_extras: ["Supply and fit optional heated towel rail."],
+        ai_optional_extras: [],
+        optional_extras: [],
       },
       traderWorkspace
     );
 
     expect(data.thingsToConfirmBeforeWork).toEqual([]);
+    expect(data.optionalExtrasItems).toEqual([]);
   });
 
-  it("strips legacy readiness blurbs from optional extras", () => {
+  it("keeps true optional extras separate from included work", () => {
+    const data = buildProposalPdfData(
+      {
+        ...baseProposal,
+        things_to_confirm_items: [],
+        ai_optional_extras: ["Supply and fit a heated towel rail."],
+      },
+      traderWorkspace
+    );
+
+    expect(data.optionalExtrasItems).toEqual([
+      "Supply and fit a heated towel rail.",
+    ]);
+    expect(data.scopeOfWork).not.toContain(
+      "Supply and fit a heated towel rail."
+    );
+  });
+
+  it("does not treat prep-note blocks as optional extras", () => {
     const data = buildProposalPdfData(
       {
         ...baseProposal,
@@ -82,21 +104,16 @@ describe("buildProposalPdfData", () => {
         things_to_confirm_items: [],
         ai_optional_extras: [],
         optional_extras: [
-          "Still to confirm later: Materials to confirm; Start date to confirm.",
-          "Consider booking a site visit to confirm measurements.",
+          "Measurements / dimensions:\n2.1 x 1.8",
+          "Materials required:\nGrey tiles",
+          "Supply and fit optional heated towel rail.",
         ],
       },
       traderWorkspace
     );
 
-    expect(data.thingsToConfirmBeforeWork).toEqual(
-      expect.arrayContaining([
-        CUSTOMER_NEXT_STEP.materials,
-        CUSTOMER_NEXT_STEP.startDate,
-        CUSTOMER_NEXT_STEP.siteVisit,
-      ])
-    );
-    expect(data.optionalExtras).not.toContain("Still to confirm later");
-    expect(data.optionalExtras).not.toContain("site visit");
+    expect(data.optionalExtrasItems).toEqual([
+      "Supply and fit optional heated towel rail.",
+    ]);
   });
 });

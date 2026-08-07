@@ -1,13 +1,12 @@
 import { createRequire } from "node:module";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import { resolveProposalPricePence } from "@/lib/proposals/money";
-import { formatOptionalExtrasForDisplay } from "@/lib/proposals/optional-extras";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import {
   deriveCustomerThingsToConfirm,
+  parseOptionalExtrasSource,
+  resolveCustomerOptionalExtras,
   stripCustomerFacingLinePrices,
-  stripReadinessFromOptionalExtras,
-  withoutCustomerNextSteps,
 } from "@/lib/proposals/pdf/customer-next-steps";
 import { FONT, registerPdfFonts } from "@/lib/proposals/pdf/fonts";
 import { PdfFlow } from "@/lib/proposals/pdf/layout";
@@ -23,13 +22,6 @@ const require = createRequire(import.meta.url);
 const PDFDocument = require("pdfkit") as typeof import("pdfkit");
 
 export type { ProposalPdfData };
-
-function formatStructuredOptionalExtras(items: string[]): string {
-  if (items.length === 0) {
-    return "No optional extras have been identified from the information provided.";
-  }
-  return items.map((item) => `• ${item}`).join("\n");
-}
 
 function buildProjectSummary(
   hasStructuredContent: boolean,
@@ -111,27 +103,18 @@ export function buildProposalPdfData(
       proposal.things_to_confirm
     ) || "Not specified";
 
-  const rawOptionalExtras = hasStructuredContent
-    ? formatStructuredOptionalExtras(structured?.optionalExtras ?? [])
-    : formatOptionalExtrasForDisplay(proposal.optional_extras) ??
-      "No optional extras included.";
-  const optionalExtras =
-    stripReadinessFromOptionalExtras(rawOptionalExtras) ||
-    "No optional extras included.";
-
   const structuredConfirm = structured?.thingsToConfirm ?? [];
-  const readinessCustomer = deriveCustomerThingsToConfirm({
+  const rawOptionalItems = hasStructuredContent
+    ? (structured?.optionalExtras ?? [])
+    : parseOptionalExtrasSource(proposal.optional_extras);
+  const rawOptionalExtrasText = rawOptionalItems.join("\n\n");
+
+  const thingsToConfirmBeforeWork = deriveCustomerThingsToConfirm({
     thingsToConfirm: structuredConfirm,
-    optionalExtrasText: rawOptionalExtras,
+    optionalExtrasText: rawOptionalExtrasText,
   });
-  const remainingTechnical = withoutCustomerNextSteps(structuredConfirm);
-  const thingsToConfirmBeforeWork = [
-    ...readinessCustomer,
-    ...remainingTechnical,
-  ].filter((value, index, list) => {
-    const key = value.trim().toLowerCase();
-    return key.length > 0 && list.findIndex((entry) => entry.trim().toLowerCase() === key) === index;
-  });
+
+  const optionalExtrasItems = resolveCustomerOptionalExtras(rawOptionalItems);
 
   return {
     businessName: resolveCustomerFacingBusinessName(workspace.business_name),
@@ -154,7 +137,7 @@ export function buildProposalPdfData(
     materials: stripCustomerFacingLinePrices(structured?.materials ?? []),
     labour: structured?.labour ?? proposal.rough_notes,
     thingsToConfirmBeforeWork,
-    optionalExtras,
+    optionalExtrasItems,
     estimatedPrice: resolveProposalPricePence(
       proposal.total_amount,
       proposal.rough_notes,
@@ -166,7 +149,7 @@ export function buildProposalPdfData(
     estimatedDuration,
     durationNote: buildDurationNote(
       estimatedDuration,
-      remainingTechnical,
+      thingsToConfirmBeforeWork,
       proposal.things_to_confirm
     ),
     paymentTerms:

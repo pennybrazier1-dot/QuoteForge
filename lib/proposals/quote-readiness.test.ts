@@ -118,8 +118,8 @@ describe("quote readiness checklist", () => {
     );
 
     const customer = buildCustomerThingsToConfirm(incomplete);
-    expect(customer).toContain("Measurements to be confirmed");
-    expect(customer).toContain("Site photos / conditions to be confirmed");
+    expect(customer).toContain("Final measurements to be confirmed.");
+    expect(customer).toContain("Site photos and conditions to be confirmed.");
     expect(customer.join(" ")).not.toMatch(/Pricing to complete/i);
     expect(customer.join(" ")).not.toMatch(/Customer contact/i);
   });

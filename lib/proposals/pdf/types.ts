@@ -15,11 +15,14 @@ export type ProposalPdfData = {
   materials: string[];
   labour: string | null;
   /**
-   * Friendly customer bullets for incomplete readiness items (+ remaining
-   * technical confirms). Omit the PDF section when empty. Never blocks send.
+   * Friendly customer bullets for incomplete items.
+   * Omit the PDF section when empty. Never blocks send.
    */
   thingsToConfirmBeforeWork: string[];
-  optionalExtras: string;
+  /**
+   * Truly optional add-ons only. Empty = hide Optional Extras on the PDF.
+   */
+  optionalExtrasItems: string[];
   estimatedPrice: number;
   estimatedDuration: string;
   durationNote: string | null;
