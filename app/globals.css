@@ -93,6 +93,20 @@
   /* Measured at runtime from .qf-bottom-nav (see workspace-scroll-end.tsx). */
   --qf-bottom-nav-measured-height: var(--qf-bottom-nav-total-height);
   --qf-workspace-scroll-end-height: var(--qf-workspace-bottom-padding);
+
+  /* Customer proposal portal (light Reanvil customer experience). */
+  --portal-bg: #f6f5f3;
+  --portal-surface: #ffffff;
+  --portal-text: #111113;
+  --portal-text-secondary: #3f3f46;
+  --portal-text-muted: #71717a;
+  --portal-accent: #ff6a1a;
+  --portal-accent-hover: #ff7a2e;
+  --portal-border: rgba(17, 17, 19, 0.09);
+  --portal-border-strong: rgba(17, 17, 19, 0.16);
+  --portal-input-bg: #ffffff;
+  --portal-input-text: #111113;
+  --portal-input-placeholder: #71717a;
 }
 
 html {

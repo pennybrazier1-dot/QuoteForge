@@ -14,13 +14,26 @@ export default async function PublicProposalPage({
 
   if (!loaded.ok) {
     return (
-      <div className="cj-page">
-        <main className="cj-portal-page">
-          <section className="cj-job-card">
-            <h1 className="cj-job-title">Proposal not found</h1>
-            <p className="cj-job-copy">{loaded.error}</p>
-          </section>
-        </main>
+      <div className="cj-root cj-root--portal">
+        <div className="cj-page">
+          <header className="cj-header cj-portal-header">
+            <div className="cj-header-brand">
+              <div className="cj-logo">
+                <span className="cj-portal-brand-mark" aria-hidden="true">
+                  R
+                </span>
+                <span className="cj-logo-text cj-portal-brand-name">Reanvil</span>
+              </div>
+              <p className="cj-header-subtitle">Your proposal</p>
+            </div>
+          </header>
+          <main className="cj-portal-page">
+            <section className="cj-job-card">
+              <h1 className="cj-job-title">Proposal not found</h1>
+              <p className="cj-job-copy">{loaded.error}</p>
+            </section>
+          </main>
+        </div>
       </div>
     );
   }
