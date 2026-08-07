@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCustomerNextStepsFromPrep,
+  buildProposalThingsToConfirmFromInput,
   CUSTOMER_NEXT_STEP,
   deriveCustomerThingsToConfirm,
   mergeCustomerNextStepsIntoThingsToConfirm,
@@ -9,6 +10,7 @@ import {
   stripReadinessFromOptionalExtras,
   withoutCustomerNextSteps,
 } from "@/lib/proposals/pdf/customer-next-steps";
+import { toCustomerFacingThingsToConfirm } from "@/lib/proposals/pdf/customer-confirm-copy";
 import { createEmptyPrepNotes } from "@/lib/proposals/quick-quote-preparation";
 
 describe("customer next steps", () => {
@@ -146,5 +148,59 @@ describe("customer next steps", () => {
         [CUSTOMER_NEXT_STEP.startDate]
       )
     ).toEqual([CUSTOMER_NEXT_STEP.startDate, "Tile colour to be confirmed."]);
+  });
+
+  it("builds proposal Things to Confirm with customer + job items", () => {
+    const items = buildProposalThingsToConfirmFromInput({
+      customerName: "Alex",
+      emailAddress: "",
+      phoneNumber: "",
+      propertyAddress: "",
+      notes: createEmptyPrepNotes(),
+      jobDescription: "Bathroom refit with notes long enough for AI-first flow",
+      photoCount: 0,
+      photosNotRequired: true,
+      siteVisitCompleted: false,
+      durationValue: "2",
+      plannedStartDateText: "",
+      plannedStartDateExact: "",
+      estimatedPrice: "900",
+      aiNotesFirst: true,
+    });
+
+    expect(items).toEqual(
+      expect.arrayContaining([
+        "Customer phone number to be confirmed.",
+        "Customer email to be confirmed.",
+        "Job address to be confirmed.",
+        CUSTOMER_NEXT_STEP.measurements,
+        CUSTOMER_NEXT_STEP.siteVisit,
+        CUSTOMER_NEXT_STEP.materials,
+        CUSTOMER_NEXT_STEP.access,
+        CUSTOMER_NEXT_STEP.startDate,
+      ])
+    );
+  });
+
+  it("keeps customer essentials on the proposal review but PDF can strip them", () => {
+    const merged = mergeCustomerNextStepsIntoThingsToConfirm(
+      ["Confirm tile colour"],
+      [
+        "Customer phone number to be confirmed.",
+        "Job address to be confirmed.",
+        CUSTOMER_NEXT_STEP.measurements,
+      ]
+    );
+
+    expect(merged).toEqual([
+      "Customer phone number to be confirmed.",
+      "Job address to be confirmed.",
+      CUSTOMER_NEXT_STEP.measurements,
+      "Tile colour to be confirmed.",
+    ]);
+
+    expect(
+      toCustomerFacingThingsToConfirm(merged).join(" ")
+    ).not.toMatch(/Customer phone|Job address/i);
   });
 });

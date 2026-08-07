@@ -10,6 +10,12 @@ import {
   type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
 
+function countReadinessItems(
+  summary: ReturnType<typeof buildThingsToConfirmSummary>
+): number {
+  return summary.groups.reduce((total, group) => total + group.items.length, 0);
+}
+
 function SectionHeading({
   title,
   hint,
@@ -224,6 +230,7 @@ export function QuickQuotePreparation({
     []
   );
   const [detailsOpen, setDetailsOpen] = useState(defaultDetailsOpen);
+  const [readinessOpen, setReadinessOpen] = useState(false);
 
   const thingsToConfirm = buildThingsToConfirmSummary({
     customerName,
@@ -242,6 +249,7 @@ export function QuickQuotePreparation({
     paymentTermsSupported: false,
     aiNotesFirst: true,
   });
+  const readinessCount = countReadinessItems(thingsToConfirm);
 
   function updateNote<K extends keyof QuickQuotePrepNotes>(
     key: K,
@@ -589,44 +597,61 @@ export function QuickQuotePreparation({
       <section
         className={
           thingsToConfirm.ready
-            ? "qf-qq-things-confirm qf-qq-things-confirm--ready"
-            : "qf-qq-things-confirm"
+            ? "qf-qq-readiness-indicator qf-qq-readiness-indicator--ready"
+            : "qf-qq-readiness-indicator"
         }
         aria-live="polite"
-        aria-label="Things to confirm"
+        aria-label="Quote readiness"
       >
-        <h2 className="qf-qq-things-confirm-title">Things to confirm</h2>
         {thingsToConfirm.ready ? (
-          <p className="qf-qq-things-confirm-ready">Quote ready to send</p>
+          <p className="qf-qq-readiness-indicator-summary">
+            Quote readiness: Ready to send
+          </p>
         ) : (
           <>
-            <p className="qf-qq-things-confirm-copy">
-              Soft summary only — fill anything useful in the fields above.
-              Nothing here blocks creating or sending the quote.
+            <button
+              type="button"
+              className="qf-qq-readiness-indicator-toggle"
+              aria-expanded={readinessOpen}
+              onClick={() => setReadinessOpen((open) => !open)}
+            >
+              <span>
+                Quote readiness: {readinessCount}{" "}
+                {readinessCount === 1 ? "item" : "items"} to review
+              </span>
+              <span className="qf-qq-readiness-indicator-chevron" aria-hidden="true">
+                {readinessOpen ? "−" : "+"}
+              </span>
+            </button>
+            <p className="qf-qq-readiness-indicator-hint">
+              Soft check only — nothing blocks creating or sending. Detailed
+              confirms appear on the generated proposal.
             </p>
-            <div className="qf-qq-things-confirm-groups">
-              {thingsToConfirm.groups.map((group) => (
-                <div key={group.id} className="qf-qq-things-confirm-group">
-                  <h3 className="qf-qq-things-confirm-group-title">
-                    {group.title}
-                  </h3>
-                  <ul className="qf-qq-things-confirm-list">
-                    {group.items.map((entry) => (
-                      <li key={entry.id}>
-                        <span>{entry.label}</span>
-                        {entry.children && entry.children.length > 0 ? (
-                          <ul className="qf-qq-things-confirm-children">
-                            {entry.children.map((child) => (
-                              <li key={child}>{child}</li>
-                            ))}
-                          </ul>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+            {readinessOpen ? (
+              <div className="qf-qq-readiness-indicator-body">
+                {thingsToConfirm.groups.map((group) => (
+                  <div key={group.id} className="qf-qq-things-confirm-group">
+                    <h3 className="qf-qq-things-confirm-group-title">
+                      {group.title}
+                    </h3>
+                    <ul className="qf-qq-things-confirm-list">
+                      {group.items.map((entry) => (
+                        <li key={entry.id}>
+                          <span>{entry.label}</span>
+                          {entry.children && entry.children.length > 0 ? (
+                            <ul className="qf-qq-things-confirm-children">
+                              {entry.children.map((child) => (
+                                <li key={child}>{child}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </>
         )}
       </section>

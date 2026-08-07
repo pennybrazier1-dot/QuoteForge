@@ -3734,6 +3734,62 @@ a.qf-card-inset:hover {
   padding: 1rem 1.15rem;
 }
 
+.qf-qq-readiness-indicator {
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  border-radius: 0.85rem;
+  background: rgba(255, 106, 26, 0.08);
+  padding: 0.85rem 1.05rem;
+}
+
+.qf-qq-readiness-indicator--ready {
+  border-color: rgba(34, 160, 107, 0.4);
+  background: rgba(34, 160, 107, 0.1);
+}
+
+.qf-qq-readiness-indicator-summary {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.qf-qq-readiness-indicator-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qf-qq-readiness-indicator-chevron {
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--muted);
+}
+
+.qf-qq-readiness-indicator-hint {
+  margin: 0.4rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.qf-qq-readiness-indicator-body {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
 .qf-qq-things-confirm--ready {
   border-color: rgba(34, 160, 107, 0.4);
   background: rgba(34, 160, 107, 0.1);

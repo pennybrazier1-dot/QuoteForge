@@ -132,7 +132,8 @@ const EXACT_REPLACEMENTS: Array<{ match: RegExp; replacement: string | null }> =
   },
   // Trader-only — never show on the customer PDF
   { match: /^customer (name|phone|email|contact).*$/i, replacement: null },
-  { match: /^(full |job )?address to confirm\.?$/i, replacement: null },
+  { match: /^(full |job )?address to (be )?confirm(ed)?\.?$/i, replacement: null },
+  { match: /^duration to (be )?confirm(ed)?\.?$/i, replacement: null },
   { match: /^pricing to complete\.?$/i, replacement: null },
   { match: /^payment terms to confirm\.?$/i, replacement: null },
   { match: /^customer quote total\.?$/i, replacement: null },

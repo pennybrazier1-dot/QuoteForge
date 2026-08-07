@@ -38,7 +38,7 @@ import {
   type DurationUnit,
 } from "@/lib/proposals/proposal-form-helpers";
 import {
-  buildCustomerThingsToConfirmFromInput,
+  buildProposalThingsToConfirmFromInput,
   mergeCustomerNextStepsIntoThingsToConfirm,
 } from "@/lib/proposals/pdf/customer-next-steps";
 import {
@@ -292,7 +292,7 @@ export function NewProposalForm({
     const proposal = generateState.proposal;
     const nextSteps =
       mode === "create"
-        ? buildCustomerThingsToConfirmFromInput({
+        ? buildProposalThingsToConfirmFromInput({
             customerName,
             emailAddress,
             phoneNumber,

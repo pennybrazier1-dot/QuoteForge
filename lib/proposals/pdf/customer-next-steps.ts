@@ -8,6 +8,7 @@ import {
   isKnownCustomerThingToConfirm,
   type QuoteReadinessInput,
   type QuoteReadinessItem,
+  type QuoteReadinessItemId,
 } from "@/lib/proposals/quote-readiness";
 import type { QuickQuotePrepNotes } from "@/lib/proposals/quick-quote-preparation";
 
@@ -57,6 +58,60 @@ export function buildCustomerThingsToConfirmFromInput(
   return toCustomerFacingThingsToConfirm(
     buildCustomerThingsToConfirm(getIncompleteQuoteReadinessItems(input))
   );
+}
+
+const PROPOSAL_REVIEW_CONFIRM_LABELS: Partial<
+  Record<QuoteReadinessItemId, string>
+> = {
+  customer_name: "Customer name to be confirmed.",
+  customer_phone: "Customer phone number to be confirmed.",
+  customer_email: "Customer email to be confirmed.",
+  full_address: "Job address to be confirmed.",
+};
+
+/**
+ * Detailed Things to Confirm for the generated proposal review.
+ * Includes customer essentials for the trader; PDF still strips
+ * internal-only lines via customer-facing rewrite rules.
+ */
+export function buildProposalThingsToConfirmFromInput(
+  input: QuoteReadinessInput
+): string[] {
+  const incomplete = getIncompleteQuoteReadinessItems(input);
+  const lines: string[] = [];
+
+  for (const entry of incomplete) {
+    if (entry.id === "pricing" || entry.id === "payment_terms") {
+      continue;
+    }
+    if (entry.customerLabel?.trim()) {
+      lines.push(entry.customerLabel.trim());
+      continue;
+    }
+    const reviewLabel = PROPOSAL_REVIEW_CONFIRM_LABELS[entry.id];
+    if (reviewLabel) {
+      lines.push(reviewLabel);
+    }
+  }
+
+  // Fold/dedupe related job confirms; keep customer lines that PDF will hide.
+  const customerLines = lines.filter((line) =>
+    /^customer |^job address/i.test(line)
+  );
+  const jobLines = lines.filter((line) => !/^customer |^job address/i.test(line));
+  const foldedJob = toCustomerFacingThingsToConfirm(jobLines);
+
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const line of [...customerLines, ...foldedJob]) {
+    const key = line.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(line);
+  }
+  return result;
 }
 
 /**
@@ -271,7 +326,31 @@ export function mergeCustomerNextStepsIntoThingsToConfirm(
   thingsToConfirm: string[],
   nextSteps: string[]
 ): string[] {
-  return toCustomerFacingThingsToConfirm([...nextSteps, ...thingsToConfirm]);
+  const combined = [...nextSteps, ...thingsToConfirm];
+  const reviewOnly = combined
+    .map((line) => line.trim())
+    .filter((line) => isProposalReviewOnlyConfirm(line));
+  const customerFacing = toCustomerFacingThingsToConfirm(combined);
+
+  const seen = new Set(customerFacing.map((line) => line.toLowerCase()));
+  const leading: string[] = [];
+  for (const line of reviewOnly) {
+    const normalized = /[.!?]$/.test(line) ? line : `${line}.`;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    leading.push(normalized);
+  }
+
+  return [...leading, ...customerFacing];
+}
+
+function isProposalReviewOnlyConfirm(line: string): boolean {
+  return /^(customer name|customer phone|customer email|job address)\b/i.test(
+    line.trim()
+  );
 }
 
 /** @deprecated Use deriveCustomerThingsToConfirm */
