@@ -8,6 +8,9 @@ import {
 } from "@/lib/proposals/revision/conversation-agreements";
 import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
+/** Primary mobile next-step mode for the trader attention screen. */
+export type ConversationResolutionFocus = "date" | "update";
+
 /** Soft calendar prefill / aggregated request wording for the resolution UI. */
 export type ConversationResolutionSummary = {
   /** Short headline for the customer request block. */
@@ -25,6 +28,15 @@ export type ConversationResolutionSummary = {
   plannedStartText: string | null;
   plannedStartExact: string | null;
   hasCustomerMessages: boolean;
+  /**
+   * Mobile trader card: plain-language “what happened”.
+   * Desktop keeps the richer summary fields above.
+   */
+  mobileHeadline: string;
+  /** One-line supporting detail under the mobile headline. */
+  mobileDescription: string;
+  /** Which primary resolution UI to show on mobile. */
+  resolutionFocus: ConversationResolutionFocus;
 };
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
@@ -141,11 +153,83 @@ function impactLabelsFromLabels(labels: ChangeRequestLabel[]): string[] {
   return impacts;
 }
 
+/**
+ * Picks the mobile primary action mode.
+ * Work/scope/material/price wins over date when both appear.
+ */
+export function resolveConversationFocus(
+  labels: ChangeRequestLabel[]
+): ConversationResolutionFocus {
+  const hasWork =
+    labels.includes("scope") ||
+    labels.includes("materials") ||
+    labels.includes("price");
+  if (hasWork) {
+    return "update";
+  }
+  if (labels.includes("date")) {
+    return "date";
+  }
+  return "update";
+}
+
+export function buildMobileRequestCopy(input: {
+  items: string[];
+  sources: ProposalCustomerMessage[];
+  labels: ChangeRequestLabel[];
+  focus: ConversationResolutionFocus;
+}): { mobileHeadline: string; mobileDescription: string } {
+  const { items, sources, labels, focus } = input;
+  const latestBody = sources[sources.length - 1]?.body ?? "";
+  const description =
+    items[0] ??
+    (latestBody ? quoteSnippet(latestBody, 96) : "See the conversation for details.");
+
+  if (focus === "date") {
+    return {
+      mobileHeadline: "Customer requested a date change",
+      mobileDescription: description,
+    };
+  }
+
+  const wantsExtraWork = sources.some((message) =>
+    /\b(add|added|extra|also|additional)\b/i.test(message.body)
+  );
+  if (labels.includes("materials") && !labels.includes("scope")) {
+    return {
+      mobileHeadline: "Customer requested a materials change",
+      mobileDescription: description,
+    };
+  }
+  if (wantsExtraWork || labels.includes("scope")) {
+    return {
+      mobileHeadline: "Customer requested additional work",
+      mobileDescription: description,
+    };
+  }
+  if (labels.includes("price")) {
+    return {
+      mobileHeadline: "Customer requested a price change",
+      mobileDescription: description,
+    };
+  }
+
+  return {
+    mobileHeadline: "Customer sent a request",
+    mobileDescription: description,
+  };
+}
+
 function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
   items: string[];
   wording: string;
   impacts: string[];
   headline: string;
+  labels: ChangeRequestLabel[];
+  sources: ProposalCustomerMessage[];
+  focus: ConversationResolutionFocus;
+  mobileHeadline: string;
+  mobileDescription: string;
 } {
   const sources = customerRequestMessages(messages);
   if (sources.length === 0) {
@@ -154,6 +238,11 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
       wording: "No original request wording yet.",
       impacts: [],
       headline: "No customer request yet.",
+      labels: [],
+      sources: [],
+      focus: "update",
+      mobileHeadline: "Customer sent a request",
+      mobileDescription: "See the conversation for details.",
     };
   }
 
@@ -206,6 +295,15 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
     uniqueImpacts.push("Price review");
   }
 
+  const labels = [...allLabels];
+  const focus = resolveConversationFocus(labels);
+  const mobile = buildMobileRequestCopy({
+    items,
+    sources,
+    labels,
+    focus,
+  });
+
   const headline =
     items.length > 1
       ? "Customer asked about several changes."
@@ -218,6 +316,11 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
     wording,
     impacts: uniqueImpacts,
     headline,
+    labels,
+    sources,
+    focus,
+    mobileHeadline: mobile.mobileHeadline,
+    mobileDescription: mobile.mobileDescription,
   };
 }
 
@@ -244,6 +347,9 @@ export function buildConversationResolutionSummary(
     plannedStartText,
     plannedStartExact: agreement?.dateIso ?? null,
     hasCustomerMessages: ordered.some(isCustomerMessage),
+    mobileHeadline: aggregated.mobileHeadline,
+    mobileDescription: aggregated.mobileDescription,
+    resolutionFocus: aggregated.focus,
   };
 }
 

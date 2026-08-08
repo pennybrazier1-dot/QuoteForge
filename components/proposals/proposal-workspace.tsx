@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
 import { ConversationResolutionPanel } from "@/components/proposals/conversation-resolution-panel";
+import { AttentionConversationSection } from "@/components/proposals/attention-conversation-section";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -434,36 +435,37 @@ export function ProposalWorkspace({
       ) : null}
 
       {resolutionSummary ? (
-        <h2 className="qf-resolution-current-title">Current proposal</h2>
-      ) : null}
-
-      <div className="qf-workspace-layout">
-        <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
-        <ProposalWorkspaceRight
-          proposal={proposal}
-          statusEvents={statusEvents}
-          customerMessages={customerMessages}
-          showConversation={!resolutionSummary}
-        />
-      </div>
+        <div className="qf-attention-desktop-block">
+          <h2 className="qf-resolution-current-title">Current proposal</h2>
+          <div className="qf-workspace-layout">
+            <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
+            <ProposalWorkspaceRight
+              proposal={proposal}
+              statusEvents={statusEvents}
+              customerMessages={customerMessages}
+              showConversation={false}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="qf-workspace-layout">
+          <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
+          <ProposalWorkspaceRight
+            proposal={proposal}
+            statusEvents={statusEvents}
+            customerMessages={customerMessages}
+            showConversation
+          />
+        </div>
+      )}
 
       {resolutionSummary ? (
         <>
-          <div id="customer-replies">
-            <SectionCard className="qf-card-form">
-              <WorkspaceCardHeading
-                title="Conversation history"
-                icon={USER_ICON}
-              />
-              <div className="mt-4">
-                <ProposalConversationPanel
-                  proposalId={proposal.id}
-                  messages={customerMessages}
-                  canReply
-                />
-              </div>
-            </SectionCard>
-          </div>
+          <AttentionConversationSection
+            proposalId={proposal.id}
+            messages={customerMessages}
+            headingIcon={USER_ICON}
+          />
 
           <section
             className="qf-resolution-final-actions"

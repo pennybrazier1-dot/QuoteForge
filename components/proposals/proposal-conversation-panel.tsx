@@ -26,10 +26,16 @@ export function ProposalConversationPanel({
   proposalId,
   messages,
   canReply = true,
+  showThread = true,
+  showComposer = true,
+  showReviseLink = true,
 }: {
   proposalId: string;
   messages: ProposalCustomerMessage[];
   canReply?: boolean;
+  showThread?: boolean;
+  showComposer?: boolean;
+  showReviseLink?: boolean;
 }) {
   const [state, action] = useActionState(
     createTraderProposalReply,
@@ -58,16 +64,18 @@ export function ProposalConversationPanel({
     <section
       className="qf-conversation"
       aria-label="Proposal conversation"
-      id="proposal-conversation"
+      id={showComposer ? "proposal-conversation" : undefined}
     >
-      <ProposalConversationThread
-        messages={messages}
-        viewer="trader"
-        emptyMessage="Messages with your customer will appear here."
-        variant="workspace"
-      />
+      {showThread ? (
+        <ProposalConversationThread
+          messages={messages}
+          viewer="trader"
+          emptyMessage="Messages with your customer will appear here."
+          variant="workspace"
+        />
+      ) : null}
 
-      {messages.length > 0 ? (
+      {showReviseLink && messages.length > 0 ? (
         <div className="qf-conversation-revise">
           <Link
             href={buildProposalRevisePath(proposalId)}
@@ -81,7 +89,7 @@ export function ProposalConversationPanel({
         </div>
       ) : null}
 
-      {canReply ? (
+      {showComposer && canReply ? (
         <form
           ref={formRef}
           action={action}
@@ -117,11 +125,13 @@ export function ProposalConversationPanel({
             <SendReplyButton />
           </div>
         </form>
-      ) : (
+      ) : null}
+
+      {showComposer && !canReply ? (
         <p className="text-sm text-muted mt-4">
           This proposal isn’t open for new replies right now.
         </p>
-      )}
+      ) : null}
     </section>
   );
 }
@@ -130,8 +140,9 @@ export function focusProposalConversationComposer() {
   if (typeof window === "undefined") {
     return;
   }
-  document
-    .getElementById("proposal-conversation")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const compose =
+    document.getElementById("proposal-conversation-compose") ??
+    document.getElementById("proposal-conversation");
+  compose?.scrollIntoView({ behavior: "smooth", block: "start" });
   window.dispatchEvent(new Event("proposal-conversation-focus"));
 }
