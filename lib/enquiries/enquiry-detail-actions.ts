@@ -1,7 +1,8 @@
 export const ENQUIRY_DETAIL_VISIBLE_ACTIONS = {
   review: false,
-  bookSiteVisit: true,
-  askQuestion: true,
+  bookVisit: true,
+  createQuote: true,
+  replyToCustomer: true,
   decline: true,
   delete: true,
   backToList: true,

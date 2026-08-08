@@ -42,15 +42,23 @@ function isTime(value: string): boolean {
   return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
 }
 
-function revalidateVisitPaths(visitId?: string, customerId?: string | null) {
+function revalidateVisitPaths(
+  visitId?: string,
+  customerId?: string | null,
+  enquiryId?: string | null
+) {
   revalidatePath("/visits");
   revalidatePath("/calendar");
   revalidatePath("/dashboard");
+  revalidatePath("/enquiries");
   if (visitId) {
     revalidatePath(`/visits/${visitId}`);
   }
   if (customerId) {
     revalidatePath(`/customers/${customerId}`);
+  }
+  if (enquiryId) {
+    revalidatePath(`/enquiries/${enquiryId}`);
   }
 }
 
@@ -93,12 +101,33 @@ export async function createVisitAction(
     return { error: "Choose a valid start time." };
   }
 
+  let resolvedCustomerId = customerId;
+  let resolvedEnquiryId = enquiryId;
+
+  if (enquiryId) {
+    const { data: enquiry, error: enquiryError } = await context.supabase
+      .from("enquiries")
+      .select("id, customer_id, status")
+      .eq("id", enquiryId)
+      .eq("workspace_id", context.workspaceId)
+      .maybeSingle();
+
+    if (enquiryError || !enquiry) {
+      return { error: "Could not find the linked enquiry." };
+    }
+
+    resolvedEnquiryId = enquiry.id;
+    if (!resolvedCustomerId && enquiry.customer_id) {
+      resolvedCustomerId = enquiry.customer_id as string;
+    }
+  }
+
   const { data: created, error } = await context.supabase
     .from("visits")
     .insert({
       workspace_id: context.workspaceId,
-      customer_id: customerId,
-      enquiry_id: enquiryId || null,
+      customer_id: resolvedCustomerId,
+      enquiry_id: resolvedEnquiryId || null,
       customer_name: customerName,
       contact_phone: contactPhone,
       contact_email: contactEmail,
@@ -122,6 +151,31 @@ export async function createVisitAction(
     return { error: error?.message || "Could not create this visit." };
   }
 
+  if (resolvedEnquiryId) {
+    const timeLabel = visitTime || "time TBC";
+    const confirmationLine = `${visitDate} at ${timeLabel}`;
+
+    await context.supabase
+      .from("enquiries")
+      .update({
+        status: "site_visit_booked",
+        suggested_next_action:
+          "Open the visit to add notes after you attend, then Create Quote.",
+      })
+      .eq("id", resolvedEnquiryId)
+      .eq("workspace_id", context.workspaceId)
+      .in("status", ["new", "reviewing", "site_visit_booked"]);
+
+    await context.supabase.from("enquiry_timeline_events").insert({
+      workspace_id: context.workspaceId,
+      enquiry_id: resolvedEnquiryId,
+      label: `Site visit booked for ${confirmationLine}.`,
+      event_type: "site_visit_booked",
+      occurred_at: new Date().toISOString(),
+      created_by: context.user.id,
+    });
+  }
+
   const visit = await getVisit(context.supabase, context.workspaceId, created.id);
   if (visit && notifyCustomer && visit.contact_email) {
     await notifyCustomerOfVisit({
@@ -131,7 +185,7 @@ export async function createVisitAction(
     });
   }
 
-  revalidateVisitPaths(created.id, customerId);
+  revalidateVisitPaths(created.id, resolvedCustomerId, resolvedEnquiryId);
   redirect(`/visits/${created.id}`);
 }
 
@@ -207,8 +261,8 @@ export async function organiseVisitNotesAction(
       "@/lib/visits/organise-visit-notes-ai"
     );
     const organised = await organiseVisitNotesWithAi(notes);
-    revalidateVisitPaths(visitId, existing.customer_id);
-    return { organised, notesSnapshot: notes };
+  revalidateVisitPaths(visitId, existing.customer_id, existing.enquiry_id);
+  return { organised, notesSnapshot: notes };
   } catch (error) {
     const message =
       error instanceof Error

@@ -1745,6 +1745,19 @@ a.qf-card-inset:hover {
   margin-top: 1rem;
 }
 
+.qf-enquiry-handoff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+
+.qf-enquiry-original-service {
+  margin-bottom: 0.5rem !important;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
 .qf-enquiry-action,
 .qf-enquiry-action-primary {
   width: auto;

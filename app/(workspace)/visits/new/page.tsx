@@ -46,12 +46,13 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
     postcode: string;
     enquirySummary: string;
   } | null = null;
+  let linkedCustomerId: string | null = customerId ?? null;
 
   if (enquiryId) {
     const { data: enquiry } = await context.supabase
       .from("enquiries")
       .select(
-        "id, customer_name, customer_mobile, customer_email, address_line_1, address_line_2, town, county, postcode, project_description, service_requested"
+        "id, customer_id, customer_name, customer_mobile, customer_email, address_line_1, address_line_2, town, county, postcode, project_description, service_requested"
       )
       .eq("id", enquiryId)
       .eq("workspace_id", context.workspaceId)
@@ -75,6 +76,10 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
           .filter(Boolean)
           .join("\n\n"),
       };
+
+      if (!linkedCustomerId && enquiry.customer_id) {
+        linkedCustomerId = enquiry.customer_id;
+      }
     }
   }
 
@@ -82,20 +87,22 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
       <header className="qf-proposal-header">
         <Link
-          href="/visits"
+          href={enquiryId ? `/enquiries/${enquiryId}` : "/visits"}
           className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
         >
-          ← Back to visits
+          {enquiryId ? "← Back to enquiry" : "← Back to visits"}
         </Link>
         <h1 className="qf-proposal-title">Book visit</h1>
         <p className="qf-proposal-subtitle">
-          Choose a customer, add the reason, and pick a date and time.
+          {enquiryId
+            ? "Customer details and enquiry summary are ready — pick a date and time."
+            : "Choose a customer, add the reason, and pick a date and time."}
         </p>
       </header>
 
       <CreateVisitForm
         customers={customers}
-        preselectedCustomerId={customerId ?? null}
+        preselectedCustomerId={linkedCustomerId}
         enquiryPrefill={enquiryPrefill}
       />
     </main>

@@ -4,13 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
-import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
 import { SiteVisitModeLinkPanel } from "@/components/enquiries/site-visit-mode-link-panel";
 import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
+import {
+  buildBookVisitFromEnquiryHref,
+  buildCreateQuoteFromEnquiryHref,
+  formatEnquiryCustomerAddress,
+} from "@/lib/enquiries/book-visit-handoff";
 import { shouldShowReviewEnquiryOnDetailPage } from "@/lib/enquiries/enquiry-detail-actions";
 import {
   declineEnquiryAction,
@@ -32,7 +36,6 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   const mounted = useClientMounted();
   const { enquiry, state, error, refresh } = useWorkspaceEnquiry(enquiryId);
   const [notice, setNotice] = useState<string | null>(null);
-  const [siteVisitOpen, setSiteVisitOpen] = useState(false);
   const [askQuestionOpen, setAskQuestionOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingAction, setPendingAction] = useState(false);
@@ -87,7 +90,10 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
   }
 
   const propertyDetails = getEnquiryPropertyDetailRows(enquiry);
+  const customerAddress = formatEnquiryCustomerAddress(enquiry);
   const isDeclined = enquiry.status === "declined";
+  const bookVisitHref = buildBookVisitFromEnquiryHref(enquiry.id);
+  const createQuoteHref = buildCreateQuoteFromEnquiryHref(enquiry.id);
 
   async function handleConfirmAction() {
     if (!confirmAction) {
@@ -155,11 +161,52 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         </div>
 
         <section className="qf-card qf-enquiry-detail-card">
-          <h2 className="qf-enquiry-detail-section-title">Suggested next action</h2>
-          <p className="qf-enquiry-detail-copy">{enquiry.suggestedNextAction}</p>
+          <h2 className="qf-enquiry-detail-section-title">Next step</h2>
+          <p className="qf-enquiry-detail-copy">
+            Book an initial site visit to assess the job, or create a quote if you
+            already have enough detail.
+          </p>
+          <div className="qf-enquiry-handoff-actions">
+            {isDeclined ? (
+              <button
+                type="button"
+                className="qf-btn-primary qf-enquiry-action-primary"
+                disabled
+              >
+                Book visit
+              </button>
+            ) : (
+              <Link
+                href={bookVisitHref}
+                className="qf-btn-primary qf-enquiry-action-primary"
+              >
+                Book visit
+              </Link>
+            )}
+            <Link
+              href={createQuoteHref}
+              className="qf-btn-secondary qf-enquiry-action"
+              aria-disabled={isDeclined}
+              onClick={(event) => {
+                if (isDeclined) {
+                  event.preventDefault();
+                }
+              }}
+            >
+              Create quote
+            </Link>
+            <button
+              type="button"
+              className="qf-btn-secondary qf-enquiry-action"
+              onClick={() => setAskQuestionOpen(true)}
+              disabled={isDeclined}
+            >
+              Reply to customer
+            </button>
+          </div>
           {enquiry.siteVisitSlot ? (
             <p className="qf-enquiry-detail-copy qf-enquiry-site-visit-booked">
-              Booked slot: {enquiry.siteVisitSlot}
+              Earlier site visit slot: {enquiry.siteVisitSlot}
             </p>
           ) : null}
           <div className="qf-enquiry-visit-links">
@@ -198,16 +245,20 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             <h2 className="qf-enquiry-detail-section-title">Customer details</h2>
             <dl className="qf-enquiry-detail-list">
               <div>
-                <dt>Name</dt>
+                <dt>Customer name</dt>
                 <dd>{enquiry.customerName}</dd>
               </div>
               <div>
-                <dt>Mobile</dt>
+                <dt>Phone</dt>
                 <dd>{enquiry.customerMobile || "Not provided"}</dd>
               </div>
               <div>
                 <dt>Email</dt>
                 <dd>{enquiry.customerEmail || "Not provided"}</dd>
+              </div>
+              <div>
+                <dt>Address</dt>
+                <dd>{customerAddress || "Not provided"}</dd>
               </div>
               <div>
                 <dt>Received</dt>
@@ -229,7 +280,12 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           </section>
 
           <section className="qf-card qf-enquiry-detail-card qf-enquiry-detail-wide">
-            <h2 className="qf-enquiry-detail-section-title">Project description</h2>
+            <h2 className="qf-enquiry-detail-section-title">
+              Original request
+            </h2>
+            <p className="qf-enquiry-detail-copy qf-enquiry-original-service">
+              {enquiry.serviceRequested || "Service not specified"}
+            </p>
             <p className="qf-enquiry-detail-copy">
               {enquiry.projectDescription || "No description provided."}
             </p>
@@ -260,7 +316,9 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
                 ))}
               </dl>
             ) : (
-              <p className="qf-enquiry-detail-copy">Customer did not include measurements.</p>
+              <p className="qf-enquiry-detail-copy">
+                Customer did not include measurements.
+              </p>
             )}
           </section>
 
@@ -306,20 +364,16 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
               Review Enquiry
             </button>
           ) : null}
-          <button
-            type="button"
-            className={
-              showReviewButton
-                ? "qf-btn-secondary qf-enquiry-action"
-                : "qf-btn-primary qf-enquiry-action-primary"
-            }
-            onClick={() => setSiteVisitOpen(true)}
-            disabled={isDeclined}
-          >
-            Book Site Visit
-          </button>
+          {!isDeclined ? (
+            <Link
+              href={bookVisitHref}
+              className="qf-btn-primary qf-enquiry-action-primary"
+            >
+              Book visit
+            </Link>
+          ) : null}
           <Link
-            href={`/visits/new?enquiryId=${encodeURIComponent(enquiry.id)}`}
+            href={createQuoteHref}
             className="qf-btn-secondary qf-enquiry-action"
             aria-disabled={isDeclined}
             onClick={(event) => {
@@ -328,7 +382,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
               }
             }}
           >
-            Book assessment visit
+            Create quote
           </Link>
           <button
             type="button"
@@ -336,7 +390,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
             onClick={() => setAskQuestionOpen(true)}
             disabled={isDeclined}
           >
-            Ask Question
+            Reply to customer
           </button>
           {!isDeclined ? (
             <button
@@ -363,16 +417,6 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           </button>
         </div>
       </div>
-
-      <BookSiteVisitDialog
-        enquiry={enquiry}
-        open={siteVisitOpen}
-        onClose={() => setSiteVisitOpen(false)}
-        onBooked={(message) => {
-          setNotice(message);
-          void refresh();
-        }}
-      />
 
       <AskQuestionDialog
         enquiry={enquiry}
