@@ -12,6 +12,7 @@ import {
 } from "@/lib/proposals/structured-proposal";
 import { formatPersonName } from "@/lib/text/format-name";
 import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
+import { linkVisitToProposal } from "@/lib/visits/link-proposal";
 import { redirect } from "next/navigation";
 
 export type SaveDraftProposalState = {
@@ -320,6 +321,12 @@ export async function saveDraftProposal(
     };
   }
 
+  await linkVisitToProposal(supabase, {
+    workspaceId,
+    visitId: getString(formData, "visitId") || null,
+    proposalId: proposal.id,
+  });
+
   redirectToProposal(proposal.id);
 }
 
@@ -593,6 +600,12 @@ export async function acceptAiDraftProposal(
       error: proposalError?.message ?? "Could not accept the AI draft.",
     };
   }
+
+  await linkVisitToProposal(supabase, {
+    workspaceId,
+    visitId: getString(formData, "visitId") || null,
+    proposalId: proposal.id,
+  });
 
   redirectToProposal(proposal.id);
 }

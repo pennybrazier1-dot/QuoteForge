@@ -19,4 +19,10 @@ describe("quote preparation entry", () => {
     expect(shouldUseQuotePreparation("enquiry-1")).toBe(true);
     expect(shouldUseQuotePreparation("  enquiry-1  ")).toBe(true);
   });
+
+  it("prefers the visit quote path when visitId is handled by the page", () => {
+    // Visit handoff uses NewProposalForm via QuotePreparationEntry(visitId)
+    // and does not use Prepare Quote, even if an enquiry exists on the visit.
+    expect(shouldUseQuotePreparation(undefined)).toBe(false);
+  });
 });

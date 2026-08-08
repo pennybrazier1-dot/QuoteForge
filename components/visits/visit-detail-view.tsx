@@ -6,15 +6,12 @@ import { useFormStatus } from "react-dom";
 import { AuthError } from "@/components/auth/auth-shell";
 import { SectionCard } from "@/components/ui/section-card";
 import {
-  organiseVisitNotesAction,
+  completeVisitAction,
+  startQuoteFromVisitAction,
   updateVisitNotesAction,
-  updateVisitStatusAction,
-  type OrganiseVisitNotesState,
   type VisitActionState,
 } from "@/lib/visits/actions";
-import { VISIT_NOTES_ORGANISED_FIELDS } from "@/lib/visits/organise-visit-notes";
 import {
-  VISIT_STATUSES,
   formatVisitAddress,
   formatVisitDateLabel,
   formatVisitDuration,
@@ -25,8 +22,8 @@ import {
 } from "@/lib/visits/types";
 
 const notesInitialState: VisitActionState = {};
-const organiseInitialState: OrganiseVisitNotesState = {};
-const statusInitialState: VisitActionState = {};
+const quoteInitialState: VisitActionState = {};
+const completeInitialState: VisitActionState = {};
 
 function SaveNotesButton() {
   const { pending } = useFormStatus();
@@ -37,20 +34,28 @@ function SaveNotesButton() {
   );
 }
 
-function OrganiseNotesButton() {
+function CreateQuoteButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="qf-btn-primary" disabled={pending}>
-      {pending ? "Organising…" : "Organise notes"}
+    <button
+      type="submit"
+      className="qf-btn-primary"
+      disabled={disabled || pending}
+    >
+      {pending ? "Opening quote…" : "Create quote from notes"}
     </button>
   );
 }
 
-function StatusSubmitButton() {
+function CompleteVisitButton({ disabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className="qf-btn-secondary" disabled={pending}>
-      {pending ? "Updating…" : "Update status"}
+    <button
+      type="submit"
+      className="qf-btn-secondary"
+      disabled={disabled || pending}
+    >
+      {pending ? "Completing…" : "Complete visit"}
     </button>
   );
 }
@@ -80,25 +85,26 @@ function DetailField({
   );
 }
 
-export function VisitDetailView({ visit }: { visit: VisitRecord }) {
+export function VisitDetailView({
+  visit,
+  linkedProposal,
+}: {
+  visit: VisitRecord;
+  linkedProposal?: { id: string; proposal_number: string | null } | null;
+}) {
   const [notesState, notesAction] = useActionState(
     updateVisitNotesAction,
     notesInitialState
   );
-  const [organiseState, organiseAction] = useActionState(
-    organiseVisitNotesAction,
-    organiseInitialState
+  const [quoteState, quoteAction] = useActionState(
+    startQuoteFromVisitAction,
+    quoteInitialState
   );
-  const [statusState, statusAction] = useActionState(
-    updateVisitStatusAction,
-    statusInitialState
+  const [completeState, completeAction] = useActionState(
+    completeVisitAction,
+    completeInitialState
   );
   const [notes, setNotes] = useState(visit.notes);
-
-  const organised =
-    organiseState.organised && organiseState.notesSnapshot === notes
-      ? organiseState.organised
-      : null;
 
   const address = formatVisitAddress(visit);
   const timeLabel = formatVisitTimeLabel(visit.visit_time);
@@ -109,9 +115,15 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
   ]
     .filter(Boolean)
     .join(" · ");
-  const createQuoteHref = visit.customer_id
-    ? `/proposals/new?customerId=${encodeURIComponent(visit.customer_id)}`
-    : "/proposals/new";
+  const isCompleted = visit.status === "completed" || completeState.ok;
+  const canCreateQuote = Boolean(
+    notes.trim() || visit.enquiry_summary.trim()
+  );
+  const proposal = linkedProposal?.id
+    ? linkedProposal
+    : visit.linked_proposal_id
+      ? { id: visit.linked_proposal_id, proposal_number: null }
+      : null;
 
   return (
     <div className="qf-proposal-page qf-mobile-safe">
@@ -130,8 +142,10 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
             <h1 className="qf-proposal-title mt-1">{visit.customer_name}</h1>
             <p className="qf-proposal-subtitle">{visitWhen}</p>
           </div>
-          <span className={`qf-visit-status qf-visit-status-${visit.status}`}>
-            {formatVisitStatus(visit.status)}
+          <span
+            className={`qf-visit-status qf-visit-status-${isCompleted ? "completed" : visit.status}`}
+          >
+            {formatVisitStatus(isCompleted ? "completed" : visit.status)}
           </span>
         </div>
       </header>
@@ -175,9 +189,8 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
             <div>
               <h2 className="qf-card-heading">Visit notes</h2>
               <p className="qf-body-text mt-1 text-muted">
-                Write it the way you saw it — measurements, materials, access,
-                timing, customer requests. AI will organise a summary for
-                review.
+                Write what you found on site. When you create a quote, these
+                notes become the job notes and AI organises the draft.
               </p>
             </div>
           </div>
@@ -208,111 +221,86 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
                 Notes saved.
               </p>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4">
               <SaveNotesButton />
             </div>
           </form>
-
-          <form action={organiseAction} className="mt-4">
-            <input type="hidden" name="visitId" value={visit.id} />
-            <input type="hidden" name="notes" value={notes} />
-            {organiseState.error ? (
-              <div className="mb-3">
-                <AuthError message={organiseState.error} />
-              </div>
-            ) : null}
-            <OrganiseNotesButton />
-          </form>
         </SectionCard>
-
-        {organised ? (
-          <SectionCard className="qf-card-form">
-            <h2 className="qf-card-heading">Organised summary</h2>
-            <p className="qf-body-text mt-2 text-muted">
-              Check this before you create a quote. Nothing is sent until you
-              start a quote yourself.
-            </p>
-            <div className="qf-change-notes-extract mt-5">
-              {VISIT_NOTES_ORGANISED_FIELDS.map(({ key, label }) => (
-                <div key={key} className="qf-change-notes-field">
-                  <label
-                    htmlFor={`visit-organised-${key}`}
-                    className="qf-field-label"
-                  >
-                    {label}
-                  </label>
-                  <textarea
-                    id={`visit-organised-${key}`}
-                    className="form-textarea mt-2"
-                    rows={3}
-                    value={organised[key] || "Nothing noted"}
-                    readOnly
-                    tabIndex={-1}
-                  />
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        ) : null}
 
         <SectionCard className="qf-card-form">
           <h2 className="qf-card-heading">Actions</h2>
-          <div className="mt-5 space-y-3">
-            <Link href={createQuoteHref} className="qf-btn-primary">
-              Create Quote
-            </Link>
-            {visit.customer_id ? (
+          <p className="qf-body-text mt-2 text-muted">
+            Start a quote from these notes. You can review and edit before
+            sending.
+          </p>
+          <form action={quoteAction} className="mt-5 space-y-3">
+            <input type="hidden" name="visitId" value={visit.id} />
+            <input type="hidden" name="notes" value={notes} />
+            {quoteState.error ? (
+              <AuthError message={quoteState.error} />
+            ) : null}
+            <CreateQuoteButton disabled={!canCreateQuote} />
+          </form>
+          {visit.customer_id ? (
+            <div className="mt-3">
               <Link
                 href={`/customers/${visit.customer_id}`}
                 className="qf-btn-secondary"
               >
                 View customer
               </Link>
-            ) : null}
-            {visit.enquiry_id ? (
+            </div>
+          ) : null}
+          {visit.enquiry_id ? (
+            <div className="mt-3">
               <Link
                 href={`/enquiries/${visit.enquiry_id}`}
                 className="qf-btn-secondary"
               >
                 View enquiry
               </Link>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </SectionCard>
 
-        <SectionCard className="qf-card-form">
-          <h2 className="qf-card-heading">Status</h2>
-          <form action={statusAction} className="mt-5">
-            <input type="hidden" name="visitId" value={visit.id} />
-            <label htmlFor="visit-status" className="qf-field-label">
-              Visit status
-            </label>
-            <select
-              id="visit-status"
-              className="form-select mt-2"
-              name="status"
-              defaultValue={visit.status}
-            >
-              {VISIT_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {formatVisitStatus(status)}
-                </option>
-              ))}
-            </select>
-            {statusState.error ? (
-              <div className="mt-4">
-                <AuthError message={statusState.error} />
-              </div>
-            ) : null}
-            {statusState.ok ? (
-              <p className="qf-body-text mt-3 text-muted" role="status">
-                Status updated.
-              </p>
-            ) : null}
-            <div className="mt-4">
-              <StatusSubmitButton />
+        {proposal ? (
+          <SectionCard className="qf-card-form">
+            <h2 className="qf-card-heading">Linked quote</h2>
+            <p className="qf-body-text mt-2 text-muted">
+              A quote was started from this visit.
+            </p>
+            <div className="mt-5">
+              <Link
+                href={`/proposals/${proposal.id}`}
+                className="qf-btn-primary"
+              >
+                {proposal.proposal_number
+                  ? `Open ${proposal.proposal_number}`
+                  : "Open quote"}
+              </Link>
             </div>
-          </form>
+          </SectionCard>
+        ) : null}
+
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Complete visit</h2>
+          <p className="qf-body-text mt-2 text-muted">
+            Mark this visit as done when you have finished on site.
+          </p>
+          {isCompleted ? (
+            <p className="qf-body-text mt-4" role="status">
+              This visit is marked complete.
+            </p>
+          ) : (
+            <form action={completeAction} className="mt-5 space-y-3">
+              <input type="hidden" name="visitId" value={visit.id} />
+              <input type="hidden" name="notes" value={notes} />
+              {completeState.error ? (
+                <AuthError message={completeState.error} />
+              ) : null}
+              <CompleteVisitButton />
+            </form>
+          )}
         </SectionCard>
       </div>
     </div>

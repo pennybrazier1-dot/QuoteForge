@@ -25,9 +25,21 @@ export default async function VisitDetailPage({ params }: PageProps) {
     notFound();
   }
 
+  let linkedProposal: { id: string; proposal_number: string | null } | null =
+    null;
+  if (visit.linked_proposal_id) {
+    const { data: proposal } = await context.supabase
+      .from("proposals")
+      .select("id, proposal_number")
+      .eq("id", visit.linked_proposal_id)
+      .eq("workspace_id", context.workspaceId)
+      .maybeSingle();
+    linkedProposal = proposal ?? null;
+  }
+
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <VisitDetailView visit={visit} />
+      <VisitDetailView visit={visit} linkedProposal={linkedProposal} />
     </main>
   );
 }

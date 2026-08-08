@@ -189,6 +189,88 @@ export async function createVisitAction(
   redirect(`/visits/${created.id}`);
 }
 
+export async function startQuoteFromVisitAction(
+  _prev: VisitActionState,
+  formData: FormData
+): Promise<VisitActionState> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { error: context.error };
+  }
+
+  const visitId = getString(formData, "visitId");
+  const notes = getString(formData, "notes");
+  if (!visitId) {
+    return { error: "Visit not found." };
+  }
+
+  const existing = await getVisit(context.supabase, context.workspaceId, visitId);
+  if (!existing) {
+    return { error: "Visit not found." };
+  }
+
+  const siteNotes = notes || existing.notes;
+  if (!siteNotes.trim() && !existing.enquiry_summary.trim()) {
+    return {
+      error: "Add visit notes before creating a quote.",
+    };
+  }
+
+  const { error } = await context.supabase
+    .from("visits")
+    .update({ notes: siteNotes })
+    .eq("id", visitId)
+    .eq("workspace_id", context.workspaceId);
+
+  if (error) {
+    return { error: error.message || "Could not save notes." };
+  }
+
+  revalidateVisitPaths(visitId, existing.customer_id, existing.enquiry_id);
+  redirect(`/proposals/new?visitId=${encodeURIComponent(visitId)}`);
+}
+
+export async function completeVisitAction(
+  _prev: VisitActionState,
+  formData: FormData
+): Promise<VisitActionState> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { error: context.error };
+  }
+
+  const visitId = getString(formData, "visitId");
+  const notes = getString(formData, "notes");
+  if (!visitId) {
+    return { error: "Visit not found." };
+  }
+
+  const existing = await getVisit(context.supabase, context.workspaceId, visitId);
+  if (!existing) {
+    return { error: "Visit not found." };
+  }
+
+  const patch: { status: VisitStatus; notes?: string } = {
+    status: "completed",
+  };
+  if (notes) {
+    patch.notes = notes;
+  }
+
+  const { error } = await context.supabase
+    .from("visits")
+    .update(patch)
+    .eq("id", visitId)
+    .eq("workspace_id", context.workspaceId);
+
+  if (error) {
+    return { error: error.message || "Could not complete this visit." };
+  }
+
+  revalidateVisitPaths(visitId, existing.customer_id, existing.enquiry_id);
+  return { ok: true };
+}
+
 export async function updateVisitNotesAction(
   _prev: VisitActionState,
   formData: FormData

@@ -192,11 +192,14 @@ export function NewProposalForm({
   proposalId,
   proposalStatus,
   initialValues,
+  visitId = null,
 }: {
   mode?: "create" | "edit";
   proposalId?: string;
   proposalStatus?: string;
   initialValues?: ProposalFormValues;
+  /** When set, saving a quote links it back to this visit. */
+  visitId?: string | null;
 }) {
   const saveAction = mode === "edit" ? updateDraftProposal : saveDraftProposal;
   const initialDuration = splitDuration(initialValues?.estimatedDuration ?? "");
@@ -427,6 +430,7 @@ export function NewProposalForm({
       {mode === "edit" && proposalId ? (
         <input type="hidden" name="proposalId" value={proposalId} />
       ) : null}
+      {visitId ? <input type="hidden" name="visitId" value={visitId} /> : null}
 
       {saveState.error ? (
         <div className="mb-6">
