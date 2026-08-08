@@ -1,6 +1,10 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
+import {
+  ChangeRequestPanel,
+  buildChangeRequestPanelModel,
+} from "@/components/proposals/change-request-panel";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalCustomerMessagesPanel } from "@/components/proposals/proposal-customer-messages";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -23,6 +27,7 @@ import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
+import { normalizeProposalStatus } from "@/lib/proposals/status";
 import {
   mapDbRowToStructuredProposal,
 } from "@/lib/proposals/structured-proposal";
@@ -163,7 +168,7 @@ function ProposalWorkspaceLeft({
   const hasStructured = Boolean(structured);
 
   return (
-    <div className="qf-proposal-col-left">
+    <div className="qf-proposal-col-left" id="change-request-review-target">
       <WorkspaceSection title="Project Summary" icon={DOC_ICON}>
         {hasStructured ? (
           <p>{structured!.jobSummary}</p>
@@ -257,12 +262,14 @@ function ProposalWorkspaceRight({
         </dl>
       </SectionCard>
 
-      <SectionCard className="qf-card-form">
-        <WorkspaceCardHeading title="Customer replies" icon={USER_ICON} />
-        <div className="mt-4">
-          <ProposalCustomerMessagesPanel messages={customerMessages} />
-        </div>
-      </SectionCard>
+      <div id="customer-replies">
+        <SectionCard className="qf-card-form">
+          <WorkspaceCardHeading title="Customer replies" icon={USER_ICON} />
+          <div className="mt-4">
+            <ProposalCustomerMessagesPanel messages={customerMessages} />
+          </div>
+        </SectionCard>
+      </div>
 
       <div id="proposal-timeline">
         <SectionCard className="qf-card-form">
@@ -295,6 +302,11 @@ export function ProposalWorkspace({
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const devTestingEnabled = isDevTestingEnabled();
+  const changeRequestModel =
+    normalizeProposalStatus(proposal.status) === "needs_attention" &&
+    proposal.attention_reason === "customer_requested_changes"
+      ? buildChangeRequestPanelModel(customerMessages)
+      : null;
   const actionContext = {
     status: proposal.status,
     job_summary: proposal.job_summary,
@@ -381,6 +393,18 @@ export function ProposalWorkspace({
           devTestingEnabled={devTestingEnabled}
         />
       </Suspense>
+
+      {changeRequestModel ? (
+        <SectionCard className="qf-card-form qf-change-request-card">
+          <ChangeRequestPanel
+            proposalId={proposal.id}
+            customerEmail={proposal.customer_email}
+            customerName={proposal.customer_name}
+            message={changeRequestModel.message}
+            analysis={changeRequestModel.analysis}
+          />
+        </SectionCard>
+      ) : null}
 
       {jobPrep ? (
         <SectionCard className="qf-card-form qf-job-prep-card">

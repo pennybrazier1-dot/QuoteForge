@@ -6310,3 +6310,110 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   font-size: 0.8125rem;
   text-decoration: none;
 }
+
+/* Phase 50B.1 — Customer change request panel (guidance only) */
+.qf-change-request-card {
+  margin-bottom: 1.25rem;
+}
+
+.qf-change-request-banner {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.1);
+}
+
+.qf-change-request-banner-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.qf-change-request-banner-copy {
+  margin: 0.3rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-change-request-block {
+  margin-bottom: 0.95rem;
+}
+
+.qf-change-request-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qf-change-request-message {
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--foreground);
+}
+
+.qf-change-request-time {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.qf-change-request-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.qf-change-request-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.75rem;
+  padding: 0.2rem 0.65rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.1);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.qf-change-request-copy {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.qf-change-request-action-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qf-change-request-error {
+  margin: 0 0 0.75rem;
+  font-size: 0.875rem;
+  color: #f87171;
+}
+
+.qf-change-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+}
+
+.qf-change-request-actions .qf-btn-primary,
+.qf-change-request-actions .qf-btn-secondary {
+  text-decoration: none;
+}
