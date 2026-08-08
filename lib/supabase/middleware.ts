@@ -4,6 +4,7 @@ import {
   resolveAuthEmail,
 } from "@/lib/admin/platform-admin";
 import { ensurePlatformAdminBootstrap } from "@/lib/admin/ensure-platform-admin-bootstrap";
+import { decideSignedInAuthPageAccess } from "@/lib/auth/signed-in-auth-page";
 import { resolvePostAuthPathForUser } from "@/lib/onboarding/status";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -85,16 +86,24 @@ export async function updateSession(request: NextRequest) {
     const homePath = await resolvePostAuthPathForUser(supabase, user);
     const hasProfile = homePath !== "/onboarding";
 
-    // Keep users with a recovery session on the reset-password form.
-    if (
-      pathname === "/login" ||
-      pathname === "/signup" ||
-      pathname === "/check-email" ||
-      pathname === "/forgot-password"
-    ) {
+    // Auth pages: do not treat "has a session" as "must finish onboarding".
+    // Login stays Login when setup is incomplete so existing users can sign in.
+    const authPageDecision = decideSignedInAuthPageAccess({
+      pathname,
+      homePath,
+    });
+
+    if (authPageDecision?.kind === "redirect") {
       const url = request.nextUrl.clone();
-      url.pathname = homePath;
+      url.pathname = authPageDecision.path;
       return NextResponse.redirect(url);
+    }
+
+    if (authPageDecision?.kind === "show_page") {
+      if (authPageDecision.clearIncompleteSession) {
+        await supabase.auth.signOut();
+      }
+      return supabaseResponse;
     }
 
     const needsProfile =

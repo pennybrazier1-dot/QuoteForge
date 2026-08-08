@@ -56,14 +56,17 @@ export async function resolvePostAuthPathForUser(
   return hasProfile ? "/dashboard" : "/onboarding";
 }
 
-export async function getPostAuthRedirectPath(): Promise<PostAuthPath> {
+export async function getPostAuthRedirectPath(): Promise<
+  PostAuthPath | "/login"
+> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Session not ready / signed out — never dump into onboarding.
   if (!user) {
-    return "/onboarding";
+    return "/login";
   }
 
   return resolvePostAuthPathForUser(supabase, user);
