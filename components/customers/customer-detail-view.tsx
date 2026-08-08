@@ -62,12 +62,20 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
               Customer since {formatCustomerCreatedAt(customer.created_at)}
             </p>
           </div>
-          <Link
-            href={`/customers/${customer.id}/edit`}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-border-subtle bg-white/5 px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
-          >
-            Edit Customer
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/visits/new?customerId=${encodeURIComponent(customer.id)}`}
+              className="qf-btn-primary"
+            >
+              Book visit
+            </Link>
+            <Link
+              href={`/customers/${customer.id}/edit`}
+              className="inline-flex h-9 items-center justify-center rounded-full border border-border-subtle bg-white/5 px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
+            >
+              Edit Customer
+            </Link>
+          </div>
         </div>
       </SectionCard>
 

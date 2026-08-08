@@ -318,6 +318,18 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           >
             Book Site Visit
           </button>
+          <Link
+            href={`/visits/new?enquiryId=${encodeURIComponent(enquiry.id)}`}
+            className="qf-btn-secondary qf-enquiry-action"
+            aria-disabled={isDeclined}
+            onClick={(event) => {
+              if (isDeclined) {
+                event.preventDefault();
+              }
+            }}
+          >
+            Book assessment visit
+          </Link>
           <button
             type="button"
             className="qf-btn-secondary qf-enquiry-action"

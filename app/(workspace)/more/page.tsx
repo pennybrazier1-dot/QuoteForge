@@ -3,6 +3,11 @@ import Link from "next/link";
 
 const MORE_LINKS = [
   {
+    href: "/visits",
+    title: "Visits",
+    subtitle: "Book site assessments before a quote",
+  },
+  {
     href: "/proposals",
     title: "Proposals",
     subtitle: "All your quotes and proposals",

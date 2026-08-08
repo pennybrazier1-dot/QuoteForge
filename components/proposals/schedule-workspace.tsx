@@ -26,6 +26,7 @@ import {
 import { formatSpanLabel } from "@/lib/calendar/job-span";
 import { mergeCalendarJobs } from "@/lib/calendar/local-calendar-data";
 import { useServerSiteVisitJobs } from "@/lib/calendar/use-server-site-visit-jobs";
+import { useServerVisitJobs } from "@/lib/visits/use-server-visit-jobs";
 import {
   BOOKING_CONFIRMATIONS,
   formatBookingConfirmation,
@@ -185,15 +186,16 @@ export function ScheduleWorkspace({
   );
 
   const siteVisitJobs = useServerSiteVisitJobs();
+  const visitJobs = useServerVisitJobs();
   const existingJobs = useMemo(() => {
     const built = mergeCalendarJobs(
-      buildCalendarJobs(calendarProposals),
-      siteVisitJobs
+      mergeCalendarJobs(buildCalendarJobs(calendarProposals), siteVisitJobs),
+      visitJobs
     );
     // Current proposal is shown only as the local draft (blue), never as a
     // committed calendar event until Confirm.
     return built.filter((job) => job.proposalId !== proposal.id);
-  }, [calendarProposals, siteVisitJobs, proposal.id]);
+  }, [calendarProposals, siteVisitJobs, visitJobs, proposal.id]);
 
   const jobCounts = useMemo(() => getJobCountsByDate(existingJobs), [existingJobs]);
   const dayJobs = useMemo(

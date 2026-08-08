@@ -48,6 +48,7 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/proposals") ||
     pathname.startsWith("/customers") ||
     pathname.startsWith("/enquiries") ||
+    pathname.startsWith("/visits") ||
     pathname.startsWith("/site-visit") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/admin");
@@ -101,6 +102,7 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith("/proposals") ||
       pathname.startsWith("/customers") ||
       pathname.startsWith("/enquiries") ||
+      pathname.startsWith("/visits") ||
       pathname.startsWith("/site-visit") ||
       pathname.startsWith("/settings") ||
       pathname.startsWith("/admin") ||

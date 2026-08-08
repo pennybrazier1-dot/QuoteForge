@@ -27,6 +27,7 @@ import {
 } from "@/lib/calendar/calendar-data";
 import { mergeCalendarJobs } from "@/lib/calendar/local-calendar-data";
 import { useServerSiteVisitJobs } from "@/lib/calendar/use-server-site-visit-jobs";
+import { useServerVisitJobs } from "@/lib/visits/use-server-visit-jobs";
 import { formatSpanLabel } from "@/lib/calendar/job-span";
 
 const VIEW_OPTIONS: Array<{ value: CalendarView; label: string }> = [
@@ -401,9 +402,14 @@ export function CalendarScreen({
   const [selectedDate, setSelectedDate] = useState(todayIso);
 
   const siteVisitJobs = useServerSiteVisitJobs();
+  const visitJobs = useServerVisitJobs();
   const allJobs = useMemo(
-    () => mergeCalendarJobs(buildCalendarJobs(proposals), siteVisitJobs),
-    [proposals, siteVisitJobs]
+    () =>
+      mergeCalendarJobs(
+        mergeCalendarJobs(buildCalendarJobs(proposals), siteVisitJobs),
+        visitJobs
+      ),
+    [proposals, siteVisitJobs, visitJobs]
   );
   const jobCounts = useMemo(() => getJobCountsByDate(allJobs), [allJobs]);
 
@@ -462,9 +468,9 @@ export function CalendarScreen({
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">
-          Sent quotes with a planned start date, plus site visits booked from
-          enquiries. Amber holds the date while you wait; green is a confirmed
-          booking; orange is a booked site visit.
+          Sent quotes with a planned start date, enquiry site visits, and
+          assessment visits. Amber holds the date while you wait; green is a
+          confirmed booking; orange is a site visit.
         </p>
       </header>
 
@@ -529,13 +535,21 @@ export function CalendarScreen({
           </button>
         </div>
 
-        <button
-          type="button"
-          className="qf-calendar-today-btn qf-touch-target"
-          onClick={goToToday}
-        >
-          Today
-        </button>
+        <div className="qf-calendar-toolbar-actions">
+          <Link
+            href="/visits/new"
+            className="qf-btn-secondary qf-touch-target"
+          >
+            Book visit
+          </Link>
+          <button
+            type="button"
+            className="qf-calendar-today-btn qf-touch-target"
+            onClick={goToToday}
+          >
+            Today
+          </button>
+        </div>
       </div>
 
       {view === "month" ? (
