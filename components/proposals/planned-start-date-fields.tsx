@@ -10,6 +10,7 @@ export function PlannedStartDateFields({
   onExactChange,
   textInputName = "plannedStartDateText",
   exactInputName = "plannedStartDateExact",
+  calendarFirst = false,
 }: {
   textValue: string;
   exactValue: string;
@@ -17,8 +18,12 @@ export function PlannedStartDateFields({
   onExactChange: (value: string) => void;
   textInputName?: string;
   exactInputName?: string;
+  /** Prefer exact calendar date controls (revision/booking flow). */
+  calendarFirst?: boolean;
 }) {
-  const [showExactDate, setShowExactDate] = useState(Boolean(exactValue));
+  const [showExactDate, setShowExactDate] = useState(
+    calendarFirst || Boolean(exactValue)
+  );
 
   const handleExactChange = (isoDate: string) => {
     onExactChange(isoDate);
@@ -31,49 +36,67 @@ export function PlannedStartDateFields({
     }
   };
 
+  const exactField = showExactDate ? (
+    <div>
+      <label htmlFor="plannedStartDateExact" className="qf-field-label">
+        Exact calendar date
+      </label>
+      <input
+        id="plannedStartDateExact"
+        name={exactInputName}
+        type="date"
+        value={exactValue}
+        onChange={(event) => handleExactChange(event.target.value)}
+        className="form-input form-input-date mt-2"
+      />
+      <p className="mt-2 text-xs text-muted">
+        Used for calendar placement and availability.
+      </p>
+    </div>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setShowExactDate(true)}
+      className="text-sm font-medium text-accent"
+    >
+      Add exact calendar date
+    </button>
+  );
+
+  const textField = (
+    <div>
+      <label htmlFor="plannedStartDateText" className="qf-field-label">
+        {calendarFirst ? "Date label" : "Planned Start Date"}
+      </label>
+      <input
+        id="plannedStartDateText"
+        name={textInputName}
+        type="text"
+        value={textValue}
+        onChange={(event) => onTextChange(event.target.value)}
+        placeholder="e.g. 12 October 2026"
+        className="form-input mt-2"
+      />
+      <p className="mt-2 text-xs text-muted">
+        {calendarFirst
+          ? "Flexible wording shown on the proposal. Pick the exact date above for the calendar."
+          : "Use flexible wording from your site notes."}
+      </p>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
-      <div>
-        <label htmlFor="plannedStartDateText" className="qf-field-label">
-          Planned Start Date
-        </label>
-        <input
-          id="plannedStartDateText"
-          name={textInputName}
-          type="text"
-          value={textValue}
-          onChange={(event) => onTextChange(event.target.value)}
-          placeholder="e.g. week commencing 18 September, middle of August"
-          className="form-input mt-2"
-        />
-        <p className="mt-2 text-xs text-muted">
-          Use flexible wording from your site notes.
-        </p>
-      </div>
-
-      {showExactDate ? (
-        <div>
-          <label htmlFor="plannedStartDateExact" className="qf-field-label">
-            Exact Calendar Date
-            <span className="ml-1 font-normal text-muted">(optional)</span>
-          </label>
-          <input
-            id="plannedStartDateExact"
-            name={exactInputName}
-            type="date"
-            value={exactValue}
-            onChange={(event) => handleExactChange(event.target.value)}
-            className="form-input form-input-date mt-2"
-          />
-        </div>
+      {calendarFirst ? (
+        <>
+          {exactField}
+          {textField}
+        </>
       ) : (
-        <button
-          type="button"
-          onClick={() => setShowExactDate(true)}
-          className="text-sm font-medium text-accent"
-        >
-          Add exact calendar date
-        </button>
+        <>
+          {textField}
+          {exactField}
+        </>
       )}
     </div>
   );

@@ -5874,6 +5874,24 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
   background: rgba(255, 255, 255, 0.02);
 }
 
+button.qf-booking-preview-day-selectable {
+  width: 100%;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+button.qf-booking-preview-day-selectable:hover {
+  border-color: rgba(255, 106, 26, 0.4);
+  background: rgba(255, 106, 26, 0.08);
+}
+
+button.qf-booking-preview-day-selectable:focus-visible {
+  outline: none;
+  border-color: rgba(255, 106, 26, 0.65);
+  box-shadow: 0 0 0 3px rgba(255, 106, 26, 0.18);
+}
+
 .qf-booking-preview-day-proposed {
   border-color: rgba(56, 189, 248, 0.35);
   background: rgba(56, 189, 248, 0.08);

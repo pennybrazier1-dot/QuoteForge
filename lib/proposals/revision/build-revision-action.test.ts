@@ -29,11 +29,13 @@ describe("createRevisionActionFromSuggestion", () => {
       suggestion: suggestion({
         id: "s-date",
         type: "start_date",
-        suggestedChange: 'Consider updating the planned start to “12 October”.',
+        suggestedChange: "Update planned start to the agreed date: 12 October.",
         evidenceQuote: "Can we start 12 October?",
+        resolvedValue: "12 October",
+        resolvedDateIso: "2026-10-12",
       }),
       acceptedSuggestedChange:
-        'Consider updating the planned start to “12 October”.',
+        "Update planned start to the agreed date: 12 October.",
       now: new Date("2026-08-08T12:00:00.000Z"),
     });
 
@@ -42,6 +44,7 @@ describe("createRevisionActionFromSuggestion", () => {
     expect(action.actionType).toBe("open_calendar");
     expect(action.status).toBe("pending");
     expect(action.payload.plannedStartText).toMatch(/12 October/i);
+    expect(action.payload.plannedStartExact).toBe("2026-10-12");
     expect(formatRevisionActionType(action.actionType)).toBe("Open calendar");
   });
 
@@ -66,6 +69,8 @@ describe("createRevisionActionFromSuggestion", () => {
         type: "start_date",
         suggestedChange: "Start 12 October",
         evidenceQuote: "12 October please",
+        resolvedValue: "12 October",
+        resolvedDateIso: "2026-10-12",
       }),
       acceptedSuggestedChange: "Start 12 October",
     });
@@ -92,6 +97,7 @@ describe("createRevisionActionFromSuggestion", () => {
 
     expect(buildRevisionActionHref(calendar)).toContain("confirmBooking=1");
     expect(buildRevisionActionHref(calendar)).toContain("plannedStartHint=");
+    expect(buildRevisionActionHref(calendar)).toContain("plannedStartExact=");
     expect(buildRevisionActionHref(materials)).toContain("#job-preparation");
     expect(buildRevisionActionHref(scope)).toContain(
       "#change-request-review-target"

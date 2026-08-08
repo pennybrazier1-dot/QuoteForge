@@ -1,13 +1,11 @@
 import type { RevisionSuggestion } from "@/lib/proposals/revision/types";
+import { parseFlexibleDateToIso } from "@/lib/proposals/revision/conversation-agreements";
 import type {
   RevisionAction,
   RevisionActionPayload,
   RevisionActionStatus,
   RevisionActionType,
 } from "@/lib/proposals/revision/revision-action-types";
-
-const DATE_VALUE_PATTERN =
-  /\b(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?|next week|this week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
 
 export function actionTypeForSuggestionType(
   suggestionType: RevisionSuggestion["type"]
@@ -54,7 +52,7 @@ export function formatRevisionActionDescription(
 ): string {
   switch (actionType) {
     case "open_calendar":
-      return "Open booking/calendar with this date as a hint. Nothing is saved until you confirm there.";
+      return "Opens booking with the suggested date prefilled, plus your availability. Nothing is saved until you confirm.";
     case "update_materials":
       return "Open the proposal materials area. Live materials are not changed until you save.";
     case "review_scope_and_price":
@@ -83,11 +81,6 @@ export function formatRevisionActionStatus(status: RevisionActionStatus): string
   }
 }
 
-function extractPlannedStartText(text: string): string | null {
-  const match = text.match(DATE_VALUE_PATTERN);
-  return match?.[0]?.trim() ?? null;
-}
-
 export function buildRevisionActionPayload(
   suggestion: RevisionSuggestion,
   acceptedSuggestedChange: string
@@ -95,8 +88,12 @@ export function buildRevisionActionPayload(
   const text = acceptedSuggestedChange.trim() || suggestion.suggestedChange;
   const plannedStartText =
     suggestion.type === "start_date"
-      ? extractPlannedStartText(text) ||
-        extractPlannedStartText(suggestion.evidenceQuote)
+      ? suggestion.resolvedValue || suggestion.resolvedDateIso || text
+      : null;
+  const plannedStartExact =
+    suggestion.type === "start_date"
+      ? suggestion.resolvedDateIso ||
+        parseFlexibleDateToIso(suggestion.resolvedValue || text)
       : null;
 
   return {
@@ -104,6 +101,7 @@ export function buildRevisionActionPayload(
     evidenceQuote: suggestion.evidenceQuote,
     suggestedChange: text,
     plannedStartText,
+    plannedStartExact,
     materialsHint: suggestion.type === "materials" ? text : null,
     scopeHint:
       suggestion.type === "scope" || suggestion.type === "extra_work"
@@ -164,6 +162,9 @@ export function buildRevisionActionHref(action: RevisionAction): string {
 
   if (action.payload.plannedStartText) {
     params.set("plannedStartHint", action.payload.plannedStartText);
+  }
+  if (action.payload.plannedStartExact) {
+    params.set("plannedStartExact", action.payload.plannedStartExact);
   }
 
   switch (action.actionType) {

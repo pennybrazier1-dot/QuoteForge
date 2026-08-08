@@ -11,30 +11,36 @@ type BookingCalendarPreviewProps = {
   anchorDateIso: string | null;
   proposedSpanDates: string[];
   existingJobs: CalendarJob[];
+  onSelectDate?: (isoDate: string) => void;
 };
+
+function toLocalIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function BookingCalendarPreview({
   anchorDateIso,
   proposedSpanDates,
   existingJobs,
+  onSelectDate,
 }: BookingCalendarPreviewProps) {
-  if (!anchorDateIso) {
-    return (
-      <div className="qf-booking-preview qf-booking-preview-empty">
-        <p className="qf-booking-preview-label">Calendar preview</p>
-        <p className="qf-booking-preview-hint">
-          Add an exact calendar date to see how this booking fits your week.
-        </p>
-      </div>
-    );
-  }
-
-  const weekDays = buildWeekDays(parseIsoDate(anchorDateIso));
+  const fallbackAnchor = toLocalIsoDate(new Date());
+  const activeAnchor = anchorDateIso || fallbackAnchor;
+  const weekDays = buildWeekDays(parseIsoDate(activeAnchor));
   const proposedSet = new Set(proposedSpanDates);
 
   return (
     <div className="qf-booking-preview">
-      <p className="qf-booking-preview-label">This week</p>
+      <p className="qf-booking-preview-label">Your availability this week</p>
+      {!anchorDateIso ? (
+        <p className="qf-booking-preview-hint">
+          Choose a date below (or use the date picker). Nothing is saved until
+          you confirm.
+        </p>
+      ) : null}
       <div className="qf-booking-preview-week">
         {weekDays.map((day) => {
           const dayJobs = getJobsForDate(existingJobs, day.iso);
@@ -45,14 +51,44 @@ export function BookingCalendarPreview({
           const provisionalCount = dayJobs.filter(
             (job) => job.tone === "provisional"
           ).length;
+          const dayClass = `qf-booking-preview-day ${
+            isProposed ? "qf-booking-preview-day-proposed" : ""
+          }${onSelectDate ? " qf-booking-preview-day-selectable" : ""}`;
+
+          if (onSelectDate) {
+            return (
+              <button
+                key={day.iso}
+                type="button"
+                className={dayClass}
+                onClick={() => onSelectDate(day.iso)}
+                aria-pressed={isProposed}
+                aria-label={`Select ${day.iso}`}
+              >
+                <span className="qf-booking-preview-weekday">
+                  {day.weekdayShort}
+                </span>
+                <span className="qf-booking-preview-daynum">{day.dayNumber}</span>
+                <div className="qf-booking-preview-dots">
+                  {confirmedCount > 0 ? (
+                    <span className="qf-calendar-dot qf-calendar-dot-confirmed" />
+                  ) : null}
+                  {provisionalCount > 0 ? (
+                    <span className="qf-calendar-dot qf-calendar-dot-provisional" />
+                  ) : null}
+                  {isProposed ? (
+                    <span
+                      className="qf-booking-preview-proposed-mark"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                </div>
+              </button>
+            );
+          }
 
           return (
-            <div
-              key={day.iso}
-              className={`qf-booking-preview-day ${
-                isProposed ? "qf-booking-preview-day-proposed" : ""
-              }`}
-            >
+            <div key={day.iso} className={dayClass}>
               <span className="qf-booking-preview-weekday">{day.weekdayShort}</span>
               <span className="qf-booking-preview-daynum">{day.dayNumber}</span>
               <div className="qf-booking-preview-dots">
@@ -63,7 +99,10 @@ export function BookingCalendarPreview({
                   <span className="qf-calendar-dot qf-calendar-dot-provisional" />
                 ) : null}
                 {isProposed ? (
-                  <span className="qf-booking-preview-proposed-mark" aria-hidden="true" />
+                  <span
+                    className="qf-booking-preview-proposed-mark"
+                    aria-hidden="true"
+                  />
                 ) : null}
               </div>
             </div>

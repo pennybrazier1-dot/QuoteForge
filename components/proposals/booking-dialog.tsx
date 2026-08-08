@@ -25,6 +25,7 @@ import {
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import {
   formatPlannedStartExact,
+  normalizePlannedStartExact,
   plannedStartFromDb,
 } from "@/lib/proposals/planned-start-date";
 
@@ -62,6 +63,9 @@ type BookingDialogProps = {
   estimatedDuration: string | null;
   bookingConfirmation?: BookingConfirmation | null;
   calendarProposals: CalendarProposal[];
+  /** Revision / deep-link prefills — applied when the dialog opens. */
+  prefillPlannedStartText?: string | null;
+  prefillPlannedStartExact?: string | null;
 };
 
 export function BookingDialog({
@@ -74,6 +78,8 @@ export function BookingDialog({
   estimatedDuration,
   bookingConfirmation = "confirmed",
   calendarProposals,
+  prefillPlannedStartText = null,
+  prefillPlannedStartExact = null,
 }: BookingDialogProps) {
   const [confirmState, confirmAction] = useActionState(
     confirmBooking,
@@ -122,6 +128,8 @@ export function BookingDialog({
         plannedStartDate,
         estimatedDuration,
         bookingConfirmation,
+        prefillPlannedStartText,
+        prefillPlannedStartExact,
       })
     : null;
   const [appliedDialogFormSeed, setAppliedDialogFormSeed] = useState<
@@ -138,8 +146,15 @@ export function BookingDialog({
       planned_start_date_text: plannedStartDateText,
       planned_start_date: plannedStartDate,
     });
-    setStartText(planned.plannedStartDate);
-    setStartExact(planned.plannedStartDateExact);
+    const exactPrefill =
+      normalizePlannedStartExact(prefillPlannedStartExact) ??
+      planned.plannedStartDateExact;
+    const textPrefill =
+      prefillPlannedStartText?.trim() ||
+      (exactPrefill ? formatPlannedStartExact(exactPrefill) : "") ||
+      planned.plannedStartDate;
+    setStartText(textPrefill);
+    setStartExact(exactPrefill);
     setDuration(estimatedDuration ?? "");
     setBookingStatus(bookingConfirmation ?? "confirmed");
     setAcknowledgedClash(false);
@@ -208,7 +223,7 @@ export function BookingDialog({
             <p className="qf-mgmt-dialog-subtitle">
               {isAccept
                 ? "The customer accepted this quote. Check the start date, duration, and booking status before adding it to your calendar."
-                : "Check the start date, duration, and booking status to firm up this job on your calendar."}
+                : "Choose a date and duration against your availability. Nothing is saved until you confirm."}
             </p>
           </div>
           <button
@@ -252,6 +267,7 @@ export function BookingDialog({
               exactValue={startExact}
               onTextChange={setStartText}
               onExactChange={setStartExact}
+              calendarFirst
             />
 
             <div>
@@ -303,6 +319,7 @@ export function BookingDialog({
               existingJobs={existingJobs.filter(
                 (job: CalendarJob) => job.proposalId !== proposalId
               )}
+              onSelectDate={applySuggestedDate}
             />
 
             <BookingClashWarnings

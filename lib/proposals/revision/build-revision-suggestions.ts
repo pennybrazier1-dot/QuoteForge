@@ -1,5 +1,12 @@
 import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/analyze-change-request";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
+import {
+  findLatestConfirmedDateAgreement,
+  formatAgreementDateLabel,
+  isVagueDateWindowOnly,
+  parseFlexibleDateToIso,
+  SPECIFIC_DATE_PATTERN,
+} from "@/lib/proposals/revision/conversation-agreements";
 import type {
   RevisedProposalFieldKey,
   RevisionSuggestion,
@@ -7,13 +14,10 @@ import type {
   RevisionSuggestionType,
 } from "@/lib/proposals/revision/types";
 
-const DATE_VALUE_PATTERN =
-  /\b(\d{1,2}(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{2,4})?|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?|next week|this week|next month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i;
-
 const PRICE_VALUE_PATTERN = /£\s*\d[\d,]*(?:\.\d{2})?|\b\d+\s*(?:pounds?|quid)\b/i;
 
 const DURATION_PATTERN =
-  /\b(\d+\s*(?:day|days|week|weeks)|longer|shorter|how long|duration|take longer|extra day)\b/i;
+  /\b(\d+\s*(?:day|days|week|weeks)|longer|shorter|how long|duration|take longer|extra day|within a month|in a month)\b/i;
 
 const EXTRA_WORK_PATTERN =
   /\b(also|extra work|additional|as well|can you also|include|add on|on top)\b/i;
@@ -73,14 +77,17 @@ function suggestedChangeFor(
         : `Review estimated duration based on: “${quote}”.`;
     case "start_date":
       return extracted
-        ? `Consider updating the planned start to “${extracted}” after you check availability. Calendar is not updated automatically.`
+        ? `Update planned start to the agreed date: ${extracted}. Check availability before saving.`
         : `Review the start date request: “${quote}”. Calendar is not updated automatically.`;
     case "details":
       return `Capture this detail on the proposal if needed: “${quote}”.`;
   }
 }
 
-function typesFromMessage(body: string): RevisionSuggestionType[] {
+function typesFromMessage(
+  body: string,
+  options: { suppressStartDate: boolean }
+): RevisionSuggestionType[] {
   const labels = classifyChangeRequestLabels(body);
   const types = new Set<RevisionSuggestionType>();
 
@@ -96,7 +103,9 @@ function typesFromMessage(body: string): RevisionSuggestionType[] {
         types.add("price");
         break;
       case "date":
-        types.add("start_date");
+        if (!options.suppressStartDate && !isVagueDateWindowOnly(body)) {
+          types.add("start_date");
+        }
         break;
       case "question":
         types.add("details");
@@ -104,7 +113,10 @@ function typesFromMessage(body: string): RevisionSuggestionType[] {
     }
   }
 
-  if (EXTRA_WORK_PATTERN.test(body) && (types.has("scope") || labels.includes("scope"))) {
+  if (
+    EXTRA_WORK_PATTERN.test(body) &&
+    (types.has("scope") || labels.includes("scope"))
+  ) {
     types.add("extra_work");
   } else if (EXTRA_WORK_PATTERN.test(body) && !types.has("materials")) {
     types.add("extra_work");
@@ -114,12 +126,10 @@ function typesFromMessage(body: string): RevisionSuggestionType[] {
     types.add("duration");
   }
 
-  // Standalone "question" with no other signal stays details only.
   if (types.size === 0) {
     types.add("details");
   }
 
-  // Pure questions without other labels shouldn't also force unrelated types.
   if (labels.length === 1 && labels[0] === "question") {
     return ["details"];
   }
@@ -130,7 +140,11 @@ function typesFromMessage(body: string): RevisionSuggestionType[] {
 function confidenceFor(
   type: RevisionSuggestionType,
   body: string
-): { confidence: RevisionSuggestionConfidence; needsReview: boolean; extracted: string | null } {
+): {
+  confidence: RevisionSuggestionConfidence;
+  needsReview: boolean;
+  extracted: string | null;
+} {
   if (type === "price") {
     const match = body.match(PRICE_VALUE_PATTERN);
     return {
@@ -141,11 +155,11 @@ function confidenceFor(
   }
 
   if (type === "start_date") {
-    const match = body.match(DATE_VALUE_PATTERN);
+    const match = body.match(SPECIFIC_DATE_PATTERN);
     return {
       confidence: match ? "high" : "medium",
       needsReview: !match,
-      extracted: match?.[0]?.trim() ?? null,
+      extracted: match?.[0]?.replace(/\s+/g, " ").trim() ?? null,
     };
   }
 
@@ -165,32 +179,74 @@ function confidenceFor(
   return { confidence: "medium", needsReview: false, extracted: null };
 }
 
+function isCustomerMessage(message: ProposalCustomerMessage): boolean {
+  return message.direction !== "trader" && message.kind !== "trader_reply";
+}
+
 /**
- * Builds review-only revision suggestions from conversation history.
- * Heuristic for 50C.1 — never mutates proposals.
+ * Builds review-only revision suggestions from the full conversation thread.
+ * Prefer latest confirmed agreements over earlier vague requests.
+ * Never mutates proposals.
  */
 export function buildRevisionSuggestions(
-  messages: ProposalCustomerMessage[]
+  messages: ProposalCustomerMessage[],
+  now: Date = new Date()
 ): RevisionSuggestion[] {
-  const customerMessages = messages.filter(
-    (message) =>
-      message.direction !== "trader" &&
-      message.kind !== "trader_reply" &&
-      message.body.trim().length > 0
-  );
-
+  const agreement = findLatestConfirmedDateAgreement(messages, now);
   const suggestions: RevisionSuggestion[] = [];
   let counter = 0;
 
+  if (agreement) {
+    const dateLabel = formatAgreementDateLabel(agreement);
+    counter += 1;
+    suggestions.push({
+      id: `rev-agree-${agreement.customerMessage.id}-start_date-${counter}`,
+      type: "start_date",
+      evidenceQuote: agreement.evidenceQuote,
+      evidenceMessageId: agreement.customerMessage.id,
+      suggestedChange: suggestedChangeFor(
+        "start_date",
+        agreement.evidenceQuote,
+        dateLabel
+      ),
+      confidence: "high",
+      needsReview: !agreement.dateIso,
+      targetField: targetFieldFor("start_date"),
+      resolvedValue: dateLabel,
+      resolvedDateIso: agreement.dateIso,
+    });
+  }
+
+  const customerMessages = messages
+    .filter(
+      (message) => isCustomerMessage(message) && message.body.trim().length > 0
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
   for (const message of customerMessages) {
     const quote = quoteForEvidence(message.body);
-    const types = typesFromMessage(message.body);
+    const types = typesFromMessage(message.body, {
+      suppressStartDate: Boolean(agreement),
+    });
 
     for (const type of types) {
+      // Confirmed agreement already owns start_date.
+      if (type === "start_date" && agreement) {
+        continue;
+      }
+
       const { confidence, needsReview, extracted } = confidenceFor(
         type,
         message.body
       );
+      const resolvedDateIso =
+        type === "start_date" && extracted
+          ? parseFlexibleDateToIso(extracted, now)
+          : null;
+
       counter += 1;
       suggestions.push({
         id: `rev-${message.id}-${type}-${counter}`,
@@ -201,6 +257,8 @@ export function buildRevisionSuggestions(
         confidence,
         needsReview,
         targetField: targetFieldFor(type),
+        resolvedValue: extracted,
+        resolvedDateIso,
       });
     }
   }

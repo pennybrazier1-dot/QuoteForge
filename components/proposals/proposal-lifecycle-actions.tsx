@@ -92,16 +92,26 @@ export function ProposalLifecycleActions({
   );
   const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [bookingPrefill, setBookingPrefill] = useState<{
+    text: string | null;
+    exact: string | null;
+  }>({ text: null, exact: null });
   const normalized = normalizeProposalStatus(status);
 
   const confirmBookingFromUrl = searchParams.get("confirmBooking") === "1";
   const openAcceptFromUrl = searchParams.get("openAccept") === "1";
+  const plannedStartHint = searchParams.get("plannedStartHint");
+  const plannedStartExactHint = searchParams.get("plannedStartExact");
   const [handledConfirmUrl, setHandledConfirmUrl] = useState(false);
   const [handledAcceptUrl, setHandledAcceptUrl] = useState(false);
 
   if (confirmBookingFromUrl && !handledConfirmUrl) {
     setHandledConfirmUrl(true);
     setConfirmDialogOpen(true);
+    setBookingPrefill({
+      text: plannedStartHint,
+      exact: plannedStartExactHint,
+    });
   }
 
   if (openAcceptFromUrl && !handledAcceptUrl) {
@@ -257,13 +267,18 @@ export function ProposalLifecycleActions({
       <BookingDialog
         mode="confirm"
         open={confirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}
+        onClose={() => {
+          setConfirmDialogOpen(false);
+          setBookingPrefill({ text: null, exact: null });
+        }}
         proposalId={proposalId}
         plannedStartDateText={plannedStartDateText}
         plannedStartDate={plannedStartDate}
         estimatedDuration={estimatedDuration}
         bookingConfirmation="confirmed"
         calendarProposals={calendarProposals}
+        prefillPlannedStartText={bookingPrefill.text}
+        prefillPlannedStartExact={bookingPrefill.exact}
       />
     </section>
   );

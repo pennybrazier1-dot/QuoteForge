@@ -45,6 +45,10 @@ export type RevisionSuggestion = {
   confidence: RevisionSuggestionConfidence;
   needsReview: boolean;
   targetField: RevisedProposalFieldKey | null;
+  /** Extracted human value when available (e.g. agreed date label). */
+  resolvedValue?: string | null;
+  /** Parsed calendar date YYYY-MM-DD when available. */
+  resolvedDateIso?: string | null;
 };
 
 export type ProposalRevisionSummary = {

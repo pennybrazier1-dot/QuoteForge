@@ -35,6 +35,7 @@ export type RevisionActionPayload = {
   /** Accepted or trader-edited suggestion text. */
   suggestedChange: string;
   plannedStartText?: string | null;
+  plannedStartExact?: string | null;
   materialsHint?: string | null;
   scopeHint?: string | null;
   note?: string | null;

@@ -405,7 +405,10 @@ export function ProposalRevisionReview({
                       </p>
                       {action.payload.plannedStartText ? (
                         <p className="qf-revision-next-action-prefill">
-                          Prefill hint: {action.payload.plannedStartText}
+                          Prefill: {action.payload.plannedStartText}
+                          {action.payload.plannedStartExact
+                            ? ` (${action.payload.plannedStartExact})`
+                            : ""}
                         </p>
                       ) : null}
                       {action.status === "skipped" ? (

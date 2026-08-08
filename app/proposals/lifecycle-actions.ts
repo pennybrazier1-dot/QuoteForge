@@ -91,13 +91,15 @@ export async function confirmBooking(
     currentStatus,
     proposal.booking_confirmation
   );
+  const isNeedsAttention = currentStatus === "needs_attention";
 
   if (
     !isProposalStatus(currentStatus) ||
-    (!isAwaitingAcceptance && !isProvisional)
+    (!isAwaitingAcceptance && !isProvisional && !isNeedsAttention)
   ) {
     return {
-      error: "Only accepted quotes or provisional bookings can be confirmed.",
+      error:
+        "Only quotes awaiting acceptance, needing attention, or provisional bookings can update dates here.",
     };
   }
 
@@ -107,6 +109,44 @@ export async function confirmBooking(
   });
 
   const now = new Date().toISOString();
+
+  // From revision review on needs_attention: save planned start/duration only.
+  // Do not auto-book, create jobs, or email the customer.
+  if (isNeedsAttention) {
+    const { error: planError } = await supabase
+      .from("proposals")
+      .update({
+        estimated_duration: estimatedDuration || null,
+        ...plannedFields,
+      })
+      .eq("id", proposalId);
+
+    if (planError) {
+      return {
+        error: planError.message ?? "Could not save the planned start date.",
+      };
+    }
+
+    await recordProposalEvent(supabase, {
+      workspaceId: proposal.workspace_id,
+      proposalId: proposal.id,
+      userId: user.id,
+      eventType: "status_change",
+      fromStatus: currentStatus,
+      toStatus: currentStatus,
+      note: "Planned start updated from conversation revision (not booked)",
+      metadata: {
+        source: "revision_calendar_action",
+        booking_confirmation: bookingConfirmation,
+        ...plannedFields,
+        estimated_duration: estimatedDuration || null,
+      },
+    });
+
+    revalidateAll(proposalId);
+    redirect(`/proposals/${proposalId}`);
+  }
+
   const updatePayload: Record<string, unknown> = {
     status: "booked",
     booking_confirmation: bookingConfirmation,
