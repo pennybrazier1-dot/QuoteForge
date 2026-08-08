@@ -7656,3 +7656,32 @@ button.qf-booking-preview-day-selectable:focus-visible {
   align-items: center;
   gap: 0.5rem;
 }
+
+/* Visit detail uses Quick Quote cards; keep a compact status chip only. */
+.qf-proposal-page .qf-visit-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--foreground);
+}
+
+.qf-proposal-page .qf-visit-status-scheduled,
+.qf-proposal-page .qf-visit-status-confirmed {
+  background: color-mix(in srgb, #ea580c 16%, transparent);
+  color: #9a3412;
+}
+
+.qf-proposal-page .qf-visit-status-completed {
+  background: color-mix(in srgb, #15803d 16%, transparent);
+  color: #166534;
+}
+
+.qf-proposal-page .qf-visit-status-cancelled,
+.qf-proposal-page .qf-visit-status-no_show {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--muted);
+}

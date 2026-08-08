@@ -26,7 +26,7 @@ export default async function VisitDetailPage({ params }: PageProps) {
   }
 
   return (
-    <main className="qf-visit-page">
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
       <VisitDetailView visit={visit} />
     </main>
   );

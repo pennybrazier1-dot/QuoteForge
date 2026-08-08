@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AuthError } from "@/components/auth/auth-shell";
+import { SectionCard } from "@/components/ui/section-card";
 import {
   organiseVisitNotesAction,
   updateVisitNotesAction,
@@ -54,6 +55,31 @@ function StatusSubmitButton() {
   );
 }
 
+function DetailField({
+  label,
+  id,
+  value,
+}: {
+  label: string;
+  id: string;
+  value: string;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="qf-field-label">
+        {label}
+      </label>
+      <input
+        id={id}
+        className="form-input mt-2"
+        value={value}
+        readOnly
+        tabIndex={-1}
+      />
+    </div>
+  );
+}
+
 export function VisitDetailView({ visit }: { visit: VisitRecord }) {
   const [notesState, notesAction] = useActionState(
     updateVisitNotesAction,
@@ -76,166 +102,194 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
 
   const address = formatVisitAddress(visit);
   const timeLabel = formatVisitTimeLabel(visit.visit_time);
+  const visitWhen = [
+    formatVisitDateLabel(visit.visit_date),
+    timeLabel,
+    formatVisitDuration(visit.duration_minutes),
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const createQuoteHref = visit.customer_id
     ? `/proposals/new?customerId=${encodeURIComponent(visit.customer_id)}`
     : "/proposals/new";
 
   return (
-    <div className="qf-visit-detail">
-      <header className="qf-visit-detail-header">
-        <div>
-          <Link href="/visits" className="qf-visit-back">
-            ← Back to visits
-          </Link>
-          <p className="qf-visit-eyebrow">{formatVisitType(visit.visit_type)}</p>
-          <h1 className="qf-visit-detail-title">{visit.customer_name}</h1>
-          <p className="qf-visit-detail-meta">
-            {[
-              formatVisitDateLabel(visit.visit_date),
-              timeLabel,
-              formatVisitDuration(visit.duration_minutes),
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+    <div className="qf-proposal-page qf-mobile-safe">
+      <header className="qf-proposal-header">
+        <Link
+          href="/visits"
+          className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+        >
+          ← Back to visits
+        </Link>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+              {formatVisitType(visit.visit_type)}
+            </p>
+            <h1 className="qf-proposal-title mt-1">{visit.customer_name}</h1>
+            <p className="qf-proposal-subtitle">{visitWhen}</p>
+          </div>
+          <span className={`qf-visit-status qf-visit-status-${visit.status}`}>
+            {formatVisitStatus(visit.status)}
+          </span>
         </div>
-        <span className={`qf-visit-status qf-visit-status-${visit.status}`}>
-          {formatVisitStatus(visit.status)}
-        </span>
       </header>
 
-      <section className="qf-visit-card">
-        <h2 className="qf-visit-card-title">Customer</h2>
-        <dl className="qf-visit-facts">
-          <div>
-            <dt>Customer name</dt>
-            <dd>{visit.customer_name}</dd>
-          </div>
-          {visit.contact_phone ? (
-            <div>
-              <dt>Phone</dt>
-              <dd>{visit.contact_phone}</dd>
-            </div>
-          ) : null}
-          {visit.contact_email ? (
-            <div>
-              <dt>Email</dt>
-              <dd>{visit.contact_email}</dd>
-            </div>
-          ) : null}
-          {address ? (
-            <div className="qf-visit-facts-wide">
-              <dt>Address</dt>
-              <dd>{address}</dd>
-            </div>
-          ) : null}
-          <div className="qf-visit-facts-wide">
-            <dt>Visit date / time</dt>
-            <dd>
-              {[
-                formatVisitDateLabel(visit.visit_date),
-                timeLabel,
-                formatVisitDuration(visit.duration_minutes),
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className="qf-visit-card">
-        <h2 className="qf-visit-card-title">Visit notes</h2>
-        <p className="qf-visit-card-copy">
-          Write it the way you saw it — measurements, materials, access, timing,
-          customer requests. AI will organise a summary for review.
-        </p>
-
-        <form action={notesAction} className="qf-visit-notes-form">
-          <input type="hidden" name="visitId" value={visit.id} />
-          <label className="qf-visit-field" htmlFor="visit-notes">
-            <span>What did you find?</span>
-            <textarea
-              id="visit-notes"
-              className="qf-input qf-visit-textarea qf-visit-notes-large"
-              name="notes"
-              rows={14}
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Write what you found during the visit..."
+      <div className="qf-proposal-col-left">
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Customer details</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <DetailField
+              label="Name"
+              id="visitCustomerName"
+              value={visit.customer_name}
             />
-          </label>
-          {notesState.error ? <AuthError message={notesState.error} /> : null}
-          {notesState.ok ? (
-            <p className="qf-visit-notice" role="status">
-              Notes saved.
-            </p>
-          ) : null}
-          <div className="qf-visit-actions">
-            <SaveNotesButton />
+            <DetailField
+              label="Email"
+              id="visitEmail"
+              value={visit.contact_email || "Not provided"}
+            />
+            <DetailField
+              label="Phone"
+              id="visitPhone"
+              value={visit.contact_phone || "Not provided"}
+            />
+            <DetailField
+              label="Address"
+              id="visitAddress"
+              value={address || "Not provided"}
+            />
+            <div className="sm:col-span-2">
+              <DetailField
+                label="Visit date / time"
+                id="visitWhen"
+                value={visitWhen}
+              />
+            </div>
           </div>
-        </form>
+        </SectionCard>
 
-        <form action={organiseAction} className="qf-visit-organise-form">
-          <input type="hidden" name="visitId" value={visit.id} />
-          <input type="hidden" name="notes" value={notes} />
-          {organiseState.error ? (
-            <AuthError message={organiseState.error} />
-          ) : null}
-          <div className="qf-visit-actions">
-            <OrganiseNotesButton />
+        <SectionCard className="qf-card-form qf-qq-prep-card">
+          <div className="qf-qq-prep-head">
+            <div>
+              <h2 className="qf-card-heading">Visit notes</h2>
+              <p className="qf-body-text mt-1 text-muted">
+                Write it the way you saw it — measurements, materials, access,
+                timing, customer requests. AI will organise a summary for
+                review.
+              </p>
+            </div>
           </div>
-        </form>
+
+          <form action={notesAction} className="mt-5">
+            <input type="hidden" name="visitId" value={visit.id} />
+            <div className="qf-textarea-wrap">
+              <label htmlFor="visit-notes" className="qf-field-label">
+                What did you find?
+              </label>
+              <textarea
+                id="visit-notes"
+                className="form-textarea qf-site-notes-textarea mt-2"
+                name="notes"
+                rows={14}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Write what you found during the visit..."
+              />
+            </div>
+            {notesState.error ? (
+              <div className="mt-4">
+                <AuthError message={notesState.error} />
+              </div>
+            ) : null}
+            {notesState.ok ? (
+              <p className="qf-body-text mt-3 text-muted" role="status">
+                Notes saved.
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <SaveNotesButton />
+            </div>
+          </form>
+
+          <form action={organiseAction} className="mt-4">
+            <input type="hidden" name="visitId" value={visit.id} />
+            <input type="hidden" name="notes" value={notes} />
+            {organiseState.error ? (
+              <div className="mb-3">
+                <AuthError message={organiseState.error} />
+              </div>
+            ) : null}
+            <OrganiseNotesButton />
+          </form>
+        </SectionCard>
 
         {organised ? (
-          <div className="qf-visit-extract" aria-label="Organised summary">
-            <h3 className="qf-visit-extract-title">Organised summary</h3>
-            <p className="qf-visit-card-copy">
+          <SectionCard className="qf-card-form">
+            <h2 className="qf-card-heading">Organised summary</h2>
+            <p className="qf-body-text mt-2 text-muted">
               Check this before you create a quote. Nothing is sent until you
               start a quote yourself.
             </p>
-            <dl className="qf-visit-extract-list">
+            <div className="qf-change-notes-extract mt-5">
               {VISIT_NOTES_ORGANISED_FIELDS.map(({ key, label }) => (
-                <div key={key}>
-                  <dt>{label}</dt>
-                  <dd>{organised[key] || "Nothing noted"}</dd>
+                <div key={key} className="qf-change-notes-field">
+                  <label
+                    htmlFor={`visit-organised-${key}`}
+                    className="qf-field-label"
+                  >
+                    {label}
+                  </label>
+                  <textarea
+                    id={`visit-organised-${key}`}
+                    className="form-textarea mt-2"
+                    rows={3}
+                    value={organised[key] || "Nothing noted"}
+                    readOnly
+                    tabIndex={-1}
+                  />
                 </div>
               ))}
-            </dl>
-          </div>
+            </div>
+          </SectionCard>
         ) : null}
 
-        <div className="qf-visit-quote-action">
-          <Link href={createQuoteHref} className="qf-btn-primary">
-            Create Quote
-          </Link>
-          {visit.customer_id ? (
-            <Link
-              href={`/customers/${visit.customer_id}`}
-              className="qf-btn-secondary"
-            >
-              View customer
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Actions</h2>
+          <div className="mt-5 space-y-3">
+            <Link href={createQuoteHref} className="qf-btn-primary">
+              Create Quote
             </Link>
-          ) : null}
-          {visit.enquiry_id ? (
-            <Link
-              href={`/enquiries/${visit.enquiry_id}`}
-              className="qf-btn-secondary"
-            >
-              View enquiry
-            </Link>
-          ) : null}
-        </div>
-      </section>
+            {visit.customer_id ? (
+              <Link
+                href={`/customers/${visit.customer_id}`}
+                className="qf-btn-secondary"
+              >
+                View customer
+              </Link>
+            ) : null}
+            {visit.enquiry_id ? (
+              <Link
+                href={`/enquiries/${visit.enquiry_id}`}
+                className="qf-btn-secondary"
+              >
+                View enquiry
+              </Link>
+            ) : null}
+          </div>
+        </SectionCard>
 
-      <section className="qf-visit-card">
-        <h2 className="qf-visit-card-title">Status</h2>
-        <form action={statusAction} className="qf-visit-status-form">
-          <input type="hidden" name="visitId" value={visit.id} />
-          <label className="qf-visit-field">
-            <span>Visit status</span>
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Status</h2>
+          <form action={statusAction} className="mt-5">
+            <input type="hidden" name="visitId" value={visit.id} />
+            <label htmlFor="visit-status" className="qf-field-label">
+              Visit status
+            </label>
             <select
-              className="qf-input"
+              id="visit-status"
+              className="form-select mt-2"
               name="status"
               defaultValue={visit.status}
             >
@@ -245,16 +299,22 @@ export function VisitDetailView({ visit }: { visit: VisitRecord }) {
                 </option>
               ))}
             </select>
-          </label>
-          {statusState.error ? <AuthError message={statusState.error} /> : null}
-          {statusState.ok ? (
-            <p className="qf-visit-notice" role="status">
-              Status updated.
-            </p>
-          ) : null}
-          <StatusSubmitButton />
-        </form>
-      </section>
+            {statusState.error ? (
+              <div className="mt-4">
+                <AuthError message={statusState.error} />
+              </div>
+            ) : null}
+            {statusState.ok ? (
+              <p className="qf-body-text mt-3 text-muted" role="status">
+                Status updated.
+              </p>
+            ) : null}
+            <div className="mt-4">
+              <StatusSubmitButton />
+            </div>
+          </form>
+        </SectionCard>
+      </div>
     </div>
   );
 }
