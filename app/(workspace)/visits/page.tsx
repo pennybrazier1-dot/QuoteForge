@@ -30,7 +30,7 @@ export default async function VisitsPage() {
         <div>
           <h1 className="qf-visit-page-title">Visits</h1>
           <p className="qf-visit-page-subtitle">
-            Arrange an initial site assessment before a quote exists.
+            Arrange and manage site visits before or during jobs.
           </p>
         </div>
         <Link href="/visits/new" className="qf-btn-primary">
@@ -40,14 +40,14 @@ export default async function VisitsPage() {
 
       {visits.length === 0 ? (
         <div className="qf-visit-empty">
-          <h2 className="qf-visit-empty-title">No visits yet</h2>
-          <p className="qf-visit-empty-copy">
-            Book a visit from a customer, the calendar, or here. No quote or job
-            is required.
-          </p>
-          <Link href="/visits/new" className="qf-btn-primary">
-            Book your first visit
-          </Link>
+          <h2 className="qf-visit-empty-title">No visits scheduled yet.</h2>
+          <p className="qf-visit-empty-copy">Book a visit from:</p>
+          <ul className="qf-visit-empty-list">
+            <li>customer</li>
+            <li>enquiry</li>
+            <li>calendar</li>
+          </ul>
+          <p className="qf-visit-empty-copy">No quote or job is required.</p>
         </div>
       ) : (
         <ul className="qf-visit-list">

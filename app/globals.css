@@ -7482,10 +7482,22 @@ button.qf-booking-preview-day-selectable:focus-visible {
 }
 
 .qf-visit-empty-copy {
-  margin: 0.5rem 0 1rem;
+  margin: 0.5rem 0 0;
   font-size: 0.925rem;
   line-height: 1.45;
   color: var(--muted);
+}
+
+.qf-visit-empty-list {
+  margin: 0.35rem 0 0.75rem;
+  padding-left: 1.25rem;
+  font-size: 0.925rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.qf-visit-empty-list li {
+  margin: 0.15rem 0;
 }
 
 .qf-visit-detail-header {
