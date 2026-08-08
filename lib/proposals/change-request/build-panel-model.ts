@@ -11,7 +11,9 @@ export function buildChangeRequestPanelModel(
   message: ProposalCustomerMessage;
   analysis: ChangeRequestAnalysis;
 } | null {
-  const message = messages.find((item) => item.kind === "change_request");
+  const message = [...messages]
+    .reverse()
+    .find((item) => item.kind === "change_request");
   if (!message) {
     return null;
   }

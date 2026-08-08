@@ -59,6 +59,14 @@ describe("buildChangeRequestPanelModel", () => {
   it("builds analysis from the latest change_request message", () => {
     const model = buildChangeRequestPanelModel([
       {
+        id: "m0",
+        kind: "change_request",
+        direction: "customer",
+        created_by: null,
+        body: "Can we change the materials please?",
+        created_at: "2026-08-07T08:00:00.000Z",
+      },
+      {
         id: "m1",
         kind: "change_request",
         direction: "customer",
@@ -72,7 +80,7 @@ describe("buildChangeRequestPanelModel", () => {
         direction: "customer",
         created_by: null,
         body: "How long will it take?",
-        created_at: "2026-08-07T09:00:00.000Z",
+        created_at: "2026-08-08T10:00:00.000Z",
       },
     ]);
 

@@ -1,6 +1,8 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { CustomerPortalConversation } from "@/components/proposals/customer-portal/customer-portal-conversation";
 import {
   acceptPublicProposal,
   askPublicProposalQuestion,
@@ -8,9 +10,8 @@ import {
   type CustomerPortalActionState,
 } from "@/lib/proposals/customer-portal/actions";
 import type { PublicProposalViewModel } from "@/lib/proposals/customer-portal/load-public-proposal";
-import {
-  buildCustomerProposalPdfPath,
-} from "@/lib/proposals/customer-portal/token";
+import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
+import { buildCustomerProposalPdfPath } from "@/lib/proposals/customer-portal/token";
 
 const initialState: CustomerPortalActionState = {};
 
@@ -69,9 +70,12 @@ function PortalHeader({ businessName }: { businessName?: string }) {
 
 export function CustomerProposalPortal({
   view,
+  messages = [],
 }: {
   view: PublicProposalViewModel;
+  messages?: ProposalCustomerMessage[];
 }) {
+  const router = useRouter();
   const [mode, setMode] = useState<
     "idle" | "accept" | "question" | "changes"
   >("idle");
@@ -92,6 +96,12 @@ export function CustomerProposalPortal({
     acceptState.result || questionState.result || changesState.result;
   const error =
     acceptState.error || questionState.error || changesState.error || null;
+
+  useEffect(() => {
+    if (questionState.ok || changesState.ok || acceptState.ok) {
+      router.refresh();
+    }
+  }, [questionState.ok, changesState.ok, acceptState.ok, router]);
 
   if (view.isClosed) {
     return (
@@ -124,6 +134,12 @@ export function CustomerProposalPortal({
             Download PDF
           </a>
         </section>
+        <CustomerPortalConversation
+          token={view.token}
+          messages={messages}
+          canRespond={false}
+          businessName={view.businessName}
+        />
         <ProposalBody view={view} />
       </PortalShell>
     );
@@ -141,9 +157,16 @@ export function CustomerProposalPortal({
           </h1>
           <p className="cj-job-copy">
             We’ve passed this to {view.businessName}. They’re reviewing your
-            message and will respond soon.
+            message and will respond soon. You can keep the conversation going
+            below.
           </p>
         </section>
+        <CustomerPortalConversation
+          token={view.token}
+          messages={messages}
+          canRespond={view.canRespond}
+          businessName={view.businessName}
+        />
         <ProposalBody view={view} />
       </PortalShell>
     );
@@ -172,11 +195,19 @@ export function CustomerProposalPortal({
 
       <ProposalBody view={view} />
 
+      <CustomerPortalConversation
+        token={view.token}
+        messages={messages}
+        canRespond={view.canRespond}
+        businessName={view.businessName}
+      />
+
       {view.canRespond ? (
         <section className="cj-job-card cj-portal-actions">
           <h2 className="cj-job-section-title">Your response</h2>
           <p className="cj-job-copy">
-            Choose how you’d like to respond. You don’t need an account.
+            Accept the proposal, request changes, or keep chatting above. You
+            don’t need an account.
           </p>
 
           {error ? (

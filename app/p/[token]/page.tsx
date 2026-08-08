@@ -3,6 +3,8 @@ import {
   loadPublicProposalByToken,
   recordPublicProposalViewed,
 } from "@/lib/proposals/customer-portal/load-public-proposal";
+import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
+import { createServiceRoleClient } from "@/lib/supabase/admin";
 
 export default async function PublicProposalPage({
   params,
@@ -41,5 +43,16 @@ export default async function PublicProposalPage({
   // Soft analytics — never blocks the page.
   void recordPublicProposalViewed(token);
 
-  return <CustomerProposalPortal view={loaded.view} />;
+  let messages: Awaited<ReturnType<typeof loadProposalCustomerMessages>> = [];
+  try {
+    const supabase = createServiceRoleClient();
+    messages = await loadProposalCustomerMessages(
+      supabase,
+      loaded.proposal.id
+    );
+  } catch {
+    messages = [];
+  }
+
+  return <CustomerProposalPortal view={loaded.view} messages={messages} />;
 }

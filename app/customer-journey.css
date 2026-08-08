@@ -1839,3 +1839,65 @@
     var(--cj-bg-card);
 }
 
+/* Proposal conversation (customer portal) */
+.cj-conversation-wrap {
+  margin: 1rem 0 0.25rem;
+}
+
+.cj-conversation-thread {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cj-conversation-item {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border-radius: 0.85rem;
+  border: 1px solid var(--cj-border);
+  background: #fff;
+}
+
+.cj-conversation-item-customer {
+  border-color: rgba(255, 106, 26, 0.28);
+  background: rgba(255, 106, 26, 0.06);
+}
+
+.cj-conversation-item-trader {
+  border-color: rgba(17, 17, 17, 0.1);
+  background: rgba(17, 17, 17, 0.03);
+}
+
+.cj-conversation-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.cj-conversation-author {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cj-text-muted);
+}
+
+.cj-conversation-time {
+  font-size: 0.75rem;
+  color: var(--cj-text-muted);
+}
+
+.cj-conversation-body {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--cj-text);
+  white-space: pre-wrap;
+}
+

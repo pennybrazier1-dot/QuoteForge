@@ -13,6 +13,18 @@ export type ProposalCustomerMessage = {
   created_by: string | null;
 };
 
+function mapMessageRows(
+  data: ProposalCustomerMessage[] | null
+): ProposalCustomerMessage[] {
+  return (data ?? []).map((row) => ({
+    ...row,
+    direction:
+      row.direction ??
+      (row.kind === "trader_reply" ? "trader" : "customer"),
+    created_by: row.created_by ?? null,
+  }));
+}
+
 export async function loadProposalCustomerMessages(
   supabase: SupabaseClient,
   proposalId: string
@@ -21,13 +33,7 @@ export async function loadProposalCustomerMessages(
     .from("proposal_customer_messages")
     .select("id, kind, direction, body, created_at, created_by")
     .eq("proposal_id", proposalId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
-  return ((data as ProposalCustomerMessage[] | null) ?? []).map((row) => ({
-    ...row,
-    direction:
-      row.direction ??
-      (row.kind === "trader_reply" ? "trader" : "customer"),
-    created_by: row.created_by ?? null,
-  }));
+  return mapMessageRows(data as ProposalCustomerMessage[] | null);
 }

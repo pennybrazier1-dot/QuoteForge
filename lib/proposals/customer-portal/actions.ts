@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createServiceRoleClient } from "@/lib/supabase/admin";
 import { formatAttentionReason } from "@/lib/proposals/attention";
+import {
+  buildTraderMessageNotification,
+  notifyConversationParticipant,
+} from "@/lib/proposals/customer-portal/conversation-notify";
 import { loadPublicProposalByToken } from "@/lib/proposals/customer-portal/load-public-proposal";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
@@ -224,6 +228,23 @@ async function submitAttentionMessage(
     },
     created_by: null,
   });
+
+  const traderEmail = loaded.workspace.contact_email?.trim() || null;
+  if (traderEmail) {
+    const notification = buildTraderMessageNotification({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      proposalNumber: loaded.view.proposalNumber,
+      preview: message,
+      proposalId: loaded.proposal.id,
+      kindLabel: kind === "change_request" ? "change request" : "question",
+    });
+    await notifyConversationParticipant({
+      to: traderEmail,
+      ...notification,
+      replyTo: loaded.proposal.customer_email,
+    });
+  }
 
   await revalidateTraderViews(loaded.proposal.id);
   revalidatePath(`/p/${token}`);

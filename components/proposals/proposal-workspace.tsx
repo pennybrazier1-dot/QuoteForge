@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
 import { ChangeRequestPanel } from "@/components/proposals/change-request-panel";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
-import { ProposalCustomerMessagesPanel } from "@/components/proposals/proposal-customer-messages";
+import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
@@ -262,9 +262,18 @@ function ProposalWorkspaceRight({
 
       <div id="customer-replies">
         <SectionCard className="qf-card-form">
-          <WorkspaceCardHeading title="Customer replies" icon={USER_ICON} />
+          <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
           <div className="mt-4">
-            <ProposalCustomerMessagesPanel messages={customerMessages} />
+            <ProposalConversationPanel
+              proposalId={proposal.id}
+              messages={customerMessages}
+              canReply={
+                normalizeProposalStatus(proposal.status) ===
+                  "waiting_for_customer" ||
+                normalizeProposalStatus(proposal.status) === "needs_attention" ||
+                normalizeProposalStatus(proposal.status) === "booked"
+              }
+            />
           </div>
         </SectionCard>
       </div>

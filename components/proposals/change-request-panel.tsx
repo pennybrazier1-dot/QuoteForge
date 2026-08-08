@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo } from "react";
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   markChangeRequestResolved,
@@ -10,6 +10,7 @@ import {
   formatChangeRequestLabel,
   type ChangeRequestAnalysis,
 } from "@/lib/proposals/change-request/analyze-change-request";
+import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 
 const initialState: ChangeRequestActionState = {};
@@ -32,14 +33,12 @@ function scrollToId(id: string) {
 
 export function ChangeRequestPanel({
   proposalId,
-  customerEmail,
-  customerName,
   message,
   analysis,
 }: {
   proposalId: string;
-  customerEmail: string | null;
-  customerName: string | null;
+  customerEmail?: string | null;
+  customerName?: string | null;
   message: ProposalCustomerMessage;
   analysis: ChangeRequestAnalysis;
 }) {
@@ -47,19 +46,6 @@ export function ChangeRequestPanel({
     markChangeRequestResolved,
     initialState
   );
-
-  const mailtoHref = useMemo(() => {
-    if (!customerEmail?.trim()) {
-      return null;
-    }
-    const subject = encodeURIComponent(
-      `About your proposal${customerName ? ` (${customerName})` : ""}`
-    );
-    const body = encodeURIComponent(
-      `Hi${customerName ? ` ${customerName}` : ""},\n\nThanks for your message:\n\n"${message.body}"\n\n`
-    );
-    return `mailto:${customerEmail.trim()}?subject=${subject}&body=${body}`;
-  }, [customerEmail, customerName, message.body]);
 
   return (
     <section
@@ -121,23 +107,13 @@ export function ChangeRequestPanel({
       ) : null}
 
       <div className="qf-change-request-actions">
-        {mailtoHref ? (
-          <a
-            className="qf-btn-primary"
-            href={mailtoHref}
-            onClick={() => scrollToId("customer-replies")}
-          >
-            Reply to customer
-          </a>
-        ) : (
-          <button
-            type="button"
-            className="qf-btn-primary"
-            onClick={() => scrollToId("customer-replies")}
-          >
-            Reply to customer
-          </button>
-        )}
+        <button
+          type="button"
+          className="qf-btn-primary"
+          onClick={() => focusProposalConversationComposer()}
+        >
+          Reply to customer
+        </button>
         <button
           type="button"
           className="qf-btn-secondary"

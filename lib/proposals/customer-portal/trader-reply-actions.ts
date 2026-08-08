@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
+import {
+  buildCustomerReplyNotification,
+  notifyConversationParticipant,
+} from "@/lib/proposals/customer-portal/conversation-notify";
 import { buildTraderReplyInsert } from "@/lib/proposals/customer-portal/message-kinds";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
@@ -17,8 +21,8 @@ function getString(formData: FormData, key: string): string {
 }
 
 /**
- * Stores a trader reply on the proposal conversation thread.
- * Does not email the customer or change proposal content.
+ * Stores a trader reply on the proposal conversation thread and notifies the customer.
+ * Does not edit proposal content or send a revised quote.
  */
 export async function createTraderProposalReply(
   _prev: TraderReplyActionState,
@@ -54,7 +58,9 @@ export async function createTraderProposalReply(
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, workspace_id, status")
+    .select(
+      "id, workspace_id, status, customer_email, customer_name, customer_access_token"
+    )
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -95,9 +101,33 @@ export async function createTraderProposalReply(
     },
   });
 
+  if (proposal.customer_access_token && proposal.customer_email) {
+    const { data: workspace } = await supabase
+      .from("workspaces")
+      .select("business_name, contact_email")
+      .eq("id", proposal.workspace_id)
+      .maybeSingle();
+
+    const notification = buildCustomerReplyNotification({
+      businessName: workspace?.business_name,
+      customerName: proposal.customer_name,
+      preview: body,
+      portalToken: proposal.customer_access_token,
+    });
+
+    await notifyConversationParticipant({
+      to: proposal.customer_email,
+      ...notification,
+      replyTo: workspace?.contact_email,
+    });
+  }
+
   revalidatePath("/dashboard");
   revalidatePath("/proposals");
   revalidatePath(`/proposals/${proposalId}`);
+  if (proposal.customer_access_token) {
+    revalidatePath(`/p/${proposal.customer_access_token}`);
+  }
 
   return { ok: true };
 }
