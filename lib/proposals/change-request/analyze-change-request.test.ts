@@ -61,12 +61,16 @@ describe("buildChangeRequestPanelModel", () => {
       {
         id: "m1",
         kind: "change_request",
+        direction: "customer",
+        created_by: null,
         body: "Can we start next Friday instead?",
         created_at: "2026-08-08T09:00:00.000Z",
       },
       {
         id: "m2",
         kind: "question",
+        direction: "customer",
+        created_by: null,
         body: "How long will it take?",
         created_at: "2026-08-07T09:00:00.000Z",
       },
@@ -84,6 +88,8 @@ describe("buildChangeRequestPanelModel", () => {
         {
           id: "m2",
           kind: "question",
+          direction: "customer",
+          created_by: null,
           body: "How long will it take?",
           created_at: "2026-08-07T09:00:00.000Z",
         },

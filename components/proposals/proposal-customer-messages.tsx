@@ -16,6 +16,8 @@ function kindLabel(kind: ProposalCustomerMessage["kind"]): string {
       return formatAttentionReason("customer_requested_changes");
     case "accept_note":
       return "Customer acceptance note";
+    case "trader_reply":
+      return "Your reply";
     default:
       return "Customer message";
   }

@@ -77,7 +77,9 @@ export async function acceptPublicProposal(
       workspace_id: loaded.workspaceId,
       proposal_id: loaded.proposal.id,
       kind: "accept_note",
+      direction: "customer",
       body: note,
+      created_by: null,
     });
   }
 
@@ -186,7 +188,9 @@ async function submitAttentionMessage(
       workspace_id: loaded.workspaceId,
       proposal_id: loaded.proposal.id,
       kind,
+      direction: "customer",
       body: message,
+      created_by: null,
     });
 
   if (messageError) {
