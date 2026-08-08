@@ -27,7 +27,7 @@ const LABEL_PATTERNS: Record<ChangeRequestLabel, RegExp[]> = {
     /\b(next week|this week|next month|asap)\b/i,
   ],
   scope: [
-    /\b(scope|include|including|add|added|also need|remove|don't include|do not include|extra work|additional work|instead of|change the work|job description|plumbing|electrical|tiling)\b/i,
+    /\b(scope|include|including|add|added|also need|also wants?|may need|remove|don't include|do not include|extra work|additional work|instead of|change the work|changed?|job description|plumbing|electrical|tiling|door|shower|bathroom|kitchen|window|wall|floor)\b/i,
   ],
   materials: [
     /\b(material|materials|tile|tiles|colour|color|finish|brand|product|fixture|suite|spec|specification|upgrade|paint|wood|timber)\b/i,

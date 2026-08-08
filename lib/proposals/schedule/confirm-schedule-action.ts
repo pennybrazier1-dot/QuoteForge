@@ -126,6 +126,13 @@ export async function confirmSchedule(
     };
   }
 
+  // From attention: propose a provisional date only. Customer must accept to confirm.
+  const awaitingCustomerDateAcceptance = currentStatus === "needs_attention";
+  const effectiveBookingConfirmation: BookingConfirmation =
+    awaitingCustomerDateAcceptance
+      ? "provisional"
+      : (bookingConfirmation as BookingConfirmation);
+
   const plannedFields = plannedStartToDbFields({
     plannedStartDate: plannedStartDateText,
     plannedStartDateExact,
@@ -140,22 +147,20 @@ export async function confirmSchedule(
 
   const updatePayload: Record<string, unknown> = {
     estimated_duration: estimatedDuration,
-    booking_confirmation: bookingConfirmation as BookingConfirmation,
+    booking_confirmation: effectiveBookingConfirmation,
     things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
     planned_start_time: plannedStartTime,
     ...plannedFields,
   };
 
-  // Scheduling from attention keeps proposal open unless already booked.
-  // Waiting-for-customer confirm still books the date on the calendar.
   if (currentStatus === "waiting_for_customer") {
     updatePayload.status = "booked";
     updatePayload.accepted_at = proposal.accepted_at ?? now;
     updatePayload.booked_at = now;
     updatePayload.attention_reason = null;
   } else if (currentStatus === "needs_attention") {
-    // Keep needs_attention so trader can still update proposal / reply.
-    // Calendar eligibility already includes needs_attention.
+    // Keep needs_attention until the customer accepts the date or the trader resolves.
+    updatePayload.status = "needs_attention";
   } else if (currentStatus === "booked") {
     updatePayload.status = "booked";
   }
@@ -176,6 +181,10 @@ export async function confirmSchedule(
       ? normalizeProposalStatus(updatePayload.status)
       : currentStatus;
 
+  const eventNote = awaitingCustomerDateAcceptance
+    ? `Provisional date proposed to customer: ${scheduleLabel}`
+    : `Schedule confirmed: ${scheduleLabel} (${effectiveBookingConfirmation})`;
+
   await recordProposalEvent(supabase, {
     workspaceId: proposal.workspace_id,
     proposalId: proposal.id,
@@ -183,17 +192,32 @@ export async function confirmSchedule(
     eventType: "status_change",
     fromStatus: currentStatus,
     toStatus,
-    note: `Schedule confirmed: ${scheduleLabel} (${bookingConfirmation})`,
+    note: eventNote,
     metadata: {
       source: "schedule_workspace",
-      booking_confirmation: bookingConfirmation,
+      booking_confirmation: effectiveBookingConfirmation,
+      awaiting_customer_date_acceptance: awaitingCustomerDateAcceptance,
       planned_start_time: plannedStartTime,
       estimated_duration: estimatedDuration,
       ...plannedFields,
     },
   });
 
+  if (awaitingCustomerDateAcceptance) {
+    await supabase.from("proposal_customer_messages").insert({
+      workspace_id: proposal.workspace_id,
+      proposal_id: proposal.id,
+      kind: "trader_reply",
+      direction: "trader",
+      body: `I've provisionally held ${scheduleLabel}${
+        estimatedDuration ? ` (${estimatedDuration})` : ""
+      }. Please accept this date or request another one.`,
+      created_by: user.id,
+    });
+  }
+
   // Create job when booking; for attention/booked updates, sync an existing job only.
+  // Never mark start date confirmed while awaiting customer acceptance.
   if (toStatus === "booked") {
     const jobResult = await ensureJobForAcceptedProposal(
       supabase,
@@ -214,7 +238,7 @@ export async function confirmSchedule(
     );
 
     if (jobResult.ok) {
-      if (bookingConfirmation === "confirmed") {
+      if (effectiveBookingConfirmation === "confirmed") {
         await syncJobStatusForProposal(supabase, proposal.id, "scheduled");
         await supabase
           .from("job_prep_items")
@@ -235,18 +259,20 @@ export async function confirmSchedule(
       .eq("proposal_id", proposal.id)
       .maybeSingle();
 
-    if (existingJob) {
-      if (bookingConfirmation === "confirmed") {
-        await syncJobStatusForProposal(supabase, proposal.id, "scheduled");
-        await supabase
-          .from("job_prep_items")
-          .update({
-            status: "confirmed",
-            confirmed_at: now,
-          })
-          .eq("job_id", existingJob.id)
-          .eq("item_key", "start_date");
-      }
+    if (
+      existingJob &&
+      effectiveBookingConfirmation === "confirmed" &&
+      !awaitingCustomerDateAcceptance
+    ) {
+      await syncJobStatusForProposal(supabase, proposal.id, "scheduled");
+      await supabase
+        .from("job_prep_items")
+        .update({
+          status: "confirmed",
+          confirmed_at: now,
+        })
+        .eq("job_id", existingJob.id)
+        .eq("item_key", "start_date");
     }
   }
 
@@ -262,29 +288,52 @@ export async function confirmSchedule(
       workspace?.business_name
     );
 
-    await notifyConversationParticipant({
-      to: proposal.customer_email,
-      subject: `${businessName} scheduled your job`,
-      message: [
-        `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
-        "",
-        `${businessName} has scheduled work for:`,
-        scheduleLabel,
-        estimatedDuration ? `Duration: ${estimatedDuration}` : "",
-        "",
-        bookingConfirmation === "confirmed"
-          ? "This date is confirmed."
-          : "This date is provisionally held and may be confirmed soon.",
-        "",
-        "Open your proposal link for details.",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      businessName,
-      ctaUrl: buildCustomerConversationUrl(portalToken),
-      ctaLabel: "View proposal",
-      replyTo: workspace?.contact_email,
-    });
+    if (awaitingCustomerDateAcceptance) {
+      await notifyConversationParticipant({
+        to: proposal.customer_email,
+        subject: `${businessName} proposed a date for your job`,
+        message: [
+          `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
+          "",
+          `${businessName} has proposed this provisional date:`,
+          scheduleLabel,
+          estimatedDuration ? `Duration: ${estimatedDuration}` : "",
+          "",
+          "This date is not confirmed yet.",
+          "Open your proposal to accept this date, or request another date.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        businessName,
+        ctaUrl: buildCustomerConversationUrl(portalToken),
+        ctaLabel: "Respond to proposed date",
+        replyTo: workspace?.contact_email,
+      });
+    } else {
+      await notifyConversationParticipant({
+        to: proposal.customer_email,
+        subject: `${businessName} scheduled your job`,
+        message: [
+          `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
+          "",
+          `${businessName} has scheduled work for:`,
+          scheduleLabel,
+          estimatedDuration ? `Duration: ${estimatedDuration}` : "",
+          "",
+          effectiveBookingConfirmation === "confirmed"
+            ? "This date is confirmed."
+            : "This date is provisionally held and may be confirmed soon.",
+          "",
+          "Open your proposal link for details.",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+        businessName,
+        ctaUrl: buildCustomerConversationUrl(portalToken),
+        ctaLabel: "View proposal",
+        replyTo: workspace?.contact_email,
+      });
+    }
   }
 
   revalidateSchedulePaths(proposalId, proposal.customer_access_token);

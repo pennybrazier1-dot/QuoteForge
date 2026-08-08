@@ -7098,6 +7098,27 @@ button.qf-booking-preview-day-selectable:focus-visible {
   font-style: italic;
 }
 
+.qf-resolution-request-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: var(--foreground);
+}
+
+.qf-resolution-wording {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.qf-resolution-wording p {
+  margin: 0;
+}
+
 .qf-resolution-current-title {
   margin: 0.25rem 0 0;
   font-size: 1.1rem;

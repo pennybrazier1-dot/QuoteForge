@@ -7,6 +7,7 @@ import {
   type BookingConfirmation,
 } from "@/lib/proposals/booking";
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
+import { normalizeProposalStatus } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -59,6 +60,7 @@ export default async function ProposalSchedulePage({
   const bookingConfirmation = isBookingConfirmation(row.booking_confirmation)
     ? (row.booking_confirmation as BookingConfirmation)
     : null;
+  const status = normalizeProposalStatus(row.status);
 
   return (
     <ScheduleWorkspace
@@ -72,6 +74,7 @@ export default async function ProposalSchedulePage({
         plannedStartDateText: row.planned_start_date_text,
         plannedStartTime: row.planned_start_time ?? null,
         bookingConfirmation,
+        requireCustomerDateAcceptance: status === "needs_attention",
       }}
       calendarProposals={calendarProposals}
       suggestedDateText={query.suggestedDate ?? null}

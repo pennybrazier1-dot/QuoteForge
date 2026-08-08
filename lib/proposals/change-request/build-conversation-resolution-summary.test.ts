@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarActionHref,
   buildConversationResolutionSummary,
+  requestItemTitleFromMessage,
 } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 
@@ -17,7 +18,34 @@ function msg(
 }
 
 describe("buildConversationResolutionSummary", () => {
-  it("surfaces the original request and quietly prefills an agreed date", () => {
+  it("aggregates multiple customer requests from the full thread", () => {
+    const summary = buildConversationResolutionSummary([
+      msg({
+        id: "c1",
+        kind: "change_request",
+        body: "May need door changed.",
+        created_at: "2026-08-08T10:00:00.000Z",
+      }),
+      msg({
+        id: "c2",
+        kind: "change_request",
+        body: "Also wants double shower added.",
+        created_at: "2026-08-08T10:05:00.000Z",
+      }),
+    ]);
+
+    expect(summary.customerRequestItems).toEqual(
+      expect.arrayContaining(["Door change", "Add double shower"])
+    );
+    expect(summary.customerRequestItems).toHaveLength(2);
+    expect(summary.originalRequestWording).toMatch(/door changed/i);
+    expect(summary.originalRequestWording).toMatch(/double shower/i);
+    expect(summary.possibleImpacts).toEqual(
+      expect.arrayContaining(["Scope change", "Price review"])
+    );
+  });
+
+  it("quietly prefills an agreed date without losing earlier requests", () => {
     const summary = buildConversationResolutionSummary(
       [
         msg({
@@ -42,29 +70,23 @@ describe("buildConversationResolutionSummary", () => {
       new Date("2026-08-08T12:00:00.000Z")
     );
 
-    expect(summary.customerRequest).toMatch(/timing/i);
-    expect(summary.originalRequestWording).toMatch(/within a month/i);
-    expect(summary.plannedStartExact).toBe("2026-10-12");
-    expect(buildCalendarActionHref("p1", summary)).toContain(
-      "/proposals/p1/schedule"
+    expect(summary.customerRequestItems.some((item) => /timing|date/i.test(item))).toBe(
+      true
     );
+    expect(summary.plannedStartExact).toBe("2026-10-12");
     expect(buildCalendarActionHref("p1", summary)).toContain(
       "suggestedDateExact=2026-10-12"
     );
   });
+});
 
-  it("describes material/scope requests without choosing a next action for the trader", () => {
-    const summary = buildConversationResolutionSummary([
-      msg({
-        id: "c1",
-        kind: "change_request",
-        body: "Please use oak materials and add tiling in the hallway.",
-        created_at: "2026-08-08T10:00:00.000Z",
-      }),
-    ]);
-
-    expect(summary.customerRequest).toMatch(/scope|materials/i);
-    expect(summary.originalRequestWording).toMatch(/oak/i);
-    expect(summary.plannedStartExact).toBeNull();
+describe("requestItemTitleFromMessage", () => {
+  it("titles common scope requests clearly", () => {
+    expect(requestItemTitleFromMessage("May need door changed.")).toBe(
+      "Door change"
+    );
+    expect(requestItemTitleFromMessage("Also wants double shower added.")).toBe(
+      "Add double shower"
+    );
   });
 });

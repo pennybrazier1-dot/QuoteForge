@@ -85,6 +85,8 @@ export type ScheduleWorkspaceProposal = {
   plannedStartDateText: string | null;
   plannedStartTime: string | null;
   bookingConfirmation: BookingConfirmation | null;
+  /** From needs_attention: propose provisional date; customer must accept. */
+  requireCustomerDateAcceptance?: boolean;
 };
 
 function ConfirmButton({
@@ -168,8 +170,13 @@ export function ScheduleWorkspace({
   const [draftDate, setDraftDate] = useState<string | null>(initialExact);
   const [draftTime, setDraftTime] = useState(initialTime);
   const [duration, setDuration] = useState(proposal.estimatedDuration ?? "");
+  const requireCustomerDateAcceptance = Boolean(
+    proposal.requireCustomerDateAcceptance
+  );
   const [bookingStatus, setBookingStatus] = useState<BookingConfirmation>(
-    proposal.bookingConfirmation ?? "provisional"
+    requireCustomerDateAcceptance
+      ? "provisional"
+      : (proposal.bookingConfirmation ?? "provisional")
   );
   const [acknowledgedClash, setAcknowledgedClash] = useState(false);
   const [confirmState, confirmAction] = useActionState(
@@ -569,7 +576,9 @@ export function ScheduleWorkspace({
               </div>
             </dl>
             <p className="qf-schedule-note">
-              Nothing is booked until you confirm
+              {requireCustomerDateAcceptance
+                ? "Saves a provisional hold and asks the customer to accept. Confirmed only after they accept."
+                : "Nothing is booked until you confirm"}
             </p>
           </div>
 
@@ -599,7 +608,9 @@ export function ScheduleWorkspace({
             <input
               type="hidden"
               name="bookingConfirmation"
-              value={bookingStatus}
+              value={
+                requireCustomerDateAcceptance ? "provisional" : bookingStatus
+              }
             />
 
             <label className="qf-schedule-field">
@@ -648,25 +659,34 @@ export function ScheduleWorkspace({
               />
             </label>
 
-            <fieldset className="qf-schedule-status">
-              <legend>Booking status</legend>
-              <div className="qf-schedule-status-options">
-                {BOOKING_CONFIRMATIONS.map((status) => (
-                  <label key={status} className="qf-schedule-status-option">
-                    <input
-                      type="radio"
-                      name="bookingStatusUi"
-                      checked={bookingStatus === status}
-                      onChange={() => {
-                        setBookingStatus(status);
-                        setAcknowledgedClash(false);
-                      }}
-                    />
-                    <span>{formatBookingConfirmation(status)}</span>
-                  </label>
-                ))}
+            {requireCustomerDateAcceptance ? (
+              <div className="qf-schedule-status qf-schedule-customer-accept-note">
+                <p className="qf-schedule-note">
+                  This creates a provisional hold and asks the customer to
+                  accept. The date is only confirmed after they accept.
+                </p>
               </div>
-            </fieldset>
+            ) : (
+              <fieldset className="qf-schedule-status">
+                <legend>Booking status</legend>
+                <div className="qf-schedule-status-options">
+                  {BOOKING_CONFIRMATIONS.map((status) => (
+                    <label key={status} className="qf-schedule-status-option">
+                      <input
+                        type="radio"
+                        name="bookingStatusUi"
+                        checked={bookingStatus === status}
+                        onChange={() => {
+                          setBookingStatus(status);
+                          setAcknowledgedClash(false);
+                        }}
+                      />
+                      <span>{formatBookingConfirmation(status)}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )}
 
             <BookingClashWarnings
               analysis={clashAnalysis}
@@ -682,9 +702,11 @@ export function ScheduleWorkspace({
             <ConfirmButton
               disabled={!canConfirm}
               label={
-                bookingStatus === "confirmed"
-                  ? "Confirm schedule"
-                  : "Hold date (provisional)"
+                requireCustomerDateAcceptance
+                  ? "Propose provisional date"
+                  : bookingStatus === "confirmed"
+                    ? "Confirm schedule"
+                    : "Hold date (provisional)"
               }
             />
           </form>

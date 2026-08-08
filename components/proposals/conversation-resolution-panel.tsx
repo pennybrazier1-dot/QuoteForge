@@ -61,15 +61,35 @@ export function ConversationResolutionPanel({
 
           <div className="qf-resolution-summary">
             <div className="qf-resolution-block">
-              <h3 className="qf-resolution-label">What they requested</h3>
-              <p className="qf-resolution-copy">{summary.customerRequest}</p>
+              <h3 className="qf-resolution-label">Customer requests</h3>
+              {summary.customerRequestItems.length > 0 ? (
+                <ul className="qf-resolution-request-list">
+                  {summary.customerRequestItems.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="qf-resolution-copy">{summary.customerRequest}</p>
+              )}
             </div>
             <div className="qf-resolution-block">
               <h3 className="qf-resolution-label">Original wording</h3>
-              <p className="qf-resolution-copy qf-resolution-quote">
-                “{summary.originalRequestWording}”
-              </p>
+              <div className="qf-resolution-copy qf-resolution-quote qf-resolution-wording">
+                {summary.originalRequestWording.split("\n").map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
             </div>
+            {summary.possibleImpacts.length > 0 ? (
+              <div className="qf-resolution-block">
+                <h3 className="qf-resolution-label">Possible impact</h3>
+                <ul className="qf-resolution-request-list">
+                  {summary.possibleImpacts.map((impact) => (
+                    <li key={impact}>{impact}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </>
       ) : null}

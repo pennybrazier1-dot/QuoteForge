@@ -24,6 +24,9 @@ export type PublicProposalViewModel = {
   canRespond: boolean;
   isAccepted: boolean;
   isClosed: boolean;
+  /** Trader proposed a provisional date; customer must accept or request another. */
+  canRespondToProposedDate: boolean;
+  proposedDateLabel: string | null;
   businessName: string;
   tradeType: string | null;
   contactEmail: string | null;
@@ -46,6 +49,8 @@ type PortalProposalRow = ProposalPdfSource & {
   accepted_at: string | null;
   customer_id: string | null;
   job_address: string | null;
+  booking_confirmation?: string | null;
+  planned_start_time?: string | null;
 };
 
 function createPortalClient() {
@@ -84,7 +89,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, customer_id, job_address`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, customer_id, job_address, booking_confirmation, planned_start_time`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -110,8 +115,7 @@ export async function loadPublicProposalByToken(
   const status = normalizeProposalStatus(row.status);
   const canRespond =
     status === "waiting_for_customer" || status === "needs_attention";
-  const isAccepted =
-    status === "booked" || status === "completed" || Boolean(row.accepted_at);
+  const isAccepted = status === "booked" || status === "completed";
   const isClosed = status === "cancelled";
 
   const plannedStartLabel =
@@ -121,6 +125,11 @@ export async function loadPublicProposalByToken(
           new Date(row.planned_start_date)
         )
       : null);
+  const canRespondToProposedDate =
+    canRespond &&
+    !isClosed &&
+    row.booking_confirmation === "provisional" &&
+    Boolean(plannedStartLabel);
 
   return {
     ok: true,
@@ -136,6 +145,8 @@ export async function loadPublicProposalByToken(
       canRespond: canRespond && !isClosed,
       isAccepted,
       isClosed,
+      canRespondToProposedDate,
+      proposedDateLabel: canRespondToProposedDate ? plannedStartLabel : null,
       businessName: resolveCustomerFacingBusinessName(workspaceRow.business_name),
       tradeType: workspaceRow.trade_type,
       contactEmail: workspaceRow.contact_email,

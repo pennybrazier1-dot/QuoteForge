@@ -14,7 +14,12 @@ import { normalizeProposalStatus } from "@/lib/proposals/status";
 export type CustomerPortalActionState = {
   ok?: boolean;
   error?: string;
-  result?: "accepted" | "question" | "changes";
+  result?:
+    | "accepted"
+    | "question"
+    | "changes"
+    | "date_accepted"
+    | "date_change_requested";
 };
 
 function createPortalClient() {
@@ -253,4 +258,221 @@ async function submitAttentionMessage(
     ok: true,
     result: kind === "question" ? "question" : "changes",
   };
+}
+
+/**
+ * Customer accepts a provisional date proposed by the trader.
+ * Confirms booking_confirmation only — does not silently rewrite other fields.
+ */
+export async function acceptProposedScheduleDate(
+  _prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  const token = getString(formData, "token");
+  const loaded = await loadPublicProposalByToken(token);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+
+  if (!loaded.view.canRespondToProposedDate || !loaded.view.proposedDateLabel) {
+    return { error: "There is no provisional date waiting for your response." };
+  }
+
+  const supabase = createPortalClient();
+  if (!supabase) {
+    return { error: "The proposal portal is not configured yet." };
+  }
+
+  const fromStatus = normalizeProposalStatus(loaded.proposal.status);
+  const now = new Date().toISOString();
+  const dateLabel = loaded.view.proposedDateLabel;
+
+  const { error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      booking_confirmation: "confirmed",
+      status: "needs_attention",
+    })
+    .eq("id", loaded.proposal.id)
+    .eq("booking_confirmation", "provisional")
+    .in("status", ["waiting_for_customer", "needs_attention"]);
+
+  if (updateError) {
+    return { error: updateError.message || "Could not confirm this date." };
+  }
+
+  await supabase.from("proposal_customer_messages").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    kind: "accept_note",
+    direction: "customer",
+    body: `Yes, ${dateLabel} works for me.`,
+    created_by: null,
+  });
+
+  await supabase.from("proposal_status_events").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    event_type: "status_change",
+    from_status: fromStatus,
+    to_status: "needs_attention",
+    note: `Customer accepted proposed date: ${dateLabel}`,
+    metadata: {
+      source: "customer_portal",
+      action: "accept_proposed_date",
+      booking_confirmation: "confirmed",
+      planned_start_label: dateLabel,
+    },
+    created_by: null,
+    created_at: now,
+  });
+
+  const { data: existingJob } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("proposal_id", loaded.proposal.id)
+    .maybeSingle();
+
+  if (existingJob) {
+    await supabase
+      .from("jobs")
+      .update({ status: "scheduled" })
+      .eq("id", existingJob.id);
+    await supabase
+      .from("job_prep_items")
+      .update({
+        status: "confirmed",
+        confirmed_at: now,
+      })
+      .eq("job_id", existingJob.id)
+      .eq("item_key", "start_date");
+  }
+
+  const traderEmail = loaded.workspace.contact_email?.trim() || null;
+  if (traderEmail) {
+    const notification = buildTraderMessageNotification({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      proposalNumber: loaded.view.proposalNumber,
+      preview: `Accepted proposed date: ${dateLabel}`,
+      proposalId: loaded.proposal.id,
+      kindLabel: "date confirmation",
+    });
+    await notifyConversationParticipant({
+      to: traderEmail,
+      ...notification,
+      replyTo: loaded.proposal.customer_email,
+    });
+  }
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+  revalidatePath("/calendar");
+
+  return { ok: true, result: "date_accepted" };
+}
+
+/**
+ * Customer asks for a different date after a provisional proposal.
+ */
+export async function requestAnotherScheduleDate(
+  _prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  const token = getString(formData, "token");
+  const message = getString(formData, "message");
+
+  if (!message) {
+    return { error: "Please tell us what dates would work better." };
+  }
+
+  if (message.length > 4000) {
+    return { error: "Please keep your message under 4,000 characters." };
+  }
+
+  const loaded = await loadPublicProposalByToken(token);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+
+  if (!loaded.view.canRespondToProposedDate) {
+    return { error: "There is no provisional date waiting for your response." };
+  }
+
+  const supabase = createPortalClient();
+  if (!supabase) {
+    return { error: "The proposal portal is not configured yet." };
+  }
+
+  const fromStatus = normalizeProposalStatus(loaded.proposal.status);
+  const currentDate = loaded.view.proposedDateLabel;
+
+  const { error: messageError } = await supabase
+    .from("proposal_customer_messages")
+    .insert({
+      workspace_id: loaded.workspaceId,
+      proposal_id: loaded.proposal.id,
+      kind: "change_request",
+      direction: "customer",
+      body: currentDate
+        ? `I'd like a different date instead of ${currentDate}. ${message}`
+        : message,
+      created_by: null,
+    });
+
+  if (messageError) {
+    return { error: messageError.message || "Could not send your message." };
+  }
+
+  const { error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      status: "needs_attention",
+      attention_reason: "customer_requested_date_change",
+      // Keep the provisional hold visible until the trader proposes another date.
+      booking_confirmation: "provisional",
+    })
+    .eq("id", loaded.proposal.id)
+    .in("status", ["waiting_for_customer", "needs_attention"]);
+
+  if (updateError) {
+    return { error: updateError.message || "Could not update this proposal." };
+  }
+
+  await supabase.from("proposal_status_events").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    event_type: "status_change",
+    from_status: fromStatus,
+    to_status: "needs_attention",
+    note: `${formatAttentionReason("customer_requested_date_change")}: ${message}`,
+    metadata: {
+      source: "customer_portal",
+      action: "request_another_date",
+      previous_proposed_date: currentDate,
+    },
+    created_by: null,
+  });
+
+  const traderEmail = loaded.workspace.contact_email?.trim() || null;
+  if (traderEmail) {
+    const notification = buildTraderMessageNotification({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      proposalNumber: loaded.view.proposalNumber,
+      preview: message,
+      proposalId: loaded.proposal.id,
+      kindLabel: "date change request",
+    });
+    await notifyConversationParticipant({
+      to: traderEmail,
+      ...notification,
+      replyTo: loaded.proposal.customer_email,
+    });
+  }
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+
+  return { ok: true, result: "date_change_requested" };
 }
