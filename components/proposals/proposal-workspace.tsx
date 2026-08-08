@@ -179,7 +179,7 @@ function ProposalWorkspaceLeft({
         {hasStructured && structured!.scopeOfWork.length > 0 ? (
           <BulletList items={structured!.scopeOfWork} />
         ) : (
-          <EmptySection message="Scope of work will appear after you generate and accept an AI draft." />
+          <EmptySection message="Scope of work will appear after you generate and accept a proposal draft." />
         )}
       </WorkspaceSection>
 
@@ -190,7 +190,7 @@ function ProposalWorkspaceLeft({
             <p className="mt-3 text-xs text-muted">{MATERIALS_REVIEW_NOTE}</p>
           </>
         ) : (
-          <EmptySection message="Materials will be listed here once the AI draft is ready." />
+          <EmptySection message="Materials will be listed here once the proposal draft is ready." />
         )}
       </WorkspaceSection>
 
@@ -206,11 +206,11 @@ function ProposalWorkspaceLeft({
         {hasStructured && structured!.paymentTerms ? (
           <p className="whitespace-pre-wrap">{structured!.paymentTerms}</p>
         ) : (
-          <EmptySection message="Payment terms will be added when you accept an AI draft." />
+          <EmptySection message="Payment terms will be added when you accept a proposal draft." />
         )}
       </WorkspaceSection>
 
-      <WorkspaceSection title="AI Suggestions" icon={SPARKLE_ICON}>
+      <WorkspaceSection title="Things to confirm" icon={SPARKLE_ICON}>
         {hasStructured && structured!.thingsToConfirm.length > 0 ? (
           <div className="space-y-3">
             <p className="text-sm text-muted">
@@ -221,15 +221,15 @@ function ProposalWorkspaceLeft({
         ) : proposal.rough_notes ? (
           <div className="space-y-3">
             <p className="text-sm text-muted">
-              Generate an AI draft to turn your site notes into structured
-              suggestions.
+              Generate a proposal draft to turn your site notes into structured
+              items to confirm.
             </p>
             <p className="whitespace-pre-wrap text-sm leading-relaxed">
               {proposal.rough_notes}
             </p>
           </div>
         ) : (
-          <EmptySection message="AI suggestions will appear after you write site notes and generate a draft." />
+          <EmptySection message="Things to confirm will appear after you write site notes and generate a draft." />
         )}
       </WorkspaceSection>
     </div>
@@ -323,7 +323,11 @@ export function ProposalWorkspace({
   );
   const resolutionSummary =
     status === "needs_attention" && hasCustomerMessages
-      ? buildConversationResolutionSummary(customerMessages)
+      ? buildConversationResolutionSummary(customerMessages, new Date(), {
+          plannedStartDateText: proposal.planned_start_date_text,
+          plannedStartDate: proposal.planned_start_date,
+          jobSummary: proposal.job_summary,
+        })
       : null;
   const actionContext = {
     status: proposal.status,

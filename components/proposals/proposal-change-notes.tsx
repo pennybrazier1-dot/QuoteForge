@@ -61,19 +61,19 @@ export function ProposalChangeNotes({
       </header>
 
       <section className="qf-revision-card" aria-label="Conversation summary">
-        <h2 className="qf-revision-card-title">From the conversation</h2>
+        <h2 className="qf-revision-card-title">Conversation summary</h2>
         <div className="qf-resolution-summary">
           <div className="qf-resolution-block">
-            <h3 className="qf-resolution-label">What they asked</h3>
-            <p className="qf-resolution-copy">{summary.customerAsked}</p>
+            <h3 className="qf-resolution-label">Customer request</h3>
+            <p className="qf-resolution-copy">{summary.customerRequest}</p>
           </div>
           <div className="qf-resolution-block">
-            <h3 className="qf-resolution-label">What was agreed</h3>
-            <p className="qf-resolution-copy">{summary.whatWasAgreed}</p>
+            <h3 className="qf-resolution-label">Conversation outcome</h3>
+            <p className="qf-resolution-copy">{summary.conversationOutcome}</p>
           </div>
           <div className="qf-resolution-block">
-            <h3 className="qf-resolution-label">Possible impact</h3>
-            <p className="qf-resolution-copy">{summary.possibleImpact}</p>
+            <h3 className="qf-resolution-label">Next action</h3>
+            <p className="qf-resolution-copy">{summary.nextActionLabel}</p>
           </div>
         </div>
       </section>

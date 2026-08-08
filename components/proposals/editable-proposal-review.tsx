@@ -285,7 +285,7 @@ export function EditableProposalReview({
       </SectionCard>
 
       <SectionCard className="qf-card-form">
-        <h2 className="qf-card-heading">Things to Confirm</h2>
+        <h2 className="qf-card-heading">Things to confirm</h2>
         <div className="mt-4">
           <ReviewTextarea
             id="reviewThingsToConfirm"

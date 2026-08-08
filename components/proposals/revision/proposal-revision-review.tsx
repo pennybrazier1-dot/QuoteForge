@@ -174,17 +174,17 @@ export function ProposalRevisionReview({
         </div>
         <h1 className="qf-revision-title">Review changes</h1>
         <p className="qf-revision-intro">
-          Suggestions from the conversation only. Accepting creates a next
+          Proposed updates from the conversation only. Accepting creates a next
           action — it does not change the proposal, job, calendar, or send
           email.
         </p>
       </header>
 
       <div className="qf-revision-banner" role="status">
-        <p className="qf-revision-banner-title">AI suggests — you decide</p>
+        <p className="qf-revision-banner-title">Proposed update — you decide</p>
         <p className="qf-revision-banner-copy">
-          Accept a suggestion to get a controlled next step. You still confirm
-          any real change in the linked tool.
+          Accept a proposed update to get a controlled next step. You still
+          confirm any real change in the linked tool.
         </p>
       </div>
 
@@ -251,12 +251,12 @@ export function ProposalRevisionReview({
         </div>
       </section>
 
-      <section className="qf-revision-card" aria-label="Suggested changes">
-        <h2 className="qf-revision-card-title">Suggested changes</h2>
+      <section className="qf-revision-card" aria-label="Proposed updates">
+        <h2 className="qf-revision-card-title">Proposed updates</h2>
         {model.suggestions.length === 0 ? (
           <p className="qf-revision-card-copy">
-            No clear changes were detected yet. Reply in the conversation, then
-            open this screen again.
+            No clear customer requests to act on yet. Reply in the conversation,
+            then open this screen again.
           </p>
         ) : (
           <ul className="qf-revision-suggestion-list">
@@ -282,14 +282,14 @@ export function ProposalRevisionReview({
                   </div>
 
                   <div className="qf-revision-suggestion-block">
-                    <h3>Evidence</h3>
+                    <h3>Customer request</h3>
                     <p className="qf-revision-quote">
                       “{suggestion.evidenceQuote}”
                     </p>
                   </div>
 
                   <div className="qf-revision-suggestion-block">
-                    <h3>Suggested change</h3>
+                    <h3>Proposed update</h3>
                     {isEditing ? (
                       <textarea
                         className="qf-revision-edit-textarea"
@@ -413,8 +413,8 @@ export function ProposalRevisionReview({
                       ) : null}
                       {action.status === "skipped" ? (
                         <p className="qf-revision-next-action-copy">
-                          Skipped — suggestion stays accepted, but no next step
-                          is queued.
+                          Skipped — proposed update stays accepted, but no next
+                          step is queued.
                         </p>
                       ) : (
                         <div className="qf-revision-next-action-buttons">

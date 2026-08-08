@@ -39,7 +39,7 @@ const VAGUE_DATE_WINDOW_PATTERN =
   /\b(within a month|within the month|in a month|asap|whenever|soon|this week|next week|next month|by the end of (the )?month)\b/i;
 
 const CUSTOMER_CONFIRMATION_PATTERN =
-  /\b(yes|yeah|yep|yup|that (date|day|works)|that('s| is) fine|that works|perfect|agreed|sounds good|ok(ay)?|please book|go ahead|confirmed|happy with that|fine by me)\b/i;
+  /\b(yes|yeah|yep|yup|that (date|day|works)|that date is fine|that('s| is) fine|that works( for me)?|perfect|agreed|sounds good|ok(ay)?|please book|go ahead|confirmed|happy with that|fine by me|fine with that)\b/i;
 
 export type ConversationDateAgreement = {
   dateText: string;
@@ -213,7 +213,12 @@ export function findLatestConfirmedDateAgreement(
       const confirms =
         isCustomerConfirmation(customerMessage.body) ||
         (customerDate !== null &&
-          customerDate.toLowerCase() === dateText.toLowerCase());
+          customerDate.toLowerCase() === dateText.toLowerCase()) ||
+        // Short affirmative replies after a dated trader offer.
+        (customerMessage.body.trim().length <= 80 &&
+          /\b(yes|yeah|yep|ok(ay)?|fine|perfect|agreed)\b/i.test(
+            customerMessage.body
+          ));
 
       if (!confirms) {
         continue;

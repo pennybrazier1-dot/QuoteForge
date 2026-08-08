@@ -28,7 +28,9 @@ export default async function ProposalRevisePage({ params }: PageProps) {
   const [{ data: proposal, error }, messages] = await Promise.all([
     supabase
       .from("proposals")
-      .select("id, proposal_number")
+      .select(
+        "id, proposal_number, planned_start_date, planned_start_date_text, job_summary"
+      )
       .eq("id", id)
       .maybeSingle(),
     loadProposalCustomerMessages(supabase, id),
@@ -38,7 +40,11 @@ export default async function ProposalRevisePage({ params }: PageProps) {
     notFound();
   }
 
-  const summary = buildConversationResolutionSummary(messages);
+  const summary = buildConversationResolutionSummary(messages, new Date(), {
+    plannedStartDate: proposal.planned_start_date,
+    plannedStartDateText: proposal.planned_start_date_text,
+    jobSummary: proposal.job_summary,
+  });
 
   return (
     <ProposalChangeNotes

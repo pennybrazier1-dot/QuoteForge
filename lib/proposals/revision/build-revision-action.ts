@@ -53,7 +53,7 @@ export function formatRevisionActionDescription(
 ): string {
   switch (actionType) {
     case "open_calendar":
-      return "Opens booking with the suggested date prefilled, plus your availability. Nothing is saved until you confirm.";
+      return "Opens the calendar scheduling workspace with the suggested date. Nothing is saved until you confirm.";
     case "update_materials":
       return "Open the proposal materials area. Live materials are not changed until you save.";
     case "review_scope_and_price":

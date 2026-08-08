@@ -13,7 +13,7 @@ export function StructuredProposalView({
         <div>
           <h3 className="text-lg font-semibold">Proposal</h3>
           <p className="mt-1 text-sm text-muted">
-            Accepted AI draft. You can still edit site notes and save changes.
+            Accepted proposal draft. You can still edit site notes and save changes.
           </p>
         </div>
         <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">

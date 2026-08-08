@@ -1,5 +1,5 @@
 /**
- * Controlled next actions after a trader accepts an AI suggestion (50C.1.5a).
+ * Controlled next actions after a trader accepts a proposed update (50C.1.5a).
  *
  * Creating or updating a RevisionAction never writes proposal, job, calendar,
  * or email data. Opening an action only navigates to an existing tool.

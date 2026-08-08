@@ -23,7 +23,7 @@ describe("buildConversationResolutionSummary", () => {
         msg({
           id: "c1",
           kind: "change_request",
-          body: "I would like it completed within a month.",
+          body: "Would like the work completed within a month.",
           created_at: "2026-08-08T10:00:00.000Z",
         }),
         msg({
@@ -42,11 +42,13 @@ describe("buildConversationResolutionSummary", () => {
       new Date("2026-08-08T12:00:00.000Z")
     );
 
-    expect(summary.customerAsked).toMatch(/timing/i);
-    expect(summary.customerAsked).toMatch(/within a month/i);
-    expect(summary.whatWasAgreed).toMatch(/12 October/i);
-    expect(summary.whatWasAgreed).not.toMatch(/within a month/i);
-    expect(summary.possibleImpact).toMatch(/[Tt]iming|calendar/i);
+    expect(summary.customerRequest).toMatch(/timing/i);
+    expect(summary.customerRequest).toMatch(/within a month/i);
+    expect(summary.conversationOutcome).toMatch(/12 October/i);
+    expect(summary.conversationOutcome).toMatch(/trader offered/i);
+    expect(summary.conversationOutcome).toMatch(/customer confirmed/i);
+    expect(summary.conversationOutcome).not.toMatch(/within a month/i);
+    expect(summary.nextActionLabel).toMatch(/calendar/i);
     expect(summary.recommendedAction).toBe("open_calendar");
     expect(summary.plannedStartExact).toBe("2026-10-12");
     expect(buildCalendarActionHref("p1", summary)).toContain(
@@ -68,6 +70,28 @@ describe("buildConversationResolutionSummary", () => {
     ]);
 
     expect(summary.recommendedAction).toBe("update_proposal");
-    expect(summary.possibleImpact).toMatch(/[Ss]cope|materials/i);
+    expect(summary.nextActionLabel).toMatch(/proposal/i);
+  });
+
+  it("uses proposal schedule only as context when nothing is agreed yet", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Can we talk about the start date?",
+          created_at: "2026-08-08T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z"),
+      {
+        plannedStartDate: "2026-09-01",
+        plannedStartDateText: "1 September 2026",
+      }
+    );
+
+    expect(summary.conversationOutcome).toMatch(/no firm agreement|no confirmed/i);
+    expect(summary.conversationOutcome).toMatch(/1 September|September/i);
+    expect(summary.recommendedAction).toBe("reply");
   });
 });

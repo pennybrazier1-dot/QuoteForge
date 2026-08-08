@@ -73,7 +73,7 @@ export function StructuredProposalContent({
         </ProposalSectionBlock>
       ) : null}
 
-      <ProposalSectionBlock title="Things to Confirm">
+      <ProposalSectionBlock title="Things to confirm">
         {proposal.thingsToConfirm.length > 0 ? (
           <BulletList items={proposal.thingsToConfirm} />
         ) : (
