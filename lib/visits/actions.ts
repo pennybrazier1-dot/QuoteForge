@@ -17,6 +17,13 @@ export type VisitActionState = {
   ok?: boolean;
 };
 
+export type OrganiseVisitNotesState = {
+  error?: string;
+  organised?: import("@/lib/visits/organise-visit-notes").VisitNotesOrganised;
+  /** Notes text that produced the organised summary — used to hide stale results. */
+  notesSnapshot?: string;
+};
+
 function getString(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
@@ -160,6 +167,55 @@ export async function updateVisitNotesAction(
 
   revalidateVisitPaths(visitId, existing.customer_id);
   return { ok: true };
+}
+
+export async function organiseVisitNotesAction(
+  _prev: OrganiseVisitNotesState,
+  formData: FormData
+): Promise<OrganiseVisitNotesState> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { error: context.error };
+  }
+
+  const visitId = getString(formData, "visitId");
+  const notes = getString(formData, "notes");
+  if (!visitId) {
+    return { error: "Visit not found." };
+  }
+  if (!notes) {
+    return { error: "Write what you found during the visit first." };
+  }
+
+  const existing = await getVisit(context.supabase, context.workspaceId, visitId);
+  if (!existing) {
+    return { error: "Visit not found." };
+  }
+
+  const { error: saveError } = await context.supabase
+    .from("visits")
+    .update({ notes })
+    .eq("id", visitId)
+    .eq("workspace_id", context.workspaceId);
+
+  if (saveError) {
+    return { error: saveError.message || "Could not save notes." };
+  }
+
+  try {
+    const { organiseVisitNotesWithAi } = await import(
+      "@/lib/visits/organise-visit-notes-ai"
+    );
+    const organised = await organiseVisitNotesWithAi(notes);
+    revalidateVisitPaths(visitId, existing.customer_id);
+    return { organised, notesSnapshot: notes };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Could not organise notes. Please try again.";
+    return { error: message };
+  }
 }
 
 export async function updateVisitStatusAction(

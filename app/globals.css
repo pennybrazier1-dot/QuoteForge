@@ -7399,6 +7399,16 @@ button.qf-booking-preview-day-selectable:focus-visible {
   resize: vertical;
 }
 
+.qf-visit-notes-large {
+  min-height: 16rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.qf-visit-organise-form {
+  margin-top: 0.75rem;
+}
+
 .qf-visit-check {
   display: flex;
   align-items: center;

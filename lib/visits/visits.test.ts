@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { extractVisitNotes } from "@/lib/visits/extract-visit-notes";
+import { extractOrganisedVisitNotes } from "@/lib/visits/extract-visit-notes";
 import { buildCalendarJobsFromVisits } from "@/lib/visits/calendar";
+import {
+  parseVisitNotesOrganised,
+} from "@/lib/visits/organise-visit-notes";
 import {
   formatVisitDuration,
   formatVisitStatus,
@@ -52,19 +55,45 @@ describe("visit helpers", () => {
     expect(jobs[0]?.customer).toBe("Alex Customer");
   });
 
-  it("extracts structured notes from free text", () => {
-    const extract = extractVisitNotes(
+  it("extracts organised notes categories from free text", () => {
+    const organised = extractOrganisedVisitNotes(
       [
         "Width 3200mm by 1800mm height",
         "Parking on street, access via side gate",
         "Customer prefers grey tiles",
-        "Return with quote next week",
+        "Hoping to start next week",
+        "Existing floor is uneven",
+        "Need full kitchen refit",
       ].join("\n")
     );
 
-    expect(extract.measurements).toMatch(/3200mm/i);
-    expect(extract.accessNotes).toMatch(/gate/i);
-    expect(extract.materialsNotes).toMatch(/tiles/i);
-    expect(extract.followUpNotes).toMatch(/quote/i);
+    expect(organised.measurements).toMatch(/3200mm/i);
+    expect(organised.access).toMatch(/gate/i);
+    expect(organised.materials).toMatch(/tiles/i);
+    expect(organised.customerChoices).toMatch(/prefers/i);
+    expect(organised.timing).toMatch(/next week/i);
+    expect(organised.siteConditions).toMatch(/uneven/i);
+    expect(organised.requirements).toMatch(/refit/i);
+  });
+
+  it("parses AI organised note payloads safely", () => {
+    const organised = parseVisitNotesOrganised({
+      measurements: " 2.1m x 1.8m ",
+      materials: "Grey tiles",
+      access: "",
+      siteConditions: null,
+      requirements: "Refit bathroom",
+      customerChoices: "White suite",
+      timing: "Week commencing 18th",
+      extra: "ignore",
+    });
+
+    expect(organised.measurements).toBe("2.1m x 1.8m");
+    expect(organised.materials).toBe("Grey tiles");
+    expect(organised.access).toBe("");
+    expect(organised.siteConditions).toBe("");
+    expect(organised.requirements).toBe("Refit bathroom");
+    expect(organised.customerChoices).toBe("White suite");
+    expect(organised.timing).toBe("Week commencing 18th");
   });
 });

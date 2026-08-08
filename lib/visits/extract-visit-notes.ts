@@ -1,35 +1,58 @@
 /**
- * Quiet structured extract from visit notes (same pattern as proposal change notes).
- * No AI labels in UI — heuristic only.
+ * On-device fallback when AI is unavailable — quiet line matching only.
+ * Prefer organiseVisitNotesWithAi in the trader UI.
  */
 
-export type VisitNotesExtract = {
-  measurements: string;
-  accessNotes: string;
-  materialsNotes: string;
-  followUpNotes: string;
-};
+import {
+  EMPTY_VISIT_NOTES_ORGANISED,
+  type VisitNotesOrganised,
+} from "@/lib/visits/organise-visit-notes";
 
-const MEASURE_PATTERN =
-  /\b(measure|measurement|mm|cm|metre|meter|length|width|height|size)\b/i;
-const ACCESS_PATTERN =
-  /\b(access|parking|alley|stairs|scaffold|permission|key|gate)\b/i;
-const MATERIALS_PATTERN =
-  /\b(material|materials|tile|tiles|wood|timber|paint|finish|suite)\b/i;
+const PATTERNS: Array<{ key: keyof VisitNotesOrganised; pattern: RegExp }> = [
+  {
+    key: "measurements",
+    pattern:
+      /\b(measure|measurement|mm|cm|metre|meter|length|width|height|size|approx)\b/i,
+  },
+  {
+    key: "materials",
+    pattern:
+      /\b(material|materials|tile|tiles|wood|timber|paint|finish|suite|brick|concrete)\b/i,
+  },
+  {
+    key: "access",
+    pattern:
+      /\b(access|parking|park|alley|stairs|scaffold|permission|key|gate)\b/i,
+  },
+  {
+    key: "siteConditions",
+    pattern:
+      /\b(damp|condition|uneven|damage|rotted|asbestos|existing|substrate|floor)\b/i,
+  },
+  {
+    key: "requirements",
+    pattern:
+      /\b(need|needs|require|required|wants?|scope|replace|install|refit|remove)\b/i,
+  },
+  {
+    key: "customerChoices",
+    pattern:
+      /\b(prefer|prefers|chose|chosen|choice|colour|color|style|brand|finish)\b/i,
+  },
+  {
+    key: "timing",
+    pattern:
+      /\b(timing|duration|days?|weeks?|start|asap|deadline|month|morning|afternoon)\b/i,
+  },
+];
 
-function matchingLines(pattern: RegExp, lines: string[]): string[] {
-  return lines.filter((line) => pattern.test(line));
-}
+/** @deprecated Use extractOrganisedVisitNotes — kept for older imports. */
+export type VisitNotesExtract = VisitNotesOrganised;
 
-export function extractVisitNotes(notes: string): VisitNotesExtract {
+export function extractOrganisedVisitNotes(notes: string): VisitNotesOrganised {
   const cleaned = notes.replace(/\r\n/g, "\n").trim();
   if (!cleaned) {
-    return {
-      measurements: "",
-      accessNotes: "",
-      materialsNotes: "",
-      followUpNotes: "",
-    };
+    return { ...EMPTY_VISIT_NOTES_ORGANISED };
   }
 
   const lines = cleaned
@@ -37,31 +60,39 @@ export function extractVisitNotes(notes: string): VisitNotesExtract {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const measurements = matchingLines(MEASURE_PATTERN, lines).join("\n");
-  const accessNotes = matchingLines(ACCESS_PATTERN, lines).join("\n");
-  const materialsNotes = matchingLines(MATERIALS_PATTERN, lines).join("\n");
-  const claimed = new Set(
-    [
-      ...matchingLines(MEASURE_PATTERN, lines),
-      ...matchingLines(ACCESS_PATTERN, lines),
-      ...matchingLines(MATERIALS_PATTERN, lines),
-    ]
-  );
-  const followUpNotes = lines.filter((line) => !claimed.has(line)).join("\n");
+  const result: VisitNotesOrganised = { ...EMPTY_VISIT_NOTES_ORGANISED };
+  const claimed = new Set<string>();
 
-  if (!measurements && !accessNotes && !materialsNotes && !followUpNotes) {
+  for (const { key, pattern } of PATTERNS) {
+    const matched = lines.filter((line) => pattern.test(line));
+    if (matched.length > 0) {
+      result[key] = matched.join("\n");
+      for (const line of matched) {
+        claimed.add(line);
+      }
+    }
+  }
+
+  const leftover = lines.filter((line) => !claimed.has(line)).join("\n");
+  if (leftover && !result.requirements) {
+    result.requirements = leftover;
+  } else if (leftover) {
+    result.requirements = [result.requirements, leftover]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (!PATTERNS.some(({ key }) => result[key])) {
     return {
-      measurements: "",
-      accessNotes: "",
-      materialsNotes: "",
-      followUpNotes: cleaned,
+      ...EMPTY_VISIT_NOTES_ORGANISED,
+      requirements: cleaned,
     };
   }
 
-  return {
-    measurements,
-    accessNotes,
-    materialsNotes,
-    followUpNotes,
-  };
+  return result;
+}
+
+/** @deprecated Prefer extractOrganisedVisitNotes */
+export function extractVisitNotes(notes: string): VisitNotesOrganised {
+  return extractOrganisedVisitNotes(notes);
 }
