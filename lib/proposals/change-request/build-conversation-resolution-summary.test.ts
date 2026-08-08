@@ -17,7 +17,7 @@ function msg(
 }
 
 describe("buildConversationResolutionSummary", () => {
-  it("prefers an agreed start date over an early vague request", () => {
+  it("surfaces the original request and quietly prefills an agreed date", () => {
     const summary = buildConversationResolutionSummary(
       [
         msg({
@@ -43,13 +43,7 @@ describe("buildConversationResolutionSummary", () => {
     );
 
     expect(summary.customerRequest).toMatch(/timing/i);
-    expect(summary.customerRequest).toMatch(/within a month/i);
-    expect(summary.conversationOutcome).toMatch(/12 October/i);
-    expect(summary.conversationOutcome).toMatch(/trader offered/i);
-    expect(summary.conversationOutcome).toMatch(/customer confirmed/i);
-    expect(summary.conversationOutcome).not.toMatch(/within a month/i);
-    expect(summary.nextActionLabel).toMatch(/calendar/i);
-    expect(summary.recommendedAction).toBe("open_calendar");
+    expect(summary.originalRequestWording).toMatch(/within a month/i);
     expect(summary.plannedStartExact).toBe("2026-10-12");
     expect(buildCalendarActionHref("p1", summary)).toContain(
       "/proposals/p1/schedule"
@@ -59,7 +53,7 @@ describe("buildConversationResolutionSummary", () => {
     );
   });
 
-  it("recommends updating the proposal for material or scope requests", () => {
+  it("describes material/scope requests without choosing a next action for the trader", () => {
     const summary = buildConversationResolutionSummary([
       msg({
         id: "c1",
@@ -69,29 +63,8 @@ describe("buildConversationResolutionSummary", () => {
       }),
     ]);
 
-    expect(summary.recommendedAction).toBe("update_proposal");
-    expect(summary.nextActionLabel).toMatch(/proposal/i);
-  });
-
-  it("uses proposal schedule only as context when nothing is agreed yet", () => {
-    const summary = buildConversationResolutionSummary(
-      [
-        msg({
-          id: "c1",
-          kind: "change_request",
-          body: "Can we talk about the start date?",
-          created_at: "2026-08-08T10:00:00.000Z",
-        }),
-      ],
-      new Date("2026-08-08T12:00:00.000Z"),
-      {
-        plannedStartDate: "2026-09-01",
-        plannedStartDateText: "1 September 2026",
-      }
-    );
-
-    expect(summary.conversationOutcome).toMatch(/no firm agreement|no confirmed/i);
-    expect(summary.conversationOutcome).toMatch(/1 September|September/i);
-    expect(summary.recommendedAction).toBe("reply");
+    expect(summary.customerRequest).toMatch(/scope|materials/i);
+    expect(summary.originalRequestWording).toMatch(/oak/i);
+    expect(summary.plannedStartExact).toBeNull();
   });
 });

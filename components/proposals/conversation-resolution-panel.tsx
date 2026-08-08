@@ -30,7 +30,7 @@ export function ConversationResolutionPanel({
 }: {
   proposalId: string;
   summary: ConversationResolutionSummary;
-  /** Layout split: summary first, actions after the proposal. */
+  /** Layout split: request first, resolve actions after the proposal. */
   section?: "summary" | "actions" | "all";
 }) {
   const [state, resolveAction] = useActionState(
@@ -46,7 +46,11 @@ export function ConversationResolutionPanel({
   return (
     <section
       className="qf-resolution"
-      aria-label={showActions && !showSummary ? "Next steps" : "Customer request"}
+      aria-label={
+        showActions && !showSummary
+          ? "How to resolve this request"
+          : "Customer request"
+      }
       id={showSummary ? "change-request-panel" : "change-request-actions"}
     >
       {showSummary ? (
@@ -54,23 +58,21 @@ export function ConversationResolutionPanel({
           <div className="qf-resolution-banner" role="status">
             <p className="qf-resolution-banner-title">Customer request</p>
             <p className="qf-resolution-banner-copy">
-              Review the request and current proposal first, then choose the
-              next step.
+              Review what they asked for, then choose how to resolve it. Nothing
+              changes until you confirm in the right tool.
             </p>
           </div>
 
           <div className="qf-resolution-summary">
             <div className="qf-resolution-block">
-              <h3 className="qf-resolution-label">Customer request</h3>
+              <h3 className="qf-resolution-label">What they requested</h3>
               <p className="qf-resolution-copy">{summary.customerRequest}</p>
             </div>
             <div className="qf-resolution-block">
-              <h3 className="qf-resolution-label">Conversation outcome</h3>
-              <p className="qf-resolution-copy">{summary.conversationOutcome}</p>
-            </div>
-            <div className="qf-resolution-block">
-              <h3 className="qf-resolution-label">Next action</h3>
-              <p className="qf-resolution-copy">{summary.nextActionLabel}</p>
+              <h3 className="qf-resolution-label">Original wording</h3>
+              <p className="qf-resolution-copy qf-resolution-quote">
+                “{summary.originalRequestWording}”
+              </p>
             </div>
           </div>
         </>
@@ -83,49 +85,54 @@ export function ConversationResolutionPanel({
       ) : null}
 
       {showActions ? (
-        <div className="qf-resolution-actions" aria-label="Next steps">
-          {!showSummary ? (
-            <p className="qf-resolution-actions-intro">
-              Choose how to resolve this request. Nothing is changed until you
-              confirm in that tool.
-            </p>
-          ) : null}
-          <div className="qf-resolution-actions-row">
-            <Link
-              href={updateHref}
-              className={
-                summary.recommendedAction === "update_proposal"
-                  ? "qf-btn-primary"
-                  : "qf-btn-secondary"
-              }
-            >
-              Update proposal
-            </Link>
-            <Link
-              href={calendarHref}
-              className={
-                summary.recommendedAction === "open_calendar"
-                  ? "qf-btn-primary"
-                  : "qf-btn-secondary"
-              }
-            >
-              Open calendar
-            </Link>
-            <button
-              type="button"
-              className={
-                summary.recommendedAction === "reply"
-                  ? "qf-btn-primary"
-                  : "qf-btn-secondary"
-              }
-              onClick={() => focusProposalConversationComposer()}
-            >
-              Reply to customer
-            </button>
-            <form action={resolveAction}>
-              <input type="hidden" name="proposalId" value={proposalId} />
-              <ResolveButton />
-            </form>
+        <div
+          className="qf-resolution-actions"
+          aria-label="How to resolve this request"
+        >
+          <h2 className="qf-resolution-actions-title">
+            How to resolve this request
+          </h2>
+          <p className="qf-resolution-actions-intro">
+            You choose the path. Nothing is changed until you confirm.
+          </p>
+          <div className="qf-resolution-action-grid">
+            <div className="qf-resolution-action-option">
+              <Link href={calendarHref} className="qf-btn-secondary">
+                Open calendar
+              </Link>
+              <p className="qf-resolution-action-hint">
+                For scheduling and date changes
+              </p>
+            </div>
+            <div className="qf-resolution-action-option">
+              <Link href={updateHref} className="qf-btn-secondary">
+                Update proposal
+              </Link>
+              <p className="qf-resolution-action-hint">
+                For scope, materials, price, or detail changes
+              </p>
+            </div>
+            <div className="qf-resolution-action-option">
+              <button
+                type="button"
+                className="qf-btn-secondary"
+                onClick={() => focusProposalConversationComposer()}
+              >
+                Reply to customer
+              </button>
+              <p className="qf-resolution-action-hint">
+                For clarification or questions
+              </p>
+            </div>
+            <div className="qf-resolution-action-option">
+              <form action={resolveAction}>
+                <input type="hidden" name="proposalId" value={proposalId} />
+                <ResolveButton />
+              </form>
+              <p className="qf-resolution-action-hint">
+                When this request is fully handled
+              </p>
+            </div>
           </div>
         </div>
       ) : null}

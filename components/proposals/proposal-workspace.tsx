@@ -323,11 +323,7 @@ export function ProposalWorkspace({
   );
   const resolutionSummary =
     status === "needs_attention" && hasCustomerMessages
-      ? buildConversationResolutionSummary(customerMessages, new Date(), {
-          plannedStartDateText: proposal.planned_start_date_text,
-          plannedStartDate: proposal.planned_start_date,
-          jobSummary: proposal.job_summary,
-        })
+      ? buildConversationResolutionSummary(customerMessages)
       : null;
   const actionContext = {
     status: proposal.status,
@@ -384,11 +380,22 @@ export function ProposalWorkspace({
         </div>
       </header>
 
-      <ProposalWorkspaceActions
-        proposalId={proposal.id}
-        status={proposal.status}
-        actionContext={actionContext}
-      />
+      {/* Attention flow: request → proposal → resolve → conversation → lifecycle */}
+      {resolutionSummary ? (
+        <SectionCard className="qf-card-form qf-change-request-card">
+          <ConversationResolutionPanel
+            proposalId={proposal.id}
+            summary={resolutionSummary}
+            section="summary"
+          />
+        </SectionCard>
+      ) : (
+        <ProposalWorkspaceActions
+          proposalId={proposal.id}
+          status={proposal.status}
+          actionContext={actionContext}
+        />
+      )}
 
       <DevTestingDebugLine />
 
@@ -402,17 +409,6 @@ export function ProposalWorkspace({
       <Suspense fallback={null}>
         <TestSendSuccessNotice proposalId={proposal.id} />
       </Suspense>
-
-      {/* Attention flow: summary → proposal → actions → reply composer */}
-      {resolutionSummary ? (
-        <SectionCard className="qf-card-form qf-change-request-card">
-          <ConversationResolutionPanel
-            proposalId={proposal.id}
-            summary={resolutionSummary}
-            section="summary"
-          />
-        </SectionCard>
-      ) : null}
 
       {!resolutionSummary ? (
         <Suspense fallback={null}>
@@ -437,6 +433,10 @@ export function ProposalWorkspace({
         </div>
       ) : null}
 
+      {resolutionSummary ? (
+        <h2 className="qf-resolution-current-title">Current proposal</h2>
+      ) : null}
+
       <div className="qf-workspace-layout">
         <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
         <ProposalWorkspaceRight
@@ -457,22 +457,12 @@ export function ProposalWorkspace({
             />
           </SectionCard>
 
-          <Suspense fallback={null}>
-            <ProposalLifecycleActions
-              proposalId={proposal.id}
-              status={proposal.status}
-              bookingConfirmation={proposal.booking_confirmation}
-              plannedStartDateText={proposal.planned_start_date_text}
-              plannedStartDate={proposal.planned_start_date}
-              estimatedDuration={proposal.estimated_duration}
-              calendarProposals={calendarProposals}
-              devTestingEnabled={devTestingEnabled}
-            />
-          </Suspense>
-
           <div id="customer-replies">
             <SectionCard className="qf-card-form">
-              <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
+              <WorkspaceCardHeading
+                title="Conversation history"
+                icon={USER_ICON}
+              />
               <div className="mt-4">
                 <ProposalConversationPanel
                   proposalId={proposal.id}
@@ -482,6 +472,33 @@ export function ProposalWorkspace({
               </div>
             </SectionCard>
           </div>
+
+          <section
+            className="qf-resolution-final-actions"
+            aria-label="Proposal actions"
+          >
+            <h2 className="qf-resolution-final-title">Proposal actions</h2>
+            <p className="qf-resolution-final-copy">
+              Send an updated proposal or use other controls when you are ready.
+            </p>
+            <ProposalWorkspaceActions
+              proposalId={proposal.id}
+              status={proposal.status}
+              actionContext={actionContext}
+            />
+            <Suspense fallback={null}>
+              <ProposalLifecycleActions
+                proposalId={proposal.id}
+                status={proposal.status}
+                bookingConfirmation={proposal.booking_confirmation}
+                plannedStartDateText={proposal.planned_start_date_text}
+                plannedStartDate={proposal.planned_start_date}
+                estimatedDuration={proposal.estimated_duration}
+                calendarProposals={calendarProposals}
+                devTestingEnabled={devTestingEnabled}
+              />
+            </Suspense>
+          </section>
         </>
       ) : null}
 

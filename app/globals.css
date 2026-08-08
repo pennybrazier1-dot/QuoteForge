@@ -7050,6 +7050,80 @@ button.qf-booking-preview-day-selectable:focus-visible {
   gap: 0.6rem;
 }
 
+.qf-resolution-actions-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.qf-resolution-action-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.85rem;
+}
+
+@media (min-width: 640px) {
+  .qf-resolution-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.qf-resolution-action-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.qf-resolution-action-option .qf-btn-primary,
+.qf-resolution-action-option .qf-btn-secondary,
+.qf-resolution-action-option a.qf-btn-primary,
+.qf-resolution-action-option a.qf-btn-secondary {
+  width: auto;
+  text-decoration: none;
+}
+
+.qf-resolution-action-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.qf-resolution-quote {
+  font-style: italic;
+}
+
+.qf-resolution-current-title {
+  margin: 0.25rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.qf-resolution-final-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding-top: 0.25rem;
+}
+
+.qf-resolution-final-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.qf-resolution-final-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 /* Phase 50C — Calendar scheduling workspace */
 .qf-schedule-page {
   display: flex;
