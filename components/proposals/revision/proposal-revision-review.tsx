@@ -5,10 +5,19 @@ import { useMemo, useState } from "react";
 import { ProposalConversationThread } from "@/components/proposals/proposal-conversation-thread";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
+  buildRevisionActionHref,
+  createRevisionActionFromSuggestion,
+  formatRevisionActionDescription,
+  formatRevisionActionStatus,
+  formatRevisionActionType,
+  withRevisionActionStatus,
+} from "@/lib/proposals/revision/build-revision-action";
+import {
   formatRevisionConfidence,
   formatRevisionSuggestionType,
 } from "@/lib/proposals/revision/build-revision-suggestions";
 import { buildRevisedProposalDraftFromDecisions } from "@/lib/proposals/revision/build-revision-review-model";
+import type { RevisionAction } from "@/lib/proposals/revision/revision-action-types";
 import type {
   ProposalRevisionReviewModel,
   RevisionSuggestion,
@@ -44,6 +53,9 @@ export function ProposalRevisionReview({
   const [decisions, setDecisions] = useState(() =>
     initialDecisions(model.suggestions)
   );
+  const [actionsBySuggestionId, setActionsBySuggestionId] = useState<
+    Record<string, RevisionAction>
+  >({});
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const draft = useMemo(() => {
@@ -76,21 +88,74 @@ export function ProposalRevisionReview({
   const rejectedCount = model.suggestions.filter(
     (item) => decisions[item.id]?.decision === "rejected"
   ).length;
+  const openActionCount = Object.values(actionsBySuggestionId).filter(
+    (action) => action.status === "pending" || action.status === "opened"
+  ).length;
 
-  const setDecision = (
-    suggestionId: string,
-    decision: RevisionSuggestionDecision
+  const acceptSuggestion = (
+    suggestion: RevisionSuggestion,
+    decision: "accepted" | "edited",
+    acceptedText: string
   ) => {
+    setDecisions((current) => ({
+      ...current,
+      [suggestion.id]: {
+        ...current[suggestion.id],
+        decision,
+        editedText: acceptedText,
+      },
+    }));
+    setEditingId(null);
+    setActionsBySuggestionId((current) => ({
+      ...current,
+      [suggestion.id]: createRevisionActionFromSuggestion({
+        proposalId: model.summary.proposalId,
+        suggestion,
+        acceptedSuggestedChange: acceptedText,
+      }),
+    }));
+  };
+
+  const rejectSuggestion = (suggestionId: string) => {
     setDecisions((current) => ({
       ...current,
       [suggestionId]: {
         ...current[suggestionId],
-        decision,
+        decision: "rejected",
       },
     }));
-    if (decision !== "edited") {
-      setEditingId(null);
-    }
+    setEditingId(null);
+    setActionsBySuggestionId((current) => {
+      const next = { ...current };
+      delete next[suggestionId];
+      return next;
+    });
+  };
+
+  const skipAction = (suggestionId: string) => {
+    setActionsBySuggestionId((current) => {
+      const existing = current[suggestionId];
+      if (!existing) {
+        return current;
+      }
+      return {
+        ...current,
+        [suggestionId]: withRevisionActionStatus(existing, "skipped"),
+      };
+    });
+  };
+
+  const openAction = (suggestionId: string) => {
+    setActionsBySuggestionId((current) => {
+      const existing = current[suggestionId];
+      if (!existing) {
+        return current;
+      }
+      return {
+        ...current,
+        [suggestionId]: withRevisionActionStatus(existing, "opened"),
+      };
+    });
   };
 
   const summary = model.summary;
@@ -109,16 +174,17 @@ export function ProposalRevisionReview({
         </div>
         <h1 className="qf-revision-title">Review changes</h1>
         <p className="qf-revision-intro">
-          Suggestions from the conversation only. Nothing is saved to the
-          proposal, price, calendar, or customer email until a later step.
+          Suggestions from the conversation only. Accepting creates a next
+          action — it does not change the proposal, job, calendar, or send
+          email.
         </p>
       </header>
 
       <div className="qf-revision-banner" role="status">
         <p className="qf-revision-banner-title">AI suggests — you decide</p>
         <p className="qf-revision-banner-copy">
-          Accept, edit, or reject each suggestion. Preview and send revised
-          proposals come next.
+          Accept a suggestion to get a controlled next step. You still confirm
+          any real change in the linked tool.
         </p>
       </div>
 
@@ -196,7 +262,10 @@ export function ProposalRevisionReview({
           <ul className="qf-revision-suggestion-list">
             {model.suggestions.map((suggestion) => {
               const state = decisions[suggestion.id];
+              const action = actionsBySuggestionId[suggestion.id];
               const isEditing = editingId === suggestion.id;
+              const isAccepted =
+                state.decision === "accepted" || state.decision === "edited";
               return (
                 <li
                   key={suggestion.id}
@@ -259,7 +328,11 @@ export function ProposalRevisionReview({
                             if (!state.editedText.trim()) {
                               return;
                             }
-                            setDecision(suggestion.id, "edited");
+                            acceptSuggestion(
+                              suggestion,
+                              "edited",
+                              state.editedText.trim()
+                            );
                           }}
                         >
                           Save edit
@@ -287,7 +360,11 @@ export function ProposalRevisionReview({
                           type="button"
                           className="qf-btn-primary"
                           onClick={() =>
-                            setDecision(suggestion.id, "accepted")
+                            acceptSuggestion(
+                              suggestion,
+                              "accepted",
+                              suggestion.suggestedChange
+                            )
                           }
                         >
                           Accept
@@ -302,15 +379,60 @@ export function ProposalRevisionReview({
                         <button
                           type="button"
                           className="qf-btn-secondary"
-                          onClick={() =>
-                            setDecision(suggestion.id, "rejected")
-                          }
+                          onClick={() => rejectSuggestion(suggestion.id)}
                         >
                           Reject
                         </button>
                       </>
                     )}
                   </div>
+
+                  {isAccepted && action ? (
+                    <div
+                      className={`qf-revision-next-action qf-revision-next-action--${action.status}`}
+                    >
+                      <div className="qf-revision-next-action-header">
+                        <h3>Next action</h3>
+                        <span className="qf-revision-next-action-status">
+                          {formatRevisionActionStatus(action.status)}
+                        </span>
+                      </div>
+                      <p className="qf-revision-next-action-title">
+                        {formatRevisionActionType(action.actionType)}
+                      </p>
+                      <p className="qf-revision-next-action-copy">
+                        {formatRevisionActionDescription(action.actionType)}
+                      </p>
+                      {action.payload.plannedStartText ? (
+                        <p className="qf-revision-next-action-prefill">
+                          Prefill hint: {action.payload.plannedStartText}
+                        </p>
+                      ) : null}
+                      {action.status === "skipped" ? (
+                        <p className="qf-revision-next-action-copy">
+                          Skipped — suggestion stays accepted, but no next step
+                          is queued.
+                        </p>
+                      ) : (
+                        <div className="qf-revision-next-action-buttons">
+                          <Link
+                            href={buildRevisionActionHref(action)}
+                            className="qf-btn-primary"
+                            onClick={() => openAction(suggestion.id)}
+                          >
+                            {formatRevisionActionType(action.actionType)}
+                          </Link>
+                          <button
+                            type="button"
+                            className="qf-btn-secondary"
+                            onClick={() => skipAction(suggestion.id)}
+                          >
+                            Skip
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </li>
               );
             })}
@@ -323,11 +445,12 @@ export function ProposalRevisionReview({
           <span>{pendingCount} pending</span>
           <span>{acceptedCount} accepted</span>
           <span>{rejectedCount} rejected</span>
+          <span>{openActionCount} next actions open</span>
         </div>
         <p className="qf-revision-footer-note">
           Draft status for later steps:{" "}
-          <strong>{draft.status.replaceAll("_", " ")}</strong>. Field patches
-          are not applied yet.
+          <strong>{draft.status.replaceAll("_", " ")}</strong>. Accepted
+          actions do not write live proposal or job data.
         </p>
         <div className="qf-revision-footer-actions">
           <Link

@@ -6838,3 +6838,82 @@ li + .qf-workspace-next-form .qf-workspace-next-row-primary {
 .qf-change-request-actions a.qf-btn-primary {
   text-decoration: none;
 }
+
+/* Accepted suggestion next actions (50C.1.5a) */
+.qf-revision-next-action {
+  margin-top: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.08);
+}
+
+.qf-revision-next-action--opened {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.qf-revision-next-action--skipped {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  opacity: 0.9;
+}
+
+.qf-revision-next-action--completed {
+  border-color: rgba(34, 160, 107, 0.45);
+  background: rgba(34, 160, 107, 0.08);
+}
+
+.qf-revision-next-action-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.qf-revision-next-action-header h3 {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qf-revision-next-action-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.qf-revision-next-action-title {
+  margin: 0 0 0.3rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.qf-revision-next-action-copy {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.qf-revision-next-action-prefill {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.qf-revision-next-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.qf-revision-next-action-buttons .qf-btn-primary {
+  text-decoration: none;
+}

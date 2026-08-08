@@ -414,9 +414,11 @@ export function ProposalWorkspace({
       ) : null}
 
       {jobPrep ? (
-        <SectionCard className="qf-card-form qf-job-prep-card">
-          <JobPreparationPanel view={jobPrep} />
-        </SectionCard>
+        <div id="job-preparation">
+          <SectionCard className="qf-card-form qf-job-prep-card">
+            <JobPreparationPanel view={jobPrep} />
+          </SectionCard>
+        </div>
       ) : null}
 
       <div className="qf-workspace-layout">
