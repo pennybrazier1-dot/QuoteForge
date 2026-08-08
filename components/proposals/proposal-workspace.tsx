@@ -1,10 +1,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
-import {
-  ChangeRequestPanel,
-  buildChangeRequestPanelModel,
-} from "@/components/proposals/change-request-panel";
+import { ChangeRequestPanel } from "@/components/proposals/change-request-panel";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalCustomerMessagesPanel } from "@/components/proposals/proposal-customer-messages";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -24,6 +21,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
+import { buildChangeRequestPanelModel } from "@/lib/proposals/change-request/build-panel-model";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";

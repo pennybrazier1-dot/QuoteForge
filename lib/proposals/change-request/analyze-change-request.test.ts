@@ -3,6 +3,7 @@ import {
   analyzeChangeRequest,
   classifyChangeRequestLabels,
 } from "@/lib/proposals/change-request/analyze-change-request";
+import { buildChangeRequestPanelModel } from "@/lib/proposals/change-request/build-panel-model";
 
 describe("classifyChangeRequestLabels", () => {
   it("detects date requests", () => {
@@ -51,5 +52,42 @@ describe("analyzeChangeRequest", () => {
     const analysis = analyzeChangeRequest("Please add a towel rail.");
     expect(analysis.summary).not.toMatch(/updated the proposal|changed the price/i);
     expect(analysis.suggestedAction.label).toMatch(/Review|Reply|Check/i);
+  });
+});
+
+describe("buildChangeRequestPanelModel", () => {
+  it("builds analysis from the latest change_request message", () => {
+    const model = buildChangeRequestPanelModel([
+      {
+        id: "m1",
+        kind: "change_request",
+        body: "Can we start next Friday instead?",
+        created_at: "2026-08-08T09:00:00.000Z",
+      },
+      {
+        id: "m2",
+        kind: "question",
+        body: "How long will it take?",
+        created_at: "2026-08-07T09:00:00.000Z",
+      },
+    ]);
+
+    expect(model).not.toBeNull();
+    expect(model?.message.id).toBe("m1");
+    expect(model?.analysis.labels).toContain("date");
+    expect(model?.analysis.suggestedAction.key).toBe("check_calendar");
+  });
+
+  it("returns null when there is no change request", () => {
+    expect(
+      buildChangeRequestPanelModel([
+        {
+          id: "m2",
+          kind: "question",
+          body: "How long will it take?",
+          created_at: "2026-08-07T09:00:00.000Z",
+        },
+      ])
+    ).toBeNull();
   });
 });

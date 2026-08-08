@@ -7,7 +7,6 @@ import {
   type ChangeRequestActionState,
 } from "@/lib/proposals/change-request/actions";
 import {
-  analyzeChangeRequest,
   formatChangeRequestLabel,
   type ChangeRequestAnalysis,
 } from "@/lib/proposals/change-request/analyze-change-request";
@@ -153,20 +152,4 @@ export function ChangeRequestPanel({
       </div>
     </section>
   );
-}
-
-export function buildChangeRequestPanelModel(
-  messages: ProposalCustomerMessage[]
-): {
-  message: ProposalCustomerMessage;
-  analysis: ChangeRequestAnalysis;
-} | null {
-  const message = messages.find((item) => item.kind === "change_request");
-  if (!message) {
-    return null;
-  }
-  return {
-    message,
-    analysis: analyzeChangeRequest(message.body),
-  };
 }
