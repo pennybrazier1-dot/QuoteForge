@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 import { ProposalConversationThread } from "@/components/proposals/proposal-conversation-thread";
@@ -8,6 +9,7 @@ import {
   type TraderReplyActionState,
 } from "@/lib/proposals/customer-portal/trader-reply-actions";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
+import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
 const initialState: TraderReplyActionState = {};
 
@@ -64,6 +66,21 @@ export function ProposalConversationPanel({
         emptyMessage="Messages with your customer will appear here."
         variant="workspace"
       />
+
+      {messages.length > 0 ? (
+        <div className="qf-conversation-revise">
+          <Link
+            href={buildProposalRevisePath(proposalId)}
+            className="qf-btn-secondary"
+          >
+            Update proposal
+          </Link>
+          <p className="qf-conversation-revise-hint">
+            Review suggested changes from this conversation. Nothing is applied
+            automatically.
+          </p>
+        </div>
+      ) : null}
 
       {canReply ? (
         <form

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/lib/proposals/change-request/analyze-change-request";
 import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
+import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
 const initialState: ChangeRequestActionState = {};
 
@@ -107,9 +109,15 @@ export function ChangeRequestPanel({
       ) : null}
 
       <div className="qf-change-request-actions">
+        <Link
+          href={buildProposalRevisePath(proposalId)}
+          className="qf-btn-primary"
+        >
+          Update proposal
+        </Link>
         <button
           type="button"
-          className="qf-btn-primary"
+          className="qf-btn-secondary"
           onClick={() => focusProposalConversationComposer()}
         >
           Reply to customer
