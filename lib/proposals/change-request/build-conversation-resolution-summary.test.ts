@@ -50,7 +50,10 @@ describe("buildConversationResolutionSummary", () => {
     expect(summary.recommendedAction).toBe("open_calendar");
     expect(summary.plannedStartExact).toBe("2026-10-12");
     expect(buildCalendarActionHref("p1", summary)).toContain(
-      "confirmBooking=1"
+      "/proposals/p1/schedule"
+    );
+    expect(buildCalendarActionHref("p1", summary)).toContain(
+      "suggestedDateExact=2026-10-12"
     );
   });
 

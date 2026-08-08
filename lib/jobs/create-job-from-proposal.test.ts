@@ -67,14 +67,14 @@ describe("buildDefaultPrepItemRows", () => {
 });
 
 describe("buildJobPrepActionHref", () => {
-  it("routes start date into the existing booking confirm flow", () => {
+  it("routes start date into the calendar scheduling workspace", () => {
     expect(
       buildJobPrepActionHref("start_date", {
         proposalId: "proposal-1",
         customerId: "customer-1",
         enquiryId: null,
       })
-    ).toBe("/proposals/proposal-1?confirmBooking=1");
+    ).toBe("/proposals/proposal-1/schedule");
   });
 
   it("routes site visit prep to the linked enquiry when available", () => {

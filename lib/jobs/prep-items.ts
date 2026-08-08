@@ -114,6 +114,6 @@ export function buildJobPrepActionHref(
     case "access_requirements":
       return `/proposals/${context.proposalId}/edit`;
     case "start_date":
-      return `/proposals/${context.proposalId}?confirmBooking=1`;
+      return `/proposals/${context.proposalId}/schedule`;
   }
 }

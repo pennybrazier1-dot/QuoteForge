@@ -95,9 +95,9 @@ describe("createRevisionActionFromSuggestion", () => {
       acceptedSuggestedChange: "Add garden wall",
     });
 
-    expect(buildRevisionActionHref(calendar)).toContain("confirmBooking=1");
-    expect(buildRevisionActionHref(calendar)).toContain("plannedStartHint=");
-    expect(buildRevisionActionHref(calendar)).toContain("plannedStartExact=");
+    expect(buildRevisionActionHref(calendar)).toContain("/schedule");
+    expect(buildRevisionActionHref(calendar)).toContain("suggestedDate=");
+    expect(buildRevisionActionHref(calendar)).toContain("suggestedDateExact=");
     expect(buildRevisionActionHref(materials)).toContain("#job-preparation");
     expect(buildRevisionActionHref(scope)).toContain(
       "#change-request-review-target"

@@ -6,6 +6,7 @@ import type {
   RevisionActionStatus,
   RevisionActionType,
 } from "@/lib/proposals/revision/revision-action-types";
+import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
 export function actionTypeForSuggestionType(
   suggestionType: RevisionSuggestion["type"]
@@ -168,9 +169,14 @@ export function buildRevisionActionHref(action: RevisionAction): string {
   }
 
   switch (action.actionType) {
-    case "open_calendar":
-      params.set("confirmBooking", "1");
-      return `${proposalPath}?${params.toString()}`;
+    case "open_calendar": {
+      const base = buildScheduleWorkspacePath(action.proposalId, {
+        suggestedDateText: action.payload.plannedStartText,
+        suggestedDateExact: action.payload.plannedStartExact,
+      });
+      const joiner = base.includes("?") ? "&" : "?";
+      return `${base}${joiner}revisionActionId=${encodeURIComponent(action.id)}`;
+    }
     case "update_materials":
       return `${proposalPath}?${params.toString()}#job-preparation`;
     case "review_scope_and_price":

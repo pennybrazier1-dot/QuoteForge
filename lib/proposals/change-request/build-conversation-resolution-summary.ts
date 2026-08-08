@@ -5,6 +5,7 @@ import {
   formatAgreementDateLabel,
   isVagueDateWindowOnly,
 } from "@/lib/proposals/revision/conversation-agreements";
+import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
 export type ResolutionRecommendedAction =
   | "update_proposal"
@@ -212,13 +213,8 @@ export function buildCalendarActionHref(
     "plannedStartText" | "plannedStartExact"
   >
 ): string {
-  const params = new URLSearchParams();
-  params.set("confirmBooking", "1");
-  if (summary.plannedStartText) {
-    params.set("plannedStartHint", summary.plannedStartText);
-  }
-  if (summary.plannedStartExact) {
-    params.set("plannedStartExact", summary.plannedStartExact);
-  }
-  return `/proposals/${proposalId}?${params.toString()}`;
+  return buildScheduleWorkspacePath(proposalId, {
+    suggestedDateText: summary.plannedStartText,
+    suggestedDateExact: summary.plannedStartExact,
+  });
 }
