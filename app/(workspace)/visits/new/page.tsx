@@ -79,17 +79,18 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="qf-visit-page">
-      <header className="qf-visit-page-header">
-        <div>
-          <Link href="/visits" className="qf-visit-back">
-            ← Back to visits
-          </Link>
-          <h1 className="qf-visit-page-title">Book visit</h1>
-          <p className="qf-visit-page-subtitle">
-            Choose a customer, add the reason, and pick a date and time.
-          </p>
-        </div>
+    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+      <header className="qf-proposal-header">
+        <Link
+          href="/visits"
+          className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+        >
+          ← Back to visits
+        </Link>
+        <h1 className="qf-proposal-title">Book visit</h1>
+        <p className="qf-proposal-subtitle">
+          Choose a customer, add the reason, and pick a date and time.
+        </p>
       </header>
 
       <CreateVisitForm

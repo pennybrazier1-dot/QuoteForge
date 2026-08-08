@@ -815,12 +815,26 @@ a.qf-card-inset:hover {
   border: 2px solid var(--border-field);
   background-color: var(--background-field);
   color: var(--foreground);
+  color-scheme: dark;
   outline: none;
   box-shadow: var(--field-shadow);
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,
     box-shadow 0.15s ease;
+}
+
+.form-input:read-only,
+.form-textarea:read-only {
+  color: var(--foreground);
+  background-color: var(--background-field);
+  opacity: 1;
+  -webkit-text-fill-color: var(--foreground);
+}
+
+.form-select option {
+  background-color: var(--background-elevated);
+  color: var(--foreground);
 }
 
 .form-input,
@@ -7354,9 +7368,10 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-visit-card {
   padding: 1rem 1.1rem;
-  border: 1px solid var(--border);
-  border-radius: 0.9rem;
-  background: color-mix(in srgb, var(--card) 92%, transparent);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  background-color: var(--background-card);
+  box-shadow: var(--card-shadow);
 }
 
 .qf-visit-card-title {

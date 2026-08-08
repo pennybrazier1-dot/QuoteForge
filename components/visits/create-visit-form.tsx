@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { AuthError } from "@/components/auth/auth-shell";
+import { SectionCard } from "@/components/ui/section-card";
 import { createVisitAction, type VisitActionState } from "@/lib/visits/actions";
 import {
   VISIT_DURATION_OPTIONS,
@@ -46,6 +47,25 @@ function SubmitButton() {
     <button type="submit" className="qf-btn-primary" disabled={pending}>
       {pending ? "Booking visit…" : "Book visit"}
     </button>
+  );
+}
+
+function Field({
+  label,
+  id,
+  children,
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="qf-field-label">
+        {label}
+      </label>
+      <div className="mt-2">{children}</div>
+    </div>
   );
 }
 
@@ -111,164 +131,198 @@ export function CreateVisitForm({
   };
 
   return (
-    <form action={action} className="qf-visit-form">
+    <form action={action} className="qf-proposal-page qf-mobile-safe">
       <input type="hidden" name="customerId" value={customerId} />
       {enquiryPrefill ? (
         <input type="hidden" name="enquiryId" value={enquiryPrefill.enquiryId} />
       ) : null}
 
-      <section className="qf-visit-card">
-        <h2 className="qf-visit-card-title">Customer</h2>
-        <label className="qf-visit-field">
-          <span>Saved customer</span>
-          <select
-            className="qf-input"
-            value={customerId}
-            onChange={(event) => applyCustomer(event.target.value)}
-          >
-            <option value="">Enter details below</option>
-            {customers.map((customer) => (
-              <option key={customer.id} value={customer.id}>
-                {customer.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="qf-visit-field">
-          <span>Customer name</span>
-          <input
-            className="qf-input"
-            name="customerName"
-            required
-            value={customerName}
-            onChange={(event) => setCustomerName(event.target.value)}
-          />
-        </label>
-        <div className="qf-visit-grid">
-          <label className="qf-visit-field">
-            <span>Phone</span>
-            <input
-              className="qf-input"
-              name="contactPhone"
-              value={contactPhone}
-              onChange={(event) => setContactPhone(event.target.value)}
-            />
-          </label>
-          <label className="qf-visit-field">
-            <span>Email</span>
-            <input
-              className="qf-input"
-              type="email"
-              name="contactEmail"
-              value={contactEmail}
-              onChange={(event) => setContactEmail(event.target.value)}
-            />
-          </label>
-        </div>
-        <label className="qf-visit-field">
-          <span>Address</span>
-          <input
-            className="qf-input"
-            name="addressLine1"
-            value={addressLine1}
-            onChange={(event) => setAddressLine1(event.target.value)}
-          />
-        </label>
-        <input type="hidden" name="addressLine2" value={addressLine2} />
-        <div className="qf-visit-grid">
-          <label className="qf-visit-field">
-            <span>Town</span>
-            <input
-              className="qf-input"
-              name="town"
-              value={town}
-              onChange={(event) => setTown(event.target.value)}
-            />
-          </label>
-          <label className="qf-visit-field">
-            <span>Postcode</span>
-            <input
-              className="qf-input"
-              name="postcode"
-              value={postcode}
-              onChange={(event) => setPostcode(event.target.value)}
-            />
-          </label>
-        </div>
-        <input type="hidden" name="county" value={county} />
-      </section>
+      <div className="qf-proposal-col-left">
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Customer details</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Saved customer" id="visitSavedCustomer">
+                <select
+                  id="visitSavedCustomer"
+                  className="form-select"
+                  value={customerId}
+                  onChange={(event) => applyCustomer(event.target.value)}
+                >
+                  <option value="">Enter details below</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Name" id="visitCustomerName">
+              <input
+                id="visitCustomerName"
+                className="form-input"
+                name="customerName"
+                required
+                value={customerName}
+                onChange={(event) => setCustomerName(event.target.value)}
+                placeholder="e.g. Mrs Sarah Whitfield"
+              />
+            </Field>
+            <Field label="Email" id="visitContactEmail">
+              <input
+                id="visitContactEmail"
+                className="form-input"
+                type="email"
+                name="contactEmail"
+                value={contactEmail}
+                onChange={(event) => setContactEmail(event.target.value)}
+                autoComplete="email"
+                placeholder="e.g. sarah@example.com"
+              />
+            </Field>
+            <Field label="Phone" id="visitContactPhone">
+              <input
+                id="visitContactPhone"
+                className="form-input"
+                type="tel"
+                name="contactPhone"
+                value={contactPhone}
+                onChange={(event) => setContactPhone(event.target.value)}
+                autoComplete="tel"
+                placeholder="e.g. 07700 900123"
+              />
+            </Field>
+            <Field label="Address" id="visitAddressLine1">
+              <input
+                id="visitAddressLine1"
+                className="form-input"
+                name="addressLine1"
+                value={addressLine1}
+                onChange={(event) => setAddressLine1(event.target.value)}
+                placeholder="e.g. 14 Riverside Close"
+              />
+            </Field>
+            <input type="hidden" name="addressLine2" value={addressLine2} />
+            <Field label="Town" id="visitTown">
+              <input
+                id="visitTown"
+                className="form-input"
+                name="town"
+                value={town}
+                onChange={(event) => setTown(event.target.value)}
+                placeholder="e.g. Bristol"
+              />
+            </Field>
+            <Field label="Postcode" id="visitPostcode">
+              <input
+                id="visitPostcode"
+                className="form-input"
+                name="postcode"
+                value={postcode}
+                onChange={(event) => setPostcode(event.target.value)}
+                placeholder="e.g. BS1 1AA"
+              />
+            </Field>
+            <input type="hidden" name="county" value={county} />
+          </div>
+        </SectionCard>
 
-      <section className="qf-visit-card">
-        <h2 className="qf-visit-card-title">Visit details</h2>
-        <label className="qf-visit-field">
-          <span>Visit type</span>
-          <select
-            className="qf-input"
-            name="visitType"
-            defaultValue="initial_assessment"
-            required
-          >
-            {VISIT_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {formatVisitType(type)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="qf-visit-field">
-          <span>Reason / summary</span>
-          <textarea
-            className="qf-input qf-visit-textarea"
-            name="enquirySummary"
-            rows={4}
-            placeholder="Why are you visiting? What needs assessing?"
-            value={enquirySummary}
-            onChange={(event) => setEnquirySummary(event.target.value)}
-          />
-        </label>
-        <div className="qf-visit-grid">
-          <label className="qf-visit-field">
-            <span>Date</span>
-            <input className="qf-input" type="date" name="visitDate" required />
-          </label>
-          <label className="qf-visit-field">
-            <span>Start time</span>
-            <select className="qf-input" name="visitTime" defaultValue="09:00">
-              {VISIT_TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>
-                  {formatVisitTimeLabel(time)}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <label className="qf-visit-field">
-          <span>Duration</span>
-          <select
-            className="qf-input"
-            name="durationMinutes"
-            defaultValue="60"
-          >
-            {VISIT_DURATION_OPTIONS.map((option) => (
-              <option key={option.minutes} value={option.minutes}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="qf-visit-check">
-          <input type="checkbox" name="notifyCustomer" value="1" defaultChecked />
-          <span>Email the customer visit details</span>
-        </label>
-      </section>
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Visit details</h2>
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <Field label="Visit type" id="visitType">
+                <select
+                  id="visitType"
+                  className="form-select"
+                  name="visitType"
+                  defaultValue="initial_assessment"
+                  required
+                >
+                  {VISIT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {formatVisitType(type)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="sm:col-span-2">
+              <Field label="Reason / summary" id="visitEnquirySummary">
+                <textarea
+                  id="visitEnquirySummary"
+                  className="form-textarea"
+                  name="enquirySummary"
+                  rows={4}
+                  placeholder="Why are you visiting? What needs assessing?"
+                  value={enquirySummary}
+                  onChange={(event) => setEnquirySummary(event.target.value)}
+                />
+              </Field>
+            </div>
+            <Field label="Date" id="visitDate">
+              <input
+                id="visitDate"
+                className="form-input form-input-date"
+                type="date"
+                name="visitDate"
+                required
+              />
+            </Field>
+            <Field label="Start time" id="visitTime">
+              <select
+                id="visitTime"
+                className="form-select"
+                name="visitTime"
+                defaultValue="09:00"
+              >
+                {VISIT_TIME_OPTIONS.map((time) => (
+                  <option key={time} value={time}>
+                    {formatVisitTimeLabel(time)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Duration" id="visitDuration">
+                <select
+                  id="visitDuration"
+                  className="form-select"
+                  name="durationMinutes"
+                  defaultValue="60"
+                >
+                  {VISIT_DURATION_OPTIONS.map((option) => (
+                    <option key={option.minutes} value={option.minutes}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <label className="qf-qq-photos-skip sm:col-span-2">
+              <input
+                type="checkbox"
+                name="notifyCustomer"
+                value="1"
+                defaultChecked
+              />
+              Email the customer visit details
+            </label>
+          </div>
+        </SectionCard>
 
-      {state.error ? <AuthError message={state.error} /> : null}
+        {state.error ? <AuthError message={state.error} /> : null}
 
-      <div className="qf-visit-actions">
-        <SubmitButton />
-        <Link href="/visits" className="qf-btn-secondary">
-          Cancel
-        </Link>
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Actions</h2>
+          <div className="mt-5 space-y-3">
+            <SubmitButton />
+            <Link href="/visits" className="qf-btn-secondary">
+              Cancel
+            </Link>
+          </div>
+        </SectionCard>
       </div>
     </form>
   );
