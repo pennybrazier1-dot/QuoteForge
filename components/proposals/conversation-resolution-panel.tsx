@@ -30,7 +30,7 @@ export function ConversationResolutionPanel({
 }: {
   proposalId: string;
   summary: ConversationResolutionSummary;
-  /** Layout split: request first, resolve actions after the proposal. */
+  /** Prefer "all" so request and resolve actions stay grouped. */
   section?: "summary" | "actions" | "all";
 }) {
   const [state, resolveAction] = useActionState(
@@ -46,12 +46,8 @@ export function ConversationResolutionPanel({
   return (
     <section
       className="qf-resolution"
-      aria-label={
-        showActions && !showSummary
-          ? "How to resolve this request"
-          : "Customer request"
-      }
-      id={showSummary ? "change-request-panel" : "change-request-actions"}
+      aria-label="Customer request and how to resolve it"
+      id="change-request-panel"
     >
       {showSummary ? (
         <>

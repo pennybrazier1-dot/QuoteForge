@@ -6999,6 +6999,9 @@ button.qf-booking-preview-day-selectable:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
 }
 
 .qf-resolution-actions .qf-btn-primary,

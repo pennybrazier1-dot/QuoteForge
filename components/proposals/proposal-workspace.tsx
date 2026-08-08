@@ -380,13 +380,13 @@ export function ProposalWorkspace({
         </div>
       </header>
 
-      {/* Attention flow: request → proposal → resolve → conversation → lifecycle */}
+      {/* Attention flow: request + resolve → proposal → conversation → lifecycle */}
       {resolutionSummary ? (
         <SectionCard className="qf-card-form qf-change-request-card">
           <ConversationResolutionPanel
             proposalId={proposal.id}
             summary={resolutionSummary}
-            section="summary"
+            section="all"
           />
         </SectionCard>
       ) : (
@@ -449,14 +449,6 @@ export function ProposalWorkspace({
 
       {resolutionSummary ? (
         <>
-          <SectionCard className="qf-card-form qf-change-request-card">
-            <ConversationResolutionPanel
-              proposalId={proposal.id}
-              summary={resolutionSummary}
-              section="actions"
-            />
-          </SectionCard>
-
           <div id="customer-replies">
             <SectionCard className="qf-card-form">
               <WorkspaceCardHeading
