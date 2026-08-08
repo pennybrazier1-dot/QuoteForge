@@ -240,10 +240,12 @@ function ProposalWorkspaceRight({
   proposal,
   statusEvents,
   customerMessages,
+  showConversation = true,
 }: {
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
   customerMessages: ProposalCustomerMessage[];
+  showConversation?: boolean;
 }) {
   return (
     <div className="qf-proposal-col-right">
@@ -260,23 +262,26 @@ function ProposalWorkspaceRight({
         </dl>
       </SectionCard>
 
-      <div id="customer-replies">
-        <SectionCard className="qf-card-form">
-          <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
-          <div className="mt-4">
-            <ProposalConversationPanel
-              proposalId={proposal.id}
-              messages={customerMessages}
-              canReply={
-                normalizeProposalStatus(proposal.status) ===
-                  "waiting_for_customer" ||
-                normalizeProposalStatus(proposal.status) === "needs_attention" ||
-                normalizeProposalStatus(proposal.status) === "booked"
-              }
-            />
-          </div>
-        </SectionCard>
-      </div>
+      {showConversation ? (
+        <div id="customer-replies">
+          <SectionCard className="qf-card-form">
+            <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
+            <div className="mt-4">
+              <ProposalConversationPanel
+                proposalId={proposal.id}
+                messages={customerMessages}
+                canReply={
+                  normalizeProposalStatus(proposal.status) ===
+                    "waiting_for_customer" ||
+                  normalizeProposalStatus(proposal.status) ===
+                    "needs_attention" ||
+                  normalizeProposalStatus(proposal.status) === "booked"
+                }
+              />
+            </div>
+          </SectionCard>
+        </div>
+      ) : null}
 
       <div id="proposal-timeline">
         <SectionCard className="qf-card-form">
@@ -394,26 +399,30 @@ export function ProposalWorkspace({
         <TestSendSuccessNotice proposalId={proposal.id} />
       </Suspense>
 
-      <Suspense fallback={null}>
-        <ProposalLifecycleActions
-          proposalId={proposal.id}
-          status={proposal.status}
-          bookingConfirmation={proposal.booking_confirmation}
-          plannedStartDateText={proposal.planned_start_date_text}
-          plannedStartDate={proposal.planned_start_date}
-          estimatedDuration={proposal.estimated_duration}
-          calendarProposals={calendarProposals}
-          devTestingEnabled={devTestingEnabled}
-        />
-      </Suspense>
-
+      {/* Attention flow: summary → proposal → actions → reply composer */}
       {resolutionSummary ? (
         <SectionCard className="qf-card-form qf-change-request-card">
           <ConversationResolutionPanel
             proposalId={proposal.id}
             summary={resolutionSummary}
+            section="summary"
           />
         </SectionCard>
+      ) : null}
+
+      {!resolutionSummary ? (
+        <Suspense fallback={null}>
+          <ProposalLifecycleActions
+            proposalId={proposal.id}
+            status={proposal.status}
+            bookingConfirmation={proposal.booking_confirmation}
+            plannedStartDateText={proposal.planned_start_date_text}
+            plannedStartDate={proposal.planned_start_date}
+            estimatedDuration={proposal.estimated_duration}
+            calendarProposals={calendarProposals}
+            devTestingEnabled={devTestingEnabled}
+          />
+        </Suspense>
       ) : null}
 
       {jobPrep ? (
@@ -430,8 +439,47 @@ export function ProposalWorkspace({
           proposal={proposal}
           statusEvents={statusEvents}
           customerMessages={customerMessages}
+          showConversation={!resolutionSummary}
         />
       </div>
+
+      {resolutionSummary ? (
+        <>
+          <SectionCard className="qf-card-form qf-change-request-card">
+            <ConversationResolutionPanel
+              proposalId={proposal.id}
+              summary={resolutionSummary}
+              section="actions"
+            />
+          </SectionCard>
+
+          <Suspense fallback={null}>
+            <ProposalLifecycleActions
+              proposalId={proposal.id}
+              status={proposal.status}
+              bookingConfirmation={proposal.booking_confirmation}
+              plannedStartDateText={proposal.planned_start_date_text}
+              plannedStartDate={proposal.planned_start_date}
+              estimatedDuration={proposal.estimated_duration}
+              calendarProposals={calendarProposals}
+              devTestingEnabled={devTestingEnabled}
+            />
+          </Suspense>
+
+          <div id="customer-replies">
+            <SectionCard className="qf-card-form">
+              <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
+              <div className="mt-4">
+                <ProposalConversationPanel
+                  proposalId={proposal.id}
+                  messages={customerMessages}
+                  canReply
+                />
+              </div>
+            </SectionCard>
+          </div>
+        </>
+      ) : null}
 
       <WorkspaceScrollDebug context="proposal-detail" />
     </div>

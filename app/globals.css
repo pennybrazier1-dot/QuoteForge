@@ -7035,3 +7035,17 @@ button.qf-booking-preview-day-selectable:focus-visible {
 .qf-change-notes-field textarea {
   width: 100%;
 }
+
+.qf-resolution-actions-intro {
+  margin: 0 0 0.65rem;
+  width: 100%;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.qf-resolution-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
