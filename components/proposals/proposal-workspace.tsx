@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
-import { ChangeRequestPanel } from "@/components/proposals/change-request-panel";
+import { ConversationResolutionPanel } from "@/components/proposals/conversation-resolution-panel";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -21,7 +21,7 @@ import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
-import { buildChangeRequestPanelModel } from "@/lib/proposals/change-request/build-panel-model";
+import { buildConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
@@ -309,10 +309,16 @@ export function ProposalWorkspace({
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const devTestingEnabled = isDevTestingEnabled();
-  const changeRequestModel =
-    normalizeProposalStatus(proposal.status) === "needs_attention" &&
-    proposal.attention_reason === "customer_requested_changes"
-      ? buildChangeRequestPanelModel(customerMessages)
+  const status = normalizeProposalStatus(proposal.status);
+  const hasCustomerMessages = customerMessages.some(
+    (message) =>
+      message.direction !== "trader" &&
+      message.kind !== "trader_reply" &&
+      message.body.trim().length > 0
+  );
+  const resolutionSummary =
+    status === "needs_attention" && hasCustomerMessages
+      ? buildConversationResolutionSummary(customerMessages)
       : null;
   const actionContext = {
     status: proposal.status,
@@ -401,14 +407,11 @@ export function ProposalWorkspace({
         />
       </Suspense>
 
-      {changeRequestModel ? (
+      {resolutionSummary ? (
         <SectionCard className="qf-card-form qf-change-request-card">
-          <ChangeRequestPanel
+          <ConversationResolutionPanel
             proposalId={proposal.id}
-            customerEmail={proposal.customer_email}
-            customerName={proposal.customer_name}
-            message={changeRequestModel.message}
-            analysis={changeRequestModel.analysis}
+            summary={resolutionSummary}
           />
         </SectionCard>
       ) : null}

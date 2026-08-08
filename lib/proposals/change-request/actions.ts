@@ -52,12 +52,9 @@ export async function markChangeRequestResolved(
   }
 
   const currentStatus = normalizeProposalStatus(proposal.status);
-  if (
-    currentStatus !== "needs_attention" ||
-    proposal.attention_reason !== "customer_requested_changes"
-  ) {
+  if (currentStatus !== "needs_attention") {
     return {
-      error: "Only open change requests can be marked resolved.",
+      error: "Only open customer requests can be marked resolved.",
     };
   }
 

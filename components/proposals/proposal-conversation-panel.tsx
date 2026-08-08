@@ -76,8 +76,7 @@ export function ProposalConversationPanel({
             Update proposal
           </Link>
           <p className="qf-conversation-revise-hint">
-            Review suggested changes from this conversation. Nothing is applied
-            automatically.
+            Write changes in your own words. Nothing is applied automatically.
           </p>
         </div>
       ) : null}

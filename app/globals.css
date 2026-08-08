@@ -6935,3 +6935,103 @@ button.qf-booking-preview-day-selectable:focus-visible {
 .qf-revision-next-action-buttons .qf-btn-primary {
   text-decoration: none;
 }
+
+/* Conversation resolution (change request next steps) */
+.qf-resolution {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.qf-resolution-banner {
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255, 106, 26, 0.35);
+  background: rgba(255, 106, 26, 0.1);
+}
+
+.qf-resolution-banner-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qf-resolution-banner-copy {
+  margin: 0.3rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.qf-resolution-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.qf-resolution-block {
+  margin: 0;
+}
+
+.qf-resolution-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qf-resolution-copy {
+  margin: 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.qf-resolution-error {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #f87171;
+}
+
+.qf-resolution-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.qf-resolution-actions .qf-btn-primary,
+.qf-resolution-actions .qf-btn-secondary,
+.qf-resolution-actions a.qf-btn-primary,
+.qf-resolution-actions a.qf-btn-secondary {
+  text-decoration: none;
+}
+
+.qf-change-notes-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  padding-bottom: 2rem;
+}
+
+.qf-change-notes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.qf-change-notes-actions .qf-btn-secondary {
+  text-decoration: none;
+}
+
+.qf-change-notes-extract {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.qf-change-notes-field textarea {
+  width: 100%;
+}
