@@ -6,7 +6,6 @@ import type {
   RevisionActionStatus,
   RevisionActionType,
 } from "@/lib/proposals/revision/revision-action-types";
-import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
 export function actionTypeForSuggestionType(
   suggestionType: RevisionSuggestion["type"]
@@ -170,12 +169,8 @@ export function buildRevisionActionHref(action: RevisionAction): string {
 
   switch (action.actionType) {
     case "open_calendar": {
-      const base = buildScheduleWorkspacePath(action.proposalId, {
-        suggestedDateText: action.payload.plannedStartText,
-        suggestedDateExact: action.payload.plannedStartExact,
-      });
-      const joiner = base.includes("?") ? "&" : "?";
-      return `${base}${joiner}revisionActionId=${encodeURIComponent(action.id)}`;
+      // Timing before acceptance is proposal discussion, not job scheduling.
+      return `${proposalPath}?${params.toString()}#customer-replies`;
     }
     case "update_materials":
       return `${proposalPath}?${params.toString()}#job-preparation`;

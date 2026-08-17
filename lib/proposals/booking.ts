@@ -4,10 +4,8 @@ export const BOOKING_CONFIRMATIONS = ["provisional", "confirmed"] as const;
 
 export type BookingConfirmation = (typeof BOOKING_CONFIRMATIONS)[number];
 
-/** Statuses that may appear on the calendar once sent and scheduled. */
+/** Only accepted proposals may appear on the actual job calendar. */
 export const CALENDAR_ELIGIBLE_STATUSES = [
-  "waiting_for_customer",
-  "needs_attention",
   "booked",
 ] as const;
 
@@ -50,7 +48,8 @@ export function needsBookingConfirmation(
 
 /**
  * Whether a proposal can appear on the calendar.
- * Ready to Send and drafts are excluded — only sent quotes with a start date qualify.
+ * Proposal discussions never block the job calendar. Only an accepted proposal
+ * with a real start date qualifies.
  */
 export function isCalendarEligibleProposal(
   status: string,
@@ -62,25 +61,12 @@ export function isCalendarEligibleProposal(
     return false;
   }
 
-  if (normalized === "draft" || normalized === "ready_to_send") {
-    return false;
-  }
-
-  if (
-    normalized === "completed" ||
-    normalized === "cancelled" ||
-    normalized === "declined" ||
-    normalized === "expired"
-  ) {
-    return false;
-  }
-
   return (CALENDAR_ELIGIBLE_STATUSES as readonly string[]).includes(normalized);
 }
 
 /**
  * Calendar colour for a scheduled proposal.
- * Amber holds the date while waiting for the customer or tradesperson confirmation.
+ * Amber holds a date after proposal acceptance while the trader confirms it.
  * Green means the booking date is confirmed.
  */
 export function getCalendarBookingTone(
@@ -95,10 +81,6 @@ export function getCalendarBookingTone(
     }
 
     return "confirmed";
-  }
-
-  if (normalized === "waiting_for_customer" || normalized === "needs_attention") {
-    return "provisional";
   }
 
   return null;

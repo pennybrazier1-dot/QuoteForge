@@ -332,7 +332,7 @@ export function CustomerProposalPortal({
         businessName={view.businessName}
       />
 
-      {view.canRespond && !view.canRespondToProposedDate ? (
+      {view.canRespond ? (
         <section className="cj-job-card cj-portal-actions">
           <h2 className="cj-job-section-title">Your response</h2>
           <p className="cj-job-copy">

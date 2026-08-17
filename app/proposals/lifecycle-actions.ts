@@ -36,6 +36,105 @@ function revalidateAll(proposalId: string) {
   revalidatePath(`/proposals/${proposalId}`);
 }
 
+/**
+ * Trader-recorded acceptance creates job preparation only.
+ * Actual job dates are chosen later from the post-acceptance scheduler.
+ */
+export async function markProposalAccepted(
+  _prevState: LifecycleActionState,
+  formData: FormData
+): Promise<LifecycleActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding first." };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const { data: proposal, error: loadError } = await supabase
+    .from("proposals")
+    .select(
+      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, materials"
+    )
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (loadError || !proposal) {
+    return { error: "Proposal not found." };
+  }
+
+  const fromStatus = normalizeProposalStatus(proposal.status);
+  if (
+    !isProposalStatus(fromStatus) ||
+    (fromStatus !== "waiting_for_customer" && fromStatus !== "needs_attention")
+  ) {
+    return { error: "This proposal is not awaiting acceptance." };
+  }
+
+  const acceptedAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      status: "booked",
+      booking_confirmation: "provisional",
+      accepted_at: acceptedAt,
+      booked_at: acceptedAt,
+      attention_reason: null,
+    })
+    .eq("id", proposalId);
+
+  if (updateError) {
+    return { error: updateError.message ?? "Could not record acceptance." };
+  }
+
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: user.id,
+    eventType: "status_change",
+    fromStatus,
+    toStatus: "booked",
+    note: "Trader recorded customer acceptance — job preparation started",
+    metadata: { source: "trader_acceptance" },
+  });
+
+  const jobResult = await ensureJobForAcceptedProposal(
+    supabase,
+    {
+      id: proposal.id,
+      workspace_id: proposal.workspace_id,
+      customer_id: proposal.customer_id,
+      customer_name: proposal.customer_name,
+      customer_email: proposal.customer_email,
+      customer_phone: proposal.customer_phone,
+      customer_address: proposal.customer_address,
+      job_address: proposal.job_address,
+      planned_start_date: proposal.planned_start_date,
+      materials: proposal.materials,
+    },
+    { acceptedAt }
+  );
+
+  if (!jobResult.ok) {
+    return {
+      error: jobResult.error ?? "Acceptance was recorded, but job preparation could not start.",
+    };
+  }
+
+  revalidateAll(proposalId);
+  redirect(`/proposals/${proposalId}#job-preparation`);
+}
+
 export async function confirmBooking(
   _prevState: LifecycleActionState,
   formData: FormData

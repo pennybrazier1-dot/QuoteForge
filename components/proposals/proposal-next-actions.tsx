@@ -229,7 +229,7 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
           id: "mark-accepted",
           title: "Mark Accepted",
           description:
-            "Customer accepted this quote — confirm the booking date and add it to your calendar.",
+            "Customer accepted this proposal — start job preparation before scheduling work.",
           icon: ICONS.job,
           tone: "accent",
           primary: true,
@@ -266,13 +266,13 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
     case "booked":
       return [
         {
-          id: "manage-booking",
-          title: "Manage Booking",
-          description: "Confirm the booking or mark this job complete.",
+          id: "schedule-job",
+          title: "Schedule job",
+          description: "Choose the actual work date after proposal acceptance.",
           icon: ICONS.job,
           tone: "accent",
           primary: true,
-          href: "#proposal-lifecycle",
+          href: `/proposals/${id}/schedule`,
         },
         openPdf,
         viewCustomer,

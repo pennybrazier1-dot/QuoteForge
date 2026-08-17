@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Schedule job",
-  description: "Place a draft date on the calendar, then confirm to book.",
+  description: "Schedule accepted work on the job calendar.",
 };
 
 type PageProps = {
@@ -62,6 +62,12 @@ export default async function ProposalSchedulePage({
     : null;
   const status = normalizeProposalStatus(row.status);
 
+  // A job date is operational scheduling, not a proposal discussion.
+  // Before acceptance, use the customer conversation or update the proposal.
+  if (status !== "booked") {
+    redirect(`/proposals/${row.id}#customer-replies`);
+  }
+
   return (
     <ScheduleWorkspace
       proposal={{
@@ -74,7 +80,7 @@ export default async function ProposalSchedulePage({
         plannedStartDateText: row.planned_start_date_text,
         plannedStartTime: row.planned_start_time ?? null,
         bookingConfirmation,
-        requireCustomerDateAcceptance: status === "needs_attention",
+        requireCustomerDateAcceptance: false,
       }}
       calendarProposals={calendarProposals}
       suggestedDateText={query.suggestedDate ?? null}

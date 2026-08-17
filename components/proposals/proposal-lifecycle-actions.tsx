@@ -9,6 +9,7 @@ import {
   type CustomerResponseState,
 } from "@/app/proposals/customer-response-actions";
 import {
+  markProposalAccepted,
   markJobComplete,
   resendToCustomer,
   type LifecycleActionState,
@@ -86,11 +87,14 @@ export function ProposalLifecycleActions({
     markJobComplete,
     lifecycleInitialState
   );
+  const [acceptState, acceptAction] = useActionState(
+    markProposalAccepted,
+    lifecycleInitialState
+  );
   const [resendState, resendAction] = useActionState(
     resendToCustomer,
     lifecycleInitialState
   );
-  const [acceptDialogOpen, setAcceptDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [bookingPrefill, setBookingPrefill] = useState<{
     text: string | null;
@@ -99,11 +103,9 @@ export function ProposalLifecycleActions({
   const normalized = normalizeProposalStatus(status);
 
   const confirmBookingFromUrl = searchParams.get("confirmBooking") === "1";
-  const openAcceptFromUrl = searchParams.get("openAccept") === "1";
   const plannedStartHint = searchParams.get("plannedStartHint");
   const plannedStartExactHint = searchParams.get("plannedStartExact");
   const [handledConfirmUrl, setHandledConfirmUrl] = useState(false);
-  const [handledAcceptUrl, setHandledAcceptUrl] = useState(false);
 
   if (confirmBookingFromUrl && !handledConfirmUrl) {
     setHandledConfirmUrl(true);
@@ -114,22 +116,11 @@ export function ProposalLifecycleActions({
     });
   }
 
-  if (openAcceptFromUrl && !handledAcceptUrl) {
-    setHandledAcceptUrl(true);
-    setAcceptDialogOpen(true);
-  }
-
   useEffect(() => {
     if (confirmBookingFromUrl) {
       router.replace(`/proposals/${proposalId}`, { scroll: false });
     }
   }, [confirmBookingFromUrl, proposalId, router]);
-
-  useEffect(() => {
-    if (openAcceptFromUrl) {
-      router.replace(`/proposals/${proposalId}`, { scroll: false });
-    }
-  }, [openAcceptFromUrl, proposalId, router]);
 
   if (!isProposalStatus(normalized)) {
     return null;
@@ -149,6 +140,7 @@ export function ProposalLifecycleActions({
     responseState.error ||
     declineState.error ||
     lifecycleState.error ||
+    acceptState.error ||
     resendState.error;
 
   return (
@@ -168,13 +160,14 @@ export function ProposalLifecycleActions({
           />
           <p className="qf-workspace-lifecycle-label">Customer response</p>
           <div className="qf-workspace-lifecycle-actions">
-            <button
-              type="button"
-              className="qf-btn-primary"
-              onClick={() => setAcceptDialogOpen(true)}
-            >
-              Mark accepted
-            </button>
+            <form action={acceptAction} className="w-full">
+              <input type="hidden" name="proposalId" value={proposalId} />
+              <ActionButton
+                label="Mark accepted"
+                pendingLabel="Starting job preparation…"
+                variant="primary"
+              />
+            </form>
             {ATTENTION_REASONS.map((reason) => (
               <form key={reason} action={responseAction} className="w-full">
                 <input type="hidden" name="proposalId" value={proposalId} />
@@ -224,16 +217,15 @@ export function ProposalLifecycleActions({
       {showProvisional ? (
         <div className="qf-workspace-lifecycle-block">
           <p className="qf-workspace-lifecycle-label">
-            Provisional booking — confirm the start date, duration, and status
+            Proposal accepted — schedule the actual job when preparation is ready
           </p>
           <div className="qf-workspace-lifecycle-actions">
-            <button
-              type="button"
+            <a
+              href={`/proposals/${proposalId}/schedule`}
               className="qf-btn-primary"
-              onClick={() => setConfirmDialogOpen(true)}
             >
-              Confirm booking
-            </button>
+              Schedule job
+            </a>
           </div>
         </div>
       ) : null}
@@ -252,17 +244,6 @@ export function ProposalLifecycleActions({
           </div>
         </div>
       ) : null}
-
-      <BookingDialog
-        mode="accept"
-        open={acceptDialogOpen}
-        onClose={() => setAcceptDialogOpen(false)}
-        proposalId={proposalId}
-        plannedStartDateText={plannedStartDateText}
-        plannedStartDate={plannedStartDate}
-        estimatedDuration={estimatedDuration}
-        calendarProposals={calendarProposals}
-      />
 
       <BookingDialog
         mode="confirm"

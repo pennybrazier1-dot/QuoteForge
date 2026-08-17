@@ -27,10 +27,10 @@ function makeProposal(
 }
 
 describe("calendar booking tones", () => {
-  it("shows waiting_for_customer as provisional on the calendar", () => {
+  it("keeps waiting_for_customer off the actual job calendar", () => {
     expect(
       getCalendarBookingTone("waiting_for_customer", null)
-    ).toBe("provisional");
+    ).toBeNull();
   });
 
   it("excludes ready_to_send from the calendar", () => {
@@ -39,10 +39,10 @@ describe("calendar booking tones", () => {
     ).toBe(false);
   });
 
-  it("includes sent quotes with a planned start date", () => {
+  it("excludes sent quotes with rough timing from the job calendar", () => {
     expect(
       isCalendarEligibleProposal("waiting_for_customer", "2026-09-15")
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("marks booked + confirmed as green confirmed booking", () => {
@@ -57,7 +57,7 @@ describe("calendar booking tones", () => {
 });
 
 describe("buildCalendarJobs", () => {
-  it("builds provisional and confirmed jobs from proposals", () => {
+  it("builds only accepted jobs from proposals", () => {
     const jobs = buildCalendarJobs([
       makeProposal({
         id: "waiting-1",
@@ -79,8 +79,8 @@ describe("buildCalendarJobs", () => {
       }),
     ]);
 
-    expect(jobs).toHaveLength(3);
-    expect(jobs.find((job) => job.id === "waiting-1")?.tone).toBe("provisional");
+    expect(jobs).toHaveLength(2);
+    expect(jobs.find((job) => job.id === "waiting-1")).toBeUndefined();
     expect(jobs.find((job) => job.id === "booked-confirmed")?.tone).toBe(
       "confirmed"
     );

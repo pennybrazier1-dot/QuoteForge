@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
@@ -8,7 +7,6 @@ import {
   type ChangeRequestActionState,
 } from "@/lib/proposals/change-request/actions";
 import type { ConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
-import { buildCalendarActionHref } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
@@ -38,7 +36,6 @@ export function ConversationResolutionPanel({
     initialState
   );
 
-  const calendarHref = buildCalendarActionHref(proposalId, summary);
   const updateHref = buildProposalRevisePath(proposalId);
   const showSummary = section === "summary" || section === "all";
   const showActions = section === "actions" || section === "all";
@@ -115,17 +112,9 @@ export function ConversationResolutionPanel({
             </p>
             <div className="qf-resolution-action-grid">
               <div className="qf-resolution-action-option">
-                <Link href={calendarHref} className="qf-btn-secondary">
-                  Open calendar
-                </Link>
-                <p className="qf-resolution-action-hint">
-                  For scheduling and date changes
-                </p>
-              </div>
-              <div className="qf-resolution-action-option">
-                <Link href={updateHref} className="qf-btn-secondary">
+                <a href={updateHref} className="qf-btn-secondary">
                   Update proposal
-                </Link>
+                </a>
                 <p className="qf-resolution-action-hint">
                   For scope, materials, price, or detail changes
                 </p>
@@ -186,9 +175,13 @@ export function ConversationResolutionPanel({
                   Can you accommodate this?
                 </h2>
                 <div className="qf-resolution-mobile-actions">
-                  <Link href={calendarHref} className="qf-btn-primary">
-                    Yes
-                  </Link>
+                  <button
+                    type="button"
+                    className="qf-btn-primary"
+                    onClick={() => focusProposalConversationComposer()}
+                  >
+                    Reply with availability
+                  </button>
                   <button
                     type="button"
                     className="qf-btn-secondary"
@@ -204,9 +197,9 @@ export function ConversationResolutionPanel({
                   Update proposal
                 </h2>
                 <div className="qf-resolution-mobile-actions">
-                  <Link href={updateHref} className="qf-btn-primary">
+                  <a href={updateHref} className="qf-btn-primary">
                     Update proposal
-                  </Link>
+                  </a>
                   <button
                     type="button"
                     className="qf-btn-secondary"

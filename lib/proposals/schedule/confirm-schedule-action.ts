@@ -48,8 +48,9 @@ function revalidateSchedulePaths(proposalId: string, portalToken?: string | null
 }
 
 /**
- * Saves schedule only after the trader confirms in the scheduling workspace.
- * Does not auto-book from conversation alone.
+ * Saves an actual job schedule only after proposal acceptance.
+ * Pre-acceptance timing stays in the proposal conversation and never creates
+ * a calendar booking or job.
  */
 export async function confirmSchedule(
   _prev: ConfirmScheduleState,
@@ -115,23 +116,14 @@ export async function confirmSchedule(
   }
 
   const currentStatus = normalizeProposalStatus(proposal.status);
-  if (
-    !isProposalStatus(currentStatus) ||
-    (currentStatus !== "needs_attention" &&
-      currentStatus !== "waiting_for_customer" &&
-      currentStatus !== "booked")
-  ) {
+  if (!isProposalStatus(currentStatus) || currentStatus !== "booked") {
     return {
-      error: "This proposal can’t be scheduled from here right now.",
+      error:
+        "Accept the proposal before scheduling the actual job. Discuss timing in the proposal conversation first.",
     };
   }
 
-  // From attention: propose a provisional date only. Customer must accept to confirm.
-  const awaitingCustomerDateAcceptance = currentStatus === "needs_attention";
-  const effectiveBookingConfirmation: BookingConfirmation =
-    awaitingCustomerDateAcceptance
-      ? "provisional"
-      : (bookingConfirmation as BookingConfirmation);
+  const effectiveBookingConfirmation = bookingConfirmation as BookingConfirmation;
 
   const plannedFields = plannedStartToDbFields({
     plannedStartDate: plannedStartDateText,
@@ -153,17 +145,7 @@ export async function confirmSchedule(
     ...plannedFields,
   };
 
-  if (currentStatus === "waiting_for_customer") {
-    updatePayload.status = "booked";
-    updatePayload.accepted_at = proposal.accepted_at ?? now;
-    updatePayload.booked_at = now;
-    updatePayload.attention_reason = null;
-  } else if (currentStatus === "needs_attention") {
-    // Keep needs_attention until the customer accepts the date or the trader resolves.
-    updatePayload.status = "needs_attention";
-  } else if (currentStatus === "booked") {
-    updatePayload.status = "booked";
-  }
+  updatePayload.status = "booked";
 
   const { error: updateError } = await supabase
     .from("proposals")
@@ -181,9 +163,7 @@ export async function confirmSchedule(
       ? normalizeProposalStatus(updatePayload.status)
       : currentStatus;
 
-  const eventNote = awaitingCustomerDateAcceptance
-    ? `Provisional date proposed to customer: ${scheduleLabel}`
-    : `Schedule confirmed: ${scheduleLabel} (${effectiveBookingConfirmation})`;
+  const eventNote = `Job schedule saved: ${scheduleLabel} (${effectiveBookingConfirmation})`;
 
   await recordProposalEvent(supabase, {
     workspaceId: proposal.workspace_id,
@@ -196,28 +176,13 @@ export async function confirmSchedule(
     metadata: {
       source: "schedule_workspace",
       booking_confirmation: effectiveBookingConfirmation,
-      awaiting_customer_date_acceptance: awaitingCustomerDateAcceptance,
       planned_start_time: plannedStartTime,
       estimated_duration: estimatedDuration,
       ...plannedFields,
     },
   });
 
-  if (awaitingCustomerDateAcceptance) {
-    await supabase.from("proposal_customer_messages").insert({
-      workspace_id: proposal.workspace_id,
-      proposal_id: proposal.id,
-      kind: "trader_reply",
-      direction: "trader",
-      body: `I've provisionally held ${scheduleLabel}${
-        estimatedDuration ? ` (${estimatedDuration})` : ""
-      }. Please accept this date or request another one.`,
-      created_by: user.id,
-    });
-  }
-
-  // Create job when booking; for attention/booked updates, sync an existing job only.
-  // Never mark start date confirmed while awaiting customer acceptance.
+  // The job is created at acceptance. Scheduling only updates its actual dates.
   if (toStatus === "booked") {
     const jobResult = await ensureJobForAcceptedProposal(
       supabase,
@@ -233,8 +198,7 @@ export async function confirmSchedule(
         planned_start_date:
           plannedFields.planned_start_date ?? proposal.planned_start_date,
         materials: proposal.materials,
-      },
-      { acceptedAt: now }
+      }
     );
 
     if (jobResult.ok) {
@@ -252,28 +216,6 @@ export async function confirmSchedule(
         await syncJobStatusForProposal(supabase, proposal.id, "preparing");
       }
     }
-  } else {
-    const { data: existingJob } = await supabase
-      .from("jobs")
-      .select("id, status")
-      .eq("proposal_id", proposal.id)
-      .maybeSingle();
-
-    if (
-      existingJob &&
-      effectiveBookingConfirmation === "confirmed" &&
-      !awaitingCustomerDateAcceptance
-    ) {
-      await syncJobStatusForProposal(supabase, proposal.id, "scheduled");
-      await supabase
-        .from("job_prep_items")
-        .update({
-          status: "confirmed",
-          confirmed_at: now,
-        })
-        .eq("job_id", existingJob.id)
-        .eq("item_key", "start_date");
-    }
   }
 
   const portalToken = proposal.customer_access_token?.trim() || null;
@@ -288,29 +230,7 @@ export async function confirmSchedule(
       workspace?.business_name
     );
 
-    if (awaitingCustomerDateAcceptance) {
-      await notifyConversationParticipant({
-        to: proposal.customer_email,
-        subject: `${businessName} proposed a date for your job`,
-        message: [
-          `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
-          "",
-          `${businessName} has proposed this provisional date:`,
-          scheduleLabel,
-          estimatedDuration ? `Duration: ${estimatedDuration}` : "",
-          "",
-          "This date is not confirmed yet.",
-          "Open your proposal to accept this date, or request another date.",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        businessName,
-        ctaUrl: buildCustomerConversationUrl(portalToken),
-        ctaLabel: "Respond to proposed date",
-        replyTo: workspace?.contact_email,
-      });
-    } else {
-      await notifyConversationParticipant({
+    await notifyConversationParticipant({
         to: proposal.customer_email,
         subject: `${businessName} scheduled your job`,
         message: [
@@ -333,7 +253,6 @@ export async function confirmSchedule(
         ctaLabel: "View proposal",
         replyTo: workspace?.contact_email,
       });
-    }
   }
 
   revalidateSchedulePaths(proposalId, proposal.customer_access_token);
