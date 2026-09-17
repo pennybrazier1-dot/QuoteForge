@@ -4,18 +4,21 @@ import {
   isUsableEmailValue,
   proposalEmailFirstName,
   resolveProposalEmailBusinessName,
+  resolveProposalEmailTradeLabel,
 } from "@/lib/email/proposal-email-presentation";
 import {
   PROPOSAL_EMAIL_COLORS as C,
   PROPOSAL_EMAIL_CTA_LABEL,
   PROPOSAL_EMAIL_FALLBACK_LINK_LABEL,
   PROPOSAL_EMAIL_HEADING,
+  PROPOSAL_EMAIL_PREHEADER,
 } from "@/lib/email/proposal-email-tokens";
 import { resolveCustomerFacingBusinessLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 
 export type ProposalEmailHtmlInput = {
   businessName: string;
   businessLogoUrl?: string | null;
+  businessTradeLabel?: string | null;
   customerName?: string | null;
   portalUrl: string;
   ctaLabel?: string | null;
@@ -62,11 +65,31 @@ function textStyle(color: string, extra = ""): string {
   return `font-family:${FONT};color:${color};-webkit-text-fill-color:${color};${extra}`;
 }
 
-function iconCell(symbol: string): string {
-  return `<td width="36" valign="top" style="width:36px;padding:0 12px 18px 0;">
+function proposalEmailJobIconSymbol(title: string): string {
+  const lower = title.toLowerCase();
+  if (/bathroom|plumb|shower|toilet/.test(lower)) {
+    return "◈";
+  }
+  if (/kitchen/.test(lower)) {
+    return "▣";
+  }
+  if (/electric|rewire|socket/.test(lower)) {
+    return "⌁";
+  }
+  if (/garden|landscape|driveway|patio|pave/.test(lower)) {
+    return "⌂";
+  }
+  if (/paint|decorat/.test(lower)) {
+    return "✎";
+  }
+  return "▣";
+}
+
+function iconCell(symbol: string, size = 40): string {
+  return `<td width="${size + 12}" valign="top" style="width:${size + 12}px;padding:0 12px 16px 0;">
   <table role="presentation" cellpadding="0" cellspacing="0" border="0">
     <tr>
-      <td width="28" height="28" align="center" valign="middle" style="width:28px;height:28px;border:1.5px solid ${C.accent};border-radius:14px;${textStyle(C.accent, "font-size:13px;line-height:28px;font-weight:600;")}">
+      <td width="${size}" height="${size}" align="center" valign="middle" bgcolor="${C.accent}" style="width:${size}px;height:${size}px;background:${C.accent};border-radius:12px;${textStyle("#ffffff", `font-size:${size > 44 ? "22px" : "18px"};line-height:${size}px;font-weight:700;`)}">
         ${symbol}
       </td>
     </tr>
@@ -113,6 +136,10 @@ export function buildProposalEmailHtml(input: ProposalEmailHtmlInput): string {
   const businessName = resolveProposalEmailBusinessName(input.businessName);
   const portalUrl = safeHttpUrl(input.portalUrl);
   const logoUrl = resolveCustomerFacingBusinessLogoUrl(input.businessLogoUrl);
+  const tradeLabel = resolveProposalEmailTradeLabel(
+    input.businessTradeLabel,
+    businessName
+  );
   const firstName = proposalEmailFirstName(input.customerName);
   const ctaLabel = input.ctaLabel?.trim() || PROPOSAL_EMAIL_CTA_LABEL;
   const title = input.title?.trim() || "Your proposal";
@@ -135,19 +162,24 @@ export function buildProposalEmailHtml(input: ProposalEmailHtmlInput): string {
   const intro = buildProposalEmailIntro(title);
 
   const logoBlock = logoUrl
-    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(businessName || "")}" width="72" style="display:block;margin:0 auto 10px;border:0;max-width:160px;width:auto;height:auto;max-height:64px;" />`
+    ? `<img src="${escapeHtml(logoUrl)}" alt="${escapeHtml(businessName || "")}" width="88" style="display:block;margin:0 auto 14px;border:0;max-width:180px;width:auto;height:auto;max-height:80px;" />`
     : "";
 
   const businessBlock = businessName
-    ? `<p style="margin:0;${textStyle(C.text, "font-size:13px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;line-height:1.4;")}">${escapeHtml(businessName)}</p>`
+    ? `<p style="margin:0;${textStyle(C.text, logoUrl ? "font-size:15px;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;line-height:1.35;" : "font-size:26px;letter-spacing:0.04em;font-weight:800;line-height:1.2;")}">${escapeHtml(businessName)}</p>`
+    : "";
+
+  const tradeBlock = tradeLabel
+    ? `<p style="margin:6px 0 0;${textStyle(C.muted, "font-size:13px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;line-height:1.4;")}">${escapeHtml(tradeLabel)}</p>`
     : "";
 
   const identity =
     logoBlock || businessBlock
       ? `<tr>
-  <td align="center" style="padding:8px 8px 28px;">
+  <td align="center" style="padding:4px 8px 26px;">
     ${logoBlock}
     ${businessBlock}
+    ${tradeBlock}
   </td>
 </tr>`
       : "";
@@ -193,8 +225,8 @@ export function buildProposalEmailHtml(input: ProposalEmailHtmlInput): string {
   <![endif]-->
 </head>
 <body class="email-text" style="margin:0;padding:0;background:${C.page};${textStyle(C.text)}">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:${C.page};">
-    ${escapeHtml(intro)}
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:${C.page};font-size:1px;line-height:1px;">
+    ${escapeHtml(PROPOSAL_EMAIL_PREHEADER)}
   </div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.page}" style="background:${C.page};margin:0;padding:0;width:100%;">
     <tr>
@@ -219,7 +251,7 @@ export function buildProposalEmailHtml(input: ProposalEmailHtmlInput): string {
                   <td style="padding:22px 20px 18px;background:${C.card};border-radius:16px;">
                     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                       <tr>
-                        ${iconCell("▣")}
+                        ${iconCell(proposalEmailJobIconSymbol(title), 48)}
                         <td valign="top" style="padding:0 0 16px;">
                           <p class="email-text" style="margin:0;${textStyle(C.text, "font-size:20px;line-height:1.3;font-weight:700;")}">${escapeHtml(title)}</p>
                           ${
@@ -239,7 +271,7 @@ export function buildProposalEmailHtml(input: ProposalEmailHtmlInput): string {
                         </td>
                       </tr>
                       ${detailRow("£", "Total price", priceLabel, "20px")}
-                      ${detailRow("▦", "Proposed start date", proposedDateLabel)}
+                      ${detailRow("▣", "Proposed start date", proposedDateLabel)}
                       ${detailRow("◷", "Estimated duration", durationLabel)}
                       ${summaryRow(scopeSummary)}
                     </table>

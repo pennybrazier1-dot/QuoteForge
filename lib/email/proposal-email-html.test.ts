@@ -1,18 +1,24 @@
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildProposalEmailHtml } from "@/lib/email/proposal-email-html";
 import {
   buildProposalEmailContentFields,
+  buildProposalEmailIntro,
   buildProposalEmailSubject,
   emailHtmlHasDarkTextOnDarkBackground,
   emailHtmlUsesCssVariables,
   htmlProminentlyShowsPortalUrl,
   resolveProposalEmailBusinessName,
+  resolveProposalEmailJobTitle,
   sanitizeProposalEmailSubject,
 } from "@/lib/email/proposal-email-presentation";
-import { PROPOSAL_EMAIL_COLORS } from "@/lib/email/proposal-email-tokens";
+import {
+  PROPOSAL_EMAIL_COLORS,
+  PROPOSAL_EMAIL_PREHEADER,
+} from "@/lib/email/proposal-email-tokens";
+import { WORKSPACE_HAS_PERSISTED_LOGO } from "@/lib/proposals/pdf/customer-branding";
 import { buildHtmlEmail } from "@/lib/email/send-proposal-email";
 import { buildProposalEmailCopy } from "@/lib/proposals/proposal-email-delivery";
 import {
@@ -58,7 +64,8 @@ describe("branded proposal email", () => {
       businessLogoUrl: "https://cdn.example.com/logo.png",
     });
     expect(withLogo).toContain('src="https://cdn.example.com/logo.png"');
-    expect(withLogo).toContain("max-height:64px");
+    expect(withLogo).toContain("max-height:80px");
+    expect(WORKSPACE_HAS_PERSISTED_LOGO).toBe(false);
   });
 
   it("does not render a broken logo when none exists", () => {
@@ -74,6 +81,9 @@ describe("branded proposal email", () => {
     expect(resolveProposalEmailBusinessName("Reanvil Admin Testing")).toBeNull();
     expect(buildProposalEmailSubject("Your Business")).toBe(
       "Your proposal is ready"
+    );
+    expect(buildProposalEmailSubject("Sneddom Plumbing Ltd")).toBe(
+      "Proposal from Sneddom Plumbing Ltd"
     );
     expect(
       sanitizeProposalEmailSubject(
@@ -145,15 +155,8 @@ describe("branded proposal email", () => {
       businessName: "Carter & Sons Kitchens",
       portalUrl,
     });
-    expect(copy.subject).toBe(
-      "Your proposal from Carter &amp; Sons Kitchens is ready".replace(
-        "&amp;",
-        "&"
-      )
-    );
-    expect(copy.subject).toBe(
-      "Your proposal from Carter & Sons Kitchens is ready"
-    );
+    expect(copy.subject).toBe("Proposal from Carter & Sons Kitchens");
+    expect(copy.subject).not.toMatch(/Your Business/i);
     expect(copy.message).toContain(portalUrl);
     expect(copy.message).toMatch(/PDF/);
   });
@@ -169,7 +172,7 @@ describe("branded proposal email", () => {
   it("uses the same HTML template for send and resend", () => {
     const sendHtml = buildHtmlEmail({
       to: "emma@example.com",
-      subject: "Your proposal from Carter & Sons Kitchens is ready",
+      subject: "Proposal from Carter & Sons Kitchens",
       message: `View your proposal:\n${portalUrl}`,
       pdfBuffer: Buffer.from("%PDF-1.4"),
       businessName: "Carter & Sons Kitchens",
@@ -180,7 +183,7 @@ describe("branded proposal email", () => {
     });
     const resendHtml = buildHtmlEmail({
       to: "emma@example.com",
-      subject: "Your proposal from Carter & Sons Kitchens is ready",
+      subject: "Proposal from Carter & Sons Kitchens",
       message: `View your proposal:\n${portalUrl}`,
       pdfBuffer: Buffer.from("%PDF-1.4"),
       businessName: "Carter & Sons Kitchens",
@@ -254,6 +257,78 @@ describe("branded proposal email", () => {
     expect(missing.durationLabel).toBeNull();
   });
 
+  it("keeps one visible heading and a hidden concise preheader", () => {
+    expect(html.match(/<h1[^>]*>Your proposal is ready<\/h1>/g)).toHaveLength(1);
+    expect(html).toContain(PROPOSAL_EMAIL_PREHEADER);
+    expect(html).toContain("display:none");
+    expect(html).toContain("mso-hide:all");
+  });
+
+  it("uses a short job title and keeps the long scope only in Summary", () => {
+    const sarahFields = buildProposalEmailContentFields({
+      title: "Proposal for Sarah",
+      job_summary:
+        "Full bathroom renovation including removal of the old suite, replacement of sanitaryware, tiling and installation of a new shower.",
+      customer_name: "Sarah Jones",
+      total_amount: 370000,
+      planned_start_date: null,
+      planned_start_time: null,
+      estimated_duration: "5 days",
+    });
+    expect(resolveProposalEmailJobTitle({
+      title: "Proposal for Sarah",
+      jobSummary: sarahFields.scopeSummary,
+    })).toBe("Bathroom renovation");
+    expect(sarahFields.title).toBe("Bathroom renovation");
+    expect(sarahFields.scopeSummary).toContain(
+      "Full bathroom renovation including removal of the old suite"
+    );
+    expect(sarahFields.scopeSummary).not.toBe(sarahFields.title);
+    expect(sarahFields.proposedDateLabel).toBeNull();
+
+    const intro = buildProposalEmailIntro(sarahFields.title);
+    expect(intro).toBe(
+      "Your proposal for the bathroom renovation is ready to view in your secure customer portal."
+    );
+    expect(intro).not.toContain("removal of the old suite");
+
+    const sarahHtml = sampleHtml({
+      businessName: "Sneddom Plumbing Ltd",
+      customerName: "Sarah Jones",
+      title: sarahFields.title,
+      jobSubtitle: sarahFields.jobSubtitle,
+      priceLabel: "£3,700.00",
+      proposedDateLabel: sarahFields.proposedDateLabel,
+      durationLabel: sarahFields.durationLabel,
+      scopeSummary: sarahFields.scopeSummary,
+    });
+    expect(sarahHtml).toContain("Bathroom renovation");
+    expect(sarahHtml).toContain("£3,700.00");
+    expect(sarahHtml).toContain("5 days");
+    expect(sarahHtml).not.toContain("Proposed start date");
+    expect(
+      sarahHtml.split("Full bathroom renovation including removal").length
+    ).toBe(2);
+  });
+
+  it("loads branding from the same send and resend helpers", () => {
+    const source = readFileSync(
+      join(process.cwd(), "lib/proposals/send-proposal-to-customer.ts"),
+      "utf8"
+    );
+    expect(source).toContain("loadWorkspaceEmailLogoUrl");
+    expect(source).toContain("workspace.trade_type");
+    expect(source).not.toContain("resolveCustomerFacingBusinessLogoUrl(null)");
+    expect(source).toContain("buildProposalEmailContentFields");
+    expect(source).toContain("sendProposalEmail");
+    const template = readFileSync(
+      join(process.cwd(), "lib/email/send-proposal-email.ts"),
+      "utf8"
+    );
+    expect(template).toContain("buildProposalEmailHtml");
+    expect(template).toContain("html: buildHtmlEmail(input)");
+  });
+
   it("does not change lifecycle behaviour when the email is only rendered", () => {
     const before = {
       status: "ready_to_send",
@@ -269,15 +344,37 @@ describe("branded proposal email", () => {
   });
 
   it("writes a local HTML preview for visual review", () => {
-    const preview = sampleHtml({
-      businessLogoUrl: null,
+    const kitchen = sampleHtml({
+      businessLogoUrl: "https://cdn.example.com/carter-logo.png",
+      businessTradeLabel: "Kitchens",
     });
+    const sarah = sampleHtml({
+      businessName: "Sneddom Plumbing Ltd",
+      businessLogoUrl: null,
+      businessTradeLabel: "Plumbing",
+      customerName: "Sarah Jones",
+      title: "Bathroom renovation",
+      jobSubtitle: null,
+      priceLabel: "£3,700.00",
+      proposedDateLabel: null,
+      durationLabel: "5 days",
+      scopeSummary:
+        "Full bathroom renovation including removal of the old suite, replacement of sanitaryware, tiling and installation of a new shower.",
+    });
+    const preview = `${kitchen}\n<hr />\n${sarah}`;
     const previewPath = join(
       dirname(fileURLToPath(import.meta.url)),
       "../../notes/proposal-email-preview.html"
     );
     writeFileSync(previewPath, preview, "utf8");
-    expect(preview).toContain("Your proposal is ready");
+    expect(kitchen).toContain("Carter &amp; Sons Kitchens");
+    expect(kitchen).toContain("carter-logo.png");
+    expect(kitchen.match(/<h1[^>]*>Your proposal is ready<\/h1>/g)).toHaveLength(
+      1
+    );
+    expect(sarah).toContain("Bathroom renovation");
+    expect(sarah).toContain("Hi Sarah,");
+    expect(sarah).not.toContain("Proposed start date");
     expect(preview).toContain("View proposal →");
   });
 });

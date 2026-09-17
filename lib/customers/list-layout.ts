@@ -1,4 +1,5 @@
 import { MOBILE_FORM_LAYOUT } from "@/lib/layout/mobile-form-layout";
+import { traderPageUsesCanonicalMobileWidth } from "@/lib/layout/trader-mobile-page";
 import type { CustomerListView } from "@/lib/customers/lifecycle";
 
 export const CUSTOMER_LIST_MOBILE_REPEATS_VIEW_TITLE = false;
@@ -24,6 +25,7 @@ export function customerListOuterTitle(
 
 export function customerListUsesHomeWidth(): boolean {
   return (
+    traderPageUsesCanonicalMobileWidth() &&
     MOBILE_FORM_LAYOUT.pagePaddingToken === "var(--page-padding-mobile)" &&
     MOBILE_FORM_LAYOUT.maxWidth === "100%" &&
     !CUSTOMER_LIST_MOBILE_SHOWS_OUTER_CARD

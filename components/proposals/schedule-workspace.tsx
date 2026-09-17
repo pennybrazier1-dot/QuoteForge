@@ -262,7 +262,7 @@ export function ScheduleWorkspace({
     : suggestedDateText?.trim() || "Not selected yet";
 
   return (
-    <div className="qf-schedule-page qf-workspace-page qf-mobile-safe">
+    <div className="qf-trader-page qf-schedule-page qf-workspace-page qf-mobile-safe">
       <header className="qf-revision-header">
         <div className="qf-revision-header-top">
           <p className="qf-workspace-number">{proposal.proposalNumber}</p>

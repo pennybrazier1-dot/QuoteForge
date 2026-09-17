@@ -61,7 +61,7 @@ export default async function CustomerPage({ params }: PageProps) {
       : { data: [] };
 
   return (
-    <main className="qf-customer-detail-page mx-auto w-full max-w-3xl flex-1 py-10">
+    <main className="qf-trader-page qf-customer-detail-page mx-auto w-full max-w-full flex-1 py-10 lg:max-w-3xl">
       <Link
         href="/customers"
         className="inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"

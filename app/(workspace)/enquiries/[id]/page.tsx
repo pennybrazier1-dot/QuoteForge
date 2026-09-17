@@ -14,7 +14,7 @@ export default async function EnquiryDetailPage({ params }: EnquiryDetailPagePro
   const { id } = await params;
 
   return (
-    <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-10">
+    <main className="qf-trader-page mx-auto w-full max-w-full flex-1 py-8 sm:py-10 lg:max-w-6xl lg:px-6">
       <EnquiryDetailView enquiryId={id} />
     </main>
   );

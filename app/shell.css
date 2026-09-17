@@ -87,15 +87,14 @@
   }
 }
 
-/* Workspace main area — horizontal padding; bottom clearance via scroll-end spacer. */
+/*
+  Workspace main — ONE mobile gutter. Child pages must not add another.
+  Phone / tablet (< 1024): --page-padding-mobile
+  Desktop: --page-padding-desktop plus existing vertical rhythm
+*/
 .qf-app-main {
+  box-sizing: border-box;
   padding: 1rem var(--page-padding-mobile);
-}
-
-@media (min-width: 640px) {
-  .qf-app-main {
-    padding-inline: var(--page-padding-tablet);
-  }
 }
 
 @media (min-width: 1024px) {

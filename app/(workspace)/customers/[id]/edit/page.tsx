@@ -33,7 +33,7 @@ export default async function EditCustomerPage({ params }: PageProps) {
   const initialValues = customerToFormValues(customer);
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+    <main className="qf-trader-page mx-auto w-full max-w-full flex-1 py-10 lg:max-w-3xl lg:px-6">
       <Link
         href={`/customers/${id}`}
         className="inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"

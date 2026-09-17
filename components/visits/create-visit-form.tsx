@@ -129,7 +129,7 @@ export function CreateVisitForm({
   };
 
   return (
-    <form action={action} className="qf-proposal-page qf-mobile-form-page qf-mobile-safe">
+    <form action={action} className="qf-trader-page qf-proposal-page qf-mobile-form-page qf-mobile-safe">
       <input type="hidden" name="customerId" value={customerId} />
       {enquiryPrefill ? (
         <input type="hidden" name="enquiryId" value={enquiryPrefill.enquiryId} />

@@ -25,7 +25,7 @@ export default async function VisitsPage() {
   const visits = await listVisits(context.supabase, context.workspaceId);
 
   return (
-    <main className="qf-visit-page">
+    <main className="qf-trader-page qf-visit-page">
       <header className="qf-visit-page-header">
         <div>
           <h1 className="qf-visit-page-title">Visits</h1>

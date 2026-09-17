@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function MorePage() {
   return (
-    <div className="qf-page-simple">
+    <div className="qf-trader-page qf-page-simple">
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">More</h1>
         <p className="qf-page-simple-subtitle">Everything else in one place.</p>

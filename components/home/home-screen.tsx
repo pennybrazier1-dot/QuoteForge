@@ -13,7 +13,7 @@ export function HomeScreen({
   groups: HomeSectionGroup[];
 }) {
   return (
-    <div className="qf-home">
+    <div className="qf-trader-page qf-home">
       <HomeGreeting fullName={fullName} attentionItems={attentionItems} />
 
       <div className="qf-home-stack">

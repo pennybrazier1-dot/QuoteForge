@@ -43,6 +43,7 @@ export type WorkspacePdfSource = {
   contact_email: string | null;
   phone: string | null;
   default_payment_terms: string;
+  logo_url?: string | null;
 };
 
 type LoadProposalPdfContextResult =

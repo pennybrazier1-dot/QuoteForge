@@ -6,7 +6,7 @@ import {
   resolveProposalEmailBusinessName,
   sanitizeProposalEmailSubject,
 } from "@/lib/email/proposal-email-presentation";
-import { resolveCustomerFacingBusinessLogoUrl } from "@/lib/proposals/pdf/customer-branding";
+import { loadWorkspaceEmailLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
 import {
   buildCustomerProposalPdfUrl,
@@ -153,7 +153,8 @@ export async function sendProposalToCustomer(
     pdfBuffer,
     replyTo: workspace.contact_email,
     businessName,
-    businessLogoUrl: resolveCustomerFacingBusinessLogoUrl(null),
+    businessLogoUrl: loadWorkspaceEmailLogoUrl(workspace),
+    businessTradeLabel: workspace.trade_type,
     customerName: proposal.customer_name,
     ctaUrl: portalUrl,
     ctaLabel: PROPOSAL_EMAIL_CTA_LABEL,

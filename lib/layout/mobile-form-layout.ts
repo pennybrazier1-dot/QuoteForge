@@ -1,3 +1,4 @@
+/** Form pages reuse the same trader mobile width as Home / proposal detail. */
 export const MOBILE_FORM_LAYOUT = {
   pagePaddingToken: "var(--page-padding-mobile)",
   extraInlinePadding: "0",

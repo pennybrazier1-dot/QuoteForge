@@ -126,7 +126,7 @@ export function VisitDetailView({
       : null;
 
   return (
-    <div className="qf-proposal-page qf-mobile-safe">
+    <div className="qf-trader-page qf-proposal-page qf-mobile-safe">
       <header className="qf-proposal-header">
         <Link
           href="/visits"

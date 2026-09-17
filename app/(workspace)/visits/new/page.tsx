@@ -84,7 +84,7 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
   }
 
   return (
-    <main className="qf-mobile-form-page mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+    <main className="qf-trader-page qf-mobile-form-page mx-auto w-full max-w-full flex-1 py-10 lg:max-w-3xl lg:px-6">
       <header className="qf-proposal-header">
         <Link
           href={enquiryId ? `/enquiries/${enquiryId}` : "/visits"}

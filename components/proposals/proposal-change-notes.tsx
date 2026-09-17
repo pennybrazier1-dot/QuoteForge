@@ -42,7 +42,7 @@ export function ProposalChangeNotes({
   );
 
   return (
-    <div className="qf-change-notes-page qf-workspace-page qf-mobile-safe">
+    <div className="qf-trader-page qf-change-notes-page qf-workspace-page qf-mobile-safe">
       <header className="qf-revision-header">
         <div className="qf-revision-header-top">
           <p className="qf-workspace-number">{proposalNumber}</p>

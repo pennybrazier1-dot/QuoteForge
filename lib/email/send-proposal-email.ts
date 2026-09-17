@@ -10,6 +10,7 @@ export type SendProposalEmailInput = {
   replyTo?: string | null;
   businessName: string;
   businessLogoUrl?: string | null;
+  businessTradeLabel?: string | null;
   /** Secure customer portal URL shown as primary CTA in HTML email. */
   ctaUrl?: string | null;
   ctaLabel?: string | null;
@@ -53,6 +54,7 @@ export function buildHtmlEmail(input: SendProposalEmailInput): string {
   return buildProposalEmailHtml({
     businessName: input.businessName,
     businessLogoUrl: input.businessLogoUrl,
+    businessTradeLabel: input.businessTradeLabel,
     customerName: input.customerName,
     portalUrl: input.ctaUrl || "",
     pdfUrl: input.pdfUrl,

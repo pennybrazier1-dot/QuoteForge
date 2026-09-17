@@ -464,7 +464,7 @@ export function CalendarScreen({
   const showDayPanel = view === "month" || view === "week" || view === "day";
 
   return (
-    <div className="qf-calendar-page qf-mobile-safe">
+    <div className="qf-trader-page qf-calendar-page qf-mobile-safe">
       <header className="qf-page-simple-header">
         <h1 className="qf-page-simple-title">Calendar</h1>
         <p className="qf-page-simple-subtitle">

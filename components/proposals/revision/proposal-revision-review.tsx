@@ -161,7 +161,7 @@ export function ProposalRevisionReview({
   const summary = model.summary;
 
   return (
-    <div className="qf-revision-page qf-workspace-page qf-mobile-safe">
+    <div className="qf-trader-page qf-revision-page qf-workspace-page qf-mobile-safe">
       <header className="qf-revision-header">
         <div className="qf-revision-header-top">
           <p className="qf-workspace-number">{summary.proposalNumber}</p>

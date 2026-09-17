@@ -50,6 +50,13 @@ export function resolveCustomerFacingBusinessName(
   return trimmed;
 }
 
+/**
+ * Workspaces currently store business_name and trade_type only.
+ * Settings still lists "Branding and logo" as Coming Soon.
+ * Do not invent a Reanvil mark as the trader logo.
+ */
+export const WORKSPACE_HAS_PERSISTED_LOGO = false;
+
 /** Only a real http(s) image URL. Never render an empty or broken logo slot. */
 export function resolveCustomerFacingBusinessLogoUrl(
   logoUrl: string | null | undefined
@@ -67,4 +74,13 @@ export function resolveCustomerFacingBusinessLogoUrl(
   } catch {
     return null;
   }
+}
+
+export function loadWorkspaceEmailLogoUrl(workspace: {
+  logo_url?: string | null;
+}): string | null {
+  if (!WORKSPACE_HAS_PERSISTED_LOGO && !workspace.logo_url) {
+    return null;
+  }
+  return resolveCustomerFacingBusinessLogoUrl(workspace.logo_url);
 }

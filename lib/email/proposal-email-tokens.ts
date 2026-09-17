@@ -14,6 +14,8 @@ export const PROPOSAL_EMAIL_CTA_LABEL = "View proposal →";
 export const PROPOSAL_EMAIL_FALLBACK_LINK_LABEL = "Open secure proposal";
 export const PROPOSAL_EMAIL_HEADING = "Your proposal is ready";
 export const PROPOSAL_EMAIL_SUBJECT_FALLBACK = "Your proposal is ready";
+export const PROPOSAL_EMAIL_PREHEADER =
+  "Review your proposal securely online.";
 
 export const PLACEHOLDER_BUSINESS_NAMES = [
   "Your Business",

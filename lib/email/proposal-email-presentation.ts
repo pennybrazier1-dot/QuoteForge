@@ -42,9 +42,7 @@ export function buildProposalEmailSubject(
   businessName: string | null | undefined
 ): string {
   const business = resolveProposalEmailBusinessName(businessName);
-  return business
-    ? `Your proposal from ${business} is ready`
-    : PROPOSAL_EMAIL_SUBJECT_FALLBACK;
+  return business ? `Proposal from ${business}` : PROPOSAL_EMAIL_SUBJECT_FALLBACK;
 }
 
 export function sanitizeProposalEmailSubject(
@@ -155,21 +153,75 @@ export function formatProposalEmailSummary(
   return text;
 }
 
+const MAX_TITLE_CHARS = 48;
+const MAX_TITLE_WORDS = 6;
+
+function titleCaseJob(value: string): string {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length === 0) {
+    return value;
+  }
+  const [first, ...rest] = words;
+  return [
+    first.charAt(0).toUpperCase() + first.slice(1).toLowerCase(),
+    ...rest.map((word) => word.toLowerCase()),
+  ].join(" ");
+}
+
+export function isLongProposalScope(value: string | null | undefined): boolean {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return false;
+  }
+  return (
+    trimmed.length > MAX_TITLE_CHARS ||
+    trimmed.split(/\s+/).length > MAX_TITLE_WORDS ||
+    /\bincluding\b/i.test(trimmed)
+  );
+}
+
+export function isConciseProposalJobTitle(
+  value: string | null | undefined
+): boolean {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed || GENERIC_TITLE.test(trimmed) || FORBIDDEN_OUTPUT.test(trimmed)) {
+    return false;
+  }
+  return !isLongProposalScope(trimmed);
+}
+
+export function shortenScopeToJobTitle(
+  summary: string | null | undefined
+): string | null {
+  const trimmed = summary?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  const firstLine = trimmed.split(/\r?\n/)[0]?.trim() ?? "";
+  if (isConciseProposalJobTitle(firstLine)) {
+    return firstLine;
+  }
+  const beforeIncluding = firstLine.split(/\bincluding\b/i)[0]?.trim() ?? "";
+  const withoutFull = beforeIncluding.replace(/^full\s+/i, "").trim();
+  if (isConciseProposalJobTitle(withoutFull)) {
+    return titleCaseJob(withoutFull);
+  }
+  return null;
+}
+
 export function resolveProposalEmailJobTitle(input: {
   title?: string | null;
   jobSummary?: string | null;
   proposalNumber?: string | null;
 }): string {
-  const summaryFirst = input.jobSummary?.trim().split(/\r?\n/)[0]?.trim() ?? "";
-  if (summaryFirst && !GENERIC_TITLE.test(summaryFirst)) {
-    return summaryFirst.length > 80
-      ? `${summaryFirst.slice(0, 77).replace(/\s+\S*$/, "")}…`
-      : summaryFirst;
+  const storedTitle = input.title?.trim() ?? "";
+  if (isConciseProposalJobTitle(storedTitle)) {
+    return storedTitle;
   }
 
-  const title = input.title?.trim() ?? "";
-  if (title && !GENERIC_TITLE.test(title)) {
-    return title;
+  const fromSummary = shortenScopeToJobTitle(input.jobSummary);
+  if (fromSummary) {
+    return fromSummary;
   }
 
   return "Your proposal";
@@ -187,7 +239,7 @@ export function resolveProposalEmailJobSubtitle(input: {
   if (
     !candidate ||
     candidate === input.jobTitle ||
-    candidate.length > 80 ||
+    isLongProposalScope(candidate) ||
     FORBIDDEN_OUTPUT.test(candidate)
   ) {
     return null;
@@ -195,14 +247,24 @@ export function resolveProposalEmailJobSubtitle(input: {
   return candidate;
 }
 
+export function sameEmailCopy(
+  left: string | null | undefined,
+  right: string | null | undefined
+): boolean {
+  const a = left?.trim().toLowerCase() ?? "";
+  const b = right?.trim().toLowerCase() ?? "";
+  return Boolean(a && b && a === b);
+}
+
 export function proposalEmailProjectPhrase(jobTitle: string): string {
   const trimmed = jobTitle.trim();
-  if (!trimmed || /^your proposal$/i.test(trimmed)) {
+  if (!trimmed || /^your proposal$/i.test(trimmed) || isLongProposalScope(trimmed)) {
     return "your project";
   }
-  return /project|installation|refit|work|job/i.test(trimmed)
-    ? trimmed.toLowerCase()
-    : `${trimmed.toLowerCase()} project`;
+  const lower = trimmed.toLowerCase();
+  return /project|installation|refit|renovation|replacement|work|job/i.test(lower)
+    ? lower
+    : `${lower} project`;
 }
 
 export function buildProposalEmailGreeting(
@@ -250,19 +312,38 @@ export function buildProposalEmailContentFields(proposal: {
     jobSummary: proposal.job_summary,
     proposalNumber: proposal.proposal_number,
   });
+  const subtitle = resolveProposalEmailJobSubtitle({
+    jobTitle: title,
+    jobSummary: proposal.job_summary,
+  });
+  const scopeSummary = formatProposalEmailSummary(proposal.job_summary);
   return {
     title,
-    jobSubtitle: resolveProposalEmailJobSubtitle({
-      jobTitle: title,
-      jobSummary: proposal.job_summary,
-    }),
+    jobSubtitle:
+      subtitle && !sameEmailCopy(subtitle, title) ? subtitle : null,
     proposedDateLabel: formatProposalEmailDateTime({
       dateIso: proposal.planned_start_date,
       dateText: proposal.planned_start_date_text,
       timeHm: proposal.planned_start_time,
     }),
     durationLabel: formatProposalEmailDuration(proposal.estimated_duration),
-    scopeSummary: formatProposalEmailSummary(proposal.job_summary),
+    scopeSummary:
+      scopeSummary && !sameEmailCopy(scopeSummary, title) ? scopeSummary : null,
     customerFirstName: proposalEmailFirstName(proposal.customer_name),
   };
+}
+
+export function resolveProposalEmailTradeLabel(
+  tradeType: string | null | undefined,
+  businessName: string | null | undefined
+): string | null {
+  const trade = tradeType?.trim() ?? "";
+  if (!trade || FORBIDDEN_OUTPUT.test(trade)) {
+    return null;
+  }
+  const business = businessName?.trim().toLowerCase() ?? "";
+  if (business && business.includes(trade.toLowerCase())) {
+    return null;
+  }
+  return trade;
 }

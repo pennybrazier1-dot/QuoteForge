@@ -893,6 +893,7 @@ a.qf-card-inset:hover {
   .qf-app,
   .qf-app-frame,
   .qf-app-main,
+  .qf-trader-page,
   .qf-proposal-page,
   .qf-mobile-quote-capture,
   .qf-editable-proposal-review,
@@ -7539,6 +7540,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
   margin-inline: auto;
 }
 
+@media (max-width: 1023px) {
+  .qf-schedule-page {
+    max-width: 100%;
+    margin-inline: 0;
+  }
+}
+
 .qf-schedule-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -7686,7 +7694,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
   width: 100%;
   max-width: 44rem;
   margin: 0 auto;
-  padding: 1.5rem 1rem 2.5rem;
+  padding: 1.5rem 0 2.5rem;
+}
+
+@media (min-width: 1024px) {
+  .qf-visit-page {
+    padding-inline: 1rem;
+  }
 }
 
 .qf-visit-page-header {
@@ -8252,7 +8266,86 @@ button.qf-booking-preview-day-selectable:focus-visible {
   cursor: pointer;
 }
 
+/*
+  Phase 50G.10 — one trader mobile content width.
+  Shell (.qf-app-main) already applies --page-padding-mobile.
+  Child pages use .qf-trader-page and must not add another gutter.
+*/
+.qf-trader-page,
+.qf-mobile-card-stack,
+.qf-mobile-full-card {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
 @media (max-width: 1023px) {
+  .qf-app-main > .qf-trader-page,
+  .qf-app-main > .qf-home,
+  .qf-app-main > .qf-proposal-page,
+  .qf-app-main > .qf-workspace-page,
+  .qf-app-main > .qf-mobile-form-page,
+  .qf-app-main > .qf-calendar-page,
+  .qf-app-main > .qf-schedule-page,
+  .qf-app-main > .qf-page-simple,
+  .qf-app-main > .qf-visit-page,
+  .qf-app-main > .qf-customer-page,
+  .qf-app-main > .qf-customer-detail-page,
+  .qf-app-main > .qf-change-notes-page,
+  .qf-app-main > .qf-revision-page,
+  .qf-app-main > .qf-quote-prep-page,
+  .qf-app-main > .qf-mobile-quote-capture {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin-inline: 0;
+    padding-inline: 0;
+    box-sizing: border-box;
+  }
+
+  .qf-trader-page,
+  .qf-home,
+  .qf-proposal-page,
+  .qf-workspace-page,
+  .qf-mobile-form-page,
+  .qf-calendar-page,
+  .qf-schedule-page,
+  .qf-page-simple,
+  .qf-visit-page,
+  .qf-change-notes-page,
+  .qf-revision-page,
+  .qf-quote-prep-page,
+  .qf-mobile-quote-capture {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .qf-trader-page .qf-card,
+  .qf-trader-page .qf-card-inset,
+  .qf-trader-page .qf-card-accent,
+  .qf-trader-page .qf-card.qf-card-form,
+  .qf-mobile-full-card,
+  .qf-mobile-card-stack > .qf-card,
+  .qf-mobile-card-stack > .qf-card-inset,
+  .qf-mobile-card-stack > .qf-home-card {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .qf-trader-page .form-input,
+  .qf-trader-page .form-textarea,
+  .qf-trader-page .form-select,
+  .qf-trader-page .qf-input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
   .qf-mobile-form-page {
     width: 100%;
     max-width: 100%;
@@ -8293,7 +8386,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
 .qf-customer-page,
 .qf-customer-detail-page {
   overflow-x: clip;
-  padding-inline: var(--page-padding-desktop);
+}
+
+@media (min-width: 1024px) {
+  .qf-customer-page,
+  .qf-customer-detail-page {
+    padding-inline: var(--page-padding-desktop);
+  }
 }
 
 @media (max-width: 1023px) {
@@ -8301,7 +8400,7 @@ button.qf-booking-preview-day-selectable:focus-visible {
   .qf-customer-detail-page {
     width: 100%;
     max-width: 100%;
-    padding-inline: var(--page-padding-mobile);
+    padding-inline: 0;
     padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
   }
 }

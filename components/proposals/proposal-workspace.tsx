@@ -376,7 +376,7 @@ export function ProposalWorkspace({
         senderName,
       }}
     >
-      <div className="qf-proposal-page qf-workspace-page qf-mobile-safe">
+      <div className="qf-trader-page qf-proposal-page qf-workspace-page qf-mobile-safe">
       <header className="qf-workspace-header">
         <div className="qf-workspace-header-top">
           <p className="qf-workspace-number">{proposal.proposal_number}</p>

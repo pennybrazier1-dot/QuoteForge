@@ -507,6 +507,13 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   color: #f5f5f7;
 }
 
+@media (max-width: 1023px) {
+  .qf-app[data-qf-theme="dark"] .qf-page-simple {
+    max-width: 100%;
+    margin-inline: 0;
+  }
+}
+
 .qf-app[data-qf-theme="dark"] .qf-page-simple-header {
   margin-bottom: 1.5rem;
 }
