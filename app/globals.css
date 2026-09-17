@@ -8134,6 +8134,27 @@ button.qf-booking-preview-day-selectable:focus-visible {
 }
 
 .cj-portal-slot {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 2.75rem;
+  padding: 0.85rem 0.95rem;
+  overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: auto;
+  border: 1px solid var(--portal-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-card, 1rem);
+  background: var(--background-card-inset, #16161e);
+  color: var(--portal-text, #f5f5f7);
+  -webkit-text-fill-color: var(--portal-text, #f5f5f7);
+}
+
+.cj-portal-slot-inner {
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -8141,15 +8162,15 @@ button.qf-booking-preview-day-selectable:focus-visible {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  box-sizing: border-box;
-  min-height: 3rem;
-  padding: 0.85rem 0.95rem;
-  overflow: hidden;
-  border: 1px solid var(--portal-border, rgba(255, 255, 255, 0.12));
-  border-radius: var(--radius-card, 1rem);
-  background: var(--background-card-inset, #16161e);
-  color: var(--portal-text, #f5f5f7);
-  -webkit-text-fill-color: var(--portal-text, #f5f5f7);
+  pointer-events: none;
+}
+
+.cj-portal-slot input,
+.cj-portal-slot input[type="radio"],
+.cj-portal-slot-copy,
+.cj-portal-slot-title,
+.cj-portal-slot-subtitle {
+  pointer-events: none;
 }
 
 .cj-portal-slot input,

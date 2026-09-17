@@ -45,6 +45,11 @@ import {
   shouldShowThingsToConfirm,
 } from "@/lib/proposals/customer-portal/portal-page-layout";
 import type { PublicAvailabilitySlot } from "@/lib/proposals/customer-availability";
+import {
+  isPortalSlotSelected,
+  portalSlotInputId,
+  portalSlotRadioValue,
+} from "@/lib/proposals/customer-portal/portal-slot-selection";
 import { buildCustomerProposalPdfPath } from "@/lib/proposals/customer-portal/token";
 
 const initialState: CustomerPortalActionState = {};
@@ -71,22 +76,28 @@ function PortalSlotOption({
   onSelect: (slot: PublicAvailabilitySlot) => void;
 }) {
   const copy = portalSlotCardCopy(slot);
+  const inputId = portalSlotInputId(name, slot.id);
   return (
     <label
+      htmlFor={inputId}
       className={`cj-portal-slot${checked ? " cj-portal-slot-selected" : ""}`}
+      onClick={() => onSelect(slot)}
     >
-      <input
-        type="radio"
-        name={name}
-        value={name === "slotId" ? slot.id : undefined}
-        checked={checked}
-        onChange={() => onSelect(slot)}
-      />
-      <span className="cj-portal-slot-copy">
-        <span className="cj-portal-slot-title">{copy.title}</span>
-        {copy.subtitle ? (
-          <span className="cj-portal-slot-subtitle">{copy.subtitle}</span>
-        ) : null}
+      <span className="cj-portal-slot-inner">
+        <input
+          id={inputId}
+          type="radio"
+          name={name}
+          value={portalSlotRadioValue(slot)}
+          checked={checked}
+          onChange={() => onSelect(slot)}
+        />
+        <span className="cj-portal-slot-copy">
+          <span className="cj-portal-slot-title">{copy.title}</span>
+          {copy.subtitle ? (
+            <span className="cj-portal-slot-subtitle">{copy.subtitle}</span>
+          ) : null}
+        </span>
       </span>
     </label>
   );
@@ -132,24 +143,16 @@ function PortalAvailabilityList({
   return (
     <>
       <ul className="cj-portal-slot-list">
-        {visible.map((slot) => {
-          const value =
-            matchBy === "startDate"
-              ? slot.startDate
-              : matchBy === "startTime"
-                ? slot.startTime || ""
-                : slot.id;
-          return (
+        {visible.map((slot) => (
             <li key={slot.id}>
               <PortalSlotOption
                 slot={slot}
                 name={name}
-                checked={selectedValue === value}
+                checked={isPortalSlotSelected(slot, selectedValue, matchBy)}
                 onSelect={onSelect}
               />
             </li>
-          );
-        })}
+        ))}
       </ul>
       {!showMore && moreSlots.length > 0 ? (
         <button

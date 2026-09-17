@@ -2466,14 +2466,25 @@
 }
 
 .cj-root--portal .cj-portal-slot {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  display: block;
   width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
   overflow: hidden;
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
+}
+
+.cj-root--portal .cj-portal-slot-inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .cj-root--portal .cj-portal-slot input,
@@ -2484,6 +2495,7 @@
   max-width: 1.15rem;
   height: 1.15rem;
   flex: 0 0 1.15rem;
+  pointer-events: none;
 }
 
 .cj-root--portal .cj-portal-slot-copy {
