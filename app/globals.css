@@ -94,19 +94,20 @@
   --qf-bottom-nav-measured-height: var(--qf-bottom-nav-total-height);
   --qf-workspace-scroll-end-height: var(--qf-workspace-bottom-padding);
 
-  /* Customer proposal portal (light Reanvil customer experience). */
-  --portal-bg: #f6f5f3;
-  --portal-surface: #ffffff;
-  --portal-text: #111113;
-  --portal-text-secondary: #3f3f46;
-  --portal-text-muted: #71717a;
+  /* Customer proposal portal — black page, charcoal cards, orange accent. */
+  --portal-bg: #08080a;
+  --portal-surface: #1f1f28;
+  --portal-text: #f5f5f7;
+  --portal-text-secondary: #d4d4d8;
+  --portal-text-muted: #a1a1aa;
   --portal-accent: #ff6a1a;
-  --portal-accent-hover: #ff7a2e;
-  --portal-border: rgba(17, 17, 19, 0.09);
-  --portal-border-strong: rgba(17, 17, 19, 0.16);
-  --portal-input-bg: #ffffff;
-  --portal-input-text: #111113;
-  --portal-input-placeholder: #71717a;
+  --portal-accent-hover: #ff7d36;
+  --portal-border: rgba(255, 255, 255, 0.12);
+  --portal-border-strong: rgba(255, 255, 255, 0.18);
+  --portal-input-bg: #0c0c12;
+  --portal-input-text: #f5f5f7;
+  --portal-input-placeholder: #a1a1aa;
+  --portal-footer: #a1a1aa;
 }
 
 html {

@@ -457,15 +457,43 @@ export async function acceptProposedScheduleDate(
 /**
  * Customer asks for a different date after a provisional proposal.
  */
+/** Time changes use the same existing date/availability request path. */
+export async function requestAnotherScheduleTime(
+  prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  if (!getString(formData, "changeFocus")) {
+    formData.set("changeFocus", "time");
+  }
+  return requestAnotherScheduleDate(prev, formData);
+}
+
 export async function requestAnotherScheduleDate(
   _prev: CustomerPortalActionState,
   formData: FormData
 ): Promise<CustomerPortalActionState> {
   const token = getString(formData, "token");
-  const message = getString(formData, "message");
+  const requestedDate = getString(formData, "requestedDate");
+  const requestedTime = getString(formData, "requestedTime");
+  const changeFocus = getString(formData, "changeFocus") || "date";
+  const typedMessage = getString(formData, "message");
+  const message =
+    typedMessage ||
+    (changeFocus === "time"
+      ? requestedTime
+        ? `I'd like this time instead: ${requestedTime}.`
+        : "I'd like a different time."
+      : requestedDate
+        ? `I'd like this date instead: ${requestedDate}.`
+        : "I'd like a different date.");
 
-  if (!message) {
-    return { error: "Please tell us what dates would work better." };
+  if (!typedMessage && !requestedDate && !requestedTime) {
+    return {
+      error:
+        changeFocus === "time"
+          ? "Please choose a time that would work."
+          : "Please choose a date that would work.",
+    };
   }
 
   if (message.length > 4000) {
@@ -481,15 +509,13 @@ export async function requestAnotherScheduleDate(
     return { error: "This proposal is no longer open for replies." };
   }
 
-  const requestedDate = getString(formData, "requestedDate");
-  const requestedTime = getString(formData, "requestedTime");
-
   const supabase = createPortalClient();
   if (!supabase) {
     return { error: "The proposal portal is not configured yet." };
   }
 
   const currentDate = loaded.view.proposedDateLabel;
+  const timeFocus = changeFocus === "time";
 
   const { error: messageError } = await supabase
     .from("proposal_customer_messages")
@@ -500,11 +526,15 @@ export async function requestAnotherScheduleDate(
       direction: "customer",
       body: [
         currentDate
-          ? `I'd like a different date instead of ${currentDate}.`
-          : "I'd like a different date/time.",
+          ? timeFocus
+            ? `I'd like a different time instead of ${currentDate}.`
+            : `I'd like a different date instead of ${currentDate}.`
+          : timeFocus
+            ? "I'd like a different time."
+            : "I'd like a different date.",
         requestedDate ? `Requested date: ${requestedDate}` : "",
         requestedTime ? `Requested time: ${requestedTime}` : "",
-        message,
+        typedMessage,
       ]
         .filter(Boolean)
         .join("\n"),
@@ -521,7 +551,7 @@ export async function requestAnotherScheduleDate(
     eventNote: `${formatAttentionReason("customer_requested_date_change")}: ${message}`,
     attentionReason: release.attentionReason,
     metadata: {
-      action: "request_another_date",
+      action: timeFocus ? "request_another_time" : "request_another_date",
       previous_proposed_date: currentDate,
       requested_date: requestedDate || null,
       requested_time: requestedTime || null,
@@ -540,7 +570,7 @@ export async function requestAnotherScheduleDate(
       proposalNumber: loaded.view.proposalNumber,
       preview: message,
       proposalId: loaded.proposal.id,
-      kindLabel: "date change request",
+      kindLabel: timeFocus ? "time change request" : "date change request",
     });
     await notifyConversationParticipant({
       to: traderEmail,

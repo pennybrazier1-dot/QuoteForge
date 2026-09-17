@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CUSTOMER_FACING_BUSINESS_NAME_FALLBACK,
   isNonCustomerFacingBusinessName,
+  resolveCustomerFacingBusinessLogoUrl,
   resolveCustomerFacingBusinessName,
 } from "@/lib/proposals/pdf/customer-branding";
 
@@ -23,5 +24,13 @@ describe("customer-facing business branding", () => {
     expect(resolveCustomerFacingBusinessName("  ")).toBe(
       CUSTOMER_FACING_BUSINESS_NAME_FALLBACK
     );
+  });
+
+  it("only accepts a real http logo URL", () => {
+    expect(
+      resolveCustomerFacingBusinessLogoUrl("https://cdn.example.com/logo.png")
+    ).toBe("https://cdn.example.com/logo.png");
+    expect(resolveCustomerFacingBusinessLogoUrl("")).toBeNull();
+    expect(resolveCustomerFacingBusinessLogoUrl("javascript:alert(1)")).toBeNull();
   });
 });

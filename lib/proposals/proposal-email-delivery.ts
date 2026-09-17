@@ -115,12 +115,14 @@ export function buildProposalEmailCopy(input: {
 
   if (kind === "reminder") {
     return {
-      subject: `Your Reanvil proposal – ${input.customerName?.trim() || "your proposal"}`,
+      subject: `Your proposal from ${business} is ready`,
       message: `Hi ${name},
 
-Here is your proposal again. You can review it online and respond without creating an account.
+Your proposal from ${business} is ready.
 
-View & respond to your proposal:
+You can review it again on the proposal page.
+
+View your proposal:
 ${input.portalUrl}
 
 A PDF copy is also attached for your records.
@@ -132,18 +134,20 @@ ${business}`,
 
   if (kind !== "revised") {
     return {
-      subject: buildSendProposalSubject(input.customerName?.trim() || name),
+      subject: buildSendProposalSubject(name, business),
       message: buildSendProposalMessage(name, business, input.portalUrl),
     };
   }
 
   return {
-    subject: `Your updated Reanvil proposal – ${input.customerName?.trim() || "your proposal"}`,
+    subject: `Your updated proposal from ${business} is ready`,
     message: `Hi ${name},
 
-Please find your updated proposal. You can review the latest version online and respond without creating an account.
+Your updated proposal from ${business} is ready.
 
-View & respond to your proposal:
+You can review the latest version on the proposal page.
+
+View your proposal:
 ${input.portalUrl}
 
 A PDF copy is also attached for your records.

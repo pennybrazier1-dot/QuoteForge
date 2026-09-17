@@ -45,7 +45,7 @@ export function SendProposalDialog({
   const customerName = data.customerName.trim() || "Customer";
   const [customerEmail, setCustomerEmail] = useState(data.customerEmail ?? "");
   const [subject, setSubject] = useState(() =>
-    buildSendProposalSubject(customerName)
+    buildSendProposalSubject(customerName, data.businessName)
   );
   const [message, setMessage] = useState(() =>
     buildSendProposalMessage(customerName, data.businessName)
@@ -74,7 +74,7 @@ export function SendProposalDialog({
   if (open && dialogFormSeed !== null && dialogFormSeed !== appliedDialogFormSeed) {
     setAppliedDialogFormSeed(dialogFormSeed);
     setCustomerEmail(data.customerEmail ?? "");
-    setSubject(buildSendProposalSubject(customerName));
+    setSubject(buildSendProposalSubject(customerName, data.businessName));
     setMessage(buildSendProposalMessage(customerName, data.businessName));
   }
 

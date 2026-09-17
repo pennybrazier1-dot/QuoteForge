@@ -1,4 +1,8 @@
 import { Resend } from "resend";
+import {
+  buildProposalEmailHtml,
+  proposalEmailIntroHtml,
+} from "@/lib/email/proposal-email-html";
 
 export type SendProposalEmailInput = {
   to: string;
@@ -7,9 +11,15 @@ export type SendProposalEmailInput = {
   pdfBuffer: Buffer;
   replyTo?: string | null;
   businessName: string;
+  businessLogoUrl?: string | null;
   /** Secure customer portal URL shown as primary CTA in HTML email. */
   ctaUrl?: string | null;
   ctaLabel?: string | null;
+  pdfUrl?: string | null;
+  title?: string | null;
+  priceLabel?: string | null;
+  proposedDateLabel?: string | null;
+  scopeSummary?: string | null;
 };
 
 export type SendProposalEmailResult =
@@ -40,38 +50,19 @@ function getFromAddress(businessName: string): string | null {
   return `${businessName} <onboarding@resend.dev>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function toHtmlBody(message: string): string {
-  return escapeHtml(message).replaceAll("\n", "<br />");
-}
-
-function buildHtmlEmail(input: SendProposalEmailInput): string {
-  const body = toHtmlBody(input.message);
-  const ctaUrl = input.ctaUrl?.trim();
-  const ctaLabel = input.ctaLabel?.trim() || "View & respond to proposal";
-
-  const button = ctaUrl
-    ? `<div style="margin: 28px 0 8px;">
-  <a href="${escapeHtml(ctaUrl)}"
-     style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:600;font-size:15px;">
-    ${escapeHtml(ctaLabel)}
-  </a>
-</div>
-<p style="margin:0 0 24px;font-size:13px;color:#555555;">
-  Or paste this link into your browser:<br />
-  <a href="${escapeHtml(ctaUrl)}" style="color:#111111;">${escapeHtml(ctaUrl)}</a>
-</p>`
-    : "";
-
-  return `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; color: #111111;">${body}${button}</div>`;
+export function buildHtmlEmail(input: SendProposalEmailInput): string {
+  return buildProposalEmailHtml({
+    businessName: input.businessName,
+    businessLogoUrl: input.businessLogoUrl,
+    introHtml: proposalEmailIntroHtml(input.message),
+    portalUrl: input.ctaUrl || "",
+    pdfUrl: input.pdfUrl,
+    ctaLabel: input.ctaLabel?.trim() || "View proposal",
+    title: input.title,
+    priceLabel: input.priceLabel,
+    proposedDateLabel: input.proposedDateLabel,
+    scopeSummary: input.scopeSummary,
+  });
 }
 
 export async function sendProposalEmail(

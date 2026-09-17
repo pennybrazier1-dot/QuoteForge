@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildCustomerProposalPdfPath,
+  buildCustomerProposalPdfUrl,
   buildCustomerProposalPortalPath,
   buildCustomerProposalPortalUrl,
   createCustomerAccessToken,
@@ -17,6 +19,8 @@ describe("customer proposal portal helpers", () => {
   it("builds portal paths and urls", () => {
     expect(buildCustomerProposalPortalPath("abc123")).toBe("/p/abc123");
     expect(buildCustomerProposalPortalUrl("abc123")).toMatch(/\/p\/abc123$/);
+    expect(buildCustomerProposalPdfPath("abc123")).toBe("/p/abc123/pdf");
+    expect(buildCustomerProposalPdfUrl("abc123")).toMatch(/\/p\/abc123\/pdf$/);
   });
 
   it("includes the respond link in the default email message", () => {
@@ -26,8 +30,9 @@ describe("customer proposal portal helpers", () => {
       "https://example.com/p/token123"
     );
 
-    expect(message).toContain("View & respond to your proposal:");
+    expect(message).toContain("View your proposal:");
     expect(message).toContain("https://example.com/p/token123");
     expect(message).toContain("PDF copy is also attached");
+    expect(message).toContain("Bright Bathrooms");
   });
 });

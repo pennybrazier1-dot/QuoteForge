@@ -25,6 +25,11 @@ import {
 import type { PublicAvailabilitySlot } from "@/lib/proposals/customer-availability";
 import { scheduleModeForDuration } from "@/lib/proposals/customer-availability";
 import { readDateSlotState } from "@/lib/proposals/date-workflow";
+import {
+  formatPortalIssuedLabel,
+  formatPortalWorkDate,
+  formatPortalWorkTime,
+} from "@/lib/proposals/customer-portal/portal-page-layout";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 
 export type PublicProposalViewModel = {
@@ -48,6 +53,8 @@ export type PublicProposalViewModel = {
   selectedSlotLabel: string | null;
   dateOfferSource: "proposal" | "trader" | "customer_selected" | null;
   businessName: string;
+  businessLogoUrl: string | null;
+  paymentTerms: string | null;
   tradeType: string | null;
   contactEmail: string | null;
   phone: string | null;
@@ -61,6 +68,10 @@ export type PublicProposalViewModel = {
   optionalExtras: string[];
   estimatedDuration: string | null;
   plannedStartLabel: string | null;
+  plannedDateLabel: string | null;
+  plannedTimeLabel: string | null;
+  issuedLabel: string | null;
+  jobImageUrl: string | null;
 };
 
 type PortalProposalRow = ProposalPdfSource & {
@@ -225,6 +236,8 @@ export async function loadPublicProposalByToken(
       selectedSlotLabel: canAcceptProposal ? plannedStartLabel : null,
       dateOfferSource,
       businessName: resolveCustomerFacingBusinessName(workspaceRow.business_name),
+      businessLogoUrl: null,
+      paymentTerms: pdfData.paymentTerms?.trim() || null,
       tradeType: workspaceRow.trade_type,
       contactEmail: workspaceRow.contact_email,
       phone: workspaceRow.phone,
@@ -241,6 +254,13 @@ export async function loadPublicProposalByToken(
           ? pdfData.estimatedDuration
           : null,
       plannedStartLabel,
+      plannedDateLabel: formatPortalWorkDate(
+        row.planned_start_date,
+        row.planned_start_date_text
+      ),
+      plannedTimeLabel: formatPortalWorkTime(row.planned_start_time),
+      issuedLabel: formatPortalIssuedLabel(row.created_at),
+      jobImageUrl: null,
     },
   };
 }

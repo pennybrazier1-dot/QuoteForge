@@ -25,3 +25,7 @@ export function buildCustomerProposalPortalUrl(token: string): string {
 export function buildCustomerProposalPdfPath(token: string): string {
   return `${buildCustomerProposalPortalPath(token)}/pdf`;
 }
+
+export function buildCustomerProposalPdfUrl(token: string): string {
+  return `${getSiteUrl()}${buildCustomerProposalPdfPath(token)}`;
+}

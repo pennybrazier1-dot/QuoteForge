@@ -8,9 +8,12 @@ export type SendProposalContext = {
   senderName: string;
 };
 
-export function buildSendProposalSubject(customerName: string): string {
-  const name = customerName.trim() || "your customer";
-  return `Your Reanvil Proposal – ${name}`;
+export function buildSendProposalSubject(
+  _customerName: string,
+  businessName?: string
+): string {
+  const business = businessName?.trim() || "your business";
+  return `Your proposal from ${business} is ready`;
 }
 
 export function buildSendProposalMessage(
@@ -21,18 +24,16 @@ export function buildSendProposalMessage(
   const name = customerName.trim() || "there";
   const business = businessName.trim() || "Your business";
   const linkBlock = portalUrl?.trim()
-    ? `\nView & respond to your proposal:\n${portalUrl.trim()}\n`
+    ? `\nView your proposal:\n${portalUrl.trim()}\n`
     : "";
 
   return `Hi ${name},
 
-Thank you for taking the time to meet with me.
+Your proposal from ${business} is ready.
 
-Please find your proposal for the work we discussed. You can review it online and respond without creating an account.
+You can review it online and reply on the proposal page if you have a question.
 ${linkBlock}
 A PDF copy is also attached for your records.
-
-If you have any questions, please don't hesitate to get in touch.
 
 Kind regards,
 ${business}`;

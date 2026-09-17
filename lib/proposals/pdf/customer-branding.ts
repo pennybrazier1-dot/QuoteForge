@@ -49,3 +49,22 @@ export function resolveCustomerFacingBusinessName(
   }
   return trimmed;
 }
+
+/** Only a real http(s) image URL. Never render an empty or broken logo slot. */
+export function resolveCustomerFacingBusinessLogoUrl(
+  logoUrl: string | null | undefined
+): string | null {
+  const trimmed = logoUrl?.trim() ?? "";
+  if (!trimmed) {
+    return null;
+  }
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return null;
+    }
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
