@@ -1,5 +1,8 @@
 import { formatAttentionReason } from "@/lib/proposals/attention";
-import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
+import {
+  buildDateWorkflowSnapshot,
+  JOB_BOOKED_STATUS_TITLE,
+} from "@/lib/proposals/date-workflow";
 import {
   isPlannedStartInFuture,
   isPlannedStartToday,
@@ -126,8 +129,8 @@ export function classifyHomeProposal(
       notes: today
         ? ["Today's job"]
         : isPlannedStartInFuture(proposal.planned_start_date, reference)
-          ? ["Booked job"]
-          : ["Booked job"],
+        ? [JOB_BOOKED_STATUS_TITLE]
+        : [JOB_BOOKED_STATUS_TITLE],
     };
   }
 

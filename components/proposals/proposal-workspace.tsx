@@ -24,12 +24,17 @@ import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import { buildConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
-import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
+import {
+  buildDateWorkflowSnapshot,
+  JOB_BOOKED_STATUS_TITLE,
+} from "@/lib/proposals/date-workflow";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
+import { WORKSPACE_ACTION_STACK_CLASS } from "@/lib/layout/workspace-action-stack";
+import { resolveWorkspaceJobTitle } from "@/lib/proposals/workspace-job-title";
 import {
   WAITING_PAGE_STATUS_TITLE,
   isWaitingForCustomerPage,
@@ -342,6 +347,11 @@ export function ProposalWorkspace({
     dateText: proposal.planned_start_date_text,
     timeHm: proposal.planned_start_time,
   });
+  const shortJobTitle = resolveWorkspaceJobTitle({
+    title: proposal.title,
+    jobSummary: proposal.job_summary,
+    proposalNumber: proposal.proposal_number,
+  });
   const builtResolutionSummary =
     status === "needs_attention" && hasCustomerMessages
       ? buildConversationResolutionSummary(customerMessages, new Date(), {
@@ -386,6 +396,16 @@ export function ProposalWorkspace({
         <h1 className="qf-workspace-customer">
           {proposal.customer_name ?? "Unknown customer"}
         </h1>
+        {shortJobTitle ? (
+          <p className="qf-workspace-job-title">{shortJobTitle}</p>
+        ) : null}
+
+        {dateWorkflow.isBookedJob && confirmedSlotLabel ? (
+          <section className="qf-date-state-banner qf-date-state-banner-booked" role="status">
+            <p className="qf-date-state-title">{JOB_BOOKED_STATUS_TITLE}</p>
+            <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
+          </section>
+        ) : null}
 
         <div className="qf-workspace-meta">
           <div className="qf-workspace-meta-item">
@@ -411,6 +431,7 @@ export function ProposalWorkspace({
         </div>
       </header>
 
+      <div className={WORKSPACE_ACTION_STACK_CLASS}>
       {isWaitingForCustomerPage(proposal.status) ? (
         <section className="qf-waiting-status" role="status">
           <p className="qf-waiting-status-title">{WAITING_PAGE_STATUS_TITLE}</p>
@@ -444,13 +465,6 @@ export function ProposalWorkspace({
           <p className="qf-date-state-note">
             Waiting for customer to confirm this date
           </p>
-        </section>
-      ) : null}
-
-      {dateWorkflow.isBookedJob && confirmedSlotLabel ? (
-        <section className="qf-date-state-banner qf-date-state-banner-booked" role="status">
-          <p className="qf-date-state-title">Booked job</p>
-          <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
         </section>
       ) : null}
 
@@ -502,6 +516,7 @@ export function ProposalWorkspace({
           />
         </Suspense>
       ) : null}
+      </div>
 
       {jobPrep ? (
         <div id="job-preparation">

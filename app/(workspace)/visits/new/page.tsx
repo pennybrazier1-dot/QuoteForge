@@ -5,8 +5,10 @@ import { CreateVisitForm } from "@/components/visits/create-visit-form";
 import { loadCustomersForNameMatch } from "@/lib/customers/load-name-match";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import {
+  isNewVisitType,
   NEW_VISIT_PAGE_SUBTITLE,
   NEW_VISIT_PAGE_TITLE,
+  type NewVisitType,
 } from "@/lib/visits/new-visit";
 
 export const metadata: Metadata = {
@@ -18,6 +20,8 @@ type PageProps = {
   searchParams: Promise<{
     customerId?: string;
     enquiryId?: string;
+    proposalId?: string;
+    visitType?: string;
   }>;
 };
 
@@ -27,7 +31,13 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
     redirect("/login");
   }
 
-  const { customerId, enquiryId } = await searchParams;
+  const { customerId, enquiryId, proposalId, visitType } = await searchParams;
+  const requestedVisitType = visitType?.trim() ?? "";
+  const defaultVisitType: NewVisitType | undefined = isNewVisitType(
+    requestedVisitType
+  )
+    ? requestedVisitType
+    : undefined;
 
   const customers = await loadCustomersForNameMatch(
     context.supabase,
@@ -87,10 +97,20 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
     <main className="qf-trader-page qf-mobile-form-page mx-auto w-full max-w-full flex-1 py-10 lg:max-w-3xl lg:px-6">
       <header className="qf-proposal-header">
         <Link
-          href={enquiryId ? `/enquiries/${enquiryId}` : "/visits"}
+          href={
+            proposalId
+              ? `/proposals/${proposalId}`
+              : enquiryId
+                ? `/enquiries/${enquiryId}`
+                : "/visits"
+          }
           className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
         >
-          {enquiryId ? "← Back to enquiry" : "← Back to visits"}
+          {proposalId
+            ? "← Back to job"
+            : enquiryId
+              ? "← Back to enquiry"
+              : "← Back to visits"}
         </Link>
         <h1 className="qf-proposal-title">{NEW_VISIT_PAGE_TITLE}</h1>
         <p className="qf-proposal-subtitle">
@@ -104,6 +124,8 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
         customers={customers}
         preselectedCustomerId={linkedCustomerId}
         enquiryPrefill={enquiryPrefill}
+        proposalId={proposalId ?? null}
+        defaultVisitType={defaultVisitType}
       />
     </main>
   );

@@ -8,23 +8,20 @@ import {
 } from "@/lib/jobs/actions";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import {
-  JOB_PREP_ITEM_DEFINITIONS,
-  buildJobPrepActionHref,
-  formatJobPrepItemStatus,
-  isPrepItemResolved,
-} from "@/lib/jobs/prep-items";
-import {
-  formatJobStatus,
-  needsJobPreparation,
-} from "@/lib/jobs/status";
+  buildBookVisitHref,
+  buildPrepChecklistRows,
+  defaultVisitTypeFromHistory,
+  pickRelevantVisit,
+  summarizeLinkedVisit,
+} from "@/lib/jobs/prep-checklist";
 
 const initialState: JobPrepActionState = {};
 
-function PrepStatusMark({ status }: { status: string }) {
-  if (status === "confirmed") {
+function PrepStatusMark({ tone }: { tone: "done" | "open" | "skip" }) {
+  if (tone === "done") {
     return <span className="qf-job-prep-mark qf-job-prep-mark-done">✓</span>;
   }
-  if (status === "not_needed") {
+  if (tone === "skip") {
     return <span className="qf-job-prep-mark qf-job-prep-mark-skip">–</span>;
   }
   return <span className="qf-job-prep-mark qf-job-prep-mark-open">○</span>;
@@ -39,31 +36,26 @@ export function JobPreparationPanel({
     updateJobPrepItemStatus,
     initialState
   );
-  const definitionByKey = new Map(
-    JOB_PREP_ITEM_DEFINITIONS.map((item) => [item.key, item])
-  );
-  const showPrepBanner = needsJobPreparation(view.job.status);
+  const linkedVisit = pickRelevantVisit(view.visits);
+  const rows = buildPrepChecklistRows({
+    items: view.items,
+    linkedVisit,
+  });
+  const visitSummary = summarizeLinkedVisit(linkedVisit);
+  const siteVisitRow = rows.find((row) => row.key === "site_visit");
+  const showBookVisit =
+    siteVisitRow?.statusLabel === "Not booked" && !visitSummary;
+  const bookVisitHref = buildBookVisitHref({
+    proposalId: view.job.proposal_id,
+    customerId: view.job.customer_id,
+    enquiryId: view.enquiryId,
+    visitType: defaultVisitTypeFromHistory(view.visits),
+  });
 
   return (
     <section className="qf-job-prep" aria-label="Job preparation">
-      {showPrepBanner ? (
-        <div className="qf-job-prep-banner" role="status">
-          <p className="qf-job-prep-banner-title">
-            Job accepted — preparation required.
-          </p>
-          <p className="qf-job-prep-banner-copy">
-            Work through the checklist below before scheduling the job.
-          </p>
-        </div>
-      ) : null}
-
       <div className="qf-job-prep-header">
-        <div>
-          <h2 className="qf-job-prep-title">Job preparation</h2>
-          <p className="qf-job-prep-meta">
-            Status: {formatJobStatus(view.job.status)}
-          </p>
-        </div>
+        <h2 className="qf-job-prep-title">Job preparation</h2>
       </div>
 
       {state.error ? (
@@ -73,42 +65,40 @@ export function JobPreparationPanel({
       ) : null}
 
       <ul className="qf-job-prep-list">
-        {view.items.map((item) => {
-          const definition = definitionByKey.get(item.item_key);
-          if (!definition) {
-            return null;
-          }
-
-          const href = buildJobPrepActionHref(item.item_key, {
-            proposalId: view.job.proposal_id,
-            customerId: view.job.customer_id,
-            enquiryId: view.enquiryId,
-          });
-          const resolved = isPrepItemResolved(item.status);
-
-          return (
-            <li key={item.id} className="qf-job-prep-item">
-              <div className="qf-job-prep-item-main">
-                <PrepStatusMark status={item.status} />
-                <div className="qf-job-prep-item-copy">
-                  <p className="qf-job-prep-item-label">{definition.label}</p>
-                  <p className="qf-job-prep-item-status">
-                    {formatJobPrepItemStatus(item.status)}
-                  </p>
-                </div>
-              </div>
-
-              <div className="qf-job-prep-item-actions">
-                {!resolved ? (
-                  <Link href={href} className="qf-btn-secondary qf-job-prep-action">
-                    {definition.actionLabel}
-                  </Link>
+        {rows.map((row) => (
+          <li key={row.key} className="qf-job-prep-item">
+            <div className="qf-job-prep-item-main">
+              <PrepStatusMark tone={row.tone} />
+              <div className="qf-job-prep-item-copy">
+                <p className="qf-job-prep-item-label">{row.label}</p>
+                <p className="qf-job-prep-item-status">{row.statusLabel}</p>
+                {row.detail ? (
+                  <p className="qf-job-prep-item-detail">{row.detail}</p>
                 ) : null}
+              </div>
+            </div>
 
-                {!resolved ? (
-                  <>
+            <div className="qf-job-prep-item-side">
+              {row.key === "site_visit" && visitSummary ? (
+                <Link
+                  href={`/visits/${visitSummary.id}`}
+                  className="qf-btn-secondary qf-job-prep-action"
+                >
+                  View visit
+                </Link>
+              ) : null}
+
+              {row.showMoreMenu ? (
+                <details className="qf-job-prep-more">
+                  <summary className="qf-job-prep-more-trigger">
+                    <span className="qf-job-prep-more-label">
+                      More actions for {row.label}
+                    </span>
+                    <span aria-hidden="true">⋯</span>
+                  </summary>
+                  <div className="qf-job-prep-more-menu">
                     <form action={action}>
-                      <input type="hidden" name="prepItemId" value={item.id} />
+                      <input type="hidden" name="prepItemId" value={row.itemId} />
                       <input
                         type="hidden"
                         name="proposalId"
@@ -117,14 +107,14 @@ export function JobPreparationPanel({
                       <input type="hidden" name="status" value="confirmed" />
                       <button
                         type="submit"
-                        className="qf-btn-primary qf-job-prep-action"
+                        className="qf-job-prep-more-action"
                         disabled={pending}
                       >
-                        Confirmed
+                        Mark confirmed
                       </button>
                     </form>
                     <form action={action}>
-                      <input type="hidden" name="prepItemId" value={item.id} />
+                      <input type="hidden" name="prepItemId" value={row.itemId} />
                       <input
                         type="hidden"
                         name="proposalId"
@@ -133,19 +123,27 @@ export function JobPreparationPanel({
                       <input type="hidden" name="status" value="not_needed" />
                       <button
                         type="submit"
-                        className="qf-btn-secondary qf-job-prep-action"
+                        className="qf-job-prep-more-action"
                         disabled={pending}
                       >
-                        Not needed
+                        Mark not needed
                       </button>
                     </form>
-                  </>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
+                  </div>
+                </details>
+              ) : null}
+            </div>
+          </li>
+        ))}
       </ul>
+
+      {showBookVisit ? (
+        <div className="qf-job-prep-footer">
+          <Link href={bookVisitHref} className="qf-btn-primary qf-job-prep-book">
+            Book visit
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -4,6 +4,8 @@ import { normalizeProposalStatus } from "@/lib/proposals/status";
 export const DATE_SLOT_PROVISIONAL = "provisional";
 /** Customer has confirmed the date. This is not automatically a booked job. */
 export const DATE_SLOT_CONFIRMED = "confirmed";
+/** Status title on the trader proposal page after the job is booked. */
+export const JOB_BOOKED_STATUS_TITLE = "Job booked";
 
 export type DateSlotState = "none" | "provisional" | "confirmed";
 

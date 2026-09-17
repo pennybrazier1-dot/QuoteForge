@@ -5,6 +5,8 @@ import {
   type JobPrepItemStatus,
 } from "@/lib/jobs/prep-items";
 import type { JobStatus } from "@/lib/jobs/status";
+import { visitBelongsToJob } from "@/lib/jobs/prep-checklist";
+import { VISIT_SELECT, type VisitRecord } from "@/lib/visits/types";
 
 export type JobRecord = {
   id: string;
@@ -30,6 +32,7 @@ export type ProposalJobPrepView = {
   job: JobRecord;
   items: JobPrepItemRecord[];
   enquiryId: string | null;
+  visits: VisitRecord[];
 };
 
 export async function loadJobPrepForProposal(
@@ -48,20 +51,26 @@ export async function loadJobPrepForProposal(
     return null;
   }
 
-  const [{ data: items }, { data: enquiry }] = await Promise.all([
-    supabase
-      .from("job_prep_items")
-      .select("id, job_id, item_key, status, sort_order, confirmed_at")
-      .eq("job_id", job.id)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("enquiries")
-      .select("id")
-      .eq("linked_proposal_id", proposalId)
-      .order("received_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+  const [{ data: items }, { data: enquiry }, { data: visitRows }] =
+    await Promise.all([
+      supabase
+        .from("job_prep_items")
+        .select("id, job_id, item_key, status, sort_order, confirmed_at")
+        .eq("job_id", job.id)
+        .order("sort_order", { ascending: true }),
+      supabase
+        .from("enquiries")
+        .select("id")
+        .eq("linked_proposal_id", proposalId)
+        .order("received_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("visits")
+        .select(VISIT_SELECT)
+        .eq("workspace_id", job.workspace_id)
+        .order("visit_date", { ascending: true }),
+    ]);
 
   const byKey = new Map(
     (items ?? []).map((item) => [item.item_key as JobPrepItemKey, item])
@@ -91,6 +100,15 @@ export async function loadJobPrepForProposal(
     }
   );
 
+  const enquiryId = enquiry?.id ?? null;
+  const visits = ((visitRows ?? []) as VisitRecord[]).filter((visit) =>
+    visitBelongsToJob(visit, {
+      proposalId,
+      enquiryId,
+      customerId: job.customer_id,
+    })
+  );
+
   return {
     job: {
       id: job.id,
@@ -103,6 +121,7 @@ export async function loadJobPrepForProposal(
       completed_at: job.completed_at,
     },
     items: ordered,
-    enquiryId: enquiry?.id ?? null,
+    enquiryId,
+    visits,
   };
 }

@@ -9,7 +9,10 @@ import {
   getSendDisabledReason,
   type ProposalActionContext,
 } from "@/lib/proposals/proposal-action-eligibility";
-import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
+import {
+  buildDateWorkflowSnapshot,
+  JOB_BOOKED_STATUS_TITLE,
+} from "@/lib/proposals/date-workflow";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -268,7 +271,7 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         return [
           {
             id: "booked-job",
-            title: "Booked job",
+            title: JOB_BOOKED_STATUS_TITLE,
             description: "The date is confirmed and the job is on the calendar.",
             icon: ICONS.job,
             tone: "emerald",

@@ -18,8 +18,9 @@ import {
 } from "@/lib/proposals/acceptance-rules";
 import { decodePublicSlotId } from "@/lib/proposals/customer-availability";
 import { loadWorkspaceOccupiedSlots } from "@/lib/proposals/customer-availability-load";
+import { buildBookingConfirmationEmail } from "@/lib/email/booking-confirmation-email";
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { loadWorkspaceEmailLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 import { plannedStartToDbFields } from "@/lib/proposals/planned-start-date";
 import { buildScheduleDateLabel } from "@/lib/proposals/schedule/schedule-fields";
 import {
@@ -788,29 +789,32 @@ async function sendCustomerBookingConfirmation(
     return;
   }
 
-  const slotLabel =
-    loaded.view.selectedSlotLabel ||
-    loaded.view.plannedStartLabel ||
-    "the agreed date";
-  const businessName = resolveCustomerFacingBusinessName(
-    loaded.workspace.business_name
-  );
+  const portalUrl = buildCustomerProposalPortalUrl(loaded.view.token);
+  const email = buildBookingConfirmationEmail({
+    businessName: loaded.workspace.business_name,
+    businessLogoUrl: loadWorkspaceEmailLogoUrl(loaded.workspace),
+    businessTradeLabel: loaded.workspace.trade_type,
+    customerName: loaded.view.customerName,
+    portalUrl,
+    title: loaded.view.title,
+    jobSummary: loaded.proposal.job_summary,
+    proposalNumber: loaded.view.proposalNumber,
+    plannedStartDate: loaded.proposal.planned_start_date,
+    plannedStartDateText: loaded.proposal.planned_start_date_text,
+    plannedStartTime: loaded.proposal.planned_start_time,
+    estimatedDuration:
+      loaded.view.estimatedDuration || loaded.proposal.estimated_duration,
+  });
 
   await sendNotificationEmail({
     to,
-    subject: `Booking confirmed – ${businessName}`,
-    message: [
-      `Hi${loaded.view.customerName ? ` ${loaded.view.customerName}` : ""},`,
-      "",
-      `Your booking with ${businessName} is confirmed.`,
-      slotLabel,
-      "",
-      "You can review the accepted proposal from your original link.",
-    ].join("\n"),
-    businessName,
+    subject: email.subject,
+    message: email.text,
+    html: email.html,
+    businessName: email.businessName,
     replyTo: loaded.workspace.contact_email,
-    ctaUrl: buildCustomerProposalPortalUrl(loaded.view.token),
-    ctaLabel: "View proposal",
+    ctaUrl: portalUrl,
+    ctaLabel: "View booking",
   });
 
   void acceptedAt;

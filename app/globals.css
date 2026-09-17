@@ -4211,6 +4211,19 @@ a.qf-card-inset:hover {
   line-height: 1.2;
 }
 
+.qf-workspace-job-title {
+  margin: 0.4rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  color: var(--foreground);
+}
+
+.qf-workspace-header .qf-date-state-banner {
+  margin-top: 0.85rem;
+}
+
 .qf-workspace-meta {
   display: flex;
   flex-wrap: wrap;
@@ -4236,6 +4249,27 @@ a.qf-card-inset:hover {
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--foreground);
+}
+
+.qf-workspace-action-stack {
+  --qf-workspace-stack-gap: var(--thumb-action-gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--qf-workspace-stack-gap);
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 var(--qf-workspace-stack-gap);
+}
+
+.qf-workspace-action-stack > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+@media (min-width: 1024px) {
+  .qf-workspace-action-stack {
+    --qf-workspace-stack-gap: 1.5rem;
+  }
 }
 
 .qf-workspace-actions {
@@ -6465,19 +6499,22 @@ button.qf-booking-preview-day-selectable:focus-visible {
 }
 
 .qf-job-prep-item {
-  display: grid;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--border-card);
-  border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.02);
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
 }
 
-@media (min-width: 768px) {
-  .qf-job-prep-item {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-  }
+.qf-job-prep-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.qf-job-prep-item:first-child {
+  padding-top: 0;
 }
 
 .qf-job-prep-item-main {
@@ -6527,6 +6564,19 @@ button.qf-booking-preview-day-selectable:focus-visible {
   color: var(--muted);
 }
 
+.qf-job-prep-item-detail {
+  margin: 0.15rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-job-prep-item-side {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
 .qf-job-prep-item-actions {
   display: flex;
   flex-wrap: wrap;
@@ -6538,6 +6588,80 @@ button.qf-booking-preview-day-selectable:focus-visible {
   padding-inline: 0.9rem;
   font-size: 0.8125rem;
   text-decoration: none;
+}
+
+.qf-job-prep-footer {
+  margin-top: 1rem;
+}
+
+.qf-job-prep-book {
+  display: inline-flex;
+  width: 100%;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.qf-job-prep-more {
+  position: relative;
+}
+
+.qf-job-prep-more-trigger {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  min-height: 2.25rem;
+  border-radius: 9999px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.qf-job-prep-more-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.qf-job-prep-more-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.qf-job-prep-more-menu {
+  position: absolute;
+  right: 0;
+  z-index: 2;
+  min-width: 11rem;
+  padding: 0.35rem;
+  border: 1px solid var(--border-card);
+  border-radius: 0.75rem;
+  background: var(--background-card);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.qf-job-prep-more-action {
+  display: block;
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qf-job-prep-more-action:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
 /* Phase 50B.1 — Customer change request panel (guidance only) */

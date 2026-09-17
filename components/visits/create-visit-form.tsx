@@ -71,10 +71,14 @@ export function CreateVisitForm({
   customers,
   preselectedCustomerId = null,
   enquiryPrefill = null,
+  proposalId = null,
+  defaultVisitType = DEFAULT_NEW_VISIT_TYPE,
 }: {
   customers: CustomerOption[];
   preselectedCustomerId?: string | null;
   enquiryPrefill?: EnquiryPrefill | null;
+  proposalId?: string | null;
+  defaultVisitType?: NewVisitType;
 }) {
   const [state, action] = useActionState(createVisitAction, initialState);
   const selectedInitial = useMemo(
@@ -111,9 +115,7 @@ export function CreateVisitForm({
   const [enquirySummary, setEnquirySummary] = useState(
     enquiryPrefill?.enquirySummary || ""
   );
-  const [visitType, setVisitType] = useState<NewVisitType>(
-    DEFAULT_NEW_VISIT_TYPE
-  );
+  const [visitType, setVisitType] = useState<NewVisitType>(defaultVisitType);
 
   const applyCustomer = (match: CustomerOption) => {
     const fields = applyVisitCustomerSuggestion(match);
@@ -133,6 +135,9 @@ export function CreateVisitForm({
       <input type="hidden" name="customerId" value={customerId} />
       {enquiryPrefill ? (
         <input type="hidden" name="enquiryId" value={enquiryPrefill.enquiryId} />
+      ) : null}
+      {proposalId ? (
+        <input type="hidden" name="proposalId" value={proposalId} />
       ) : null}
 
       <div className="qf-proposal-col-left">

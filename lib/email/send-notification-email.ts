@@ -8,6 +8,8 @@ export type SendNotificationEmailInput = {
   replyTo?: string | null;
   ctaUrl?: string | null;
   ctaLabel?: string | null;
+  /** When set, send this HTML instead of the lightweight light-theme template. */
+  html?: string | null;
 };
 
 export type SendNotificationEmailResult =
@@ -63,6 +65,14 @@ function buildHtmlEmail(input: SendNotificationEmailInput): string {
   return `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; color: #111111;">${body}${button}</div>`;
 }
 
+function buildNotificationText(input: SendNotificationEmailInput): string {
+  const ctaUrl = input.ctaUrl?.trim() || "";
+  if (input.html || !ctaUrl || input.message.includes(ctaUrl)) {
+    return input.message;
+  }
+  return `${input.message}\n\n${input.ctaLabel?.trim() || "Open conversation"}:\n${ctaUrl}`;
+}
+
 /** Lightweight notification email — no PDF attachment. */
 export async function sendNotificationEmail(
   input: SendNotificationEmailInput
@@ -89,15 +99,8 @@ export async function sendNotificationEmail(
       to: [input.to],
       replyTo: input.replyTo?.trim() || undefined,
       subject: input.subject,
-      text: [
-        input.message,
-        input.ctaUrl?.trim()
-          ? `\n\n${input.ctaLabel?.trim() || "Open conversation"}:\n${input.ctaUrl.trim()}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(""),
-      html: buildHtmlEmail(input),
+      text: buildNotificationText(input),
+      html: input.html?.trim() || buildHtmlEmail(input),
     });
 
     if (error || !data?.id) {

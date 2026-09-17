@@ -45,7 +45,8 @@ function isTime(value: string): boolean {
 function revalidateVisitPaths(
   visitId?: string,
   customerId?: string | null,
-  enquiryId?: string | null
+  enquiryId?: string | null,
+  proposalId?: string | null
 ) {
   revalidatePath("/visits");
   revalidatePath("/calendar");
@@ -60,6 +61,9 @@ function revalidateVisitPaths(
   if (enquiryId) {
     revalidatePath(`/enquiries/${enquiryId}`);
   }
+  if (proposalId) {
+    revalidatePath(`/proposals/${proposalId}`);
+  }
 }
 
 export async function createVisitAction(
@@ -73,6 +77,7 @@ export async function createVisitAction(
 
   const customerId = getString(formData, "customerId") || null;
   const enquiryId = getString(formData, "enquiryId") || null;
+  const proposalId = getString(formData, "proposalId") || null;
   const customerName = getString(formData, "customerName");
   const contactPhone = getString(formData, "contactPhone");
   const contactEmail = getString(formData, "contactEmail");
@@ -105,6 +110,7 @@ export async function createVisitAction(
     selectedCustomerId: customerId,
   }).customerId;
   let resolvedEnquiryId = enquiryId;
+  let resolvedProposalId = proposalId;
 
   if (enquiryId) {
     const { data: enquiry, error: enquiryError } = await context.supabase
@@ -124,12 +130,31 @@ export async function createVisitAction(
     }
   }
 
+  if (proposalId) {
+    const { data: proposal, error: proposalError } = await context.supabase
+      .from("proposals")
+      .select("id, customer_id")
+      .eq("id", proposalId)
+      .eq("workspace_id", context.workspaceId)
+      .maybeSingle();
+
+    if (proposalError || !proposal) {
+      return { error: "Could not find the linked job." };
+    }
+
+    resolvedProposalId = proposal.id;
+    if (!resolvedCustomerId && proposal.customer_id) {
+      resolvedCustomerId = proposal.customer_id as string;
+    }
+  }
+
   const { data: created, error } = await context.supabase
     .from("visits")
     .insert({
       workspace_id: context.workspaceId,
       customer_id: resolvedCustomerId,
       enquiry_id: resolvedEnquiryId || null,
+      linked_proposal_id: resolvedProposalId || null,
       customer_name: customerName,
       contact_phone: contactPhone,
       contact_email: contactEmail,
@@ -187,7 +212,12 @@ export async function createVisitAction(
     });
   }
 
-  revalidateVisitPaths(created.id, resolvedCustomerId, resolvedEnquiryId);
+  revalidateVisitPaths(
+    created.id,
+    resolvedCustomerId,
+    resolvedEnquiryId,
+    resolvedProposalId
+  );
   redirect(`/visits/${created.id}`);
 }
 
