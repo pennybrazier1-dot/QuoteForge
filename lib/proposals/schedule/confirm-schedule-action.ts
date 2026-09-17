@@ -6,10 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
-import {
-  buildCustomerConversationUrl,
-  notifyConversationParticipant,
-} from "@/lib/proposals/customer-portal/conversation-notify";
+import { notifyConversationParticipant } from "@/lib/proposals/customer-portal/conversation-notify";
 import { buildEstimatedDurationNote } from "@/lib/proposals/duration";
 import {
   isBookingConfirmation,
@@ -25,7 +22,7 @@ import {
   isProposalStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { buildCustomerScheduleUpdateEmail } from "@/lib/email/transactional-events";
 
 export type ConfirmScheduleState = {
   error?: string;
@@ -229,33 +226,28 @@ export async function confirmSchedule(
       .eq("id", proposal.workspace_id)
       .maybeSingle();
 
-    const businessName = resolveCustomerFacingBusinessName(
-      workspace?.business_name
-    );
+    const notification = buildCustomerScheduleUpdateEmail({
+      businessName: workspace?.business_name,
+      customerName: proposal.customer_name,
+      scheduleLabel,
+      estimatedDuration,
+      confirmed: effectiveBookingConfirmation === "confirmed",
+      portalToken,
+    });
 
     await notifyConversationParticipant({
-        to: proposal.customer_email,
-        subject: `${businessName} scheduled your job`,
-        message: [
-          `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
-          "",
-          `${businessName} has scheduled work for:`,
-          scheduleLabel,
-          estimatedDuration ? `Duration: ${estimatedDuration}` : "",
-          "",
-          effectiveBookingConfirmation === "confirmed"
-            ? "This date is confirmed."
-            : "This date is provisionally held and may be confirmed soon.",
-          "",
-          "Open your proposal link for details.",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-        businessName,
-        ctaUrl: buildCustomerConversationUrl(portalToken),
-        ctaLabel: "View proposal",
-        replyTo: workspace?.contact_email,
-      });
+      to: proposal.customer_email,
+      subject: notification.subject,
+      message: notification.text,
+      businessName: notification.businessName,
+      ctaUrl: notification.ctaUrl,
+      ctaLabel: notification.ctaLabel,
+      html: notification.html,
+      heading: notification.heading,
+      preheader: notification.preheader,
+      audience: notification.audience,
+      replyTo: workspace?.contact_email,
+    });
   }
 
   revalidateSchedulePaths(proposalId, proposal.customer_access_token);

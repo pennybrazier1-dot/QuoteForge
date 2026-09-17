@@ -1,10 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
-import {
-  buildCustomerConversationUrl,
-  notifyConversationParticipant,
-} from "@/lib/proposals/customer-portal/conversation-notify";
+import { notifyConversationParticipant } from "@/lib/proposals/customer-portal/conversation-notify";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
   buildDateWorkflowSnapshot,
@@ -13,7 +10,7 @@ import {
 } from "@/lib/proposals/date-workflow";
 import { plannedStartToDbFields } from "@/lib/proposals/planned-start-date";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { buildCustomerDateProposedEmail } from "@/lib/email/transactional-events";
 import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/analyze-change-request";
 import { buildScheduleDateLabel } from "@/lib/proposals/schedule/schedule-fields";
 
@@ -257,24 +254,24 @@ export async function notifyCustomerProposedDate(
     .eq("id", proposal.workspace_id)
     .maybeSingle();
 
-  const businessName = resolveCustomerFacingBusinessName(
-    workspace?.business_name
-  );
+  const notification = buildCustomerDateProposedEmail({
+    businessName: workspace?.business_name,
+    customerName: proposal.customer_name,
+    slotLabel,
+    portalToken: token,
+  });
 
   await notifyConversationParticipant({
     to: email,
-    subject: `${businessName} proposed a booking date`,
-    message: [
-      `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
-      "",
-      `${businessName} has proposed this date:`,
-      slotLabel,
-      "",
-      "Open your proposal link to accept the proposal and this date, or request another one.",
-    ].join("\n"),
-    businessName,
-    ctaUrl: buildCustomerConversationUrl(token),
-    ctaLabel: "Confirm date",
+    subject: notification.subject,
+    message: notification.text,
+    businessName: notification.businessName,
+    ctaUrl: notification.ctaUrl,
+    ctaLabel: notification.ctaLabel,
+    html: notification.html,
+    heading: notification.heading,
+    preheader: notification.preheader,
+    audience: notification.audience,
     replyTo: workspace?.contact_email,
   });
 }

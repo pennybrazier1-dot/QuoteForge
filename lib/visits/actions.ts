@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import { notifyCustomerOfVisit } from "@/lib/visits/notify";
 import { getVisit } from "@/lib/visits/queries";
-import { isNewVisitType, planVisitSaveCustomerLink } from "@/lib/visits/new-visit";
+import {
+  afterVisitCreatedRedirect,
+  isNewVisitType,
+  planVisitSaveCustomerLink,
+} from "@/lib/visits/new-visit";
 import {
   isVisitStatus,
   type VisitStatus,
@@ -218,7 +222,15 @@ export async function createVisitAction(
     resolvedEnquiryId,
     resolvedProposalId
   );
-  redirect(`/visits/${created.id}`);
+  redirect(
+    afterVisitCreatedRedirect({
+      visitType,
+      proposalId: resolvedProposalId,
+      enquiryId: resolvedEnquiryId,
+      customerId: resolvedCustomerId,
+      visitId: created.id,
+    })
+  );
 }
 
 export async function startQuoteFromVisitAction(

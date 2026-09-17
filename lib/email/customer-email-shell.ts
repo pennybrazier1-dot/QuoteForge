@@ -95,6 +95,28 @@ export function buildCustomerEmailFallbackHtml(input: {
 }
 
 export function buildCustomerEmailFooterHtml(): string {
+  return buildEmailFooterHtml(
+    "This is a secure customer portal",
+    "Powered by Reanvil"
+  );
+}
+
+export function buildTraderEmailFooterHtml(): string {
+  return buildEmailFooterHtml(
+    "Secure Reanvil notification",
+    "Powered by Reanvil"
+  );
+}
+
+export function buildTraderEmailIdentityHtml(): string {
+  return `<tr>
+  <td align="center" style="padding:4px 8px 26px;">
+    <p style="margin:0;${customerEmailTextStyle(C.text, "font-size:26px;letter-spacing:0.18em;text-transform:uppercase;font-weight:800;line-height:1.2;")}">REANVIL</p>
+  </td>
+</tr>`;
+}
+
+export function buildEmailFooterHtml(line1: string, line2: string): string {
   return `<tr>
             <td align="center" style="padding:8px 12px 0;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -103,8 +125,8 @@ export function buildCustomerEmailFooterHtml(): string {
                 </tr>
               </table>
               <div style="height:18px;line-height:18px;font-size:0;">&nbsp;</div>
-              <p class="email-muted" style="margin:0 0 4px;${customerEmailTextStyle(C.muted, "font-size:12px;line-height:1.4;")}">&#128274; This is a secure customer portal</p>
-              <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:12px;line-height:1.4;")}">Powered by Reanvil</p>
+              <p class="email-muted" style="margin:0 0 4px;${customerEmailTextStyle(C.muted, "font-size:12px;line-height:1.4;")}">${escapeCustomerEmailHtml(line1)}</p>
+              <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:12px;line-height:1.4;")}">${escapeCustomerEmailHtml(line2)}</p>
             </td>
           </tr>`;
 }
@@ -164,6 +186,105 @@ export function customerEmailIconCell(symbol: string, size = 40): string {
     </tr>
   </table>
 </td>`;
+}
+
+export type EmailSummaryRow = {
+  label: string;
+  value: string;
+  symbol?: string;
+};
+
+export function buildEmailHeadingRow(heading: string): string {
+  return `<tr>
+            <td align="center" style="padding:0 8px 10px;">
+              <h1 class="email-text" style="margin:0;${customerEmailTextStyle(C.text, "font-size:30px;line-height:1.2;font-weight:800;")}">${escapeCustomerEmailHtml(heading)}</h1>
+            </td>
+          </tr>`;
+}
+
+export function buildEmailIntroRow(
+  greeting: string | null | undefined,
+  intro: string
+): string {
+  const greetingHtml = greeting?.trim()
+    ? `<p class="email-muted" style="margin:0 0 8px;${customerEmailTextStyle(C.muted, "font-size:16px;line-height:1.4;")}">${escapeCustomerEmailHtml(greeting.trim())}</p>`
+    : "";
+  const introHtml = escapeCustomerEmailHtml(intro).replaceAll("\n", "<br />");
+  return `<tr>
+            <td align="center" style="padding:0 12px 28px;">
+              ${greetingHtml}
+              <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:15px;line-height:1.55;")}">${introHtml}</p>
+            </td>
+          </tr>`;
+}
+
+export function buildEmailSummaryCardHtml(input: {
+  rows: EmailSummaryRow[];
+  accentBorder?: boolean;
+}): string {
+  const rows = input.rows.filter((row) => row.value.trim());
+  if (rows.length === 0) {
+    return "";
+  }
+  const border =
+    input.accentBorder === false
+      ? `border:1px solid ${C.divider};`
+      : `border:2px solid ${C.accent};`;
+  const rowsHtml = rows
+    .map((row) =>
+      row.symbol
+        ? customerEmailDetailRow(row.symbol, row.label, row.value)
+        : emailSummaryTextRow(row.label, row.value)
+    )
+    .join("");
+  return `<tr>
+            <td style="padding:0 0 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}" style="width:100%;background:${C.card};${border}border-radius:16px;">
+                <tr>
+                  <td style="padding:22px 20px 18px;background:${C.card};border-radius:16px;">
+                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                      ${rowsHtml}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+}
+
+export function buildEmailSupportCardHtml(text: string | null | undefined): string {
+  const trimmed = text?.trim() ?? "";
+  if (!trimmed) {
+    return "";
+  }
+  return `<tr>
+            <td style="padding:0 0 24px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.cardPdf}" style="width:100%;background:${C.cardPdf};border-radius:14px;">
+                <tr>
+                  <td style="padding:16px 18px;background:${C.cardPdf};border-radius:14px;">
+                    <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:14px;line-height:1.5;")}">${escapeCustomerEmailHtml(trimmed)}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
+}
+
+export function emailSummaryTextRow(
+  label: string,
+  value: string | null | undefined,
+  valueSize = "17px"
+): string {
+  const trimmed = value?.trim() ?? "";
+  if (!trimmed) {
+    return "";
+  }
+  return `<tr>
+  <td style="padding:0 0 16px;">
+    <p style="margin:0 0 3px;${customerEmailTextStyle(C.muted, "font-size:13px;line-height:1.35;")}">${escapeCustomerEmailHtml(label)}</p>
+    <p style="margin:0;${customerEmailTextStyle(C.text, `font-size:${valueSize};line-height:1.4;font-weight:700;`)}">${escapeCustomerEmailHtml(trimmed)}</p>
+  </td>
+</tr>`;
 }
 
 export function customerEmailDetailRow(

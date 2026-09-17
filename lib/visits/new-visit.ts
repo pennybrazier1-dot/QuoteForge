@@ -7,6 +7,22 @@ export const VISIT_NAME_PLACEHOLDER = "Start typing a name...";
 export const VISIT_FORM_SHOWS_SAVED_CUSTOMERS_SELECTOR = false;
 export const DEFAULT_NEW_VISIT_TYPE = "initial_assessment" as const;
 
+/** Canonical Home after any Visit is created. Entry context does not change this. */
+export const TRADER_HOME_PATH = "/dashboard";
+export const VISIT_CREATED_NOTICE_PARAM = "visitBooked";
+export const VISIT_CREATED_NOTICE = "Visit booked";
+
+export function afterVisitCreatedRedirect(context?: {
+  visitType?: string | null;
+  proposalId?: string | null;
+  enquiryId?: string | null;
+  customerId?: string | null;
+  visitId?: string | null;
+}): string {
+  void context;
+  return `${TRADER_HOME_PATH}?${VISIT_CREATED_NOTICE_PARAM}=1`;
+}
+
 export const NEW_VISIT_TYPES = [
   "initial_assessment",
   "follow_up",
@@ -110,5 +126,7 @@ export function visitCreateSideEffects() {
     appearsOnCalendarAsVisit: true,
     calendarKind: "site_visit" as const,
     homepageBuckets: ["today_visit", "upcoming_visit"] as const,
+    afterCreateRedirect: afterVisitCreatedRedirect(),
+    opensCreateQuote: false,
   };
 }

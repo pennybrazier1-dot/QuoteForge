@@ -319,6 +319,7 @@ async function submitAttentionMessage(
       preview: message,
       proposalId: loaded.proposal.id,
       kindLabel: kind === "change_request" ? "change request" : "question",
+      jobTitle: loaded.view.title,
     });
     await notifyConversationParticipant({
       to: traderEmail,
@@ -443,6 +444,7 @@ export async function acceptProposedScheduleDate(
       preview: `Accepted proposed date: ${dateLabel}`,
       proposalId: loaded.proposal.id,
       kindLabel: "date confirmation",
+      jobTitle: loaded.view.title,
     });
     await notifyConversationParticipant({
       to: traderEmail,
@@ -575,6 +577,7 @@ export async function requestAnotherScheduleDate(
       preview: message,
       proposalId: loaded.proposal.id,
       kindLabel: timeFocus ? "time change request" : "date change request",
+      jobTitle: loaded.view.title,
     });
     await notifyConversationParticipant({
       to: traderEmail,

@@ -1,4 +1,4 @@
-/** Shared Reanvil colours for every customer-facing HTML email. Inline only. */
+/** Shared Reanvil colours for every transactional HTML email. Inline only. */
 export const CUSTOMER_EMAIL_COLORS = {
   page: "#08080a",
   card: "#111114",
@@ -20,6 +20,6 @@ export const BOOKING_EMAIL_HEADING = "Booking confirmed";
 export const BOOKING_EMAIL_SUBJECT_FALLBACK = "Booking confirmed";
 export const BOOKING_EMAIL_CTA_LABEL = "View booking";
 export const BOOKING_EMAIL_FALLBACK_LINK_LABEL = "Open secure portal";
-export const BOOKING_EMAIL_PREHEADER = "Your booking is confirmed.";
+export const BOOKING_EMAIL_PREHEADER = "Your booking has been confirmed.";
 export const BOOKING_EMAIL_SUPPORTING_COPY =
   "You can review your accepted proposal and booking details in your secure customer portal.";

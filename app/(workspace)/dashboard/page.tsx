@@ -18,7 +18,11 @@ export const metadata: Metadata = {
 const HOME_PROPOSAL_SELECT =
   "id, proposal_number, customer_name, title, job_summary, rough_notes, scope_of_work, job_address, status, attention_reason, booking_confirmation, total_amount, created_at, updated_at, accepted_at, sent_at, booked_at, completed_at, planned_start_date_text, planned_start_date, planned_start_time, estimated_duration";
 
-export default async function HomePage() {
+type PageProps = {
+  searchParams: Promise<{ visitBooked?: string }>;
+};
+
+export default async function HomePage({ searchParams }: PageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -50,12 +54,14 @@ export default async function HomePage() {
   const proposals = (proposalsData ?? []) as HomeProposal[];
   const groups = buildHomeSectionGroups(proposals, visits);
   const attentionItems = buildHomeAttentionItems(proposals);
+  const { visitBooked } = await searchParams;
 
   return (
     <HomeScreen
       fullName={profile?.full_name ?? null}
       attentionItems={attentionItems}
       groups={groups}
+      visitBooked={visitBooked === "1"}
     />
   );
 }

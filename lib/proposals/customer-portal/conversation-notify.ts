@@ -1,14 +1,18 @@
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
-import { getSiteUrl } from "@/lib/env/site-url";
-import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import {
+  buildCustomerReplyEmail,
+  buildTraderActivityEmail,
+  customerConversationUrl,
+  traderActivityEventFromKindLabel,
+  traderConversationUrl,
+} from "@/lib/email/transactional-events";
 
 export function buildTraderConversationUrl(proposalId: string): string {
-  return `${getSiteUrl()}/proposals/${proposalId}#proposal-conversation`;
+  return traderConversationUrl(proposalId);
 }
 
 export function buildCustomerConversationUrl(token: string): string {
-  return `${buildCustomerProposalPortalUrl(token)}#proposal-conversation`;
+  return customerConversationUrl(token);
 }
 
 export function buildCustomerReplyNotification(input: {
@@ -16,27 +20,20 @@ export function buildCustomerReplyNotification(input: {
   customerName: string | null | undefined;
   preview: string;
   portalToken: string;
+  logoUrl?: string | null;
+  tradeLabel?: string | null;
 }) {
-  const businessName = resolveCustomerFacingBusinessName(input.businessName);
-  const preview =
-    input.preview.length > 220
-      ? `${input.preview.slice(0, 217).trimEnd()}…`
-      : input.preview;
-
+  const email = buildCustomerReplyEmail(input);
   return {
-    subject: `${businessName} replied to your proposal`,
-    message: [
-      `Hi${input.customerName ? ` ${input.customerName}` : ""},`,
-      "",
-      `${businessName} sent you a message about your proposal:`,
-      "",
-      `"${preview}"`,
-      "",
-      "Open the secure link below to read the full conversation and reply.",
-    ].join("\n"),
-    businessName,
-    ctaUrl: buildCustomerConversationUrl(input.portalToken),
-    ctaLabel: "View conversation",
+    subject: email.subject,
+    message: email.text,
+    businessName: email.businessName,
+    ctaUrl: email.ctaUrl,
+    ctaLabel: email.ctaLabel,
+    html: email.html,
+    heading: email.heading,
+    preheader: email.preheader,
+    audience: email.audience,
   };
 }
 
@@ -47,26 +44,26 @@ export function buildTraderMessageNotification(input: {
   preview: string;
   proposalId: string;
   kindLabel: string;
+  jobTitle?: string | null;
 }) {
-  const businessName = resolveCustomerFacingBusinessName(input.businessName);
-  const who = input.customerName?.trim() || "Your customer";
-  const preview =
-    input.preview.length > 220
-      ? `${input.preview.slice(0, 217).trimEnd()}…`
-      : input.preview;
-
+  const email = buildTraderActivityEmail({
+    event: traderActivityEventFromKindLabel(input.kindLabel),
+    customerName: input.customerName,
+    jobTitle: input.jobTitle,
+    proposalNumber: input.proposalNumber,
+    preview: input.preview,
+    proposalId: input.proposalId,
+  });
   return {
-    subject: `${who} messaged you on ${input.proposalNumber}`,
-    message: [
-      `${who} sent a ${input.kindLabel.toLowerCase()} on proposal ${input.proposalNumber}:`,
-      "",
-      `"${preview}"`,
-      "",
-      "Open Reanvil to view the conversation and reply.",
-    ].join("\n"),
-    businessName,
-    ctaUrl: buildTraderConversationUrl(input.proposalId),
-    ctaLabel: "Open conversation",
+    subject: email.subject,
+    message: email.text,
+    businessName: email.businessName,
+    ctaUrl: email.ctaUrl,
+    ctaLabel: email.ctaLabel,
+    html: email.html,
+    heading: email.heading,
+    preheader: email.preheader,
+    audience: email.audience,
   };
 }
 
@@ -79,6 +76,10 @@ export async function notifyConversationParticipant(input: {
   ctaUrl: string;
   ctaLabel: string;
   replyTo?: string | null;
+  html?: string | null;
+  heading?: string;
+  preheader?: string;
+  audience?: "customer" | "trader";
 }): Promise<void> {
   const to = input.to?.trim();
   if (!to) {
@@ -93,6 +94,10 @@ export async function notifyConversationParticipant(input: {
     ctaUrl: input.ctaUrl,
     ctaLabel: input.ctaLabel,
     replyTo: input.replyTo,
+    html: input.html,
+    heading: input.heading,
+    preheader: input.preheader,
+    audience: input.audience,
   });
 
   if (!result.ok) {

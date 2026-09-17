@@ -1,4 +1,10 @@
 import { Resend } from "resend";
+import {
+  assembleTransactionalEmail,
+  renderTransactionalEmail,
+  type TransactionalEmailAudience,
+  type TransactionalEmailContent,
+} from "@/lib/email/transactional-email";
 
 export type SendNotificationEmailInput = {
   to: string;
@@ -8,8 +14,12 @@ export type SendNotificationEmailInput = {
   replyTo?: string | null;
   ctaUrl?: string | null;
   ctaLabel?: string | null;
-  /** When set, send this HTML instead of the lightweight light-theme template. */
+  heading?: string | null;
+  preheader?: string | null;
+  audience?: TransactionalEmailAudience;
+  /** When set, send this already-rendered shared-shell HTML. */
   html?: string | null;
+  content?: TransactionalEmailContent | null;
 };
 
 export type SendNotificationEmailResult =
@@ -35,45 +45,41 @@ function getFromAddress(businessName: string): string | null {
   return `${businessName} <onboarding@resend.dev>`;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
+function fallbackContent(
+  input: SendNotificationEmailInput
+): TransactionalEmailContent {
+  return {
+    audience: input.audience ?? "customer",
+    businessName: input.businessName,
+    heading: input.heading?.trim() || input.subject,
+    intro: input.message,
+    ctaLabel: input.ctaLabel?.trim() || "Open secure portal",
+    ctaUrl: input.ctaUrl,
+    preheader:
+      input.preheader?.trim() || "You have a new Reanvil notification.",
+  };
 }
 
-function buildHtmlEmail(input: SendNotificationEmailInput): string {
-  const body = escapeHtml(input.message).replaceAll("\n", "<br />");
-  const ctaUrl = input.ctaUrl?.trim();
-  const ctaLabel = input.ctaLabel?.trim() || "Open conversation";
-
-  const button = ctaUrl
-    ? `<div style="margin: 28px 0 8px;">
-  <a href="${escapeHtml(ctaUrl)}"
-     style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;padding:14px 22px;border-radius:8px;font-weight:600;font-size:15px;">
-    ${escapeHtml(ctaLabel)}
-  </a>
-</div>
-<p style="margin:0 0 24px;font-size:13px;color:#555555;">
-  Or paste this link into your browser:<br />
-  <a href="${escapeHtml(ctaUrl)}" style="color:#111111;">${escapeHtml(ctaUrl)}</a>
-</p>`
-    : "";
-
-  return `<div style="font-family: Arial, Helvetica, sans-serif; font-size: 15px; line-height: 1.6; color: #111111;">${body}${button}</div>`;
+/** Shared dark Reanvil HTML for every notification send path. */
+export function buildNotificationHtml(input: SendNotificationEmailInput): string {
+  if (input.html?.trim()) {
+    return input.html.trim();
+  }
+  if (input.content) {
+    return renderTransactionalEmail(input.content);
+  }
+  return renderTransactionalEmail(fallbackContent(input));
 }
 
 function buildNotificationText(input: SendNotificationEmailInput): string {
   const ctaUrl = input.ctaUrl?.trim() || "";
-  if (input.html || !ctaUrl || input.message.includes(ctaUrl)) {
+  if (input.html || input.content || !ctaUrl || input.message.includes(ctaUrl)) {
     return input.message;
   }
   return `${input.message}\n\n${input.ctaLabel?.trim() || "Open conversation"}:\n${ctaUrl}`;
 }
 
-/** Lightweight notification email — no PDF attachment. */
+/** Lightweight notification email — no PDF attachment. Always uses the dark shell. */
 export async function sendNotificationEmail(
   input: SendNotificationEmailInput
 ): Promise<SendNotificationEmailResult> {
@@ -100,7 +106,7 @@ export async function sendNotificationEmail(
       replyTo: input.replyTo?.trim() || undefined,
       subject: input.subject,
       text: buildNotificationText(input),
-      html: input.html?.trim() || buildHtmlEmail(input),
+      html: buildNotificationHtml(input),
     });
 
     if (error || !data?.id) {
@@ -115,4 +121,17 @@ export async function sendNotificationEmail(
     console.error("Notification email failed:", error);
     return { ok: false, error: "Email couldn't be sent." };
   }
+}
+
+export function previewNotificationEmail(input: SendNotificationEmailInput) {
+  if (input.content) {
+    return assembleTransactionalEmail({
+      subject: input.subject,
+      content: input.content,
+    });
+  }
+  return assembleTransactionalEmail({
+    subject: input.subject,
+    content: fallbackContent(input),
+  });
 }

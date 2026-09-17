@@ -15,6 +15,7 @@ import {
   MOBILE_NEW_VISIT_HREF,
 } from "@/lib/layout/mobile-new-menu";
 import {
+  afterVisitCreatedRedirect,
   applyVisitCustomerSuggestion,
   DEFAULT_NEW_VISIT_TYPE,
   getNewVisitTypeOption,
@@ -23,11 +24,15 @@ import {
   NEW_VISIT_TYPE_OPTIONS,
   NEW_VISIT_TYPES,
   planVisitSaveCustomerLink,
+  TRADER_HOME_PATH,
+  VISIT_CREATED_NOTICE,
+  VISIT_CREATED_NOTICE_PARAM,
   VISIT_FORM_SHOWS_SAVED_CUSTOMERS_SELECTOR,
   VISIT_NAME_PLACEHOLDER,
   visitCreateSideEffects,
   visitReasonPlaceholder,
 } from "@/lib/visits/new-visit";
+import { buildCreateQuoteFromVisitHref } from "@/lib/visits/quote-handoff";
 import { formatVisitType, isVisitType, VISIT_TYPES } from "@/lib/visits/types";
 import { buildCalendarJobsFromVisits } from "@/lib/visits/calendar";
 
@@ -216,6 +221,111 @@ describe("new visit workflow", () => {
       "var(--page-padding-mobile)"
     );
     expect(MOBILE_FORM_LAYOUT.maxWidth).toBe("100%");
+  });
+
+  it("returns every created Visit to Home, including booked-job and enquiry entry points", () => {
+    expect(TRADER_HOME_PATH).toBe("/dashboard");
+    expect(VISIT_CREATED_NOTICE).toBe("Visit booked");
+    expect(afterVisitCreatedRedirect()).toBe(
+      `/dashboard?${VISIT_CREATED_NOTICE_PARAM}=1`
+    );
+    expect(
+      afterVisitCreatedRedirect({ visitType: "initial_assessment" })
+    ).toBe("/dashboard?visitBooked=1");
+    expect(afterVisitCreatedRedirect({ visitType: "follow_up" })).toBe(
+      "/dashboard?visitBooked=1"
+    );
+    expect(afterVisitCreatedRedirect({ visitType: "final_inspection" })).toBe(
+      "/dashboard?visitBooked=1"
+    );
+    expect(
+      afterVisitCreatedRedirect({
+        visitType: "initial_assessment",
+        proposalId: "proposal-1",
+        customerId: "cust-1",
+      })
+    ).toBe("/dashboard?visitBooked=1");
+    expect(
+      afterVisitCreatedRedirect({
+        visitType: "initial_assessment",
+        enquiryId: "enquiry-9",
+      })
+    ).toBe("/dashboard?visitBooked=1");
+    expect(
+      afterVisitCreatedRedirect({
+        visitId: "visit-1",
+        proposalId: null,
+        enquiryId: null,
+      })
+    ).toBe("/dashboard?visitBooked=1");
+    expect(afterVisitCreatedRedirect()).not.toContain("/proposals/new");
+    expect(afterVisitCreatedRedirect()).not.toContain("/visits/");
+
+    const action = readFileSync(
+      join(process.cwd(), "lib/visits/actions.ts"),
+      "utf8"
+    );
+    const createFn = action.slice(
+      action.indexOf("export async function createVisitAction"),
+      action.indexOf("export async function startQuoteFromVisitAction")
+    );
+    expect(createFn).toContain("afterVisitCreatedRedirect");
+    expect(createFn).toContain("linked_proposal_id: resolvedProposalId || null");
+    expect(createFn).toContain("customer_id: resolvedCustomerId");
+    expect(createFn).toContain("enquiry_id: resolvedEnquiryId || null");
+    expect(createFn).not.toContain("redirect(`/visits/${created.id}`)");
+    expect(createFn).not.toContain("/proposals/new");
+    expect(createFn).not.toContain("startQuoteFromVisitAction");
+
+    const effects = visitCreateSideEffects();
+    expect(effects.createsVisit).toBe(true);
+    expect(effects.createsQuote).toBe(false);
+    expect(effects.createsProposal).toBe(false);
+    expect(effects.opensCreateQuote).toBe(false);
+    expect(effects.afterCreateRedirect).toBe("/dashboard?visitBooked=1");
+  });
+
+  it("keeps explicit Create Quote on visit detail and shows Visit booked on Home", () => {
+    expect(buildCreateQuoteFromVisitHref("visit-1")).toBe(
+      "/proposals/new?visitId=visit-1"
+    );
+    const detail = readFileSync(
+      join(process.cwd(), "components/visits/visit-detail-view.tsx"),
+      "utf8"
+    );
+    expect(detail).toContain("startQuoteFromVisitAction");
+    expect(detail).toContain("Create quote from notes");
+    const action = readFileSync(
+      join(process.cwd(), "lib/visits/actions.ts"),
+      "utf8"
+    );
+    expect(action).toContain(
+      "redirect(`/proposals/new?visitId=${encodeURIComponent(visitId)}`)"
+    );
+    const home = readFileSync(
+      join(process.cwd(), "components/home/home-screen.tsx"),
+      "utf8"
+    );
+    expect(home).toContain("HomeVisitBookedNotice");
+    expect(home).toContain("visitBooked");
+    const notice = readFileSync(
+      join(process.cwd(), "components/home/home-visit-booked-notice.tsx"),
+      "utf8"
+    );
+    expect(notice).toContain("VISIT_CREATED_NOTICE");
+    const dashboard = readFileSync(
+      join(process.cwd(), "app/(workspace)/dashboard/page.tsx"),
+      "utf8"
+    );
+    expect(dashboard).toContain('visitBooked={visitBooked === "1"}');
+    const form = readFileSync(
+      join(process.cwd(), "components/visits/create-visit-form.tsx"),
+      "utf8"
+    );
+    expect(form).toContain("createVisitAction");
+    expect(form).not.toContain("startQuoteFromVisitAction");
+    expect(form).not.toContain("router.push");
+    expect(form).not.toContain("router.replace");
   });
 
   it("keeps desktop Visits available and Quote on the existing route", () => {

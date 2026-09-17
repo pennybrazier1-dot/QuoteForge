@@ -5,19 +5,8 @@ import {
   BOOKING_EMAIL_PREHEADER,
   BOOKING_EMAIL_SUBJECT_FALLBACK,
   BOOKING_EMAIL_SUPPORTING_COPY,
-  CUSTOMER_EMAIL_COLORS as C,
 } from "@/lib/email/customer-email-tokens";
-import {
-  buildCustomerEmailCtaHtml,
-  buildCustomerEmailFallbackHtml,
-  buildCustomerEmailFooterHtml,
-  buildCustomerEmailIdentityHtml,
-  customerEmailDetailRow,
-  customerEmailSafeHttpUrl,
-  customerEmailTextStyle,
-  escapeCustomerEmailHtml,
-  wrapCustomerEmailDocument,
-} from "@/lib/email/customer-email-shell";
+import { renderCustomerEmail } from "@/lib/email/transactional-email";
 import {
   buildProposalEmailGreeting,
   formatProposalEmailDuration,
@@ -28,7 +17,6 @@ import {
   resolveProposalEmailJobTitle,
   resolveProposalEmailTradeLabel,
 } from "@/lib/email/proposal-email-presentation";
-import { resolveCustomerFacingBusinessLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 
 export type BookingConfirmationEmailInput = {
   businessName: string | null | undefined;
@@ -154,8 +142,6 @@ export function buildBookingConfirmationEmailHtml(
   input: BookingConfirmationEmailInput
 ): string {
   const businessName = resolveProposalEmailBusinessName(input.businessName);
-  const portalUrl = customerEmailSafeHttpUrl(input.portalUrl);
-  const logoUrl = resolveCustomerFacingBusinessLogoUrl(input.businessLogoUrl);
   const tradeLabel = resolveProposalEmailTradeLabel(
     input.businessTradeLabel,
     businessName
@@ -165,80 +151,34 @@ export function buildBookingConfirmationEmailHtml(
   const intro = buildBookingConfirmationIntro(businessName);
   const fields = buildBookingConfirmationFields(input);
 
-  const identity = buildCustomerEmailIdentityHtml({
+  return renderCustomerEmail({
     businessName,
-    logoUrl,
+    logoUrl: input.businessLogoUrl,
     tradeLabel,
-  });
-  const cta = buildCustomerEmailCtaHtml({
-    portalUrl,
+    heading: BOOKING_EMAIL_HEADING,
+    greeting,
+    intro,
+    summaryRows: [
+      ...(fields.jobTitle
+        ? [{ label: "Job", value: fields.jobTitle, symbol: "▣" }]
+        : []),
+      ...(fields.dateLabel
+        ? [{ label: "Date", value: fields.dateLabel, symbol: "▣" }]
+        : []),
+      ...(fields.timeLabel
+        ? [{ label: "Time", value: fields.timeLabel, symbol: "◷" }]
+        : []),
+      ...(fields.durationLabel
+        ? [{ label: "Duration", value: fields.durationLabel, symbol: "◷" }]
+        : []),
+    ],
     ctaLabel: BOOKING_EMAIL_CTA_LABEL,
-  });
-  const fallbackLink = buildCustomerEmailFallbackHtml({
-    portalUrl,
-    intro: "If the button doesn't work, you can open your secure portal below:",
-    label: BOOKING_EMAIL_FALLBACK_LINK_LABEL,
-  });
-
-  const innerRows = `${identity}
-          <tr>
-            <td align="center" style="padding:0 8px 10px;">
-              <h1 class="email-text" style="margin:0;${customerEmailTextStyle(C.text, "font-size:30px;line-height:1.2;font-weight:800;")}">${BOOKING_EMAIL_HEADING}</h1>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:0 12px 28px;">
-              <p class="email-muted" style="margin:0 0 8px;${customerEmailTextStyle(C.muted, "font-size:16px;line-height:1.4;")}">${escapeCustomerEmailHtml(greeting)}</p>
-              <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:15px;line-height:1.55;")}">${escapeCustomerEmailHtml(intro)}</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:0 0 20px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}" style="width:100%;background:${C.card};border:2px solid ${C.accent};border-radius:16px;">
-                <tr>
-                  <td style="padding:22px 20px 18px;background:${C.card};border-radius:16px;">
-                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                      ${customerEmailDetailRow("▣", "Job", fields.jobTitle)}
-                      ${customerEmailDetailRow("▣", "Date", fields.dateLabel)}
-                      ${customerEmailDetailRow("◷", "Time", fields.timeLabel)}
-                      ${customerEmailDetailRow("◷", "Duration", fields.durationLabel)}
-                    </table>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td>${cta}</td>
-          </tr>
-          <tr>
-            <td style="padding:0 0 24px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.cardPdf}" style="width:100%;background:${C.cardPdf};border-radius:14px;">
-                <tr>
-                  <td style="padding:16px 18px;background:${C.cardPdf};border-radius:14px;">
-                    <p class="email-muted" style="margin:0;${customerEmailTextStyle(C.muted, "font-size:14px;line-height:1.5;")}">${escapeCustomerEmailHtml(BOOKING_EMAIL_SUPPORTING_COPY)}</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <tr>
-            <td align="center" style="padding:4px 12px 22px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td height="1" style="height:1px;line-height:1px;font-size:0;background:${C.divider};">&nbsp;</td>
-                </tr>
-              </table>
-              <div style="height:16px;line-height:16px;font-size:0;">&nbsp;</div>
-              ${fallbackLink}
-            </td>
-          </tr>
-          ${buildCustomerEmailFooterHtml()}`;
-
-  return wrapCustomerEmailDocument({
-    title: BOOKING_EMAIL_HEADING,
+    ctaUrl: input.portalUrl,
+    fallbackIntro: "If the button doesn't work, you can open your secure portal below:",
+    fallbackLabel: BOOKING_EMAIL_FALLBACK_LINK_LABEL,
+    supportText: BOOKING_EMAIL_SUPPORTING_COPY,
     preheader: BOOKING_EMAIL_PREHEADER,
-    innerRows,
+    title: BOOKING_EMAIL_HEADING,
   });
 }
 

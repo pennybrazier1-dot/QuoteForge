@@ -1,55 +1,40 @@
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
+import { buildVisitBookingEmail } from "@/lib/email/transactional-events";
 import { getSiteUrl } from "@/lib/env/site-url";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
-import {
-  formatVisitDateLabel,
-  formatVisitDuration,
-  formatVisitTimeLabel,
-  formatVisitType,
-  type VisitRecord,
-} from "@/lib/visits/types";
+import { type VisitRecord } from "@/lib/visits/types";
 
 export async function notifyCustomerOfVisit(input: {
   visit: VisitRecord;
   businessName: string | null | undefined;
   replyTo?: string | null;
+  logoUrl?: string | null;
+  tradeLabel?: string | null;
 }): Promise<void> {
   const to = input.visit.contact_email?.trim();
   if (!to) {
     return;
   }
 
-  const businessName = resolveCustomerFacingBusinessName(input.businessName);
-  const timeLabel = formatVisitTimeLabel(input.visit.visit_time);
-  const when = [
-    formatVisitDateLabel(input.visit.visit_date),
-    timeLabel,
-    formatVisitDuration(input.visit.duration_minutes),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const email = buildVisitBookingEmail({
+    visit: input.visit,
+    businessName: input.businessName,
+    logoUrl: input.logoUrl,
+    tradeLabel: input.tradeLabel,
+    ctaUrl: `${getSiteUrl()}/`,
+  });
 
   const result = await sendNotificationEmail({
     to,
-    subject: `${businessName}: site visit booked`,
-    businessName,
+    subject: email.subject,
+    businessName: email.businessName,
     replyTo: input.replyTo,
-    ctaUrl: `${getSiteUrl()}/`,
-    ctaLabel: "Open Reanvil",
-    message: [
-      `Hi${input.visit.customer_name ? ` ${input.visit.customer_name}` : ""},`,
-      "",
-      `${businessName} has booked a ${formatVisitType(input.visit.visit_type).toLowerCase()}.`,
-      "",
-      `When: ${when}`,
-      input.visit.enquiry_summary?.trim()
-        ? `About: ${input.visit.enquiry_summary.trim()}`
-        : "",
-      "",
-      "If you need to change this, reply to this email.",
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    ctaUrl: email.ctaUrl,
+    ctaLabel: email.ctaLabel,
+    message: email.text,
+    html: email.html,
+    heading: email.heading,
+    preheader: email.preheader,
+    audience: "customer",
   });
 
   if (!result.ok) {
