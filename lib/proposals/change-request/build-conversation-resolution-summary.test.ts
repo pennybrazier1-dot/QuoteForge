@@ -218,6 +218,56 @@ describe("buildConversationResolutionSummary", () => {
       }
     );
     expect(confirmed.showDateActions).toBe(false);
+    expect(confirmed.hasActiveAttention).toBe(false);
+    expect(confirmed.customerRequestItems.some((item) => /date/i.test(item))).toBe(
+      false
+    );
+  });
+
+  it("keeps other unresolved work when a date request is already resolved", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "May need door changed.",
+          created_at: "2026-08-08T10:00:00.000Z",
+        }),
+        msg({
+          id: "c2",
+          kind: "change_request",
+          body: "Can we move the start date to 12 August at 10:30?",
+          created_at: "2026-08-08T10:05:00.000Z",
+        }),
+        msg({
+          id: "t1",
+          kind: "trader_reply",
+          body: "I can do 12 August at 10:30.",
+          created_at: "2026-08-08T11:00:00.000Z",
+        }),
+        msg({
+          id: "c3",
+          kind: "question",
+          body: "12 August at 10:30 works for me.",
+          created_at: "2026-08-08T12:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z"),
+      {
+        dateState: "confirmed",
+        persistedDate: "2026-08-12",
+        persistedTime: "10:30",
+      }
+    );
+
+    expect(summary.showDateActions).toBe(false);
+    expect(summary.hasActiveAttention).toBe(true);
+    expect(summary.customerRequestItems).toEqual(
+      expect.arrayContaining(["Door change"])
+    );
+    expect(
+      summary.customerRequestItems.some((item) => /date|timing/i.test(item))
+    ).toBe(false);
   });
 });
 

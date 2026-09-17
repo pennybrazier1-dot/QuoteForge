@@ -1,23 +1,28 @@
-import type { HomeSection as HomeSectionData } from "@/lib/home/home-data";
+import type { HomeSectionGroup } from "@/lib/home/home-data";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeSection } from "@/components/home/home-section";
 
 export function HomeScreen({
   fullName,
   notificationCount,
-  sections,
+  groups,
 }: {
   fullName: string | null;
   notificationCount: number;
-  sections: HomeSectionData[];
+  groups: HomeSectionGroup[];
 }) {
   return (
     <div className="qf-home">
       <HomeGreeting fullName={fullName} notificationCount={notificationCount} />
 
       <div className="qf-home-stack">
-        {sections.map((section) => (
-          <HomeSection key={section.id} section={section} />
+        {groups.map((group) => (
+          <div key={group.id} className="qf-home-group">
+            <h2 className="qf-home-group-title">{group.title}</h2>
+            {group.sections.map((section) => (
+              <HomeSection key={section.id} section={section} />
+            ))}
+          </div>
         ))}
       </div>
     </div>

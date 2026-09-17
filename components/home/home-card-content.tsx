@@ -103,24 +103,16 @@ export function HomeCardContent({
         </div>
       ) : null}
 
-      {card.attentionNote ? (
-        <p className="qf-home-card-attention">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          {card.attentionNote}
-        </p>
+      {card.detailLines && card.detailLines.length > 0 ? (
+        <div className="qf-home-card-details">
+          {card.detailLines.map((line) => (
+            <p key={line} className="qf-home-card-attention">
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : card.attentionNote ? (
+        <p className="qf-home-card-attention">{card.attentionNote}</p>
       ) : null}
     </>
   );

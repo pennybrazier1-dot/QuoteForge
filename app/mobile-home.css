@@ -156,6 +156,16 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   gap: 1.75rem;
 }
 
+.qf-app[data-qf-theme="dark"] .qf-home-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-home-group-title {
+  color: #a1a1aa;
+}
+
 .qf-app[data-qf-theme="dark"] .qf-home-section-head {
   display: flex;
   align-items: center;

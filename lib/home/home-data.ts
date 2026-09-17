@@ -1,16 +1,17 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
-import { formatAttentionReason } from "@/lib/proposals/attention";
-import { isConfirmedBooking } from "@/lib/proposals/booking";
-import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
 import {
-  isPlannedStartToday,
-  isPlannedStartInFuture,
-} from "@/lib/proposals/lifecycle";
+  classifyHomeProposal,
+  classifyHomeVisit,
+  visitHomeAddress,
+  visitHomeNotes,
+  type HomeProposalBucket,
+} from "@/lib/home/home-lifecycle";
 import {
   isActiveHomeProposal,
   isProposalStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
+import type { VisitRecord } from "@/lib/visits/types";
 
 export type HomeProposal = {
   id: string;
@@ -33,6 +34,7 @@ export type HomeProposal = {
   completed_at: string | null;
   planned_start_date_text: string | null;
   planned_start_date: string | null;
+  planned_start_time?: string | null;
   estimated_duration: string | null;
 };
 
@@ -49,6 +51,7 @@ export type HomeCard = {
   addressLine?: string;
   status: { label: string; tone: HomeCardStatusTone };
   attentionNote?: string;
+  detailLines?: string[];
   plannedStartDateText: string | null;
   plannedStartDate: string | null;
   estimatedDuration: string | null;
@@ -65,13 +68,21 @@ export type HomeSection = {
   emptyMessage: string;
 };
 
+export type HomeSectionGroup = {
+  id: "today" | "needs-action" | "waiting" | "upcoming";
+  title: string;
+  sections: HomeSection[];
+};
+
 export const HOME_SWIPE_SECTION_IDS = new Set([
   "todays-jobs",
-  "bookings-to-confirm",
-  "jobs-needing-attention",
-  "waiting-for-customer",
+  "todays-initial-visits",
+  "needs-attention",
   "quotes-to-finish",
   "quotes-ready-to-send",
+  "jobs-to-schedule",
+  "waiting-for-customer",
+  "upcoming-initial-visits",
   "booked-jobs",
 ]);
 
@@ -101,13 +112,14 @@ function formatScheduleLabel(proposal: HomeProposal): string | undefined {
   }).format(new Date(proposal.planned_start_date));
 }
 
-function buildCard(
+function buildProposalCard(
   proposal: HomeProposal,
   options: {
     jobTitle?: string;
     status: HomeCard["status"];
     attentionNote?: string;
     timeLabel?: string;
+    detailLines?: string[];
   }
 ): HomeCard {
   const address = proposal.job_address?.trim();
@@ -123,10 +135,58 @@ function buildCard(
     addressLine: address || undefined,
     status: options.status,
     attentionNote: options.attentionNote,
+    detailLines: options.detailLines,
     plannedStartDateText: proposal.planned_start_date_text,
     plannedStartDate: proposal.planned_start_date,
     estimatedDuration: proposal.estimated_duration,
   };
+}
+
+function buildVisitCard(
+  visit: VisitRecord,
+  status: HomeCard["status"]
+): HomeCard {
+  const notes = visitHomeNotes(visit);
+  return {
+    id: `visit-${visit.id}`,
+    href: `/visits/${visit.id}`,
+    proposalNumber: "",
+    proposalStatus: "visit",
+    customer: visit.customer_name.trim() || "Customer",
+    jobTitle: notes[0] ?? "Initial visit",
+    timeLabel: notes[1],
+    addressLine: visitHomeAddress(visit),
+    status,
+    attentionNote: undefined,
+    plannedStartDateText: notes[1] ?? null,
+    plannedStartDate: visit.visit_date,
+    estimatedDuration: null,
+  };
+}
+
+function cardsForBucket(
+  classified: ReturnType<typeof classifyHomeProposal>[],
+  bucket: HomeProposalBucket,
+  options: {
+    status: HomeCard["status"];
+    timeLabel?: (item: (typeof classified)[number]) => string | undefined;
+    attentionNote?: (item: (typeof classified)[number]) => string | undefined;
+    detailLines?: (item: (typeof classified)[number]) => string[] | undefined;
+    limit?: number;
+  }
+): HomeCard[] {
+  const cards = classified
+    .filter((item) => item.bucket === bucket)
+    .map((item) =>
+      buildProposalCard(item.proposal as HomeProposal, {
+        jobTitle: getProposalSummaryLabel(item.proposal as HomeProposal),
+        status: options.status,
+        timeLabel: options.timeLabel?.(item),
+        attentionNote: options.attentionNote?.(item) ?? item.notes[0],
+        detailLines: options.detailLines?.(item) ?? item.notes,
+      })
+    );
+  return options.limit ? cards.slice(0, options.limit) : cards;
 }
 
 export function getGreetingName(fullName: string | null): string {
@@ -153,241 +213,186 @@ export function getTimeGreeting(): string {
 
 export function getHomeNotificationCount(proposals: HomeProposal[]): number {
   return proposals.filter((proposal) => {
-    const status = normalizeProposalStatus(proposal.status);
-
+    const bucket = classifyHomeProposal(proposal).bucket;
     return (
-      isActiveHomeProposal(status) &&
-      (status === "needs_attention" ||
-        status === "waiting_for_customer" ||
-        buildDateWorkflowSnapshot({
-          status: proposal.status,
-          bookingConfirmation: proposal.booking_confirmation,
-          plannedStartDate: proposal.planned_start_date,
-        }).needsScheduleJob)
+      bucket === "needs_attention" ||
+      bucket === "quotes_to_finish" ||
+      bucket === "quotes_ready_to_send" ||
+      bucket === "jobs_to_schedule"
     );
   }).length;
 }
 
-export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
-  const activeProposals = proposals.filter((proposal) =>
-    isActiveHomeProposal(normalizeProposalStatus(proposal.status))
+export function buildHomeSections(
+  proposals: HomeProposal[],
+  visits: VisitRecord[] = [],
+  reference = new Date()
+): HomeSection[] {
+  return buildHomeSectionGroups(proposals, visits, reference).flatMap(
+    (group) => group.sections
   );
+}
 
-  const todaysJobCards = activeProposals
+export function buildHomeSectionGroups(
+  proposals: HomeProposal[],
+  visits: VisitRecord[] = [],
+  reference = new Date()
+): HomeSectionGroup[] {
+  const classified = proposals
     .filter((proposal) =>
-      isConfirmedBooking(proposal.status, proposal.booking_confirmation) &&
-      isPlannedStartToday(proposal.planned_start_date)
+      isActiveHomeProposal(normalizeProposalStatus(proposal.status))
     )
-    .slice(0, 8)
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Today", tone: "green" },
-        timeLabel: formatScheduleLabel(proposal),
-        attentionNote: "Confirmed booking for today",
-      })
+    .map((proposal) => classifyHomeProposal(proposal, reference));
+
+  const todayVisits = visits
+    .filter((visit) => classifyHomeVisit(visit, reference) === "today_visit")
+    .map((visit) =>
+      buildVisitCard(visit, { label: "Visit", tone: "green" })
+    );
+  const upcomingVisits = visits
+    .filter((visit) => classifyHomeVisit(visit, reference) === "upcoming_visit")
+    .map((visit) =>
+      buildVisitCard(visit, { label: "Visit", tone: "green" })
     );
 
-  const jobsNeedingAttention = activeProposals
-    .filter(
-      (proposal) =>
-        normalizeProposalStatus(proposal.status) === "needs_attention"
-    )
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Respond", tone: "orange" },
-        attentionNote: formatAttentionReason(proposal.attention_reason),
-      })
-    );
+  const todaysJobs = cardsForBucket(classified, "today_job", {
+    status: { label: "Today", tone: "green" },
+    timeLabel: (item) => item.slotLabel ?? formatScheduleLabel(item.proposal as HomeProposal),
+    attentionNote: () => undefined,
+    detailLines: (item) => item.notes,
+    limit: 8,
+  });
+  const needsAttention = cardsForBucket(classified, "needs_attention", {
+    status: { label: "Respond", tone: "orange" },
+  });
+  const quotesToFinish = cardsForBucket(classified, "quotes_to_finish", {
+    status: { label: "Draft", tone: "blue" },
+    limit: 8,
+  });
+  const quotesReady = cardsForBucket(classified, "quotes_ready_to_send", {
+    status: { label: "Ready", tone: "purple" },
+  });
+  const jobsToSchedule = cardsForBucket(classified, "jobs_to_schedule", {
+    status: { label: "Schedule", tone: "orange" },
+    timeLabel: (item) => formatScheduleLabel(item.proposal as HomeProposal),
+  });
+  const waiting = cardsForBucket(classified, "waiting_for_customers", {
+    status: { label: "Waiting", tone: "orange" },
+    timeLabel: (item) =>
+      item.slotLabel ??
+      ((item.proposal as HomeProposal).sent_at
+        ? new Intl.DateTimeFormat("en-GB", {
+            day: "numeric",
+            month: "short",
+          }).format(new Date((item.proposal as HomeProposal).sent_at as string))
+        : undefined),
+    attentionNote: (item) => item.notes[0],
+    detailLines: (item) => item.notes,
+  });
+  const bookedJobs = cardsForBucket(classified, "booked_job", {
+    status: { label: "Booked", tone: "green" },
+    timeLabel: (item) => item.slotLabel ?? formatScheduleLabel(item.proposal as HomeProposal),
+    attentionNote: () => undefined,
+    detailLines: (item) => item.notes,
+    limit: 8,
+  });
 
-  const waitingForCustomer = activeProposals
-    .filter((proposal) => {
-      const snapshot = buildDateWorkflowSnapshot({
-        status: proposal.status,
-        bookingConfirmation: proposal.booking_confirmation,
-        plannedStartDate: proposal.planned_start_date,
-      });
-      return (
-        normalizeProposalStatus(proposal.status) === "waiting_for_customer" ||
-        snapshot.waitingForDateConfirmation
-      );
-    })
-    .map((proposal) => {
-      const snapshot = buildDateWorkflowSnapshot({
-        status: proposal.status,
-        bookingConfirmation: proposal.booking_confirmation,
-        plannedStartDate: proposal.planned_start_date,
-      });
-      return buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Waiting", tone: "orange" },
-        attentionNote: snapshot.waitingForDateConfirmation
-          ? "Waiting for customer to confirm the date"
-          : snapshot.waitingForProposalAcceptance
-            ? "Waiting for customer to accept the proposal"
-            : "Awaiting customer action",
-        timeLabel: proposal.sent_at
-          ? new Intl.DateTimeFormat("en-GB", {
-              day: "numeric",
-              month: "short",
-            }).format(new Date(proposal.sent_at))
-          : undefined,
-      });
-    });
-
-  const quotesToFinish = activeProposals
-    .filter(
-      (proposal) => normalizeProposalStatus(proposal.status) === "draft"
-    )
-    .slice(0, 8)
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Draft", tone: "blue" },
-        attentionNote: "Finish and save this quote",
-      })
-    );
-
-  const quotesReadyToSend = activeProposals
-    .filter(
-      (proposal) =>
-        normalizeProposalStatus(proposal.status) === "ready_to_send"
-    )
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Ready", tone: "purple" },
-        attentionNote: "Send by email",
-      })
-    );
-
-  const bookingsToConfirm = activeProposals
-    .filter((proposal) => {
-      const snapshot = buildDateWorkflowSnapshot({
-        status: proposal.status,
-        bookingConfirmation: proposal.booking_confirmation,
-        plannedStartDate: proposal.planned_start_date,
-      });
-      return snapshot.needsScheduleJob && snapshot.dateState === "none";
-    })
-    .slice(0, 8)
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Schedule", tone: "orange" },
-        timeLabel: formatScheduleLabel(proposal),
-        attentionNote: "Schedule the job date",
-      })
-    );
-
-  const bookedJobs = activeProposals
-    .filter((proposal) => {
-      const status = normalizeProposalStatus(proposal.status);
-
-      return (
-        isConfirmedBooking(status, proposal.booking_confirmation) &&
-        isPlannedStartInFuture(proposal.planned_start_date)
-      );
-    })
-    .slice(0, 8)
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Booked", tone: "green" },
-        timeLabel: formatScheduleLabel(proposal),
-        attentionNote: "Confirmed on your calendar",
-      })
-    );
-
-  const cancelledJobs = proposals
-    .filter((proposal) => {
-      const status = normalizeProposalStatus(proposal.status);
-      return status === "cancelled" || status === "declined";
-    })
-    .slice(0, 8)
-    .map((proposal) =>
-      buildCard(proposal, {
-        jobTitle: getProposalSummaryLabel(proposal),
-        status: {
-          label:
-            normalizeProposalStatus(proposal.status) === "declined"
-              ? "Declined"
-              : "Cancelled",
-          tone: "orange",
+  return [
+    {
+      id: "today",
+      title: "Today",
+      sections: [
+        {
+          id: "todays-jobs",
+          title: "Today's jobs",
+          tone: "green",
+          viewAllHref: "/calendar",
+          cards: todaysJobs,
+          emptyMessage: "No jobs booked for today.",
         },
-      })
-    );
-
-  const sections: HomeSection[] = [
-    {
-      id: "todays-jobs",
-      title: "Today's Jobs",
-      tone: "green",
-      viewAllHref: "/calendar",
-      cards: todaysJobCards,
-      emptyMessage: "No confirmed jobs for today.",
+        {
+          id: "todays-initial-visits",
+          title: "Today's initial visits",
+          tone: "green",
+          viewAllHref: "/visits",
+          cards: todayVisits,
+          emptyMessage: "No initial visits today.",
+        },
+      ],
     },
     {
-      id: "bookings-to-confirm",
-      title: "Confirm Bookings",
-      tone: "orange",
-      viewAllHref: "/proposals",
-      cards: bookingsToConfirm,
-      emptyMessage: "No bookings waiting to be confirmed.",
+      id: "needs-action",
+      title: "Needs action",
+      sections: [
+        {
+          id: "needs-attention",
+          title: "Needs attention",
+          tone: "orange",
+          viewAllHref: "/proposals",
+          cards: needsAttention,
+          emptyMessage: "Nothing needs your response right now.",
+        },
+        {
+          id: "quotes-to-finish",
+          title: "Quotes to finish",
+          tone: "blue",
+          viewAllHref: "/proposals",
+          cards: quotesToFinish,
+          emptyMessage: "No quotes to finish.",
+        },
+        {
+          id: "quotes-ready-to-send",
+          title: "Quotes ready to send",
+          tone: "purple",
+          viewAllHref: "/proposals",
+          cards: quotesReady,
+          emptyMessage: "No quotes waiting to send.",
+        },
+        {
+          id: "jobs-to-schedule",
+          title: "Jobs to schedule",
+          tone: "orange",
+          viewAllHref: "/proposals",
+          cards: jobsToSchedule,
+          emptyMessage: "No jobs waiting to be scheduled.",
+        },
+      ],
     },
     {
-      id: "jobs-needing-attention",
-      title: "Jobs Needing Attention",
-      tone: "orange",
-      viewAllHref: "/proposals",
-      cards: jobsNeedingAttention,
-      emptyMessage: "Nothing needs your response right now.",
+      id: "waiting",
+      title: "Waiting",
+      sections: [
+        {
+          id: "waiting-for-customer",
+          title: "Waiting for customers",
+          tone: "orange",
+          viewAllHref: "/proposals",
+          cards: waiting,
+          emptyMessage: "No proposals waiting on the customer.",
+        },
+      ],
     },
     {
-      id: "waiting-for-customer",
-      title: "Waiting for Customer",
-      tone: "orange",
-      viewAllHref: "/proposals",
-      cards: waitingForCustomer,
-      emptyMessage: "No quotes awaiting customer action.",
-    },
-    {
-      id: "quotes-to-finish",
-      title: "Quotes to Finish",
-      tone: "blue",
-      viewAllHref: "/proposals",
-      cards: quotesToFinish,
-      emptyMessage: "No quotes to finish.",
-    },
-    {
-      id: "quotes-ready-to-send",
-      title: "Quotes Ready to Send",
-      tone: "purple",
-      viewAllHref: "/proposals",
-      cards: quotesReadyToSend,
-      emptyMessage: "No quotes waiting to send.",
-    },
-    {
-      id: "booked-jobs",
-      title: "Booked Jobs",
-      tone: "green",
-      viewAllHref: "/calendar",
-      cards: bookedJobs,
-      emptyMessage: "No upcoming booked jobs.",
+      id: "upcoming",
+      title: "Upcoming",
+      sections: [
+        {
+          id: "upcoming-initial-visits",
+          title: "Upcoming initial visits",
+          tone: "green",
+          viewAllHref: "/visits",
+          cards: upcomingVisits,
+          emptyMessage: "No upcoming initial visits.",
+        },
+        {
+          id: "booked-jobs",
+          title: "Booked jobs",
+          tone: "green",
+          viewAllHref: "/calendar",
+          cards: bookedJobs,
+          emptyMessage: "No upcoming booked jobs.",
+        },
+      ],
     },
   ];
-
-  if (cancelledJobs.length > 0) {
-    sections.push({
-      id: "cancelled-jobs",
-      title: "Closed Jobs",
-      tone: "orange",
-      viewAllHref: "/proposals",
-      cards: cancelledJobs,
-      emptyMessage: "No closed jobs.",
-    });
-  }
-
-  return sections;
 }

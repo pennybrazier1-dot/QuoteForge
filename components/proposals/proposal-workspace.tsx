@@ -341,15 +341,19 @@ export function ProposalWorkspace({
     dateText: proposal.planned_start_date_text,
     timeHm: proposal.planned_start_time,
   });
-  const resolutionSummary =
+  const builtResolutionSummary =
     status === "needs_attention" && hasCustomerMessages
       ? buildConversationResolutionSummary(customerMessages, new Date(), {
           proposalAccepted,
           dateState: dateWorkflow.dateState,
           persistedDate: proposal.planned_start_date,
           persistedTime: proposal.planned_start_time,
+          attentionReason: proposal.attention_reason,
         })
       : null;
+  const resolutionSummary = builtResolutionSummary?.hasActiveAttention
+    ? builtResolutionSummary
+    : null;
   const actionContext = {
     status: proposal.status,
     job_summary: proposal.job_summary,

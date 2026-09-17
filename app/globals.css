@@ -7898,3 +7898,29 @@ button.qf-booking-preview-day-selectable:focus-visible {
   background: color-mix(in srgb, var(--muted) 18%, transparent);
   color: var(--muted);
 }
+
+.qf-home-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.qf-home-group-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.qf-home-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 0.35rem;
+}
+
+.qf-home-card-details .qf-home-card-attention {
+  margin: 0;
+}

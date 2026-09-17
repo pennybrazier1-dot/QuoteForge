@@ -64,6 +64,8 @@ export type ConversationResolutionSummary = {
   showDateActions: boolean;
   /** Direct action is available when the conversation already has a time. */
   canActOnSlot: boolean;
+  /** False when the only outstanding request was a now-resolved date. */
+  hasActiveAttention: boolean;
 };
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
@@ -154,6 +156,10 @@ export function requestItemTitleFromMessage(body: string): string {
   const titled =
     stripped.charAt(0).toUpperCase() + stripped.slice(1);
   return quoteSnippet(titled, 72);
+}
+
+export function isDateRequestItemTitle(item: string): boolean {
+  return /timing|date change|move job timing/i.test(item);
 }
 
 function impactLabelsFromLabels(labels: ChangeRequestLabel[]): string[] {
@@ -358,6 +364,7 @@ export type ConversationResolutionOptions = {
   dateState?: DateSlotState;
   persistedDate?: string | null;
   persistedTime?: string | null;
+  attentionReason?: string | null;
 };
 
 /**
@@ -397,10 +404,23 @@ export function buildConversationResolutionSummary(
     }
   );
   const dateAlreadyResolved =
-    persistedMatchesSlot &&
-    (options.dateState === "confirmed" || options.dateState === "provisional");
+    (options.dateState === "confirmed" || options.dateState === "provisional") &&
+    (persistedMatchesSlot || !slot?.dateIso);
+  const activeRequestItems = dateAlreadyResolved
+    ? aggregated.items.filter((item) => !isDateRequestItemTitle(item))
+    : aggregated.items;
+  const activeImpacts = dateAlreadyResolved
+    ? aggregated.impacts.filter(
+        (impact) => !/timing|duration/i.test(impact)
+      )
+    : aggregated.impacts;
   const showDateCard =
     Boolean(slot?.dateIso) && !hasWorkRequest && !dateAlreadyResolved;
+  const hasActiveAttention =
+    hasWorkRequest ||
+    showDateCard ||
+    (!dateAlreadyResolved && aggregated.focus === "date") ||
+    (dateAlreadyResolved && activeRequestItems.length > 0);
   const showAgreedDate = showDateCard && hasDateAgreement;
   const showDiscussedDate = showDateCard && !hasDateAgreement && hasDiscussedDate;
   const calendarAction = showDateCard
@@ -410,10 +430,12 @@ export function buildConversationResolutionSummary(
     : null;
 
   return {
-    customerRequest: aggregated.headline,
-    customerRequestItems: aggregated.items,
+    customerRequest: dateAlreadyResolved && !hasWorkRequest
+      ? "Date request resolved."
+      : aggregated.headline,
+    customerRequestItems: activeRequestItems,
     originalRequestWording: aggregated.wording,
-    possibleImpacts: aggregated.impacts,
+    possibleImpacts: activeImpacts,
     plannedStartText,
     plannedStartExact: slot?.dateIso ?? null,
     plannedStartTime: slot?.timeHm ?? null,
@@ -438,6 +460,7 @@ export function buildConversationResolutionSummary(
     calendarAction,
     showDateActions: showDateCard,
     canActOnSlot: Boolean(slot?.dateIso && slot.timeHm),
+    hasActiveAttention,
   };
 }
 
