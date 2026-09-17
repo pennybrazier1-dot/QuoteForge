@@ -1,4 +1,7 @@
 import { DESKTOP_SIDEBAR_ITEMS } from "@/lib/layout/app-nav";
+import { visitCreateSideEffects } from "@/lib/visits/new-visit";
+
+export { visitCreateSideEffects };
 
 export const MOBILE_NEW_MENU_TITLE = "New";
 
@@ -17,7 +20,7 @@ export const MOBILE_NEW_VISIT_HREF = "/visits/new";
 export const MOBILE_NEW_QUOTE_HREF = "/proposals/new";
 
 export type MobileNewMenuOption = {
-  id: "initial_visit" | "quote";
+  id: "visit" | "quote";
   label: string;
   subtitle: string;
   href: string;
@@ -27,9 +30,9 @@ export type MobileNewMenuOption = {
 
 export const MOBILE_NEW_MENU_OPTIONS: MobileNewMenuOption[] = [
   {
-    id: "initial_visit",
-    label: "Initial Visit",
-    subtitle: "Arrange a visit to inspect or measure before quoting",
+    id: "visit",
+    label: "Visit",
+    subtitle: "Arrange a visit to inspect, discuss or check work",
     href: MOBILE_NEW_VISIT_HREF,
     createsQuote: false,
     createsJob: false,
@@ -56,19 +59,6 @@ export function getMobileNewMenuOption(
     throw new Error(`Unknown New menu option: ${id}`);
   }
   return option;
-}
-
-/** Saving an Initial Visit only creates a visit record. */
-export function initialVisitCreateSideEffects() {
-  return {
-    createsVisit: true,
-    createsQuote: false,
-    createsJob: false,
-    createsProposal: false,
-    appearsOnVisitsList: true,
-    appearsOnCalendarAsVisit: true,
-    homepageBuckets: ["today_visit", "upcoming_visit"] as const,
-  };
 }
 
 export function desktopNewNavigation() {

@@ -4,7 +4,14 @@ import {
 } from "@/lib/customers/format";
 import { CustomerNotesSection } from "@/components/customers/customer-notes-section";
 import { CustomerLifecycleActions } from "@/components/customers/customer-lifecycle-actions";
+import { CustomerDetailSections } from "@/components/customers/customer-detail-sections";
 import { SectionCard, SectionStack } from "@/components/ui/section-card";
+import type {
+  CustomerActivityEvent,
+  CustomerDetailJob,
+  CustomerDetailProposal,
+  CustomerDetailVisit,
+} from "@/lib/customers/detail-model";
 import {
   customerDetailActions,
   readCustomerLifecycleState,
@@ -60,7 +67,19 @@ function lifecycleLabel(state: ReturnType<typeof readCustomerLifecycleState>) {
   return "Customer";
 }
 
-export function CustomerDetailView({ customer }: { customer: CustomerDetailData }) {
+export function CustomerDetailView({
+  customer,
+  jobs = [],
+  proposals = [],
+  visits = [],
+  activity = [],
+}: {
+  customer: CustomerDetailData;
+  jobs?: CustomerDetailJob[];
+  proposals?: CustomerDetailProposal[];
+  visits?: CustomerDetailVisit[];
+  activity?: CustomerActivityEvent[];
+}) {
   const address = formatCustomerAddress(customer);
   const hasContactDetails = Boolean(
     customer.email || customer.phone || address
@@ -85,32 +104,42 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
           </div>
           <CustomerLifecycleActions
             customerId={customer.id}
+            customerName={customer.name}
             deletionScheduledFor={customer.deletion_scheduled_for}
             actions={actions}
           />
         </div>
       </SectionCard>
 
-      <SectionCard>
-        <h3 className="text-lg font-semibold">Contact details</h3>
-        {hasContactDetails ? (
-          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-            <DetailRow label="Email" value={customer.email} />
-            <DetailRow label="Phone" value={customer.phone} />
-            <div className="sm:col-span-2">
-              <DetailRow label="Address" value={address} />
+      <CustomerDetailSections
+        contact={
+          hasContactDetails ? (
+            <dl className="grid gap-4 sm:grid-cols-2">
+              <DetailRow label="Phone" value={customer.phone} />
+              <DetailRow label="Email" value={customer.email} />
+              <div className="sm:col-span-2">
+                <DetailRow label="Address" value={address} />
+              </div>
+            </dl>
+          ) : (
+            <p className="text-sm text-muted">No contact details saved yet.</p>
+          )
+        }
+        notes={
+          state !== "anonymised" ? (
+            <div className="mt-4">
+              <CustomerNotesSection
+                customerId={customer.id}
+                notes={customer.notes}
+              />
             </div>
-          </dl>
-        ) : (
-          <p className="mt-4 text-sm text-muted">
-            No contact details saved yet.
-          </p>
-        )}
-      </SectionCard>
-
-      {state !== "anonymised" ? (
-        <CustomerNotesSection customerId={customer.id} notes={customer.notes} />
-      ) : null}
+          ) : null
+        }
+        jobs={jobs}
+        proposals={proposals}
+        visits={visits}
+        activity={activity}
+      />
     </SectionStack>
   );
 }

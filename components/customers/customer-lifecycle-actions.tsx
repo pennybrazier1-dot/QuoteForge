@@ -13,8 +13,8 @@ import {
 } from "@/app/customers/actions";
 import { AuthError } from "@/components/auth/auth-shell";
 import {
-  CUSTOMER_DELETE_CONFIRMATION,
   CUSTOMER_PERMANENT_DELETE_CONFIRMATION,
+  customerDeleteConfirmation,
   formatDeletionScheduledFor,
   type CustomerDetailActions,
 } from "@/lib/customers/lifecycle";
@@ -63,10 +63,12 @@ function LifecycleForm({
 
 export function CustomerLifecycleActions({
   customerId,
+  customerName,
   deletionScheduledFor,
   actions,
 }: {
   customerId: string;
+  customerName?: string | null;
   deletionScheduledFor?: string | null;
   actions: CustomerDetailActions;
 }) {
@@ -134,6 +136,19 @@ export function CustomerLifecycleActions({
                     />
                   </LifecycleForm>
                 ) : null}
+                {actions.showDelete ? (
+                  <button
+                    type="button"
+                    className="qf-customer-more-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setConfirming("delete");
+                    }}
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -149,39 +164,39 @@ export function CustomerLifecycleActions({
           </LifecycleForm>
         ) : null}
 
-        {actions.showDelete ? (
-          confirming === "delete" ? (
-            <div className="qf-customer-confirm">
-              <p>{CUSTOMER_DELETE_CONFIRMATION}</p>
-              <div className="qf-customer-confirm-actions">
-                <LifecycleForm
-                  customerId={customerId}
-                  action={requestCustomerDeletion}
-                >
-                  <ActionButton
-                    label="Confirm delete"
-                    pendingLabel="Scheduling…"
-                    className="qf-btn-danger"
-                  />
-                </LifecycleForm>
-                <button
-                  type="button"
-                  className="qf-btn-secondary"
-                  onClick={() => setConfirming(null)}
-                >
-                  Cancel
-                </button>
-              </div>
+        {actions.showDelete && confirming === "delete" ? (
+          <div className="qf-customer-confirm">
+            <p>{customerDeleteConfirmation(customerName)}</p>
+            <div className="qf-customer-confirm-actions">
+              <LifecycleForm
+                customerId={customerId}
+                action={requestCustomerDeletion}
+              >
+                <ActionButton
+                  label="Confirm delete"
+                  pendingLabel="Scheduling…"
+                  className="qf-btn-danger"
+                />
+              </LifecycleForm>
+              <button
+                type="button"
+                className="qf-btn-secondary"
+                onClick={() => setConfirming(null)}
+              >
+                Cancel
+              </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="qf-btn-danger"
-              onClick={() => setConfirming("delete")}
-            >
-              Delete
-            </button>
-          )
+          </div>
+        ) : null}
+
+        {actions.showDelete && !actions.showOverflowMenu && confirming !== "delete" ? (
+          <button
+            type="button"
+            className="qf-btn-danger"
+            onClick={() => setConfirming("delete")}
+          >
+            Delete
+          </button>
         ) : null}
 
         {actions.showPermanentDelete ? (

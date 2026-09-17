@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { NewProposalForm } from "@/components/proposals/new-proposal-form";
+import { loadCustomersForNameMatch } from "@/lib/customers/load-name-match";
+import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import { formatPenceForInput } from "@/lib/proposals/money";
 import { formatOptionalExtrasForForm } from "@/lib/proposals/optional-extras";
 import { plannedStartFromDb } from "@/lib/proposals/planned-start-date";
 import { canEditProposal } from "@/lib/proposals/status";
-import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Edit Proposal",
@@ -20,14 +21,18 @@ type PageProps = {
 
 export default async function EditProposalPage({ params }: PageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    redirect("/login");
+  }
 
-  const { data: proposal, error } = await supabase
+  const { data: proposal, error } = await context.supabase
     .from("proposals")
     .select(
-      "id, status, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, total_amount, planned_start_date_text, planned_start_date"
+      "id, status, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, total_amount, planned_start_date_text, planned_start_date"
     )
     .eq("id", id)
+    .eq("workspace_id", context.workspaceId)
     .maybeSingle();
 
   if (error || !proposal) {
@@ -57,12 +62,19 @@ export default async function EditProposalPage({ params }: PageProps) {
     plannedStartDateExact: plannedStart.plannedStartDateExact,
   };
 
+  const customers = await loadCustomersForNameMatch(
+    context.supabase,
+    context.workspaceId
+  );
+
   return (
     <NewProposalForm
       mode="edit"
       proposalId={id}
       proposalStatus={proposal.status}
       initialValues={initialValues}
+      customers={customers}
+      initialCustomerId={proposal.customer_id ?? ""}
     />
   );
 }

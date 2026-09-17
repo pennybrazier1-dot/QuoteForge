@@ -4,29 +4,27 @@ import Link from "next/link";
 import { useActionState, useMemo, useState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { AuthError } from "@/components/auth/auth-shell";
+import { CustomerNameMatch } from "@/components/customers/customer-name-match";
 import { SectionCard } from "@/components/ui/section-card";
+import type { CustomerNameMatchOption } from "@/lib/customers/name-match";
 import { createVisitAction, type VisitActionState } from "@/lib/visits/actions";
+import {
+  DEFAULT_NEW_VISIT_TYPE,
+  NEW_VISIT_TYPE_OPTIONS,
+  VISIT_NAME_PLACEHOLDER,
+  applyVisitCustomerSuggestion,
+  visitReasonPlaceholder,
+  type NewVisitType,
+} from "@/lib/visits/new-visit";
 import {
   VISIT_DURATION_OPTIONS,
   VISIT_TIME_OPTIONS,
-  VISIT_TYPES,
   formatVisitTimeLabel,
-  formatVisitType,
 } from "@/lib/visits/types";
 
 const initialState: VisitActionState = {};
 
-type CustomerOption = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address_line_1: string | null;
-  address_line_2: string | null;
-  town: string | null;
-  county: string | null;
-  postcode: string | null;
-};
+type CustomerOption = CustomerNameMatchOption;
 
 type EnquiryPrefill = {
   enquiryId: string;
@@ -113,21 +111,21 @@ export function CreateVisitForm({
   const [enquirySummary, setEnquirySummary] = useState(
     enquiryPrefill?.enquirySummary || ""
   );
+  const [visitType, setVisitType] = useState<NewVisitType>(
+    DEFAULT_NEW_VISIT_TYPE
+  );
 
-  const applyCustomer = (id: string) => {
-    setCustomerId(id);
-    const match = customers.find((customer) => customer.id === id);
-    if (!match) {
-      return;
-    }
-    setCustomerName(match.name);
-    setContactPhone(match.phone ?? "");
-    setContactEmail(match.email ?? "");
-    setAddressLine1(match.address_line_1 ?? "");
-    setAddressLine2(match.address_line_2 ?? "");
-    setTown(match.town ?? "");
-    setCounty(match.county ?? "");
-    setPostcode(match.postcode ?? "");
+  const applyCustomer = (match: CustomerOption) => {
+    const fields = applyVisitCustomerSuggestion(match);
+    setCustomerId(fields.customerId);
+    setCustomerName(fields.customerName);
+    setContactPhone(fields.contactPhone);
+    setContactEmail(fields.contactEmail);
+    setAddressLine1(fields.addressLine1);
+    setAddressLine2(fields.addressLine2);
+    setTown(fields.town);
+    setCounty(fields.county);
+    setPostcode(fields.postcode);
   };
 
   return (
@@ -142,31 +140,38 @@ export function CreateVisitForm({
           <h2 className="qf-card-heading">Customer details</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Field label="Saved customer" id="visitSavedCustomer">
-                <select
-                  id="visitSavedCustomer"
-                  className="form-select"
-                  value={customerId}
-                  onChange={(event) => applyCustomer(event.target.value)}
-                >
-                  <option value="">Enter details below</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.name}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Name" id="visitCustomerName">
+                <input
+                  id="visitCustomerName"
+                  className="form-input"
+                  name="customerName"
+                  required
+                  autoComplete="name"
+                  value={customerName}
+                  onChange={(event) => {
+                    setCustomerName(event.target.value);
+                    setCustomerId("");
+                  }}
+                  placeholder={VISIT_NAME_PLACEHOLDER}
+                />
               </Field>
+              <CustomerNameMatch
+                query={customerName}
+                customers={customers}
+                selectedCustomerId={customerId}
+                onUseCustomer={applyCustomer}
+              />
             </div>
-            <Field label="Name" id="visitCustomerName">
+            <Field label="Phone" id="visitContactPhone">
               <input
-                id="visitCustomerName"
+                id="visitContactPhone"
                 className="form-input"
-                name="customerName"
-                required
-                value={customerName}
-                onChange={(event) => setCustomerName(event.target.value)}
-                placeholder="e.g. Mrs Sarah Whitfield"
+                type="tel"
+                name="contactPhone"
+                value={contactPhone}
+                onChange={(event) => setContactPhone(event.target.value)}
+                autoComplete="tel"
+                placeholder="e.g. 07700 900123"
               />
             </Field>
             <Field label="Email" id="visitContactEmail">
@@ -181,28 +186,18 @@ export function CreateVisitForm({
                 placeholder="e.g. sarah@example.com"
               />
             </Field>
-            <Field label="Phone" id="visitContactPhone">
-              <input
-                id="visitContactPhone"
-                className="form-input"
-                type="tel"
-                name="contactPhone"
-                value={contactPhone}
-                onChange={(event) => setContactPhone(event.target.value)}
-                autoComplete="tel"
-                placeholder="e.g. 07700 900123"
-              />
-            </Field>
-            <Field label="Address" id="visitAddressLine1">
-              <input
-                id="visitAddressLine1"
-                className="form-input"
-                name="addressLine1"
-                value={addressLine1}
-                onChange={(event) => setAddressLine1(event.target.value)}
-                placeholder="e.g. 14 Riverside Close"
-              />
-            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Address" id="visitAddressLine1">
+                <input
+                  id="visitAddressLine1"
+                  className="form-input"
+                  name="addressLine1"
+                  value={addressLine1}
+                  onChange={(event) => setAddressLine1(event.target.value)}
+                  placeholder="e.g. 14 Riverside Close"
+                />
+              </Field>
+            </div>
             <input type="hidden" name="addressLine2" value={addressLine2} />
             <Field label="Town" id="visitTown">
               <input
@@ -232,21 +227,40 @@ export function CreateVisitForm({
           <h2 className="qf-card-heading">Visit details</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Field label="Visit type" id="visitType">
-                <select
-                  id="visitType"
-                  className="form-select"
-                  name="visitType"
-                  defaultValue="initial_assessment"
-                  required
-                >
-                  {VISIT_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {formatVisitType(type)}
-                    </option>
-                  ))}
-                </select>
-              </Field>
+              <p className="qf-field-label" id="visitTypeLabel">
+                Visit type
+              </p>
+              <input type="hidden" name="visitType" value={visitType} />
+              <div
+                className="qf-visit-type-options"
+                role="radiogroup"
+                aria-labelledby="visitTypeLabel"
+              >
+                {NEW_VISIT_TYPE_OPTIONS.map((option) => {
+                  const selected = visitType === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      className={
+                        selected
+                          ? "qf-visit-type-option is-selected"
+                          : "qf-visit-type-option"
+                      }
+                      onClick={() => setVisitType(option.id)}
+                    >
+                      <span className="qf-visit-type-option-title">
+                        {option.label}
+                      </span>
+                      <span className="qf-visit-type-option-helper">
+                        {option.helper}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             <div className="sm:col-span-2">
               <Field label="Reason / summary" id="visitEnquirySummary">
@@ -255,7 +269,7 @@ export function CreateVisitForm({
                   className="form-textarea"
                   name="enquirySummary"
                   rows={4}
-                  placeholder="Why are you visiting? What needs assessing?"
+                  placeholder={visitReasonPlaceholder(visitType)}
                   value={enquirySummary}
                   onChange={(event) => setEnquirySummary(event.target.value)}
                 />

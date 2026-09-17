@@ -53,7 +53,7 @@ export function MobileNewMenu({
               onClick={onClose}
             >
               <span className="qf-new-menu-option-icon" aria-hidden="true">
-                {option.id === "initial_visit" ? (
+                {option.id === "visit" ? (
                   <svg
                     width="20"
                     height="20"

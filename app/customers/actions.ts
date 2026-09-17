@@ -60,6 +60,13 @@ function revalidateCustomerViews(customerId: string) {
   revalidatePath(`/customers/${customerId}/edit`);
 }
 
+function redirectAfterLifecycle(formData: FormData, customerId: string): never {
+  if (getString(formData, "returnTo") === "list") {
+    redirect("/customers");
+  }
+  redirect(`/customers/${customerId}`);
+}
+
 async function loadTraderCustomer(
   customerId: string
 ): Promise<
@@ -349,7 +356,7 @@ export async function archiveCustomer(
   }
 
   revalidateCustomerViews(loaded.context.customer.id);
-  redirect(`/customers/${loaded.context.customer.id}`);
+  redirectAfterLifecycle(formData, loaded.context.customer.id);
 }
 
 export async function restoreCustomer(
@@ -380,7 +387,7 @@ export async function restoreCustomer(
   }
 
   revalidateCustomerViews(loaded.context.customer.id);
-  redirect(`/customers/${loaded.context.customer.id}`);
+  redirectAfterLifecycle(formData, loaded.context.customer.id);
 }
 
 export async function requestCustomerDeletion(
@@ -394,7 +401,7 @@ export async function requestCustomerDeletion(
 
   const state = readCustomerLifecycleState(loaded.context.customer);
   if (!canScheduleCustomerDeletion(state)) {
-    return { error: "Delete is only available for archived customers." };
+    return { error: "This customer cannot be scheduled for deletion." };
   }
 
   const { error } = await loaded.context.supabase
@@ -408,7 +415,7 @@ export async function requestCustomerDeletion(
   }
 
   revalidateCustomerViews(loaded.context.customer.id);
-  redirect(`/customers/${loaded.context.customer.id}`);
+  redirectAfterLifecycle(formData, loaded.context.customer.id);
 }
 
 export async function permanentlyDeleteCustomer(

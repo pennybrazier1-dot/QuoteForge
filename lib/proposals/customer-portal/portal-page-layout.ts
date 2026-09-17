@@ -102,12 +102,48 @@ export function portalSectionDefaultOpen(): boolean {
 export const PORTAL_VISUAL = {
   pageBackground: "#08080a",
   cardBackground: "#1f1f28",
+  cardInsetBackground: "#16161e",
   text: "#f5f5f7",
   textMuted: "#a1a1aa",
   accent: "#ff6a1a",
   cardsAreWhite: false,
   orangeIsAccentOnly: true,
 } as const;
+
+/** Date-change option cards — presentation only. */
+export const PORTAL_DATE_CHANGE_VISUAL = {
+  optionBackground: PORTAL_VISUAL.cardInsetBackground,
+  optionText: PORTAL_VISUAL.text,
+  optionMuted: PORTAL_VISUAL.textMuted,
+  selectedBorder: PORTAL_VISUAL.accent,
+  fieldBackground: "#0c0c12",
+  cardsAreWhite: false,
+  mobileMaxWidth: "100%",
+  usesPageScroll: true,
+  bottomSafeArea: "env(safe-area-inset-bottom, 0px)",
+} as const;
+
+export function portalDateChangeCardsAreDark(): boolean {
+  return !PORTAL_DATE_CHANGE_VISUAL.cardsAreWhite;
+}
+
+export function portalSlotCardCopy(slot: {
+  kind: "range" | "appointment";
+  label: string;
+  startTime?: string;
+}): { title: string; subtitle: string | null } {
+  const [title, afterDot] = slot.label.split(" · ");
+  if (afterDot?.trim()) {
+    return { title: title.trim(), subtitle: afterDot.trim() };
+  }
+  if (slot.kind === "range") {
+    return { title: slot.label, subtitle: "Available window" };
+  }
+  if (slot.startTime?.trim()) {
+    return { title: slot.label, subtitle: slot.startTime.trim() };
+  }
+  return { title: slot.label, subtitle: null };
+}
 
 export const PORTAL_FORBIDDEN_CUSTOMER_ACTIONS = [
   "Edit",

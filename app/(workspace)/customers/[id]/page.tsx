@@ -2,11 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CustomerDetailView } from "@/components/customers/customer-detail-view";
-import {
-  CustomerJobs,
-  CustomerVisits,
-} from "@/components/customers/customer-history";
-import { CustomerProposals } from "@/components/customers/customer-proposals";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -43,7 +38,7 @@ export default async function CustomerPage({ params }: PageProps) {
         .order("created_at", { ascending: false }),
       supabase
         .from("jobs")
-        .select("id, status, accepted_at, proposal_id")
+        .select("id, status, accepted_at, completed_at, proposal_id")
         .eq("customer_id", id)
         .order("created_at", { ascending: false }),
       supabase
@@ -53,8 +48,18 @@ export default async function CustomerPage({ params }: PageProps) {
         .order("visit_date", { ascending: false }),
     ]);
 
+  const proposalIds = (proposalsData ?? []).map((row) => row.id as string);
+  const { data: activityData } =
+    proposalIds.length > 0
+      ? await supabase
+          .from("proposal_status_events")
+          .select("id, proposal_id, event_type, to_status, note, created_at")
+          .in("proposal_id", proposalIds)
+          .order("created_at", { ascending: false })
+      : { data: [] };
+
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
+    <main className="qf-customer-detail-page mx-auto w-full max-w-3xl flex-1 py-10">
       <Link
         href="/customers"
         className="inline-flex items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
@@ -76,10 +81,20 @@ export default async function CustomerPage({ params }: PageProps) {
       </Link>
 
       <div className="mt-6 qf-stack">
-        <CustomerDetailView customer={customer} />
-        <CustomerJobs jobs={jobsData ?? []} />
-        <CustomerProposals proposals={proposalsData ?? []} />
-        <CustomerVisits visits={visitsData ?? []} />
+        <CustomerDetailView
+          customer={customer}
+          jobs={jobsData ?? []}
+          proposals={proposalsData ?? []}
+          visits={visitsData ?? []}
+          activity={(activityData ?? []).map((event) => ({
+            id: event.id,
+            proposalId: event.proposal_id,
+            eventType: event.event_type,
+            toStatus: event.to_status,
+            note: event.note,
+            createdAt: event.created_at,
+          }))}
+        />
         <p className="text-sm text-muted">
           Conversations stay on each proposal. Archive or delete does not remove
           this history.

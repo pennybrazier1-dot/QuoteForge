@@ -41,8 +41,8 @@ function sampleVisit(overrides: Partial<VisitRecord> = {}): VisitRecord {
 
 describe("visit helpers", () => {
   it("formats visit type and status labels", () => {
-    expect(formatVisitType("initial_assessment")).toBe("Initial assessment");
-    expect(formatVisitType("measure_up")).toBe("Measure up");
+    expect(formatVisitType("initial_assessment")).toBe("Initial Visit");
+    expect(formatVisitType("measure_up")).toBe("Measure Up");
     expect(formatVisitStatus("scheduled")).toBe("Scheduled");
     expect(formatVisitDuration(90)).toBe("1h 30m");
   });
@@ -52,7 +52,7 @@ describe("visit helpers", () => {
     expect(jobs).toHaveLength(1);
     expect(jobs[0]?.href).toBe("/visits/visit-1");
     expect(jobs[0]?.tone).toBe("site_visit");
-    expect(jobs[0]?.badgeLabel).toBe("Initial assessment");
+    expect(jobs[0]?.badgeLabel).toBe("Initial Visit");
     expect(jobs[0]?.customer).toBe("Alex Customer");
     expect(jobs[0]?.kind).toBe("site_visit");
     expect(jobs[0]?.href).not.toMatch(/\/proposals\//);

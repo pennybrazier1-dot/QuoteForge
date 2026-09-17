@@ -28,6 +28,13 @@ function getString(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
 
+function linkedCustomerIdFromForm(
+  formData: FormData,
+  fallback: string | null = null
+): string | null {
+  return getString(formData, "customerId") || fallback;
+}
+
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -206,7 +213,7 @@ export async function saveDraftProposal(
     supabase,
     workspaceId,
     form,
-    null
+    linkedCustomerIdFromForm(formData)
   );
 
   if (customerError) {
@@ -332,7 +339,7 @@ export async function updateDraftProposal(
     supabase,
     profile.workspace_id,
     form,
-    existingProposal.customer_id
+    linkedCustomerIdFromForm(formData, existingProposal.customer_id)
   );
 
   if (customerError) {
@@ -450,7 +457,7 @@ export async function acceptAiDraftProposal(
       supabase,
       workspaceId,
       form,
-      existingProposal.customer_id
+      linkedCustomerIdFromForm(formData, existingProposal.customer_id)
     );
 
     if (customerError) {
@@ -492,7 +499,7 @@ export async function acceptAiDraftProposal(
     supabase,
     workspaceId,
     form,
-    null
+    linkedCustomerIdFromForm(formData)
   );
 
   if (customerError) {

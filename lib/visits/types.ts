@@ -56,13 +56,13 @@ export function isVisitStatus(value: string): value is VisitStatus {
 export function formatVisitType(type: string): string {
   switch (type) {
     case "initial_assessment":
-      return "Initial assessment";
+      return "Initial Visit";
     case "measure_up":
-      return "Measure up";
+      return "Measure Up";
     case "follow_up":
-      return "Follow-up visit";
+      return "Follow-Up Visit";
     case "final_inspection":
-      return "Final inspection";
+      return "Final Inspection";
     default:
       return type;
   }

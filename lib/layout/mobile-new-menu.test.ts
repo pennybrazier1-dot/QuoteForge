@@ -4,7 +4,7 @@ import { classifyHomeVisit } from "@/lib/home/home-lifecycle";
 import {
   desktopNewNavigation,
   getMobileNewMenuOption,
-  initialVisitCreateSideEffects,
+  visitCreateSideEffects,
   MOBILE_NEW_MENU_OPTIONS,
   MOBILE_NEW_MENU_TITLE,
   MOBILE_NEW_MENU_VISUAL,
@@ -53,10 +53,13 @@ describe("mobile New (+) menu", () => {
     expect(MOBILE_NEW_MENU_OPTIONS).toHaveLength(2);
   });
 
-  it("shows Initial Visit", () => {
-    const visit = getMobileNewMenuOption("initial_visit");
-    expect(visit.label).toBe("Initial Visit");
-    expect(visit.subtitle).toMatch(/inspect or measure/i);
+  it("shows Visit", () => {
+    const visit = getMobileNewMenuOption("visit");
+    expect(visit.label).toBe("Visit");
+    expect(visit.subtitle).toBe(
+      "Arrange a visit to inspect, discuss or check work"
+    );
+    expect(visit.label).not.toBe("Initial Visit");
   });
 
   it("shows Quote", () => {
@@ -65,16 +68,14 @@ describe("mobile New (+) menu", () => {
     expect(quote.subtitle).toMatch(/enough information/i);
   });
 
-  it("sends Initial Visit to the existing visit creation flow", () => {
-    expect(getMobileNewMenuOption("initial_visit").href).toBe(
-      MOBILE_NEW_VISIT_HREF
-    );
+  it("sends Visit to the existing visit creation flow", () => {
+    expect(getMobileNewMenuOption("visit").href).toBe(MOBILE_NEW_VISIT_HREF);
     expect(MOBILE_NEW_VISIT_HREF).toBe("/visits/new");
   });
 
-  it("does not create a quote or job from Initial Visit", () => {
-    const visit = getMobileNewMenuOption("initial_visit");
-    const effects = initialVisitCreateSideEffects();
+  it("does not create a quote or job from Visit", () => {
+    const visit = getMobileNewMenuOption("visit");
+    const effects = visitCreateSideEffects();
     expect(visit.createsQuote).toBe(false);
     expect(visit.createsJob).toBe(false);
     expect(effects.createsQuote).toBe(false);
@@ -97,7 +98,7 @@ describe("mobile New (+) menu", () => {
     expect(classifyHomeVisit(savedVisit({ visit_date: "2026-08-20" }), now)).toBe(
       "upcoming_visit"
     );
-    expect(initialVisitCreateSideEffects().homepageBuckets).toEqual([
+    expect(visitCreateSideEffects().homepageBuckets).toEqual([
       "today_visit",
       "upcoming_visit",
     ]);
@@ -117,7 +118,7 @@ describe("mobile New (+) menu", () => {
     );
   });
 
-  it("keeps Initial Visit and Quote forms on the Home mobile width", () => {
+  it("keeps Visit and Quote forms on the Home mobile width", () => {
     expect(mobileFormUsesHomeWidth()).toBe(true);
     expect(MOBILE_FORM_LAYOUT.extraInlinePadding).toBe("0");
     expect(MOBILE_FORM_LAYOUT.maxWidth).toBe("100%");

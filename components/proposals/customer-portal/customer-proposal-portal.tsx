@@ -39,9 +39,11 @@ import {
   PORTAL_CHANGE_CHOICES,
   portalPreviewText,
   portalPrimaryActionLabel,
+  portalSlotCardCopy,
   resolvePortalJobImageUrl,
   shouldShowThingsToConfirm,
 } from "@/lib/proposals/customer-portal/portal-page-layout";
+import type { PublicAvailabilitySlot } from "@/lib/proposals/customer-availability";
 import { buildCustomerProposalPdfPath } from "@/lib/proposals/customer-portal/token";
 
 const initialState: CustomerPortalActionState = {};
@@ -55,6 +57,39 @@ type PortalMode =
   | "change_time"
   | "change_details"
   | "decline";
+
+function PortalSlotOption({
+  slot,
+  name,
+  checked,
+  onSelect,
+}: {
+  slot: PublicAvailabilitySlot;
+  name: string;
+  checked: boolean;
+  onSelect: (slot: PublicAvailabilitySlot) => void;
+}) {
+  const copy = portalSlotCardCopy(slot);
+  return (
+    <label
+      className={`cj-portal-slot${checked ? " cj-portal-slot-selected" : ""}`}
+    >
+      <input
+        type="radio"
+        name={name}
+        value={name === "slotId" ? slot.id : undefined}
+        checked={checked}
+        onChange={() => onSelect(slot)}
+      />
+      <span className="cj-portal-slot-copy">
+        <span className="cj-portal-slot-title">{copy.title}</span>
+        {copy.subtitle ? (
+          <span className="cj-portal-slot-subtitle">{copy.subtitle}</span>
+        ) : null}
+      </span>
+    </label>
+  );
+}
 
 function BulletList({ items }: { items: string[] }) {
   if (items.length === 0) {
@@ -553,22 +588,18 @@ export function CustomerProposalPortal({
                 <ul className="cj-portal-slot-list">
                   {view.availabilitySlots.map((slot) => (
                     <li key={slot.id}>
-                      <label className="cj-portal-slot">
-                        <input
-                          type="radio"
-                          name="slotId"
-                          value={slot.id}
-                          checked={selectedSlotId === slot.id}
-                          onChange={() => {
-                            setSelectedSlotId(slot.id);
-                            const data = new FormData();
-                            data.set("token", view.token);
-                            data.set("slotId", slot.id);
-                            holdAction(data);
-                          }}
-                        />
-                        <span>{slot.label}</span>
-                      </label>
+                      <PortalSlotOption
+                        slot={slot}
+                        name="slotId"
+                        checked={selectedSlotId === slot.id}
+                        onSelect={(next) => {
+                          setSelectedSlotId(next.id);
+                          const data = new FormData();
+                          data.set("token", view.token);
+                          data.set("slotId", next.id);
+                          holdAction(data);
+                        }}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -618,18 +649,15 @@ export function CustomerProposalPortal({
                 <ul className="cj-portal-slot-list">
                   {view.availabilitySlots.map((slot) => (
                     <li key={slot.id}>
-                      <label className="cj-portal-slot">
-                        <input
-                          type="radio"
-                          name="availableDate"
-                          checked={requestedDate === slot.startDate}
-                          onChange={() => {
-                            setRequestedDate(slot.startDate);
-                            setRequestedTime(slot.startTime || "");
-                          }}
-                        />
-                        <span>{slot.label}</span>
-                      </label>
+                      <PortalSlotOption
+                        slot={slot}
+                        name="availableDate"
+                        checked={requestedDate === slot.startDate}
+                        onSelect={(next) => {
+                          setRequestedDate(next.startDate);
+                          setRequestedTime(next.startTime || "");
+                        }}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -642,7 +670,7 @@ export function CustomerProposalPortal({
                 type="date"
                 value={requestedDate}
                 onChange={(event) => setRequestedDate(event.target.value)}
-                className="cj-portal-textarea cj-portal-field"
+                className="cj-portal-input cj-portal-field"
               />
               <label className="cj-portal-label" htmlFor="request-date-message">
                 Anything else we should know? (optional)
@@ -688,17 +716,14 @@ export function CustomerProposalPortal({
                     .filter((slot) => slot.startTime)
                     .map((slot) => (
                       <li key={slot.id}>
-                        <label className="cj-portal-slot">
-                          <input
-                            type="radio"
-                            name="availableTime"
-                            checked={requestedTime === slot.startTime}
-                            onChange={() =>
-                              setRequestedTime(slot.startTime || "")
-                            }
-                          />
-                          <span>{slot.label}</span>
-                        </label>
+                        <PortalSlotOption
+                          slot={slot}
+                          name="availableTime"
+                          checked={requestedTime === slot.startTime}
+                          onSelect={(next) =>
+                            setRequestedTime(next.startTime || "")
+                          }
+                        />
                       </li>
                     ))}
                 </ul>
@@ -711,7 +736,7 @@ export function CustomerProposalPortal({
                 type="time"
                 value={requestedTime}
                 onChange={(event) => setRequestedTime(event.target.value)}
-                className="cj-portal-textarea cj-portal-field"
+                className="cj-portal-input cj-portal-field"
               />
               <label className="cj-portal-label" htmlFor="request-time-message">
                 Anything else we should know? (optional)

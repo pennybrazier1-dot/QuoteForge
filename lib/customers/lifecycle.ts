@@ -1,4 +1,5 @@
 export const CUSTOMER_DELETION_GRACE_DAYS = 30;
+export const CUSTOMER_LIST_SWIPE_MEDIA = "(max-width: 1023px)";
 
 export const CUSTOMER_DELETE_CONFIRMATION =
   "This customer will be scheduled for permanent deletion in 30 days. You can restore them before then.";
@@ -65,11 +66,13 @@ export type CustomerDetailActionKey =
   | "permanent_delete"
   | "book_visit";
 
+export type CustomerListActionKey = "archive" | "delete" | "restore" | "permanent_delete";
+
 export type CustomerDetailActions = {
   state: CustomerLifecycleState;
   showBookVisit: boolean;
   showOverflowMenu: boolean;
-  overflowActions: Array<"edit" | "archive">;
+    overflowActions: Array<"edit" | "archive" | "delete">;
   showEdit: boolean;
   showArchive: boolean;
   showRestore: boolean;
@@ -389,7 +392,54 @@ export function canRestoreCustomer(state: CustomerLifecycleState): boolean {
 export function canScheduleCustomerDeletion(
   state: CustomerLifecycleState
 ): boolean {
-  return state === "archived";
+  return state === "active" || state === "archived";
+}
+
+export function customerDeleteConfirmation(name?: string | null): string {
+  const who = name?.trim() || "this customer";
+  return `Delete ${who}?\n\nThis customer will be removed from your active list and scheduled for permanent deletion in 30 days. You can restore them before then.`;
+}
+
+export function customerListRowDisplay(
+  view: CustomerListView,
+  options?: { isMobile?: boolean }
+): {
+  showName: boolean;
+  showChevron: boolean;
+  showEmail: boolean;
+  showPhone: boolean;
+  showAddress: boolean;
+  showAddedDate: boolean;
+  showDeletionDate: boolean;
+} {
+  const isMobile = options?.isMobile !== false;
+  return {
+    showName: true,
+    showChevron: true,
+    showEmail: !isMobile,
+    showPhone: false,
+    showAddress: false,
+    showAddedDate: false,
+    showDeletionDate: view === "scheduled",
+  };
+}
+
+export function customerListSwipeActions(
+  view: CustomerListView
+): CustomerListActionKey[] {
+  if (view === "active") {
+    return ["archive", "delete"];
+  }
+  if (view === "archived") {
+    return ["restore", "delete"];
+  }
+  return ["restore", "permanent_delete"];
+}
+
+export function customerListDesktopActions(
+  view: CustomerListView
+): CustomerListActionKey[] {
+  return customerListSwipeActions(view);
 }
 
 export function canPermanentlyDeleteCustomerNow(
@@ -473,11 +523,11 @@ export function customerDetailActions(
     state,
     showBookVisit: isActive,
     showOverflowMenu: isActive,
-    overflowActions: isActive ? ["edit", "archive"] : [],
+    overflowActions: isActive ? ["edit", "archive", "delete"] : [],
     showEdit: isActive,
     showArchive: isActive,
     showRestore: isArchived || isScheduled,
-    showDelete: isArchived,
+    showDelete: isActive || isArchived,
     showPermanentDelete: isScheduled,
     showImmediateHardDelete: false,
   };

@@ -1281,6 +1281,90 @@ a.qf-card-inset:hover {
   font-weight: 600;
 }
 
+.qf-customer-match {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qf-customer-match-card {
+  appearance: none;
+  display: grid;
+  gap: 0.2rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background: var(--background-card-inset);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.qf-customer-match-name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.qf-customer-match-meta {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.qf-customer-match-use {
+  width: 100%;
+  margin-top: 0.65rem;
+  min-height: var(--touch-target-comfortable);
+}
+
+.qf-visit-type-options {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.qf-visit-type-option {
+  appearance: none;
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  min-height: var(--touch-target-comfortable);
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background: var(--background-card-inset);
+  color: var(--foreground);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.qf-visit-type-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--ring-field-focus);
+}
+
+.qf-visit-type-option-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.qf-visit-type-option-helper {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
 .qf-card-heading-row {
   display: flex;
   align-items: center;
@@ -8028,19 +8112,25 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .cj-portal-slot {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 3rem;
-  padding: 0.75rem 0.9rem;
-  border: 1px solid var(--cj-border-strong, rgba(17, 17, 17, 0.16));
-  border-radius: 0.75rem;
-  background: #fff;
-  color: inherit;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--portal-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-card, 1rem);
+  background: var(--background-card-inset, #16161e);
+  color: var(--portal-text, #f5f5f7);
+  -webkit-text-fill-color: var(--portal-text, #f5f5f7);
 }
 
 .cj-portal-slot input {
-  margin: 0;
-  accent-color: #ff6a1a;
+  margin: 0.2rem 0 0;
+  flex-shrink: 0;
+  accent-color: var(--portal-accent, #ff6a1a);
 }
 
 /* Mobile New (+) action sheet */
@@ -8198,6 +8288,261 @@ button.qf-booking-preview-day-selectable:focus-visible {
   .qf-mobile-form-page .qf-proposal-header {
     margin-bottom: 1.25rem;
   }
+}
+
+.qf-customer-page,
+.qf-customer-detail-page {
+  overflow-x: clip;
+  padding-inline: var(--page-padding-desktop);
+}
+
+@media (max-width: 1023px) {
+  .qf-customer-page,
+  .qf-customer-detail-page {
+    width: 100%;
+    max-width: 100%;
+    padding-inline: var(--page-padding-mobile);
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.qf-customer-list-wrap {
+  margin-top: 1.25rem;
+}
+
+.qf-customer-list-heading {
+  display: none;
+}
+
+.qf-customer-list-empty {
+  margin-top: 1.25rem;
+  padding: 1rem 0;
+}
+
+.qf-customer-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.qf-customer-row-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.qf-customer-row-copy {
+  min-width: 0;
+}
+
+.qf-customer-row-name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.qf-customer-row-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.qf-customer-row-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-customer-row-link {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.qf-customer-row-desktop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background: var(--background-card-inset);
+}
+
+.qf-customer-row-desktop .qf-customer-row-link {
+  display: flex;
+  align-items: center;
+  min-height: var(--touch-target-comfortable);
+}
+
+.qf-customer-row-more {
+  position: relative;
+  justify-self: end;
+}
+
+.qf-customer-row-swipe-wrap {
+  min-width: 0;
+}
+
+.qf-customer-swipe {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background: var(--background-card-inset);
+}
+
+.qf-customer-swipe-actions {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.qf-customer-swipe-actions form {
+  display: flex;
+  height: 100%;
+}
+
+.qf-customer-swipe-action {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  min-height: var(--touch-target-comfortable);
+  padding: 0.5rem 0.35rem;
+  border: none;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 750;
+  line-height: 1.15;
+  text-align: center;
+  color: #fff;
+  cursor: pointer;
+}
+
+.qf-customer-swipe-action.is-archive {
+  background: #b45309;
+}
+
+.qf-customer-swipe-action.is-delete {
+  background: #dc2626;
+}
+
+.qf-customer-swipe-panel {
+  position: relative;
+  z-index: 1;
+  background: var(--background-card-inset);
+  touch-action: pan-y;
+}
+
+.qf-customer-swipe-panel .qf-customer-row-link {
+  padding: 1rem;
+  min-height: var(--touch-target-comfortable);
+}
+
+.qf-customer-list-confirm {
+  margin-top: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--border-subtle);
+  background: var(--background-card-inset);
+}
+
+.qf-customer-list-confirm p {
+  margin: 0 0 0.7rem;
+  white-space: pre-line;
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.qf-customer-list-error {
+  margin: 0 0 0.4rem;
+  color: var(--destructive, #f87171);
+  font-size: 0.75rem;
+}
+
+.qf-customer-detail-sections {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.qf-customer-detail-section {
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
+  background: var(--background-card-inset);
+  overflow: hidden;
+}
+
+.qf-customer-detail-section-trigger {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: var(--touch-target-comfortable);
+  padding: 0.95rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.qf-customer-detail-section-body {
+  padding: 0 1rem 1rem;
+}
+
+.qf-customer-detail-list {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qf-customer-detail-item {
+  display: block;
+  padding: 0.85rem 0.9rem;
+  border-radius: calc(var(--radius-card) - 0.25rem);
+  border: 1px solid var(--border-subtle);
+  background: var(--background-card);
+  color: inherit;
+  text-decoration: none;
+}
+
+.qf-customer-detail-item-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.qf-customer-detail-item-meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.qf-customer-detail-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
 }
 
 .qf-customer-view-tabs {

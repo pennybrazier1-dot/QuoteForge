@@ -24,7 +24,12 @@ import {
   QuickQuotePreparation,
   type QuickQuoteLocalPhoto,
 } from "@/components/proposals/quick-quote-preparation";
+import { CustomerNameMatch } from "@/components/customers/customer-name-match";
 import { SectionCard } from "@/components/ui/section-card";
+import {
+  customerMatchAddressLine,
+  type CustomerNameMatchOption,
+} from "@/lib/customers/name-match";
 import type { GeneratedProposal } from "@/lib/ai";
 import { logProposalFormMapping } from "@/lib/ai/proposal-debug";
 import { logMobileOverflowElements } from "@/lib/dev/mobile-overflow-debug";
@@ -193,6 +198,8 @@ export function NewProposalForm({
   proposalStatus,
   initialValues,
   visitId = null,
+  customers = [],
+  initialCustomerId = "",
 }: {
   mode?: "create" | "edit";
   proposalId?: string;
@@ -200,6 +207,8 @@ export function NewProposalForm({
   initialValues?: ProposalFormValues;
   /** When set, saving a quote links it back to this visit. */
   visitId?: string | null;
+  customers?: CustomerNameMatchOption[];
+  initialCustomerId?: string;
 }) {
   const saveAction = mode === "edit" ? updateDraftProposal : saveDraftProposal;
   const initialDuration = splitDuration(initialValues?.estimatedDuration ?? "");
@@ -223,6 +232,9 @@ export function NewProposalForm({
   );
   const [customerName, setCustomerName] = useState(
     initialValues?.customerName ?? ""
+  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState(
+    initialCustomerId
   );
   const [propertyAddress, setPropertyAddress] = useState(
     initialValues?.propertyAddress ?? ""
@@ -333,6 +345,7 @@ export function NewProposalForm({
     });
     if (extracted.customerName) {
       setCustomerName(extracted.customerName);
+      setSelectedCustomerId("");
     }
     if (extracted.propertyAddress) {
       setPropertyAddress(extracted.propertyAddress);
@@ -431,6 +444,7 @@ export function NewProposalForm({
         <input type="hidden" name="proposalId" value={proposalId} />
       ) : null}
       {visitId ? <input type="hidden" name="visitId" value={visitId} /> : null}
+      <input type="hidden" name="customerId" value={selectedCustomerId} />
 
       {saveState.error ? (
         <div className="mb-6">
@@ -467,7 +481,10 @@ export function NewProposalForm({
             proposal={reviewProposal}
             onProposalChange={setReviewProposal}
             customerName={customerName}
-            onCustomerNameChange={setCustomerName}
+            onCustomerNameChange={(value) => {
+              setCustomerName(value);
+              setSelectedCustomerId("");
+            }}
             propertyAddress={propertyAddress}
             onPropertyAddressChange={setPropertyAddress}
             phoneNumber={phoneNumber}
@@ -533,25 +550,33 @@ export function NewProposalForm({
                   }
                 />
                 <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <FormField
-                    label="Name"
-                    id="customerName"
-                    name="customerName"
-                    value={customerName}
-                    onChange={setCustomerName}
-                    placeholder="e.g. Mrs Sarah Whitfield"
-                    required
-                  />
-                  <FormField
-                    label="Email"
-                    id="emailAddress"
-                    name="emailAddress"
-                    type="email"
-                    value={emailAddress}
-                    onChange={setEmailAddress}
-                    autoComplete="email"
-                    placeholder="e.g. sarah@example.com"
-                  />
+                  <div className="sm:col-span-2">
+                    <FormField
+                      label="Name"
+                      id="customerName"
+                      name="customerName"
+                      value={customerName}
+                      onChange={(value) => {
+                        setCustomerName(value);
+                        setSelectedCustomerId("");
+                      }}
+                      autoComplete="name"
+                      placeholder="Start typing a name..."
+                      required
+                    />
+                    <CustomerNameMatch
+                      query={customerName}
+                      customers={customers}
+                      selectedCustomerId={selectedCustomerId}
+                      onUseCustomer={(customer) => {
+                        setSelectedCustomerId(customer.id);
+                        setCustomerName(customer.name);
+                        setEmailAddress(customer.email ?? "");
+                        setPhoneNumber(customer.phone ?? "");
+                        setPropertyAddress(customerMatchAddressLine(customer) ?? "");
+                      }}
+                    />
+                  </div>
                   <FormField
                     label="Phone"
                     id="phoneNumber"
@@ -563,13 +588,25 @@ export function NewProposalForm({
                     placeholder="e.g. 07700 900123"
                   />
                   <FormField
-                    label="Address"
-                    id="propertyAddress"
-                    name="propertyAddress"
-                    value={propertyAddress}
-                    onChange={setPropertyAddress}
-                    placeholder="e.g. 14 Riverside Close, Bristol"
+                    label="Email"
+                    id="emailAddress"
+                    name="emailAddress"
+                    type="email"
+                    value={emailAddress}
+                    onChange={setEmailAddress}
+                    autoComplete="email"
+                    placeholder="e.g. sarah@example.com"
                   />
+                  <div className="sm:col-span-2">
+                    <FormField
+                      label="Address"
+                      id="propertyAddress"
+                      name="propertyAddress"
+                      value={propertyAddress}
+                      onChange={setPropertyAddress}
+                      placeholder="e.g. 14 Riverside Close, Bristol"
+                    />
+                  </div>
                 </div>
               </SectionCard>
 

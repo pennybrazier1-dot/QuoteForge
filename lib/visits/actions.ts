@@ -5,9 +5,9 @@ import { redirect } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import { notifyCustomerOfVisit } from "@/lib/visits/notify";
 import { getVisit } from "@/lib/visits/queries";
+import { isNewVisitType, planVisitSaveCustomerLink } from "@/lib/visits/new-visit";
 import {
   isVisitStatus,
-  isVisitType,
   type VisitStatus,
   type VisitType,
 } from "@/lib/visits/types";
@@ -91,7 +91,7 @@ export async function createVisitAction(
   if (!customerName) {
     return { error: "Choose or enter a customer name." };
   }
-  if (!isVisitType(visitType)) {
+  if (!isNewVisitType(visitType)) {
     return { error: "Choose a visit type." };
   }
   if (!isIsoDate(visitDate)) {
@@ -101,7 +101,9 @@ export async function createVisitAction(
     return { error: "Choose a valid start time." };
   }
 
-  let resolvedCustomerId = customerId;
+  let resolvedCustomerId = planVisitSaveCustomerLink({
+    selectedCustomerId: customerId,
+  }).customerId;
   let resolvedEnquiryId = enquiryId;
 
   if (enquiryId) {

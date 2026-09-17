@@ -239,6 +239,18 @@ describe("homepage lifecycle buckets", () => {
     expect(booked.some((card) => card.id.startsWith("visit-"))).toBe(false);
   });
 
+  it("leaves follow-up and final inspection out of homepage visit buckets", () => {
+    expect(
+      classifyHomeVisit(visit({ visit_type: "follow_up", visit_date: "2026-08-12" }), now)
+    ).toBe("none");
+    expect(
+      classifyHomeVisit(
+        visit({ visit_type: "final_inspection", visit_date: "2026-08-12" }),
+        now
+      )
+    ).toBe("none");
+  });
+
   it("shows today's initial visit in Today's initial visits", () => {
     expect(classifyHomeVisit(visit({ visit_date: "2026-08-12" }), now)).toBe(
       "today_visit"

@@ -9,6 +9,7 @@ import {
   canPermanentlyDeleteCustomerNow,
   canRestoreCustomer,
   canScheduleCustomerDeletion,
+  customerDeleteConfirmation,
   customerDetailActions,
   filterCustomersByView,
   findMatchingCustomer,
@@ -251,9 +252,15 @@ describe("archive, restore, and deletion window", () => {
     expect(filterCustomersByView([restored], "archived")).toHaveLength(0);
   });
 
-  it("starts a 30-day deletion window only from the Archived state", () => {
-    expect(canScheduleCustomerDeletion("active")).toBe(false);
+  it("starts a 30-day deletion window from Active or Archived", () => {
+    expect(canScheduleCustomerDeletion("active")).toBe(true);
     expect(canScheduleCustomerDeletion("archived")).toBe(true);
+    expect(customerDeleteConfirmation("Michael Carter")).toContain(
+      "Delete Michael Carter?"
+    );
+    expect(customerDeleteConfirmation("Michael Carter")).toContain(
+      "scheduled for permanent deletion in 30 days"
+    );
     expect(CUSTOMER_DELETE_CONFIRMATION).toContain(
       "scheduled for permanent deletion in 30 days"
     );
@@ -380,8 +387,8 @@ describe("customer detail mobile actions", () => {
   it("keeps immediate hard delete off the active customer surface", () => {
     const actions = customerDetailActions("active");
     expect(actions.showOverflowMenu).toBe(true);
-    expect(actions.overflowActions).toEqual(["edit", "archive"]);
-    expect(actions.showDelete).toBe(false);
+    expect(actions.overflowActions).toEqual(["edit", "archive", "delete"]);
+    expect(actions.showDelete).toBe(true);
     expect(actions.showPermanentDelete).toBe(false);
     expect(actions.showImmediateHardDelete).toBe(false);
     expect(canPermanentlyDeleteCustomerNow("active")).toBe(false);

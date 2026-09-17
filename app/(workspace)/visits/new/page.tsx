@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CreateVisitForm } from "@/components/visits/create-visit-form";
+import { loadCustomersForNameMatch } from "@/lib/customers/load-name-match";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
+import {
+  NEW_VISIT_PAGE_SUBTITLE,
+  NEW_VISIT_PAGE_TITLE,
+} from "@/lib/visits/new-visit";
 
 export const metadata: Metadata = {
-  title: "Book visit",
-  description: "Schedule a site assessment visit.",
+  title: NEW_VISIT_PAGE_TITLE,
+  description: "Arrange a visit to inspect, discuss or check work.",
 };
 
 type PageProps = {
@@ -24,15 +29,10 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
 
   const { customerId, enquiryId } = await searchParams;
 
-  const { data: customersData } = await context.supabase
-    .from("customers")
-    .select(
-      "id, name, email, phone, address_line_1, address_line_2, town, county, postcode"
-    )
-    .eq("workspace_id", context.workspaceId)
-    .order("name", { ascending: true });
-
-  const customers = customersData ?? [];
+  const customers = await loadCustomersForNameMatch(
+    context.supabase,
+    context.workspaceId
+  );
 
   let enquiryPrefill: {
     enquiryId: string;
@@ -92,11 +92,11 @@ export default async function NewVisitPage({ searchParams }: PageProps) {
         >
           {enquiryId ? "← Back to enquiry" : "← Back to visits"}
         </Link>
-        <h1 className="qf-proposal-title">Book visit</h1>
+        <h1 className="qf-proposal-title">{NEW_VISIT_PAGE_TITLE}</h1>
         <p className="qf-proposal-subtitle">
           {enquiryId
             ? "Customer details and enquiry summary are ready — pick a date and time."
-            : "Choose a customer, add the reason, and pick a date and time."}
+            : NEW_VISIT_PAGE_SUBTITLE}
         </p>
       </header>
 

@@ -7,9 +7,12 @@ import {
   getPortalChangeWorkflow,
   isPortalTopLevelActionSet,
   PORTAL_CHANGE_CHOICES,
+  PORTAL_DATE_CHANGE_VISUAL,
   PORTAL_FORBIDDEN_CUSTOMER_ACTIONS,
   PORTAL_TOP_LEVEL_ACTIONS,
   PORTAL_VISUAL,
+  portalDateChangeCardsAreDark,
+  portalSlotCardCopy,
   portalConversationDefaultOpen,
   portalPrimaryActionLabel,
   portalShowsFinalAccept,
@@ -148,6 +151,57 @@ describe("customer portal page layout", () => {
     expect(portalShowsFinalAccept(notReady)).toBe(canShowFinalAccept(notReady));
     expect(portalPrimaryActionLabel(true)).toBe("Accept proposal");
     expect(portalPrimaryActionLabel(false)).toBe("Choose a date");
+  });
+
+  it("uses dark date-option cards with readable text", () => {
+    expect(portalDateChangeCardsAreDark()).toBe(true);
+    expect(PORTAL_DATE_CHANGE_VISUAL.cardsAreWhite).toBe(false);
+    expect(PORTAL_DATE_CHANGE_VISUAL.optionBackground).toBe("#16161e");
+    expect(PORTAL_DATE_CHANGE_VISUAL.optionText).toBe("#f5f5f7");
+    expect(PORTAL_DATE_CHANGE_VISUAL.optionMuted).toBe("#a1a1aa");
+    expect(PORTAL_DATE_CHANGE_VISUAL.optionBackground).not.toBe("#ffffff");
+    expect(PORTAL_DATE_CHANGE_VISUAL.optionText).not.toBe(
+      PORTAL_DATE_CHANGE_VISUAL.optionBackground
+    );
+  });
+
+  it("makes the selected date state visible with an orange border", () => {
+    expect(PORTAL_DATE_CHANGE_VISUAL.selectedBorder).toBe("#ff6a1a");
+    expect(PORTAL_VISUAL.orangeIsAccentOnly).toBe(true);
+  });
+
+  it("keeps date-change fields and buttons on the portal mobile width", () => {
+    expect(PORTAL_DATE_CHANGE_VISUAL.mobileMaxWidth).toBe("100%");
+    expect(PORTAL_DATE_CHANGE_VISUAL.fieldBackground).toBe("#0c0c12");
+    expect(PORTAL_DATE_CHANGE_VISUAL.usesPageScroll).toBe(true);
+    expect(PORTAL_DATE_CHANGE_VISUAL.bottomSafeArea).toBe(
+      "env(safe-area-inset-bottom, 0px)"
+    );
+  });
+
+  it("splits range and appointment labels for the date cards", () => {
+    expect(
+      portalSlotCardCopy({
+        kind: "range",
+        label: "18–28 September",
+      })
+    ).toEqual({ title: "18–28 September", subtitle: "Available window" });
+    expect(
+      portalSlotCardCopy({
+        kind: "appointment",
+        label: "Tuesday 22 September · 10:30",
+        startTime: "10:30",
+      })
+    ).toEqual({ title: "Tuesday 22 September", subtitle: "10:30" });
+  });
+
+  it("keeps the date-request workflow and desktop portal layout unchanged", () => {
+    expect(getPortalChangeWorkflow("date").action).toBe(
+      "requestAnotherScheduleDate"
+    );
+    expect(buildPortalPageLayout("desktop").responsive).toBe(true);
+    expect(buildPortalPageLayout("desktop").cardsAreWhite).toBe(false);
+    expect(buildPortalPageLayout("mobile").stackedActions).toBe(true);
   });
 
   it("keeps the customer proposal page responsive", () => {
