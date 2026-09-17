@@ -59,6 +59,7 @@ export type QuotePreparationDraft = {
   estimatedDuration: string;
   plannedStartDateText: string;
   plannedStartDateExact: string;
+  bookingWindow?: import("@/lib/proposals/booking-window").BookingWindow | null;
   photoCount: number;
   siteVisitDate: string;
 };

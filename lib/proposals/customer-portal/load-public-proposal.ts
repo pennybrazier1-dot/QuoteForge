@@ -22,8 +22,12 @@ import {
   expireAbandonedTempHold,
   loadPublicAvailabilityForProposal,
 } from "@/lib/proposals/customer-availability-load";
+import { parseBookingWindow } from "@/lib/proposals/booking-window";
 import type { PublicAvailabilitySlot } from "@/lib/proposals/customer-availability";
-import { scheduleModeForDuration } from "@/lib/proposals/customer-availability";
+import {
+  scheduleModeForDuration,
+  splitPublicAvailability,
+} from "@/lib/proposals/customer-availability";
 import { readDateSlotState } from "@/lib/proposals/date-workflow";
 import {
   formatPortalIssuedLabel,
@@ -50,6 +54,9 @@ export type PublicProposalViewModel = {
   needsDateChoice: boolean;
   scheduleMode: "range" | "appointment" | null;
   availabilitySlots: PublicAvailabilitySlot[];
+  moreAvailabilitySlots: PublicAvailabilitySlot[];
+  hasMoreAvailability: boolean;
+  availabilityEmpty: boolean;
   selectedSlotLabel: string | null;
   dateOfferSource: "proposal" | "trader" | "customer_selected" | null;
   businessName: string;
@@ -82,6 +89,7 @@ type PortalProposalRow = ProposalPdfSource & {
   job_address: string | null;
   booking_confirmation?: string | null;
   planned_start_time?: string | null;
+  booking_window?: unknown;
 };
 
 function createPortalClient() {
@@ -120,7 +128,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time, booking_window`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -198,13 +206,17 @@ export async function loadPublicProposalByToken(
     ? scheduleModeForDuration(row.estimated_duration)
     : null;
 
-  const availabilitySlots = needsDateChoice
+  const allAvailabilitySlots = needsDateChoice
     ? await loadPublicAvailabilityForProposal(supabase, {
         workspaceId: row.workspace_id,
         proposalId: row.id,
         estimatedDuration: row.estimated_duration,
+        bookingWindow: parseBookingWindow(row.booking_window),
       })
     : [];
+  const splitSlots = splitPublicAvailability(allAvailabilitySlots);
+  const availabilitySlots = splitSlots.visible;
+  const moreAvailabilitySlots = splitSlots.more;
 
   const dateOfferSource = canAcceptProposal
     ? dateState === "provisional"
@@ -233,6 +245,9 @@ export async function loadPublicProposalByToken(
       needsDateChoice,
       scheduleMode,
       availabilitySlots,
+      moreAvailabilitySlots,
+      hasMoreAvailability: splitSlots.hasMore,
+      availabilityEmpty: needsDateChoice && allAvailabilitySlots.length === 0,
       selectedSlotLabel: canAcceptProposal ? plannedStartLabel : null,
       dateOfferSource,
       businessName: resolveCustomerFacingBusinessName(workspaceRow.business_name),

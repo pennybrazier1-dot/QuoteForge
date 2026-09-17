@@ -938,7 +938,7 @@ a.qf-card-inset:hover {
   .form-input,
   .form-textarea,
   .form-select,
-  input,
+  input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]),
   textarea,
   select {
     width: 100%;
@@ -8122,11 +8122,21 @@ button.qf-booking-preview-day-selectable:focus-visible {
   padding: 0;
   display: grid;
   gap: 0.6rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.cj-portal-slot-list > li {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .cj-portal-slot {
   display: flex;
   align-items: flex-start;
+  justify-content: flex-start;
   gap: 0.75rem;
   width: 100%;
   max-width: 100%;
@@ -8134,6 +8144,7 @@ button.qf-booking-preview-day-selectable:focus-visible {
   box-sizing: border-box;
   min-height: 3rem;
   padding: 0.85rem 0.95rem;
+  overflow: hidden;
   border: 1px solid var(--portal-border, rgba(255, 255, 255, 0.12));
   border-radius: var(--radius-card, 1rem);
   background: var(--background-card-inset, #16161e);
@@ -8141,10 +8152,34 @@ button.qf-booking-preview-day-selectable:focus-visible {
   -webkit-text-fill-color: var(--portal-text, #f5f5f7);
 }
 
-.cj-portal-slot input {
-  margin: 0.2rem 0 0;
-  flex-shrink: 0;
+.cj-portal-slot input,
+.cj-portal-slot input[type="radio"] {
+  position: static;
+  width: 1.15rem;
+  min-width: 1.15rem;
+  max-width: 1.15rem;
+  height: 1.15rem;
+  margin: 0.25rem 0 0;
+  flex: 0 0 1.15rem;
   accent-color: var(--portal-accent, #ff6a1a);
+}
+
+.cj-portal-slot-copy {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.cj-portal-slot-title,
+.cj-portal-slot-subtitle {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 /* Mobile New (+) action sheet */

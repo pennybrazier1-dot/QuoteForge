@@ -1,6 +1,12 @@
 import { parseDurationToCalendarDays } from "@/lib/calendar/job-span";
 import { isLongDurationJob, requiredWorkingDays } from "@/lib/proposals/acceptance-rules";
 import {
+  resolveBookingWindow,
+  slotFallsInsideWindow,
+  type BookingWindow,
+  type ResolvedBookingWindow,
+} from "@/lib/proposals/booking-window";
+import {
   isSlotTakenByOther,
   occupiesAvailability,
   type OccupiedWorkSlot,
@@ -14,6 +20,7 @@ export type PublicAvailabilitySlot = {
   startDate: string;
   endDate?: string;
   startTime?: string;
+  workingDays?: number;
   label: string;
 };
 
@@ -39,10 +46,9 @@ export type VisitBusySource = {
   customerName?: string | null;
 };
 
-const APPOINTMENT_TIMES = ["09:00", "12:00", "13:00", "16:00"] as const;
-const RANGE_HORIZON_DAYS = 56;
-const APPOINTMENT_HORIZON_DAYS = 28;
-const MAX_PUBLIC_SLOTS = 12;
+const APPOINTMENT_TIMES = ["10:00", "13:00", "09:00", "14:00"] as const;
+const MAX_PUBLIC_SLOTS = 10;
+export const INITIAL_PUBLIC_SLOTS = 5;
 
 export function encodePublicSlotId(slot: {
   kind: PublicScheduleMode;
@@ -124,23 +130,37 @@ export function visitsToOccupiedSlots(visits: VisitBusySource[]): OccupiedWorkSl
     }));
 }
 
+export function splitPublicAvailability(slots: PublicAvailabilitySlot[]): {
+  visible: PublicAvailabilitySlot[];
+  more: PublicAvailabilitySlot[];
+  hasMore: boolean;
+} {
+  return {
+    visible: slots.slice(0, INITIAL_PUBLIC_SLOTS),
+    more: slots.slice(INITIAL_PUBLIC_SLOTS),
+    hasMore: slots.length > INITIAL_PUBLIC_SLOTS,
+  };
+}
+
 export function buildPublicAvailability(input: {
   estimatedDuration?: string | null;
   occupied: OccupiedWorkSlot[];
   ignoreProposalId: string;
   fromDate?: Date;
   now?: Date;
+  bookingWindow?: BookingWindow | null;
 }): PublicAvailabilitySlot[] {
   const now = input.now ?? new Date();
-  const from = startOfLocalDay(input.fromDate ?? now);
+  const window = resolveBookingWindow(input.bookingWindow, input.fromDate ?? now);
   const mode = scheduleModeForDuration(input.estimatedDuration);
 
   if (mode === "range") {
     return buildRangeSlots({
       workingDays: requiredWorkingDays(input.estimatedDuration),
+      durationText: input.estimatedDuration,
       occupied: input.occupied,
       ignoreProposalId: input.ignoreProposalId,
-      from,
+      window,
       now,
     });
   }
@@ -148,7 +168,7 @@ export function buildPublicAvailability(input: {
   return buildAppointmentSlots({
     occupied: input.occupied,
     ignoreProposalId: input.ignoreProposalId,
-    from,
+    window,
     now,
   });
 }
@@ -187,30 +207,36 @@ export function publicSlotHasPrivateData(slot: PublicAvailabilitySlot): boolean 
 
 function buildRangeSlots(input: {
   workingDays: number;
+  durationText?: string | null;
   occupied: OccupiedWorkSlot[];
   ignoreProposalId: string;
-  from: Date;
+  window: ResolvedBookingWindow;
   now: Date;
 }): PublicAvailabilitySlot[] {
   const needed = Math.max(2, input.workingDays);
   const slots: PublicAvailabilitySlot[] = [];
-  const cursor = new Date(input.from);
-  cursor.setDate(cursor.getDate() + 1);
+  const cursor = parseLocalIso(input.window.startDate);
+  if (!cursor) {
+    return [];
+  }
 
-  for (let i = 0; i < RANGE_HORIZON_DAYS && slots.length < MAX_PUBLIC_SLOTS; i += 1) {
+  while (toLocalIso(cursor) <= input.window.endDate && slots.length < MAX_PUBLIC_SLOTS) {
     const startIso = toLocalIso(cursor);
     if (!isWeekend(cursor)) {
-      const window = nextWorkingDays(startIso, needed);
-      if (window.length === needed) {
-        const endDate = window[window.length - 1];
-        const blocked = window.some((date) =>
-          isSlotTakenByOther(
-            { startDate: date, endDate: date },
-            input.occupied,
-            input.ignoreProposalId,
-            input.now
-          )
-        );
+      const days = nextWorkingDays(startIso, needed);
+      if (days.length === needed) {
+        const endDate = days[days.length - 1];
+        const candidate = { startDate: startIso, endDate };
+        const blocked =
+          !slotFallsInsideWindow(candidate, input.window) ||
+          days.some((date) =>
+            isSlotTakenByOther(
+              { startDate: date, endDate: date },
+              input.occupied,
+              input.ignoreProposalId,
+              input.now
+            )
+          );
         if (!blocked) {
           slots.push({
             id: encodePublicSlotId({
@@ -223,8 +249,16 @@ function buildRangeSlots(input: {
             startDate: startIso,
             endDate,
             startTime: "09:00",
-            label: formatRangeLabel(startIso, endDate),
+            workingDays: needed,
+            label: formatCustomerRangeLabel(startIso, endDate, input.durationText),
           });
+          cursor.setDate(cursor.getDate() + 1);
+          const afterEnd = parseLocalIso(endDate);
+          if (afterEnd) {
+            afterEnd.setDate(afterEnd.getDate() + 1);
+            cursor.setTime(afterEnd.getTime());
+          }
+          continue;
         }
       }
     }
@@ -237,47 +271,65 @@ function buildRangeSlots(input: {
 function buildAppointmentSlots(input: {
   occupied: OccupiedWorkSlot[];
   ignoreProposalId: string;
-  from: Date;
+  window: ResolvedBookingWindow;
   now: Date;
 }): PublicAvailabilitySlot[] {
   const slots: PublicAvailabilitySlot[] = [];
-  const cursor = new Date(input.from);
-  cursor.setDate(cursor.getDate() + 1);
+  const cursor = parseLocalIso(input.window.startDate);
+  if (!cursor) {
+    return [];
+  }
+  let timeIndex = 0;
 
-  for (let i = 0; i < APPOINTMENT_HORIZON_DAYS && slots.length < MAX_PUBLIC_SLOTS; i += 1) {
+  while (toLocalIso(cursor) <= input.window.endDate && slots.length < MAX_PUBLIC_SLOTS) {
     if (!isWeekend(cursor)) {
       const startDate = toLocalIso(cursor);
-      for (const startTime of APPOINTMENT_TIMES) {
-        if (slots.length >= MAX_PUBLIC_SLOTS) {
-          break;
-        }
-        const taken = isSlotTakenByOther(
-          { startDate, endDate: startDate, startTime },
-          input.occupied,
-          input.ignoreProposalId,
-          input.now
-        );
-        if (!taken) {
-          slots.push({
-            id: encodePublicSlotId({
-              kind: "appointment",
-              startDate,
-              endDate: startDate,
-              startTime,
-            }),
+      const startTime = APPOINTMENT_TIMES[timeIndex % APPOINTMENT_TIMES.length];
+      timeIndex += 1;
+      const taken = isSlotTakenByOther(
+        { startDate, endDate: startDate, startTime },
+        input.occupied,
+        input.ignoreProposalId,
+        input.now
+      );
+      if (!taken) {
+        slots.push({
+          id: encodePublicSlotId({
             kind: "appointment",
             startDate,
             endDate: startDate,
             startTime,
-            label: formatAppointmentLabel(startDate, startTime),
-          });
-        }
+          }),
+          kind: "appointment",
+          startDate,
+          endDate: startDate,
+          startTime,
+          label: formatAppointmentLabel(startDate, startTime),
+        });
       }
     }
     cursor.setDate(cursor.getDate() + 1);
   }
 
   return slots;
+}
+
+function formatCustomerRangeLabel(
+  startDate: string,
+  endDate: string,
+  durationText?: string | null
+): string {
+  const start = parseLocalIso(startDate);
+  if (
+    start &&
+    start.getDay() === 1 &&
+    /\bweeks?\b/i.test(durationText ?? "")
+  ) {
+    const day = start.getDate();
+    const month = new Intl.DateTimeFormat("en-GB", { month: "long" }).format(start);
+    return `Week commencing ${day} ${month}`;
+  }
+  return formatRangeLabel(startDate, endDate);
 }
 
 function nextWorkingDays(startIso: string, count: number): string[] {
@@ -304,10 +356,6 @@ function addCalendarDays(iso: string, days: number): string {
   }
   date.setDate(date.getDate() + days);
   return toLocalIso(date);
-}
-
-function startOfLocalDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function isWeekend(date: Date): boolean {

@@ -121,6 +121,18 @@ export const PORTAL_DATE_CHANGE_VISUAL = {
   mobileMaxWidth: "100%",
   usesPageScroll: true,
   bottomSafeArea: "env(safe-area-inset-bottom, 0px)",
+  cardJustify: "flex-start",
+  radioWidth: "1.15rem",
+  copyMinWidth: "0",
+  textStaysInsideCard: true,
+  preventsHorizontalOverflow: true,
+} as const;
+
+export const PORTAL_AVAILABILITY_COPY = {
+  emptyTitle: "No suitable dates are available in this period.",
+  emptyAction: "Request another timeframe",
+  showMore: "Show more dates",
+  initialLimit: 5,
 } as const;
 
 export function portalDateChangeCardsAreDark(): boolean {
@@ -131,13 +143,19 @@ export function portalSlotCardCopy(slot: {
   kind: "range" | "appointment";
   label: string;
   startTime?: string;
+  workingDays?: number;
 }): { title: string; subtitle: string | null } {
   const [title, afterDot] = slot.label.split(" · ");
   if (afterDot?.trim()) {
     return { title: title.trim(), subtitle: afterDot.trim() };
   }
   if (slot.kind === "range") {
-    return { title: slot.label, subtitle: "Available window" };
+    const days = slot.workingDays;
+    return {
+      title: slot.label,
+      subtitle:
+        days && days > 1 ? `${days}-day work window` : "Available window",
+    };
   }
   if (slot.startTime?.trim()) {
     return { title: slot.label, subtitle: slot.startTime.trim() };

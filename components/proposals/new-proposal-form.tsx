@@ -19,7 +19,9 @@ import { AuthError } from "@/components/auth/auth-shell";
 import { EditableProposalReview } from "@/components/proposals/editable-proposal-review";
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { MobileQuoteCapture } from "@/components/proposals/mobile-quote-capture";
+import { BookingWindowFields } from "@/components/proposals/booking-window-fields";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
+import { DEFAULT_BOOKING_WINDOW, type BookingWindow } from "@/lib/proposals/booking-window";
 import {
   QuickQuotePreparation,
   type QuickQuoteLocalPhoto,
@@ -263,6 +265,9 @@ export function NewProposalForm({
   );
   const [plannedStartDateExact, setPlannedStartDateExact] = useState(
     initialValues?.plannedStartDateExact ?? ""
+  );
+  const [bookingWindow, setBookingWindow] = useState<BookingWindow>(
+    initialValues?.bookingWindow ?? DEFAULT_BOOKING_WINDOW
   );
   const [prepNotes, setPrepNotes] = useState<QuickQuotePrepNotes>(() =>
     createEmptyPrepNotes()
@@ -870,6 +875,24 @@ export function NewProposalForm({
                 </div>
               </SectionCard>
               ) : null}
+
+              <SectionCard className="qf-card-form">
+                <CardHeading
+                  title="Customer booking window"
+                  icon={
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" />
+                      <path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  }
+                />
+                <div className="mt-5">
+                  <BookingWindowFields
+                    value={bookingWindow}
+                    onChange={setBookingWindow}
+                  />
+                </div>
+              </SectionCard>
 
               <SectionCard className="qf-card-form">
                 <CardHeading

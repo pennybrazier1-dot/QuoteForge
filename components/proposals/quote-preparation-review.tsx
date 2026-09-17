@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { BookingWindowFields } from "@/components/proposals/booking-window-fields";
 import { PlannedStartDateFields } from "@/components/proposals/planned-start-date-fields";
 import type {
   QuoteLineItem,
@@ -344,6 +345,10 @@ export function QuotePreparationReview({
           onExactChange={(value) =>
             updateDraft({ plannedStartDateExact: value })
           }
+        />
+        <BookingWindowFields
+          value={draft.bookingWindow}
+          onChange={(value) => updateDraft({ bookingWindow: value })}
         />
       </CollapsibleSection>
 

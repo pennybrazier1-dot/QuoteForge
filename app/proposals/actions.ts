@@ -13,6 +13,7 @@ import {
 import { planQuoteSaveCustomerLink } from "@/lib/customers/lifecycle";
 import { formatPersonName } from "@/lib/text/format-name";
 import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
+import { parseBookingWindowFromForm } from "@/lib/proposals/booking-window";
 import { linkVisitToProposal } from "@/lib/visits/link-proposal";
 import { redirect } from "next/navigation";
 
@@ -257,6 +258,7 @@ export async function saveDraftProposal(
       vat_amount: 0,
       total_amount: totalPence,
       ...plannedStartDbFields(form),
+      booking_window: parseBookingWindowFromForm(formData),
       ...structuredFields,
     })
     .select("id")
@@ -373,6 +375,7 @@ export async function updateDraftProposal(
       total_amount: totalPence,
       status,
       ...plannedStartDbFields(form),
+      booking_window: parseBookingWindowFromForm(formData),
       ...structuredFields,
     })
     .eq("id", proposalId);
@@ -483,6 +486,7 @@ export async function acceptAiDraftProposal(
         ...structuredFields,
         estimated_duration: manualDuration ?? structuredFields.estimated_duration,
         things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
+        booking_window: parseBookingWindowFromForm(formData),
       })
       .eq("id", proposalId);
 
@@ -538,6 +542,7 @@ export async function acceptAiDraftProposal(
       ...structuredFields,
       estimated_duration: manualDuration ?? structuredFields.estimated_duration,
       things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
+      booking_window: parseBookingWindowFromForm(formData),
     })
     .select("id")
     .single();

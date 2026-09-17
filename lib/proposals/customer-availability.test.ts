@@ -4,8 +4,10 @@ import {
   decodePublicSlotId,
   formatAppointmentLabel,
   formatRangeLabel,
+  INITIAL_PUBLIC_SLOTS,
   publicSlotHasPrivateData,
   scheduleModeForDuration,
+  splitPublicAvailability,
   toOccupiedWorkSlots,
 } from "@/lib/proposals/customer-availability";
 import type { OccupiedWorkSlot } from "@/lib/proposals/slot-hold";
@@ -101,6 +103,119 @@ describe("customer-safe availability", () => {
     expect(
       slots.some((slot) => slot.startDate === "2026-10-06" && slot.startTime === "13:00")
     ).toBe(false);
+  });
+
+  it("only offers slots inside the trader booking window", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "1 hour",
+      occupied: [],
+      ignoreProposalId: "blinds-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: {
+        kind: "custom",
+        startDate: "2026-10-12",
+        endDate: "2026-10-16",
+      },
+    });
+
+    expect(slots.length).toBeGreaterThan(0);
+    expect(slots.every((slot) => slot.startDate >= "2026-10-12")).toBe(true);
+    expect(slots.every((slot) => (slot.endDate ?? slot.startDate) <= "2026-10-16")).toBe(
+      true
+    );
+  });
+
+  it("shows at most 5 short-job slots until Show more", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "2 hours",
+      occupied: [],
+      ignoreProposalId: "blinds-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: { kind: "next_month" },
+    });
+    const split = splitPublicAvailability(slots);
+    expect(split.visible.length).toBeLessThanOrEqual(INITIAL_PUBLIC_SLOTS);
+    expect(split.visible.length).toBeLessThanOrEqual(5);
+    expect(new Set(split.visible.map((slot) => slot.startDate)).size).toBe(
+      split.visible.length
+    );
+    expect(slots.every((slot) => slot.kind === "appointment")).toBe(true);
+  });
+
+  it("shows at most 5 non-overlapping long-job windows", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "4 working days",
+      occupied: [],
+      ignoreProposalId: "kitchen-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: { kind: "next_month" },
+    });
+    const split = splitPublicAvailability(slots);
+    expect(slots.every((slot) => slot.kind === "range")).toBe(true);
+    expect(split.visible.length).toBeLessThanOrEqual(5);
+    expect(slots.some((slot) => !slot.endDate || slot.endDate === slot.startDate)).toBe(
+      false
+    );
+
+    for (let i = 1; i < slots.length; i += 1) {
+      expect(slots[i]?.startDate > (slots[i - 1]?.endDate ?? "")).toBe(true);
+    }
+  });
+
+  it("exposes extra slots only through Show more", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "1 hour",
+      occupied: [],
+      ignoreProposalId: "blinds-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: { kind: "next_month" },
+    });
+    const split = splitPublicAvailability(slots);
+    expect(split.hasMore).toBe(slots.length > 5);
+    expect(split.more.length).toBe(Math.max(0, slots.length - 5));
+    expect(slots.length).toBeLessThanOrEqual(10);
+  });
+
+  it("returns an empty list when the window has no free days", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "4 working days",
+      occupied: [
+        occupied({
+          proposalId: "other-job",
+          startDate: "2026-10-06",
+          endDate: "2026-10-16",
+        }),
+      ],
+      ignoreProposalId: "kitchen-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: {
+        kind: "custom",
+        startDate: "2026-10-06",
+        endDate: "2026-10-09",
+      },
+    });
+    expect(slots).toEqual([]);
+  });
+
+  it("labels a week-based Monday start as week commencing", () => {
+    const slots = buildPublicAvailability({
+      estimatedDuration: "1 week",
+      occupied: [],
+      ignoreProposalId: "kitchen-1",
+      fromDate: monday,
+      now: monday,
+      bookingWindow: {
+        kind: "custom",
+        startDate: "2026-10-12",
+        endDate: "2026-10-30",
+      },
+    });
+    expect(slots[0]?.label).toMatch(/Week commencing/i);
   });
 
   it("round-trips public slot ids without private data", () => {

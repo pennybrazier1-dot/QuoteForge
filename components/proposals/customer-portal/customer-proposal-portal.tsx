@@ -36,6 +36,7 @@ import {
 import {
   buildCustomerPortalTimelineStages,
   buildPortalBrandPresentation,
+  PORTAL_AVAILABILITY_COPY,
   PORTAL_CHANGE_CHOICES,
   portalPreviewText,
   portalPrimaryActionLabel,
@@ -88,6 +89,78 @@ function PortalSlotOption({
         ) : null}
       </span>
     </label>
+  );
+}
+
+function PortalAvailabilityList({
+  slots,
+  moreSlots,
+  name,
+  selectedValue,
+  matchBy,
+  onSelect,
+  onRequestTimeframe,
+}: {
+  slots: PublicAvailabilitySlot[];
+  moreSlots: PublicAvailabilitySlot[];
+  name: string;
+  selectedValue: string;
+  matchBy: "id" | "startDate" | "startTime";
+  onSelect: (slot: PublicAvailabilitySlot) => void;
+  onRequestTimeframe?: () => void;
+}) {
+  const [showMore, setShowMore] = useState(false);
+  const visible = showMore ? [...slots, ...moreSlots] : slots;
+
+  if (slots.length === 0 && moreSlots.length === 0) {
+    return (
+      <div className="cj-portal-availability-empty">
+        <p className="cj-job-copy">{PORTAL_AVAILABILITY_COPY.emptyTitle}</p>
+        {onRequestTimeframe ? (
+          <button
+            type="button"
+            className="cj-btn-secondary"
+            onClick={onRequestTimeframe}
+          >
+            {PORTAL_AVAILABILITY_COPY.emptyAction}
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <ul className="cj-portal-slot-list">
+        {visible.map((slot) => {
+          const value =
+            matchBy === "startDate"
+              ? slot.startDate
+              : matchBy === "startTime"
+                ? slot.startTime || ""
+                : slot.id;
+          return (
+            <li key={slot.id}>
+              <PortalSlotOption
+                slot={slot}
+                name={name}
+                checked={selectedValue === value}
+                onSelect={onSelect}
+              />
+            </li>
+          );
+        })}
+      </ul>
+      {!showMore && moreSlots.length > 0 ? (
+        <button
+          type="button"
+          className="cj-btn-secondary"
+          onClick={() => setShowMore(true)}
+        >
+          {PORTAL_AVAILABILITY_COPY.showMore}
+        </button>
+      ) : null}
+    </>
   );
 }
 
@@ -579,31 +652,21 @@ export function CustomerProposalPortal({
                   ? "Choose a date range that fits the work."
                   : "Choose one available appointment."}
               </p>
-              {view.availabilitySlots.length === 0 ? (
-                <p className="cj-job-copy">
-                  No offered times are available right now. Request a change and
-                  the trader will suggest another date.
-                </p>
-              ) : (
-                <ul className="cj-portal-slot-list">
-                  {view.availabilitySlots.map((slot) => (
-                    <li key={slot.id}>
-                      <PortalSlotOption
-                        slot={slot}
-                        name="slotId"
-                        checked={selectedSlotId === slot.id}
-                        onSelect={(next) => {
-                          setSelectedSlotId(next.id);
-                          const data = new FormData();
-                          data.set("token", view.token);
-                          data.set("slotId", next.id);
-                          holdAction(data);
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <PortalAvailabilityList
+                slots={view.availabilitySlots}
+                moreSlots={view.moreAvailabilitySlots}
+                name="slotId"
+                selectedValue={selectedSlotId}
+                matchBy="id"
+                onSelect={(next) => {
+                  setSelectedSlotId(next.id);
+                  const data = new FormData();
+                  data.set("token", view.token);
+                  data.set("slotId", next.id);
+                  holdAction(data);
+                }}
+                onRequestTimeframe={() => setMode("change_date")}
+              />
               <div className="cj-portal-form-actions">
                 <button
                   type="submit"
@@ -645,23 +708,17 @@ export function CustomerProposalPortal({
               <p className="cj-job-copy">
                 Choose another available date, or tell us what would work.
               </p>
-              {view.availabilitySlots.length > 0 ? (
-                <ul className="cj-portal-slot-list">
-                  {view.availabilitySlots.map((slot) => (
-                    <li key={slot.id}>
-                      <PortalSlotOption
-                        slot={slot}
-                        name="availableDate"
-                        checked={requestedDate === slot.startDate}
-                        onSelect={(next) => {
-                          setRequestedDate(next.startDate);
-                          setRequestedTime(next.startTime || "");
-                        }}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
+              <PortalAvailabilityList
+                slots={view.availabilitySlots}
+                moreSlots={view.moreAvailabilitySlots}
+                name="availableDate"
+                selectedValue={requestedDate}
+                matchBy="startDate"
+                onSelect={(next) => {
+                  setRequestedDate(next.startDate);
+                  setRequestedTime(next.startTime || "");
+                }}
+              />
               <label className="cj-portal-label" htmlFor="requested-date">
                 Date that would work
               </label>
@@ -710,24 +767,14 @@ export function CustomerProposalPortal({
               <p className="cj-job-copy">
                 Choose another available time, or tell us what would work.
               </p>
-              {view.availabilitySlots.some((slot) => slot.startTime) ? (
-                <ul className="cj-portal-slot-list">
-                  {view.availabilitySlots
-                    .filter((slot) => slot.startTime)
-                    .map((slot) => (
-                      <li key={slot.id}>
-                        <PortalSlotOption
-                          slot={slot}
-                          name="availableTime"
-                          checked={requestedTime === slot.startTime}
-                          onSelect={(next) =>
-                            setRequestedTime(next.startTime || "")
-                          }
-                        />
-                      </li>
-                    ))}
-                </ul>
-              ) : null}
+              <PortalAvailabilityList
+                slots={view.availabilitySlots.filter((slot) => slot.startTime)}
+                moreSlots={view.moreAvailabilitySlots.filter((slot) => slot.startTime)}
+                name="availableTime"
+                selectedValue={requestedTime}
+                matchBy="startTime"
+                onSelect={(next) => setRequestedTime(next.startTime || "")}
+              />
               <label className="cj-portal-label" htmlFor="requested-time">
                 Time that would work
               </label>

@@ -9,6 +9,7 @@ import {
   type OccupiedWorkSlot,
   type SlotHoldKind,
 } from "@/lib/proposals/slot-hold";
+import type { BookingWindow } from "@/lib/proposals/booking-window";
 import {
   buildPublicAvailability,
   toOccupiedWorkSlots,
@@ -113,6 +114,7 @@ export async function loadPublicAvailabilityForProposal(
     workspaceId: string;
     proposalId: string;
     estimatedDuration?: string | null;
+    bookingWindow?: BookingWindow | null;
   },
   now: Date = new Date()
 ): Promise<PublicAvailabilitySlot[]> {
@@ -127,6 +129,7 @@ export async function loadPublicAvailabilityForProposal(
     ignoreProposalId: input.proposalId,
     now,
     fromDate: now,
+    bookingWindow: input.bookingWindow ?? null,
   });
 }
 

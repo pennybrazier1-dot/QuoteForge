@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { canShowFinalAccept } from "@/lib/proposals/acceptance-rules";
 import {
@@ -7,6 +9,7 @@ import {
   getPortalChangeWorkflow,
   isPortalTopLevelActionSet,
   PORTAL_CHANGE_CHOICES,
+  PORTAL_AVAILABILITY_COPY,
   PORTAL_DATE_CHANGE_VISUAL,
   PORTAL_FORBIDDEN_CUSTOMER_ACTIONS,
   PORTAL_TOP_LEVEL_ACTIONS,
@@ -177,6 +180,11 @@ describe("customer portal page layout", () => {
     expect(PORTAL_DATE_CHANGE_VISUAL.bottomSafeArea).toBe(
       "env(safe-area-inset-bottom, 0px)"
     );
+    expect(PORTAL_DATE_CHANGE_VISUAL.textStaysInsideCard).toBe(true);
+    expect(PORTAL_DATE_CHANGE_VISUAL.preventsHorizontalOverflow).toBe(true);
+    expect(PORTAL_DATE_CHANGE_VISUAL.cardJustify).toBe("flex-start");
+    expect(PORTAL_DATE_CHANGE_VISUAL.radioWidth).toBe("1.15rem");
+    expect(PORTAL_DATE_CHANGE_VISUAL.copyMinWidth).toBe("0");
   });
 
   it("splits range and appointment labels for the date cards", () => {
@@ -184,8 +192,9 @@ describe("customer portal page layout", () => {
       portalSlotCardCopy({
         kind: "range",
         label: "18–28 September",
+        workingDays: 4,
       })
-    ).toEqual({ title: "18–28 September", subtitle: "Available window" });
+    ).toEqual({ title: "18–28 September", subtitle: "4-day work window" });
     expect(
       portalSlotCardCopy({
         kind: "appointment",
@@ -202,6 +211,32 @@ describe("customer portal page layout", () => {
     expect(buildPortalPageLayout("desktop").responsive).toBe(true);
     expect(buildPortalPageLayout("desktop").cardsAreWhite).toBe(false);
     expect(buildPortalPageLayout("mobile").stackedActions).toBe(true);
+  });
+
+  it("keeps radio and date text inside the mobile card", () => {
+    const css = [
+      readFileSync(join(process.cwd(), "app/globals.css"), "utf8"),
+      readFileSync(join(process.cwd(), "app/customer-journey.css"), "utf8"),
+    ].join("\n");
+    expect(css).toContain(
+      'input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"])'
+    );
+    expect(css).toContain(".cj-portal-slot input[type=\"radio\"]");
+    expect(css).toContain("width: 1.15rem");
+    expect(css).toContain("justify-content: flex-start");
+    expect(css).toMatch(/\.cj-portal-slot \{[\s\S]*overflow:\s*hidden/);
+    expect(css).toMatch(/\.cj-portal-slot-copy \{[\s\S]*min-width:\s*0/);
+  });
+
+  it("uses the empty availability and show-more copy", () => {
+    expect(PORTAL_AVAILABILITY_COPY.emptyTitle).toBe(
+      "No suitable dates are available in this period."
+    );
+    expect(PORTAL_AVAILABILITY_COPY.emptyAction).toBe(
+      "Request another timeframe"
+    );
+    expect(PORTAL_AVAILABILITY_COPY.showMore).toBe("Show more dates");
+    expect(PORTAL_AVAILABILITY_COPY.initialLimit).toBe(5);
   });
 
   it("keeps the customer proposal page responsive", () => {

@@ -1,3 +1,5 @@
+import type { BookingWindow } from "@/lib/proposals/booking-window";
+
 export type ProposalFormValues = {
   customerName: string;
   propertyAddress: string;
@@ -9,6 +11,7 @@ export type ProposalFormValues = {
   estimatedDuration: string;
   plannedStartDateText: string;
   plannedStartDateExact: string;
+  bookingWindow?: BookingWindow | null;
 };
 
 export const emptyProposalFormValues: ProposalFormValues = {

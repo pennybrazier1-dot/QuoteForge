@@ -2465,9 +2465,39 @@
   -webkit-text-fill-color: var(--portal-text);
 }
 
+.cj-root--portal .cj-portal-slot {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.cj-root--portal .cj-portal-slot input,
+.cj-root--portal .cj-portal-slot input[type="radio"] {
+  position: static;
+  width: 1.15rem;
+  min-width: 1.15rem;
+  max-width: 1.15rem;
+  height: 1.15rem;
+  flex: 0 0 1.15rem;
+}
+
 .cj-root--portal .cj-portal-slot-copy {
   display: grid;
   gap: 0.15rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.cj-root--portal .cj-portal-availability-empty {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
   min-width: 0;
 }
 

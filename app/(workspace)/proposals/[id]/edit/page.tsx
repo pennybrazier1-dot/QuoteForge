@@ -7,6 +7,7 @@ import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import type { ProposalFormValues } from "@/lib/proposals/form-values";
 import { formatPenceForInput } from "@/lib/proposals/money";
 import { formatOptionalExtrasForForm } from "@/lib/proposals/optional-extras";
+import { parseBookingWindow } from "@/lib/proposals/booking-window";
 import { plannedStartFromDb } from "@/lib/proposals/planned-start-date";
 import { canEditProposal } from "@/lib/proposals/status";
 
@@ -29,7 +30,7 @@ export default async function EditProposalPage({ params }: PageProps) {
   const { data: proposal, error } = await context.supabase
     .from("proposals")
     .select(
-      "id, status, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, total_amount, planned_start_date_text, planned_start_date"
+      "id, status, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, rough_notes, optional_extras, things_to_confirm, estimated_duration, total_amount, planned_start_date_text, planned_start_date, booking_window"
     )
     .eq("id", id)
     .eq("workspace_id", context.workspaceId)
@@ -60,6 +61,7 @@ export default async function EditProposalPage({ params }: PageProps) {
     ),
     plannedStartDateText: plannedStart.plannedStartDate,
     plannedStartDateExact: plannedStart.plannedStartDateExact,
+    bookingWindow: parseBookingWindow(proposal.booking_window),
   };
 
   const customers = await loadCustomersForNameMatch(
