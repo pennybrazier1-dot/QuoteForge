@@ -627,3 +627,28 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   font-weight: 600;
   color: #ff6a1a;
 }
+
+.qf-app[data-qf-theme="dark"] .qf-attention-panel {
+  border-color: var(--qf-border);
+  background: #111114;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-attention-title,
+.qf-app[data-qf-theme="dark"] .qf-attention-item-name {
+  color: #f5f5f7;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-attention-empty,
+.qf-app[data-qf-theme="dark"] .qf-attention-item-reason {
+  color: #a1a1aa;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-attention-item {
+  border-color: var(--qf-border);
+  background: #16161e;
+}
+
+.qf-app[data-qf-theme="dark"] .qf-attention-item-type {
+  background: var(--qf-orange-soft);
+  color: #ff6a1a;
+}

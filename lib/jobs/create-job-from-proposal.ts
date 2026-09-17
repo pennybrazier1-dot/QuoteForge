@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureActiveCustomerForAcceptedWork } from "@/lib/customers/ensure-active-customer";
 import {
   JOB_PREP_ITEM_DEFINITIONS,
   type JobPrepItemKey,
@@ -111,6 +112,11 @@ export async function ensureJobForAcceptedProposal(
   }
 
   if (existing) {
+    const customerId = await linkAcceptedWorkCustomer(
+      supabase,
+      proposal,
+      existing.id
+    );
     return {
       ok: true,
       created: false,
@@ -118,7 +124,7 @@ export async function ensureJobForAcceptedProposal(
         id: existing.id,
         workspace_id: existing.workspace_id,
         proposal_id: existing.proposal_id,
-        customer_id: existing.customer_id,
+        customer_id: customerId ?? existing.customer_id,
         status: existing.status as JobStatus,
         accepted_at: existing.accepted_at,
       },
@@ -146,6 +152,11 @@ export async function ensureJobForAcceptedProposal(
         .eq("proposal_id", proposal.id)
         .maybeSingle();
       if (raced) {
+        const customerId = await linkAcceptedWorkCustomer(
+          supabase,
+          proposal,
+          raced.id
+        );
         return {
           ok: true,
           created: false,
@@ -153,7 +164,7 @@ export async function ensureJobForAcceptedProposal(
             id: raced.id,
             workspace_id: raced.workspace_id,
             proposal_id: raced.proposal_id,
-            customer_id: raced.customer_id,
+            customer_id: customerId ?? raced.customer_id,
             status: raced.status as JobStatus,
             accepted_at: raced.accepted_at,
           },
@@ -184,6 +195,12 @@ export async function ensureJobForAcceptedProposal(
     };
   }
 
+  const customerId = await linkAcceptedWorkCustomer(
+    supabase,
+    proposal,
+    created.id
+  );
+
   return {
     ok: true,
     created: true,
@@ -191,9 +208,37 @@ export async function ensureJobForAcceptedProposal(
       id: created.id,
       workspace_id: created.workspace_id,
       proposal_id: created.proposal_id,
-      customer_id: created.customer_id,
+      customer_id: customerId ?? created.customer_id,
       status: created.status as JobStatus,
       accepted_at: created.accepted_at,
     },
   };
+}
+
+async function linkAcceptedWorkCustomer(
+  supabase: SupabaseClient,
+  proposal: ProposalJobSeed,
+  jobId: string
+): Promise<string | null> {
+  const result = await ensureActiveCustomerForAcceptedWork(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    jobId,
+    existingCustomerId: proposal.customer_id,
+    source: {
+      name: proposal.customer_name,
+      email: proposal.customer_email,
+      phone: proposal.customer_phone,
+      address: proposal.customer_address || proposal.job_address,
+    },
+    proposalAccepted: true,
+    jobCreatedOrActivated: true,
+    bookingConfirmed: false,
+  });
+
+  if (!result.ok || result.skipped) {
+    return proposal.customer_id;
+  }
+
+  return result.customerId;
 }

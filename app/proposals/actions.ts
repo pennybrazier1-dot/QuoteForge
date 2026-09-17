@@ -10,6 +10,7 @@ import {
   mapGeneratedProposalToDbFields,
   parseGeneratedProposalJson,
 } from "@/lib/proposals/structured-proposal";
+import { planQuoteSaveCustomerLink } from "@/lib/customers/lifecycle";
 import { formatPersonName } from "@/lib/text/format-name";
 import { plannedStartToDbFields, normalizePlannedStartExact } from "@/lib/proposals/planned-start-date";
 import { linkVisitToProposal } from "@/lib/visits/link-proposal";
@@ -134,94 +135,33 @@ async function resolveCustomerId(
   form: ParsedProposalForm,
   existingCustomerId: string | null
 ): Promise<{ customerId: string | null; error?: string }> {
-  if (existingCustomerId) {
-    const { error: updateError } = await supabase
-      .from("customers")
-      .update({
-        name: form.customerName,
-        email: form.emailAddress || null,
-        phone: form.phoneNumber || null,
-        address_line_1: form.propertyAddress || null,
-      })
-      .eq("id", existingCustomerId)
-      .eq("workspace_id", workspaceId);
+  const plan = planQuoteSaveCustomerLink({
+    existingCustomerId,
+  });
 
-    if (updateError) {
-      return {
-        customerId: null,
-        error: updateError.message ?? "Could not update customer details.",
-      };
-    }
-
-    return { customerId: existingCustomerId };
+  if (!plan.customerId) {
+    return { customerId: null };
   }
 
-  let customerId: string | null = null;
+  const { error: updateError } = await supabase
+    .from("customers")
+    .update({
+      name: form.customerName,
+      email: form.emailAddress || null,
+      phone: form.phoneNumber || null,
+      address_line_1: form.propertyAddress || null,
+    })
+    .eq("id", plan.customerId)
+    .eq("workspace_id", workspaceId);
 
-  if (form.emailAddress) {
-    const { data: existingByEmail } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .ilike("email", form.emailAddress)
-      .maybeSingle();
-
-    customerId = existingByEmail?.id ?? null;
+  if (updateError) {
+    return {
+      customerId: plan.customerId,
+      error: updateError.message ?? "Could not update customer details.",
+    };
   }
 
-  if (!customerId) {
-    const { data: existingByName } = await supabase
-      .from("customers")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .ilike("name", form.customerName)
-      .maybeSingle();
-
-    customerId = existingByName?.id ?? null;
-  }
-
-  if (!customerId) {
-    const { data: newCustomer, error: customerError } = await supabase
-      .from("customers")
-      .insert({
-        workspace_id: workspaceId,
-        name: form.customerName,
-        email: form.emailAddress || null,
-        phone: form.phoneNumber || null,
-        address_line_1: form.propertyAddress || null,
-      })
-      .select("id")
-      .single();
-
-    if (customerError || !newCustomer) {
-      return {
-        customerId: null,
-        error: customerError?.message ?? "Could not save customer details.",
-      };
-    }
-
-    customerId = newCustomer.id;
-  } else {
-    const { error: updateError } = await supabase
-      .from("customers")
-      .update({
-        name: form.customerName,
-        email: form.emailAddress || null,
-        phone: form.phoneNumber || null,
-        address_line_1: form.propertyAddress || null,
-      })
-      .eq("id", customerId)
-      .eq("workspace_id", workspaceId);
-
-    if (updateError) {
-      return {
-        customerId: null,
-        error: updateError.message ?? "Could not update customer details.",
-      };
-    }
-  }
-
-  return { customerId };
+  return { customerId: plan.customerId };
 }
 
 export async function saveDraftProposal(
@@ -269,8 +209,8 @@ export async function saveDraftProposal(
     null
   );
 
-  if (customerError || !customerId) {
-    return { error: customerError ?? "Could not save customer details." };
+  if (customerError) {
+    return { error: customerError };
   }
 
   const { data: proposalNumber, error: numberError } = await supabase.rpc(
@@ -395,8 +335,8 @@ export async function updateDraftProposal(
     existingProposal.customer_id
   );
 
-  if (customerError || !customerId) {
-    return { error: customerError ?? "Could not save customer details." };
+  if (customerError) {
+    return { error: customerError };
   }
 
   const thingsToConfirm = buildEstimatedDurationNote(form.estimatedDuration);
@@ -513,8 +453,8 @@ export async function acceptAiDraftProposal(
       existingProposal.customer_id
     );
 
-    if (customerError || !customerId) {
-      return { error: customerError ?? "Could not save customer details." };
+    if (customerError) {
+      return { error: customerError };
     }
 
     const { error: proposalError } = await supabase
@@ -555,8 +495,8 @@ export async function acceptAiDraftProposal(
     null
   );
 
-  if (customerError || !customerId) {
-    return { error: customerError ?? "Could not save customer details." };
+  if (customerError) {
+    return { error: customerError };
   }
 
   const { data: proposalNumber, error: numberError } = await supabase.rpc(

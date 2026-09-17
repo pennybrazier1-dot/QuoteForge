@@ -1,4 +1,5 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
+import { getHomeAttentionCount } from "@/lib/home/home-attention";
 import {
   classifyHomeProposal,
   classifyHomeVisit,
@@ -211,16 +212,11 @@ export function getTimeGreeting(): string {
   return "Good evening";
 }
 
-export function getHomeNotificationCount(proposals: HomeProposal[]): number {
-  return proposals.filter((proposal) => {
-    const bucket = classifyHomeProposal(proposal).bucket;
-    return (
-      bucket === "needs_attention" ||
-      bucket === "quotes_to_finish" ||
-      bucket === "quotes_ready_to_send" ||
-      bucket === "jobs_to_schedule"
-    );
-  }).length;
+export function getHomeNotificationCount(
+  proposals: HomeProposal[],
+  reference = new Date()
+): number {
+  return getHomeAttentionCount(proposals, reference);
 }
 
 export function buildHomeSections(

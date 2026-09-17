@@ -1,19 +1,20 @@
 import type { HomeSectionGroup } from "@/lib/home/home-data";
+import type { HomeAttentionItem } from "@/lib/home/home-attention";
 import { HomeGreeting } from "@/components/home/home-greeting";
 import { HomeSection } from "@/components/home/home-section";
 
 export function HomeScreen({
   fullName,
-  notificationCount,
+  attentionItems,
   groups,
 }: {
   fullName: string | null;
-  notificationCount: number;
+  attentionItems: HomeAttentionItem[];
   groups: HomeSectionGroup[];
 }) {
   return (
     <div className="qf-home">
-      <HomeGreeting fullName={fullName} notificationCount={notificationCount} />
+      <HomeGreeting fullName={fullName} attentionItems={attentionItems} />
 
       <div className="qf-home-stack">
         {groups.map((group) => (

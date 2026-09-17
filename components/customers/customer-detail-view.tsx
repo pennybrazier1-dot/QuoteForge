@@ -3,8 +3,12 @@ import {
   formatCustomerCreatedAt,
 } from "@/lib/customers/format";
 import { CustomerNotesSection } from "@/components/customers/customer-notes-section";
+import { CustomerLifecycleActions } from "@/components/customers/customer-lifecycle-actions";
 import { SectionCard, SectionStack } from "@/components/ui/section-card";
-import Link from "next/link";
+import {
+  customerDetailActions,
+  readCustomerLifecycleState,
+} from "@/lib/customers/lifecycle";
 
 export type CustomerDetailData = {
   id: string;
@@ -18,6 +22,11 @@ export type CustomerDetailData = {
   postcode: string | null;
   notes: string | null;
   created_at: string;
+  activated_at?: string | null;
+  archived_at?: string | null;
+  deletion_requested_at?: string | null;
+  deletion_scheduled_for?: string | null;
+  anonymised_at?: string | null;
 };
 
 function DetailRow({
@@ -41,11 +50,23 @@ function DetailRow({
   );
 }
 
+function lifecycleLabel(state: ReturnType<typeof readCustomerLifecycleState>) {
+  if (state === "archived") {
+    return "Archived customer";
+  }
+  if (state === "scheduled_for_deletion") {
+    return "Scheduled for deletion";
+  }
+  return "Customer";
+}
+
 export function CustomerDetailView({ customer }: { customer: CustomerDetailData }) {
   const address = formatCustomerAddress(customer);
   const hasContactDetails = Boolean(
     customer.email || customer.phone || address
   );
+  const state = readCustomerLifecycleState(customer);
+  const actions = customerDetailActions(state);
 
   return (
     <SectionStack>
@@ -53,7 +74,7 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <span className="inline-flex items-center rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">
-              Customer
+              {lifecycleLabel(state)}
             </span>
             <h2 className="mt-4 text-2xl font-semibold tracking-tight">
               {customer.name}
@@ -62,20 +83,11 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
               Customer since {formatCustomerCreatedAt(customer.created_at)}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/visits/new?customerId=${encodeURIComponent(customer.id)}`}
-              className="qf-btn-primary"
-            >
-              Book visit
-            </Link>
-            <Link
-              href={`/customers/${customer.id}/edit`}
-              className="inline-flex h-9 items-center justify-center rounded-full border border-border-subtle bg-white/5 px-4 text-sm font-medium text-foreground transition-colors hover:bg-white/10"
-            >
-              Edit Customer
-            </Link>
-          </div>
+          <CustomerLifecycleActions
+            customerId={customer.id}
+            deletionScheduledFor={customer.deletion_scheduled_for}
+            actions={actions}
+          />
         </div>
       </SectionCard>
 
@@ -96,7 +108,9 @@ export function CustomerDetailView({ customer }: { customer: CustomerDetailData 
         )}
       </SectionCard>
 
-      <CustomerNotesSection customerId={customer.id} notes={customer.notes} />
+      {state !== "anonymised" ? (
+        <CustomerNotesSection customerId={customer.id} notes={customer.notes} />
+      ) : null}
     </SectionStack>
   );
 }

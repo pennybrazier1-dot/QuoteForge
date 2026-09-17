@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HomeScreen } from "@/components/home/home-screen";
+import { buildHomeAttentionItems } from "@/lib/home/home-attention";
 import {
   buildHomeSectionGroups,
-  getHomeNotificationCount,
   type HomeProposal,
 } from "@/lib/home/home-data";
 import { createClient } from "@/lib/supabase/server";
@@ -49,12 +49,12 @@ export default async function HomePage() {
 
   const proposals = (proposalsData ?? []) as HomeProposal[];
   const groups = buildHomeSectionGroups(proposals, visits);
-  const notificationCount = getHomeNotificationCount(proposals);
+  const attentionItems = buildHomeAttentionItems(proposals);
 
   return (
     <HomeScreen
       fullName={profile?.full_name ?? null}
-      notificationCount={notificationCount}
+      attentionItems={attentionItems}
       groups={groups}
     />
   );

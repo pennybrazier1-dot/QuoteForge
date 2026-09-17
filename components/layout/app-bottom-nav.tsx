@@ -1,8 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { MobileNewMenu } from "@/components/layout/mobile-new-menu";
 import { APP_NAV_ITEMS, isAppNavActive } from "@/lib/layout/app-nav";
 
 const BOTTOM_NAV_ICONS: Record<string, ReactNode> = {
@@ -43,6 +44,7 @@ const BOTTOM_NAV_ICONS: Record<string, ReactNode> = {
 
 export function AppBottomNav() {
   const pathname = usePathname();
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
 
   return (
     <nav className="qf-bottom-nav" aria-label="Main navigation">
@@ -53,17 +55,20 @@ export function AppBottomNav() {
 
           if (isPrimary) {
             return (
-              <Link
+              <button
                 key={item.href}
-                href={item.href}
+                type="button"
                 className="qf-bottom-nav-primary qf-touch-target"
-                aria-label="New quote"
+                aria-label="New"
+                aria-haspopup="dialog"
+                aria-expanded={newMenuOpen}
+                onClick={() => setNewMenuOpen(true)}
               >
                 <span className="qf-bottom-nav-primary-icon">
                   {BOTTOM_NAV_ICONS[item.href]}
                 </span>
                 <span className="qf-bottom-nav-primary-label">{item.label}</span>
-              </Link>
+              </button>
             );
           }
 
@@ -87,6 +92,7 @@ export function AppBottomNav() {
           );
         })}
       </div>
+      <MobileNewMenu open={newMenuOpen} onClose={() => setNewMenuOpen(false)} />
     </nav>
   );
 }

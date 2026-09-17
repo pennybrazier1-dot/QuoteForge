@@ -4,6 +4,10 @@ import {
   formatCustomerAddress,
   formatCustomerCreatedAt,
 } from "@/lib/customers/format";
+import {
+  formatDeletionScheduledFor,
+  type CustomerListView,
+} from "@/lib/customers/lifecycle";
 
 export type CustomerListItem = {
   id: string;
@@ -16,6 +20,32 @@ export type CustomerListItem = {
   county: string | null;
   postcode: string | null;
   created_at: string;
+  activated_at?: string | null;
+  archived_at?: string | null;
+  deletion_requested_at?: string | null;
+  deletion_scheduled_for?: string | null;
+};
+
+const VIEW_COPY: Record<
+  CustomerListView,
+  { title: string; empty: string; countLabel: string }
+> = {
+  active: {
+    title: "Active customers",
+    empty:
+      "No active customers yet. People appear here when a proposal is accepted and a job is booked, or when you add someone yourself.",
+    countLabel: "active",
+  },
+  archived: {
+    title: "Archived customers",
+    empty: "No archived customers.",
+    countLabel: "archived",
+  },
+  scheduled: {
+    title: "Scheduled for deletion",
+    empty: "No customers are waiting to be deleted.",
+    countLabel: "scheduled",
+  },
 };
 
 function CustomerMeta({
@@ -37,16 +67,21 @@ function CustomerMeta({
   );
 }
 
-export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
+export function CustomerList({
+  customers,
+  view,
+}: {
+  customers: CustomerListItem[];
+  view: CustomerListView;
+}) {
+  const copy = VIEW_COPY[view];
+
   if (customers.length === 0) {
     return (
       <Card>
-        <CardHeading title="Customers" />
+        <CardHeading title={copy.title} />
         <div className="qf-card-inset mt-6 border-dashed px-6 py-12 text-center">
-          <p className="text-sm text-muted">
-            No customers yet. Create a proposal and the customer will appear
-            here.
-          </p>
+          <p className="text-sm text-muted">{copy.empty}</p>
         </div>
       </Card>
     );
@@ -55,13 +90,18 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
   return (
     <Card>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold">All customers</h2>
-        <span className="text-xs text-muted">{customers.length} saved</span>
+        <h2 className="text-lg font-semibold">{copy.title}</h2>
+        <span className="text-xs text-muted">
+          {customers.length} {copy.countLabel}
+        </span>
       </div>
 
       <ul className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
         {customers.map((customer) => {
           const address = formatCustomerAddress(customer);
+          const deletionDate = formatDeletionScheduledFor(
+            customer.deletion_scheduled_for
+          );
 
           return (
             <li key={customer.id}>
@@ -98,7 +138,9 @@ export function CustomerList({ customers }: { customers: CustomerListItem[] }) {
                 )}
 
                 <p className="mt-auto pt-4 text-xs text-muted">
-                  Added {formatCustomerCreatedAt(customer.created_at)}
+                  {deletionDate
+                    ? `Deletion scheduled ${deletionDate}`
+                    : `Added ${formatCustomerCreatedAt(customer.created_at)}`}
                 </p>
               </Link>
             </li>
