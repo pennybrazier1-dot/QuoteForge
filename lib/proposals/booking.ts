@@ -1,3 +1,7 @@
+import {
+  buildDateWorkflowSnapshot,
+  isBookedJob as isBookedJobState,
+} from "@/lib/proposals/date-workflow";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 export const BOOKING_CONFIRMATIONS = ["provisional", "confirmed"] as const;
@@ -20,89 +24,136 @@ export function isBookingConfirmation(
 
 export function isConfirmedBooking(
   status: string,
-  bookingConfirmation: string | null | undefined
+  bookingConfirmation: string | null | undefined,
+  plannedStartDate?: string | null
 ): boolean {
-  return (
-    normalizeProposalStatus(status) === "booked" &&
-    bookingConfirmation === "confirmed"
-  );
+  if (plannedStartDate === undefined) {
+    return (
+      normalizeProposalStatus(status) === "booked" &&
+      bookingConfirmation === "confirmed"
+    );
+  }
+
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+  });
+  return snapshot.isBookedJob;
 }
 
 export function isProvisionalBooking(
   status: string,
-  bookingConfirmation: string | null | undefined
+  bookingConfirmation: string | null | undefined,
+  plannedStartDate?: string | null
 ): boolean {
-  return (
-    normalizeProposalStatus(status) === "booked" &&
-    bookingConfirmation === "provisional"
-  );
+  if (plannedStartDate === undefined) {
+    return bookingConfirmation === "provisional";
+  }
+
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+  });
+  return snapshot.waitingForDateConfirmation;
 }
 
-/** Accepted quote that still needs the tradesperson to firm up the booking. */
+/** Accepted proposal that still needs a confirmed job date. */
 export function needsBookingConfirmation(
   status: string,
-  bookingConfirmation: string | null | undefined
+  bookingConfirmation: string | null | undefined,
+  plannedStartDate?: string | null
 ): boolean {
-  return isProvisionalBooking(status, bookingConfirmation);
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+  });
+  return snapshot.needsScheduleJob;
 }
 
 /**
- * Whether a proposal can appear on the calendar as a job.
- * Proposal discussions never become jobs. Only an accepted proposal
- * with a real start date qualifies.
+ * Whether a proposal can appear on the calendar as a confirmed booked job.
+ * Green only when the proposal is accepted AND the date is confirmed.
  */
 export function isCalendarEligibleProposal(
   status: string,
-  plannedStartDate: string | null | undefined
+  plannedStartDate: string | null | undefined,
+  bookingConfirmation?: string | null
 ): boolean {
-  const normalized = normalizeProposalStatus(status);
-
   if (!plannedStartDate?.trim()) {
     return false;
   }
 
-  return (CALENDAR_ELIGIBLE_STATUSES as readonly string[]).includes(normalized);
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+  });
+  return isBookedJobState(snapshot.proposalAccepted, snapshot.dateState);
 }
 
-const CALENDAR_HOLD_STATUSES = [
-  "waiting_for_customer",
-  "needs_attention",
-] as const;
-
 /**
- * A trader-held date before acceptance. This is not a job.
- * Requires an exact start time so quote discussion dates stay off the calendar.
+ * A reserved diary slot that is not yet a booked job.
+ * Requires an exact start time and an explicit hold or confirmed-unaccepted date.
  */
 export function isCalendarHoldEligible(
   status: string,
   plannedStartDate: string | null | undefined,
-  plannedStartTime?: string | null | undefined
+  plannedStartTime?: string | null | undefined,
+  bookingConfirmation?: string | null
 ): boolean {
   if (!plannedStartDate?.trim() || !plannedStartTime?.trim()) {
     return false;
   }
 
-  const normalized = normalizeProposalStatus(status);
-  return (CALENDAR_HOLD_STATUSES as readonly string[]).includes(normalized);
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+    plannedStartTime,
+  });
+
+  if (snapshot.isBookedJob || snapshot.dateState === "none") {
+    return false;
+  }
+
+  return (
+    snapshot.dateState === "provisional" || snapshot.dateState === "confirmed"
+  );
 }
 
 /**
  * Calendar colour for a scheduled proposal.
- * Amber holds a date after proposal acceptance while the trader confirms it.
- * Green means the booking date is confirmed.
+ * Amber is a provisional hold. Green is only a confirmed booked job.
  */
 export function getCalendarBookingTone(
   status: string,
-  bookingConfirmation: string | null | undefined
+  bookingConfirmation: string | null | undefined,
+  plannedStartDate?: string | null
 ): BookingConfirmation | null {
-  const normalized = normalizeProposalStatus(status);
+  const snapshot = buildDateWorkflowSnapshot({
+    status,
+    bookingConfirmation,
+    plannedStartDate,
+  });
 
-  if (normalized === "booked") {
+  if (snapshot.isBookedJob) {
+    return "confirmed";
+  }
+
+  if (snapshot.dateState === "provisional" || snapshot.waitingForProposalAcceptance) {
+    return "provisional";
+  }
+
+  if (plannedStartDate === undefined && normalizeProposalStatus(status) === "booked") {
     if (bookingConfirmation === "provisional") {
       return "provisional";
     }
-
-    return "confirmed";
+    if (bookingConfirmation === "confirmed") {
+      return "confirmed";
+    }
   }
 
   return null;

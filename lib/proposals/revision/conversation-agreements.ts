@@ -44,6 +44,10 @@ const CONFIRMATION_PATTERN =
 const SHORT_AFFIRMATIVE_PATTERN =
   /\b(yes|yeah|yep|ok(ay)?|fine|perfect|agreed|works)\b/i;
 
+/** Soft wording that mentions a date without finally agreeing it. */
+const DATE_HEDGE_PATTERN =
+  /\b(need to check|have to check|let me check|i('ll| will) check|not sure|maybe|might|should work|think so|if that('s| is)? (ok|okay|possible)|check with)\b/i;
+
 /** Spoken/written times such as 10:30, 10.30am, or 9am. */
 const SPECIFIC_TIME_PATTERN =
   /\b(?:at\s+)?((?:[01]?\d|2[0-3])[:.][0-5]\d)\s*(am|pm)?\b|\b((?:[01]?\d|2[0-3])\s*(am|pm))\b/i;
@@ -56,6 +60,13 @@ export type ConversationDateAgreement = {
   traderMessage: ProposalCustomerMessage;
   customerMessage: ProposalCustomerMessage;
   evidenceQuote: string;
+};
+
+export type ConversationDiscussedDateSlot = {
+  dateText: string;
+  dateIso: string | null;
+  timeHm: string | null;
+  sourceMessage: ProposalCustomerMessage;
 };
 
 function isTraderMessage(message: ProposalCustomerMessage): boolean {
@@ -221,7 +232,7 @@ export function isVagueDateWindowOnly(text: string): boolean {
 }
 
 export function isCustomerConfirmation(text: string): boolean {
-  return CONFIRMATION_PATTERN.test(text);
+  return !DATE_HEDGE_PATTERN.test(text) && CONFIRMATION_PATTERN.test(text);
 }
 
 function isShortAffirmative(text: string): boolean {
@@ -239,12 +250,17 @@ function messageConfirmsOffer(
   offerDateText: string,
   offerTimeHm: string | null
 ): boolean {
+  if (DATE_HEDGE_PATTERN.test(replyBody)) {
+    return false;
+  }
+
   const replyDate = extractSpecificDateText(replyBody);
   const replyTime = extractSpecificTimeToHm(replyBody);
   const sameDate = replyDate !== null && datesMatch(replyDate, offerDateText);
   const conflictingTime =
     Boolean(offerTimeHm && replyTime && replyTime !== offerTimeHm);
-  const confirms = isCustomerConfirmation(replyBody) || isShortAffirmative(replyBody);
+  const confirms =
+    isCustomerConfirmation(replyBody) || isShortAffirmative(replyBody);
 
   if (replyDate && !sameDate) {
     return false;
@@ -252,8 +268,11 @@ function messageConfirmsOffer(
   if (conflictingTime) {
     return false;
   }
-  if (sameDate) {
+  if (sameDate && confirms) {
     return true;
+  }
+  if (sameDate && !confirms) {
+    return false;
   }
   return confirms && !replyDate;
 }
@@ -363,6 +382,46 @@ export function findLatestConfirmedDateAgreement(
   return latest;
 }
 
+/**
+ * Latest concrete date/time mentioned in the conversation.
+ * This is not an agreement. Never invents a time.
+ */
+export function findLatestDiscussedDateSlot(
+  messages: ProposalCustomerMessage[],
+  now: Date = new Date()
+): ConversationDiscussedDateSlot | null {
+  const ordered = [...messages]
+    .filter((message) => message.body.trim().length > 0)
+    .sort(
+      (a, b) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+
+  for (let i = ordered.length - 1; i >= 0; i -= 1) {
+    const message = ordered[i];
+    const dateText = extractSpecificDateText(message.body);
+    if (!dateText) {
+      if (isVagueDateWindowOnly(message.body)) {
+        return null;
+      }
+      continue;
+    }
+
+    const parseAt = new Date(message.created_at);
+    return {
+      dateText,
+      dateIso: parseFlexibleDateToIso(
+        dateText,
+        Number.isNaN(parseAt.getTime()) ? now : parseAt
+      ),
+      timeHm: extractSpecificTimeToHm(message.body),
+      sourceMessage: message,
+    };
+  }
+
+  return null;
+}
+
 export function formatAgreementDateLabel(agreement: ConversationDateAgreement): string {
   if (agreement.dateIso) {
     return formatPlannedStartExact(agreement.dateIso);
@@ -370,23 +429,34 @@ export function formatAgreementDateLabel(agreement: ConversationDateAgreement): 
   return agreement.dateText;
 }
 
-function formatIsoDayMonth(isoDate: string): string {
+function formatIsoWeekdayDayMonth(isoDate: string): string {
   const [year, month, day] = isoDate.split("-").map(Number);
   return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
     day: "numeric",
     month: "long",
   }).format(new Date(year, month - 1, day));
 }
 
-/**
- * Mobile attention label: "12 August · 10:30". Never invents a time.
- */
-export function formatAgreedSlotLabel(agreement: ConversationDateAgreement): string {
-  const datePart = agreement.dateIso
-    ? formatIsoDayMonth(agreement.dateIso)
-    : agreement.dateText;
-  if (agreement.timeHm) {
-    return `${datePart} · ${agreement.timeHm}`;
+export function formatSlotLabel(input: {
+  dateIso?: string | null;
+  dateText?: string | null;
+  timeHm?: string | null;
+}): string {
+  const datePart = input.dateIso
+    ? formatIsoWeekdayDayMonth(input.dateIso)
+    : input.dateText?.trim() || "";
+  if (input.timeHm && datePart) {
+    return `${datePart} · ${input.timeHm}`;
   }
   return datePart;
+}
+
+/**
+ * Mobile attention label: "Wednesday 12 August · 10:30". Never invents a time.
+ */
+export function formatAgreedSlotLabel(
+  agreement: Pick<ConversationDateAgreement, "dateIso" | "dateText" | "timeHm">
+): string {
+  return formatSlotLabel(agreement);
 }

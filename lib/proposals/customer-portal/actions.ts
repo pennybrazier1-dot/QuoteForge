@@ -9,6 +9,20 @@ import {
 } from "@/lib/proposals/customer-portal/conversation-notify";
 import { loadPublicProposalByToken } from "@/lib/proposals/customer-portal/load-public-proposal";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
+import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
+import {
+  applyCustomerConfirmDate,
+  applyCustomerRequestAnotherDate,
+  bookingConfirmationAfterAccept,
+  buildDateWorkflowSnapshot,
+  nextStatusAfterDateResolved,
+  readDateSlotState,
+} from "@/lib/proposals/date-workflow";
+import {
+  hasOtherUnresolvedWorkRequests,
+  promoteBookedJobIfReady,
+  releaseProposalDateHold,
+} from "@/lib/proposals/date-workflow-persist";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 export type CustomerPortalActionState = {
@@ -65,12 +79,17 @@ export async function acceptPublicProposal(
 
   const fromStatus = normalizeProposalStatus(loaded.proposal.status);
   const acceptedAt = new Date().toISOString();
+  const dateState = readDateSlotState(
+    loaded.proposal.booking_confirmation,
+    loaded.proposal.planned_start_date
+  );
+  const bookingConfirmation = bookingConfirmationAfterAccept(dateState);
 
   const { error: updateError } = await supabase
     .from("proposals")
     .update({
       status: "booked",
-      booking_confirmation: "provisional",
+      booking_confirmation: bookingConfirmation,
       accepted_at: acceptedAt,
       booked_at: acceptedAt,
       attention_reason: null,
@@ -135,6 +154,13 @@ export async function acceptPublicProposal(
         "Proposal was accepted, but the job could not be created.",
     };
   }
+
+  await promoteBookedJobIfReady(supabase, {
+    ...loaded.proposal,
+    status: "booked",
+    accepted_at: acceptedAt,
+    booking_confirmation: bookingConfirmation,
+  }, { acceptedAt });
 
   await revalidateTraderViews(loaded.proposal.id);
   revalidatePath(`/p/${token}`);
@@ -284,70 +310,80 @@ export async function acceptProposedScheduleDate(
     return { error: "The proposal portal is not configured yet." };
   }
 
+  const snapshot = buildDateWorkflowSnapshot({
+    status: loaded.proposal.status,
+    acceptedAt: loaded.proposal.accepted_at,
+    bookingConfirmation: loaded.proposal.booking_confirmation,
+    plannedStartDate: loaded.proposal.planned_start_date,
+    plannedStartTime: loaded.proposal.planned_start_time,
+  });
+  const transition = applyCustomerConfirmDate(snapshot.dateState);
   const fromStatus = normalizeProposalStatus(loaded.proposal.status);
   const now = new Date().toISOString();
   const dateLabel = loaded.view.proposedDateLabel;
-
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      booking_confirmation: "confirmed",
-      status: "needs_attention",
-    })
-    .eq("id", loaded.proposal.id)
-    .eq("booking_confirmation", "provisional")
-    .in("status", ["waiting_for_customer", "needs_attention"]);
-
-  if (updateError) {
-    return { error: updateError.message || "Could not confirm this date." };
-  }
-
-  await supabase.from("proposal_customer_messages").insert({
-    workspace_id: loaded.workspaceId,
-    proposal_id: loaded.proposal.id,
-    kind: "accept_note",
-    direction: "customer",
-    body: `Yes, ${dateLabel} works for me.`,
-    created_by: null,
+  const messages = await loadProposalCustomerMessages(
+    supabase,
+    loaded.proposal.id
+  );
+  const nextStatus = nextStatusAfterDateResolved({
+    proposalAccepted: snapshot.proposalAccepted,
+    hasOtherUnresolvedRequests: hasOtherUnresolvedWorkRequests(messages),
   });
 
-  await supabase.from("proposal_status_events").insert({
-    workspace_id: loaded.workspaceId,
-    proposal_id: loaded.proposal.id,
-    event_type: "status_change",
-    from_status: fromStatus,
-    to_status: "needs_attention",
-    note: `Customer accepted proposed date: ${dateLabel}`,
-    metadata: {
-      source: "customer_portal",
-      action: "accept_proposed_date",
+  if (transition.changed) {
+    const dateUpdate: Record<string, unknown> = {
       booking_confirmation: "confirmed",
-      planned_start_label: dateLabel,
-    },
-    created_by: null,
-    created_at: now,
-  });
+      status: nextStatus,
+    };
+    if (nextStatus !== "needs_attention") {
+      dateUpdate.attention_reason = null;
+    }
 
-  const { data: existingJob } = await supabase
-    .from("jobs")
-    .select("id")
-    .eq("proposal_id", loaded.proposal.id)
-    .maybeSingle();
+    const { error: updateError } = await supabase
+      .from("proposals")
+      .update(dateUpdate)
+      .eq("id", loaded.proposal.id)
+      .eq("booking_confirmation", "provisional")
+      .in("status", ["waiting_for_customer", "needs_attention", "booked"]);
 
-  if (existingJob) {
-    await supabase
-      .from("jobs")
-      .update({ status: "scheduled" })
-      .eq("id", existingJob.id);
-    await supabase
-      .from("job_prep_items")
-      .update({
-        status: "confirmed",
-        confirmed_at: now,
-      })
-      .eq("job_id", existingJob.id)
-      .eq("item_key", "start_date");
+    if (updateError) {
+      return { error: updateError.message || "Could not confirm this date." };
+    }
+
+    await supabase.from("proposal_customer_messages").insert({
+      workspace_id: loaded.workspaceId,
+      proposal_id: loaded.proposal.id,
+      kind: "question",
+      direction: "customer",
+      body: `Yes, ${dateLabel} works for me.`,
+      created_by: null,
+    });
+
+    await supabase.from("proposal_status_events").insert({
+      workspace_id: loaded.workspaceId,
+      proposal_id: loaded.proposal.id,
+      event_type: "status_change",
+      from_status: fromStatus,
+      to_status: nextStatus,
+      note: `Customer confirmed date: ${dateLabel}`,
+      metadata: {
+        source: "customer_portal",
+        action: "confirm_date",
+        booking_confirmation: "confirmed",
+        accepts_proposal: false,
+        planned_start_label: dateLabel,
+      },
+      created_by: null,
+      created_at: now,
+    });
   }
+
+  await promoteBookedJobIfReady(supabase, {
+    ...loaded.proposal,
+    status: snapshot.proposalAccepted ? "booked" : nextStatus,
+    accepted_at: loaded.proposal.accepted_at,
+    booking_confirmation: "confirmed",
+  }, { acceptedAt: now });
 
   const traderEmail = loaded.workspace.contact_email?.trim() || null;
   if (traderEmail) {
@@ -405,7 +441,6 @@ export async function requestAnotherScheduleDate(
     return { error: "The proposal portal is not configured yet." };
   }
 
-  const fromStatus = normalizeProposalStatus(loaded.proposal.status);
   const currentDate = loaded.view.proposedDateLabel;
 
   const { error: messageError } = await supabase
@@ -425,35 +460,20 @@ export async function requestAnotherScheduleDate(
     return { error: messageError.message || "Could not send your message." };
   }
 
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      status: "needs_attention",
-      attention_reason: "customer_requested_date_change",
-      // Keep the provisional hold visible until the trader proposes another date.
-      booking_confirmation: "provisional",
-    })
-    .eq("id", loaded.proposal.id)
-    .in("status", ["waiting_for_customer", "needs_attention"]);
-
-  if (updateError) {
-    return { error: updateError.message || "Could not update this proposal." };
-  }
-
-  await supabase.from("proposal_status_events").insert({
-    workspace_id: loaded.workspaceId,
-    proposal_id: loaded.proposal.id,
-    event_type: "status_change",
-    from_status: fromStatus,
-    to_status: "needs_attention",
-    note: `${formatAttentionReason("customer_requested_date_change")}: ${message}`,
+  const release = applyCustomerRequestAnotherDate();
+  const released = await releaseProposalDateHold(supabase, loaded.proposal, {
+    nextStatus: "needs_attention",
+    eventNote: `${formatAttentionReason("customer_requested_date_change")}: ${message}`,
+    attentionReason: release.attentionReason,
     metadata: {
-      source: "customer_portal",
       action: "request_another_date",
       previous_proposed_date: currentDate,
     },
-    created_by: null,
   });
+
+  if (released.error) {
+    return { error: released.error };
+  }
 
   const traderEmail = loaded.workspace.contact_email?.trim() || null;
   if (traderEmail) {

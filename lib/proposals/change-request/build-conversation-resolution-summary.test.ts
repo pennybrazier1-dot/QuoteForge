@@ -94,7 +94,7 @@ describe("buildConversationResolutionSummary", () => {
     expect(summary.hasDateAgreement).toBe(true);
     expect(summary.resolutionFocus).toBe("date_agreed");
     expect(summary.mobileHeadline).toBe("Date agreed");
-    expect(summary.mobileDescription).toBe("12 October");
+    expect(summary.mobileDescription).toBe("Monday 12 October");
     expect(summary.calendarAction).toBe("hold");
     expect(buildCalendarActionHref("p1", summary)).toContain(
       "suggestedDateExact=2026-10-12"
@@ -123,7 +123,7 @@ describe("buildConversationResolutionSummary", () => {
 
     expect(summary.resolutionFocus).toBe("date_agreed");
     expect(summary.mobileHeadline).toBe("Date agreed");
-    expect(summary.mobileDescription).toBe("12 August · 10:30");
+    expect(summary.mobileDescription).toBe("Wednesday 12 August · 10:30");
     expect(summary.plannedStartExact).toBe("2026-08-12");
     expect(summary.plannedStartTime).toBe("10:30");
     expect(summary.calendarAction).toBe("hold");
@@ -152,6 +152,72 @@ describe("buildConversationResolutionSummary", () => {
 
     expect(summary.calendarAction).toBe("schedule");
     expect(buildCalendarActionHref("p1", summary)).not.toContain("mode=hold");
+  });
+
+  it("shows a discussed date without treating it as agreed", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "t1",
+          kind: "trader_reply",
+          body: "I could hold Wednesday 12 August at 10:30.",
+          created_at: "2026-08-08T11:00:00.000Z",
+        }),
+        msg({
+          id: "c1",
+          kind: "question",
+          body: "That should work but I need to check with my electrician.",
+          created_at: "2026-08-08T12:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z")
+    );
+
+    expect(summary.hasDateAgreement).toBe(false);
+    expect(summary.resolutionFocus).toBe("date_discussed");
+    expect(summary.mobileHeadline).toBe("Date discussed");
+    expect(summary.mobileDescription).toBe("Wednesday 12 August · 10:30");
+    expect(summary.showDateActions).toBe(true);
+    expect(summary.canActOnSlot).toBe(true);
+  });
+
+  it("hides date actions after the same slot is already held or confirmed", () => {
+    const messages = [
+      msg({
+        id: "t1",
+        kind: "trader_reply",
+        body: "I can do 12 August at 10:30.",
+        created_at: "2026-08-08T11:00:00.000Z",
+      }),
+      msg({
+        id: "c1",
+        kind: "question",
+        body: "12 August at 10:30 works for me.",
+        created_at: "2026-08-08T12:00:00.000Z",
+      }),
+    ];
+
+    const held = buildConversationResolutionSummary(
+      messages,
+      new Date("2026-08-08T12:00:00.000Z"),
+      {
+        dateState: "provisional",
+        persistedDate: "2026-08-12",
+        persistedTime: "10:30",
+      }
+    );
+    expect(held.showDateActions).toBe(false);
+
+    const confirmed = buildConversationResolutionSummary(
+      messages,
+      new Date("2026-08-08T12:00:00.000Z"),
+      {
+        dateState: "confirmed",
+        persistedDate: "2026-08-12",
+        persistedTime: "10:30",
+      }
+    );
+    expect(confirmed.showDateActions).toBe(false);
   });
 });
 

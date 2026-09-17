@@ -188,10 +188,22 @@ export function CustomerProposalPortal({
             Download PDF
           </a>
         </section>
+        {view.canRespondToProposedDate && view.proposedDateLabel ? (
+          <ProposedBookingCard
+            view={view}
+            error={error}
+            mode={mode}
+            setMode={setMode}
+            acceptDateAction={acceptDateAction}
+            acceptDatePending={acceptDatePending}
+            requestDateAction={requestDateAction}
+            requestDatePending={requestDatePending}
+          />
+        ) : null}
         <CustomerPortalConversation
           token={view.token}
           messages={messages}
-          canRespond={false}
+          canRespond={view.canRespondToProposedDate}
           businessName={view.businessName}
         />
         <ProposalBody view={view} />
@@ -203,12 +215,12 @@ export function CustomerProposalPortal({
     return (
       <PortalShell businessName={view.businessName}>
         <section className="cj-job-card cj-portal-success">
-          <p className="cj-job-eyebrow">Date accepted</p>
+          <p className="cj-job-eyebrow">Date confirmed</p>
           <h1 className="cj-job-title">Thank you</h1>
           <p className="cj-job-copy">
-            You’ve accepted the proposed date
-            {view.plannedStartLabel ? ` (${view.plannedStartLabel})` : ""}.{" "}
-            {view.businessName} has been notified.
+            You’ve confirmed the date
+            {view.plannedStartLabel ? ` (${view.plannedStartLabel})` : ""}.
+            This does not accept the proposal.
           </p>
         </section>
         <CustomerPortalConversation
@@ -279,74 +291,16 @@ export function CustomerProposalPortal({
       <ProposalBody view={view} />
 
       {view.canRespondToProposedDate && view.proposedDateLabel ? (
-        <section className="cj-job-card cj-portal-actions">
-          <h2 className="cj-job-section-title">Proposed date</h2>
-          <p className="cj-job-copy">
-            {view.businessName} has provisionally held{" "}
-            <strong>{view.proposedDateLabel}</strong>. Accept this date, or
-            request another one. Nothing is fully confirmed until you accept.
-          </p>
-
-          {error ? (
-            <p className="cj-portal-error" role="alert">
-              {error}
-            </p>
-          ) : null}
-
-          {mode !== "request_date" ? (
-            <div className="cj-portal-action-row">
-              <form action={acceptDateAction}>
-                <input type="hidden" name="token" value={view.token} />
-                <button
-                  type="submit"
-                  className="cj-btn-primary"
-                  disabled={acceptDatePending}
-                >
-                  {acceptDatePending ? "Saving…" : "Accept this date"}
-                </button>
-              </form>
-              <button
-                type="button"
-                className="cj-btn-secondary"
-                onClick={() => setMode("request_date")}
-              >
-                Request another date
-              </button>
-            </div>
-          ) : (
-            <form action={requestDateAction} className="cj-portal-form">
-              <input type="hidden" name="token" value={view.token} />
-              <label className="cj-portal-label" htmlFor="request-date-message">
-                What dates would work better?
-              </label>
-              <textarea
-                id="request-date-message"
-                name="message"
-                required
-                rows={4}
-                className="cj-portal-textarea"
-                placeholder="e.g. I’d prefer the week after, or mornings only."
-              />
-              <div className="cj-portal-form-actions">
-                <button
-                  type="submit"
-                  className="cj-btn-primary"
-                  disabled={requestDatePending}
-                >
-                  {requestDatePending ? "Sending…" : "Send date request"}
-                </button>
-                <button
-                  type="button"
-                  className="cj-btn-secondary"
-                  onClick={() => setMode("idle")}
-                  disabled={requestDatePending}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
+        <ProposedBookingCard
+          view={view}
+          error={error}
+          mode={mode}
+          setMode={setMode}
+          acceptDateAction={acceptDateAction}
+          acceptDatePending={acceptDatePending}
+          requestDateAction={requestDateAction}
+          requestDatePending={requestDatePending}
+        />
       ) : null}
 
       <CustomerPortalConversation
@@ -554,6 +508,101 @@ export function CustomerProposalPortal({
         </section>
       )}
     </PortalShell>
+  );
+}
+
+function ProposedBookingCard({
+  view,
+  error,
+  mode,
+  setMode,
+  acceptDateAction,
+  acceptDatePending,
+  requestDateAction,
+  requestDatePending,
+}: {
+  view: PublicProposalViewModel;
+  error: string | null;
+  mode: "idle" | "accept" | "question" | "changes" | "request_date" | "decline";
+  setMode: (
+    mode: "idle" | "accept" | "question" | "changes" | "request_date" | "decline"
+  ) => void;
+  acceptDateAction: (payload: FormData) => void;
+  acceptDatePending: boolean;
+  requestDateAction: (payload: FormData) => void;
+  requestDatePending: boolean;
+}) {
+  return (
+    <section className="cj-job-card cj-portal-actions">
+      <h2 className="cj-job-section-title">Proposed booking</h2>
+      <p className="cj-job-copy">
+        <strong>{view.proposedDateLabel}</strong>
+      </p>
+      <p className="cj-job-copy">
+        Confirm this date if it works, or request another date. This does not
+        accept the proposal.
+      </p>
+
+      {error ? (
+        <p className="cj-portal-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {mode !== "request_date" ? (
+        <div className="cj-portal-action-row">
+          <form action={acceptDateAction}>
+            <input type="hidden" name="token" value={view.token} />
+            <button
+              type="submit"
+              className="cj-btn-primary"
+              disabled={acceptDatePending}
+            >
+              {acceptDatePending ? "Saving…" : "Confirm date"}
+            </button>
+          </form>
+          <button
+            type="button"
+            className="cj-btn-secondary"
+            onClick={() => setMode("request_date")}
+          >
+            Request another date
+          </button>
+        </div>
+      ) : (
+        <form action={requestDateAction} className="cj-portal-form">
+          <input type="hidden" name="token" value={view.token} />
+          <label className="cj-portal-label" htmlFor="request-date-message">
+            What dates would work better?
+          </label>
+          <textarea
+            id="request-date-message"
+            name="message"
+            required
+            rows={4}
+            className="cj-portal-textarea"
+            placeholder="e.g. I’d prefer the week after, or mornings only."
+          />
+          <div className="cj-portal-form-actions">
+            <button
+              type="submit"
+              className="cj-btn-primary"
+              disabled={requestDatePending}
+            >
+              {requestDatePending ? "Sending…" : "Send date request"}
+            </button>
+            <button
+              type="button"
+              className="cj-btn-secondary"
+              onClick={() => setMode("idle")}
+              disabled={requestDatePending}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
   );
 }
 

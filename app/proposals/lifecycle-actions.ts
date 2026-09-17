@@ -14,6 +14,11 @@ import {
   isBookingConfirmation,
   isProvisionalBooking,
 } from "@/lib/proposals/booking";
+import {
+  bookingConfirmationAfterAccept,
+  readDateSlotState,
+} from "@/lib/proposals/date-workflow";
+import { promoteBookedJobIfReady } from "@/lib/proposals/date-workflow-persist";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
 import {
@@ -64,7 +69,7 @@ export async function markProposalAccepted(
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
     .select(
-      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, materials"
+      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, planned_start_time, booking_confirmation, materials"
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -82,11 +87,16 @@ export async function markProposalAccepted(
   }
 
   const acceptedAt = new Date().toISOString();
+  const dateState = readDateSlotState(
+    proposal.booking_confirmation,
+    proposal.planned_start_date
+  );
+  const bookingConfirmation = bookingConfirmationAfterAccept(dateState);
   const { error: updateError } = await supabase
     .from("proposals")
     .update({
       status: "booked",
-      booking_confirmation: "provisional",
+      booking_confirmation: bookingConfirmation,
       accepted_at: acceptedAt,
       booked_at: acceptedAt,
       attention_reason: null,
@@ -131,8 +141,23 @@ export async function markProposalAccepted(
     };
   }
 
+  await promoteBookedJobIfReady(
+    supabase,
+    {
+      ...proposal,
+      status: "booked",
+      accepted_at: acceptedAt,
+      booking_confirmation: bookingConfirmation,
+    },
+    { acceptedAt, userId: user.id }
+  );
+
   revalidateAll(proposalId);
-  redirect(`/proposals/${proposalId}#job-preparation`);
+  redirect(
+    dateState === "confirmed"
+      ? `/proposals/${proposalId}`
+      : `/proposals/${proposalId}#job-preparation`
+  );
 }
 
 export async function confirmBooking(

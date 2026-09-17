@@ -108,7 +108,7 @@ function ConfirmButton({
       disabled={pending || disabled}
       className="qf-btn-primary qf-schedule-confirm-btn"
     >
-      {pending ? "Saving schedule…" : label}
+      {pending ? "Saving…" : label}
     </button>
   );
 }
@@ -245,14 +245,6 @@ export function ScheduleWorkspace({
     Boolean(draftDate && draftTime && (holdMode || duration.trim())) &&
     (!needsAcknowledgment || acknowledgedClash);
 
-  const suggestedLabel =
-    suggestedDateText?.trim() ||
-    (suggestedDateExact
-      ? formatPlannedStartExact(suggestedDateExact)
-      : null) ||
-    proposal.plannedStartDateText?.trim() ||
-    null;
-
   const selectDate = (iso: string) => {
     setDraftDate(iso);
     setAnchor(parseIsoDate(iso));
@@ -267,7 +259,7 @@ export function ScheduleWorkspace({
         dateIso: draftDate,
         time: draftTime,
       })
-    : "Not selected yet";
+    : suggestedDateText?.trim() || "Not selected yet";
 
   return (
     <div className="qf-schedule-page qf-workspace-page qf-mobile-safe">
@@ -278,9 +270,13 @@ export function ScheduleWorkspace({
             Back to proposal
           </Link>
         </div>
-        <h1 className="qf-revision-title">Schedule job</h1>
+        <h1 className="qf-revision-title">
+          {holdMode ? "Hold date" : "Schedule job"}
+        </h1>
         <p className="qf-revision-intro">
-          Pick a date on the calendar. Nothing is saved until you confirm.
+          {holdMode
+            ? "Pick the date and time to reserve. The customer will be asked to confirm it."
+            : "Pick a date on the calendar. Nothing is saved until you confirm."}
         </p>
       </header>
 
@@ -562,38 +558,37 @@ export function ScheduleWorkspace({
         <aside className="qf-schedule-panel" aria-label="Current job">
           <div className="qf-schedule-panel-card">
             <h2 className="qf-schedule-panel-title">
-              {holdMode ? "Calendar hold" : "Current job"}
+              {holdMode ? "Hold date" : "Current job"}
             </h2>
             <dl className="qf-schedule-facts">
               <div>
-                <dt>Customer</dt>
+                <dt>What</dt>
+                <dd>
+                  {proposal.title?.trim() ||
+                    proposal.proposalNumber ||
+                    "Proposal"}
+                </dd>
+              </div>
+              <div>
+                <dt>Who</dt>
                 <dd>{proposal.customerName?.trim() || "Customer"}</dd>
               </div>
               <div>
-                <dt>Proposal / job</dt>
-                <dd>
-                  {proposal.proposalNumber}
-                  {proposal.title ? ` · ${proposal.title}` : ""}
-                </dd>
+                <dt>When</dt>
+                <dd>{draftDateLabel}</dd>
               </div>
-              {suggestedLabel ? (
-                <div>
-                  <dt>Suggested date</dt>
-                  <dd>{suggestedLabel}</dd>
-                </div>
-              ) : null}
               <div>
-                <dt>Estimated duration</dt>
-                <dd>{duration.trim() || "Not set yet"}</dd>
+                <dt>State</dt>
+                <dd>{holdMode ? "Provisional" : "Job schedule"}</dd>
               </div>
             </dl>
-            <p className="qf-schedule-note">
-              {holdMode
-                ? "This holds the date in your calendar only. It does not create a job. The customer can still accept the proposal."
-                : requireCustomerDateAcceptance
-                  ? "Saves a provisional hold and asks the customer to accept. Confirmed only after they accept."
+            {holdMode ? null : (
+              <p className="qf-schedule-note">
+                {requireCustomerDateAcceptance
+                  ? "Saves a provisional hold and asks the customer to confirm the date."
                   : "Nothing is booked until you confirm"}
-            </p>
+              </p>
+            )}
           </div>
 
           <form action={confirmAction} className="qf-schedule-panel-card">
@@ -673,14 +668,7 @@ export function ScheduleWorkspace({
               />
             </label>
 
-            {holdMode ? (
-              <div className="qf-schedule-status qf-schedule-customer-accept-note">
-                <p className="qf-schedule-note">
-                  Saving holds this date in your calendar. It does not create or
-                  confirm a job. The customer can still accept the proposal.
-                </p>
-              </div>
-            ) : requireCustomerDateAcceptance ? (
+            {holdMode ? null : requireCustomerDateAcceptance ? (
               <div className="qf-schedule-status qf-schedule-customer-accept-note">
                 <p className="qf-schedule-note">
                   This creates a provisional hold and asks the customer to
@@ -724,7 +712,7 @@ export function ScheduleWorkspace({
               disabled={!canConfirm}
               label={
                 holdMode
-                  ? "Hold in calendar"
+                  ? "Hold provisionally"
                   : requireCustomerDateAcceptance
                     ? "Propose provisional date"
                     : bookingStatus === "confirmed"

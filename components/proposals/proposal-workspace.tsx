@@ -23,6 +23,8 @@ import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import { buildConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
+import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
+import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
@@ -59,6 +61,7 @@ export type ProposalWorkspaceData = {
   estimated_duration: string | null;
   planned_start_date_text: string | null;
   planned_start_date: string | null;
+  planned_start_time?: string | null;
   things_to_confirm_items: unknown;
   ai_optional_extras: unknown;
   payment_terms: string | null;
@@ -326,10 +329,25 @@ export function ProposalWorkspace({
     status === "booked" ||
     status === "completed" ||
     Boolean(proposal.accepted_at);
+  const dateWorkflow = buildDateWorkflowSnapshot({
+    status: proposal.status,
+    acceptedAt: proposal.accepted_at,
+    bookingConfirmation: proposal.booking_confirmation,
+    plannedStartDate: proposal.planned_start_date,
+    plannedStartTime: proposal.planned_start_time,
+  });
+  const confirmedSlotLabel = formatSlotLabel({
+    dateIso: proposal.planned_start_date,
+    dateText: proposal.planned_start_date_text,
+    timeHm: proposal.planned_start_time,
+  });
   const resolutionSummary =
     status === "needs_attention" && hasCustomerMessages
       ? buildConversationResolutionSummary(customerMessages, new Date(), {
           proposalAccepted,
+          dateState: dateWorkflow.dateState,
+          persistedDate: proposal.planned_start_date,
+          persistedTime: proposal.planned_start_time,
         })
       : null;
   const actionContext = {
@@ -386,6 +404,35 @@ export function ProposalWorkspace({
           </div>
         </div>
       </header>
+
+      {dateWorkflow.waitingForProposalAcceptance && confirmedSlotLabel ? (
+        <section className="qf-date-state-banner" role="status">
+          <p className="qf-date-state-title">Date confirmed ✓</p>
+          <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
+          <p className="qf-date-state-note">
+            Waiting for customer to accept proposal
+          </p>
+        </section>
+      ) : null}
+
+      {dateWorkflow.waitingForDateConfirmation &&
+      !dateWorkflow.proposalAccepted &&
+      confirmedSlotLabel ? (
+        <section className="qf-date-state-banner qf-date-state-banner-hold" role="status">
+          <p className="qf-date-state-title">Date held provisionally</p>
+          <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
+          <p className="qf-date-state-note">
+            Waiting for customer to confirm this date
+          </p>
+        </section>
+      ) : null}
+
+      {dateWorkflow.isBookedJob && confirmedSlotLabel ? (
+        <section className="qf-date-state-banner qf-date-state-banner-booked" role="status">
+          <p className="qf-date-state-title">Booked job</p>
+          <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
+        </section>
+      ) : null}
 
       {/* Attention flow: request + resolve → proposal → conversation → lifecycle */}
       {resolutionSummary ? (
@@ -472,7 +519,8 @@ export function ProposalWorkspace({
             messages={customerMessages}
             headingIcon={USER_ICON}
             hideReplyUntilRequested={
-              resolutionSummary.resolutionFocus === "date_agreed"
+              resolutionSummary.resolutionFocus === "date_agreed" ||
+              resolutionSummary.resolutionFocus === "date_discussed"
             }
           />
 

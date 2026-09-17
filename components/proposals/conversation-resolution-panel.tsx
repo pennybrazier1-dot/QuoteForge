@@ -10,10 +10,16 @@ import {
   buildCalendarActionHref,
   type ConversationResolutionSummary,
 } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
+import {
+  confirmConversationDate,
+  holdConversationDate,
+  type DateWorkflowActionState,
+} from "@/lib/proposals/date-workflow-actions";
 import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
 const initialState: ChangeRequestActionState = {};
+const dateInitialState: DateWorkflowActionState = {};
 
 function ResolveButton() {
   const { pending } = useFormStatus();
@@ -21,6 +27,56 @@ function ResolveButton() {
     <button type="submit" className="qf-btn-secondary" disabled={pending}>
       {pending ? "Saving…" : "Mark resolved"}
     </button>
+  );
+}
+
+function DateActionButton({
+  label,
+  pendingLabel,
+  variant = "primary",
+}: {
+  label: string;
+  pendingLabel: string;
+  variant?: "primary" | "secondary";
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      className={variant === "primary" ? "qf-btn-primary" : "qf-btn-secondary"}
+      disabled={pending}
+    >
+      {pending ? pendingLabel : label}
+    </button>
+  );
+}
+
+function DateSlotFields({
+  proposalId,
+  summary,
+}: {
+  proposalId: string;
+  summary: ConversationResolutionSummary;
+}) {
+  return (
+    <>
+      <input type="hidden" name="proposalId" value={proposalId} />
+      <input
+        type="hidden"
+        name="plannedStartDateExact"
+        value={summary.plannedStartExact ?? ""}
+      />
+      <input
+        type="hidden"
+        name="plannedStartTime"
+        value={summary.plannedStartTime ?? ""}
+      />
+      <input
+        type="hidden"
+        name="plannedStartDateText"
+        value={summary.plannedStartText ?? ""}
+      />
+    </>
   );
 }
 
@@ -38,14 +94,23 @@ export function ConversationResolutionPanel({
     markChangeRequestResolved,
     initialState
   );
+  const [confirmState, confirmAction] = useActionState(
+    confirmConversationDate,
+    dateInitialState
+  );
+  const [holdState, holdAction] = useActionState(
+    holdConversationDate,
+    dateInitialState
+  );
 
   const updateHref = buildProposalRevisePath(proposalId);
   const calendarHref = buildCalendarActionHref(proposalId, summary);
-  const calendarLabel =
-    summary.calendarAction === "schedule" ? "Schedule job" : "Hold in calendar";
   const showSummary = section === "summary" || section === "all";
   const showActions = section === "actions" || section === "all";
-  const dateAgreed = summary.resolutionFocus === "date_agreed";
+  const dateCard =
+    summary.resolutionFocus === "date_agreed" ||
+    summary.resolutionFocus === "date_discussed";
+  const dateError = confirmState.error || holdState.error;
 
   return (
     <section
@@ -53,7 +118,6 @@ export function ConversationResolutionPanel({
       aria-label="Customer request and how to resolve it"
       id="change-request-panel"
     >
-      {/* Desktop: full request context + all resolve paths (unchanged). */}
       <div className="qf-resolution-desktop">
         {showSummary ? (
           <>
@@ -66,9 +130,13 @@ export function ConversationResolutionPanel({
             </div>
 
             <div className="qf-resolution-summary">
-              {dateAgreed && summary.agreedSlotLabel ? (
+              {dateCard && summary.agreedSlotLabel ? (
                 <div className="qf-resolution-block">
-                  <h3 className="qf-resolution-label">Date agreed</h3>
+                  <h3 className="qf-resolution-label">
+                    {summary.resolutionFocus === "date_agreed"
+                      ? "Date agreed"
+                      : "Date discussed"}
+                  </h3>
                   <p className="qf-resolution-copy">{summary.agreedSlotLabel}</p>
                 </div>
               ) : null}
@@ -106,9 +174,9 @@ export function ConversationResolutionPanel({
           </>
         ) : null}
 
-        {state.error && showActions ? (
+        {(state.error || dateError) && showActions ? (
           <p className="qf-resolution-error" role="alert">
-            {state.error}
+            {state.error || dateError}
           </p>
         ) : null}
 
@@ -124,17 +192,52 @@ export function ConversationResolutionPanel({
               You choose the path. Nothing is changed until you confirm.
             </p>
             <div className="qf-resolution-action-grid">
-              {dateAgreed ? (
-                <div className="qf-resolution-action-option">
-                  <a href={calendarHref} className="qf-btn-primary">
-                    {calendarLabel}
-                  </a>
-                  <p className="qf-resolution-action-hint">
-                    {summary.calendarAction === "schedule"
-                      ? "Opens the job calendar with the agreed date. Nothing is saved until you confirm."
-                      : "Holds this date in your calendar only. It does not create a job."}
-                  </p>
-                </div>
+              {summary.showDateActions ? (
+                <>
+                  <div className="qf-resolution-action-option">
+                    {summary.canActOnSlot ? (
+                      <form action={confirmAction}>
+                        <DateSlotFields
+                          proposalId={proposalId}
+                          summary={summary}
+                        />
+                        <DateActionButton
+                          label="Confirm date"
+                          pendingLabel="Saving…"
+                        />
+                      </form>
+                    ) : (
+                      <a href={calendarHref} className="qf-btn-primary">
+                        Confirm date
+                      </a>
+                    )}
+                    <p className="qf-resolution-action-hint">
+                      Use this when the customer has already agreed the date.
+                    </p>
+                  </div>
+                  <div className="qf-resolution-action-option">
+                    {summary.canActOnSlot ? (
+                      <form action={holdAction}>
+                        <DateSlotFields
+                          proposalId={proposalId}
+                          summary={summary}
+                        />
+                        <DateActionButton
+                          label="Hold provisionally"
+                          pendingLabel="Saving…"
+                          variant="secondary"
+                        />
+                      </form>
+                    ) : (
+                      <a href={calendarHref} className="qf-btn-secondary">
+                        Hold provisionally
+                      </a>
+                    )}
+                    <p className="qf-resolution-action-hint">
+                      Reserve the slot while the customer still needs to confirm.
+                    </p>
+                  </div>
+                </>
               ) : null}
               <div className="qf-resolution-action-option">
                 <a href={updateHref} className="qf-btn-secondary">
@@ -150,10 +253,10 @@ export function ConversationResolutionPanel({
                   className="qf-btn-secondary"
                   onClick={() => focusProposalConversationComposer()}
                 >
-                  Reply to customer
+                  Change / Reply
                 </button>
                 <p className="qf-resolution-action-hint">
-                  For clarification or questions
+                  Continue the timing discussion
                 </p>
               </div>
               <div className="qf-resolution-action-option">
@@ -170,12 +273,13 @@ export function ConversationResolutionPanel({
         ) : null}
       </div>
 
-      {/* Mobile: situation + next action only. */}
       <div className="qf-resolution-mobile">
         {showSummary ? (
           <div
             className={`qf-resolution-mobile-card${
-              dateAgreed ? " qf-resolution-mobile-card-agreed" : ""
+              summary.resolutionFocus === "date_agreed"
+                ? " qf-resolution-mobile-card-agreed"
+                : ""
             }`}
             role="status"
           >
@@ -188,9 +292,9 @@ export function ConversationResolutionPanel({
           </div>
         ) : null}
 
-        {state.error && showActions ? (
+        {(state.error || dateError) && showActions ? (
           <p className="qf-resolution-error" role="alert">
-            {state.error}
+            {state.error || dateError}
           </p>
         ) : null}
 
@@ -199,17 +303,41 @@ export function ConversationResolutionPanel({
             className="qf-resolution-mobile-next"
             aria-label="What to do next"
           >
-            {dateAgreed ? (
-              <div className="qf-resolution-mobile-actions">
-                <a href={calendarHref} className="qf-btn-primary">
-                  {calendarLabel}
-                </a>
+            {summary.showDateActions ? (
+              <div className="qf-resolution-mobile-actions qf-resolution-mobile-date-actions">
+                {summary.canActOnSlot ? (
+                  <form action={confirmAction}>
+                    <DateSlotFields proposalId={proposalId} summary={summary} />
+                    <DateActionButton
+                      label="Confirm date"
+                      pendingLabel="Saving…"
+                    />
+                  </form>
+                ) : (
+                  <a href={calendarHref} className="qf-btn-primary">
+                    Confirm date
+                  </a>
+                )}
+                {summary.canActOnSlot ? (
+                  <form action={holdAction}>
+                    <DateSlotFields proposalId={proposalId} summary={summary} />
+                    <DateActionButton
+                      label="Hold provisionally"
+                      pendingLabel="Saving…"
+                      variant="secondary"
+                    />
+                  </form>
+                ) : (
+                  <a href={calendarHref} className="qf-btn-secondary">
+                    Hold provisionally
+                  </a>
+                )}
                 <button
                   type="button"
                   className="qf-btn-secondary"
                   onClick={() => focusProposalConversationComposer()}
                 >
-                  Reply
+                  Change / Reply
                 </button>
               </div>
             ) : summary.resolutionFocus === "date" ? (

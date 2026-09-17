@@ -2,17 +2,27 @@ import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/anal
 import type { ChangeRequestLabel } from "@/lib/proposals/change-request/analyze-change-request";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
+  sameDateSlot,
+  type DateSlotState,
+} from "@/lib/proposals/date-workflow";
+import {
   findLatestConfirmedDateAgreement,
+  findLatestDiscussedDateSlot,
   formatAgreedSlotLabel,
   formatAgreementDateLabel,
+  formatSlotLabel,
   isVagueDateWindowOnly,
 } from "@/lib/proposals/revision/conversation-agreements";
 import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
 /** Primary mobile next-step mode for the trader attention screen. */
-export type ConversationResolutionFocus = "date" | "date_agreed" | "update";
+export type ConversationResolutionFocus =
+  | "date"
+  | "date_discussed"
+  | "date_agreed"
+  | "update";
 
-/** Calendar next step after a date is agreed in conversation. */
+/** Calendar next step after a date is discussed or agreed in conversation. */
 export type ConversationCalendarAction = "hold" | "schedule";
 
 /** Soft calendar prefill / aggregated request wording for the resolution UI. */
@@ -44,10 +54,16 @@ export type ConversationResolutionSummary = {
   resolutionFocus: ConversationResolutionFocus;
   /** True when both sides confirmed a specific date. */
   hasDateAgreement: boolean;
-  /** Display label such as "12 August · 10:30". */
+  /** A concrete date was mentioned, even if it is not yet agreed. */
+  hasDiscussedDate: boolean;
+  /** Display label such as "Wednesday 12 August · 10:30". */
   agreedSlotLabel: string | null;
   /** Hold the date before acceptance, or schedule the job after. */
   calendarAction: ConversationCalendarAction | null;
+  /** Show Confirm date / Hold provisionally / Change reply. */
+  showDateActions: boolean;
+  /** Direct action is available when the conversation already has a time. */
+  canActOnSlot: boolean;
 };
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
@@ -338,6 +354,10 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
 export type ConversationResolutionOptions = {
   /** Accepted proposals schedule a job. Others only hold a date. */
   proposalAccepted?: boolean;
+  /** Already-saved diary state. Prevents repeating a resolved date action. */
+  dateState?: DateSlotState;
+  persistedDate?: string | null;
+  persistedTime?: string | null;
 };
 
 /**
@@ -352,17 +372,38 @@ export function buildConversationResolutionSummary(
   const ordered = orderedMessages(messages);
   const aggregated = buildAggregatedRequests(ordered);
   const agreement = findLatestConfirmedDateAgreement(ordered, now);
+  const discussed = findLatestDiscussedDateSlot(ordered, now);
+  const slot = agreement ?? discussed;
   const plannedStartText = agreement
     ? formatAgreementDateLabel(agreement)
-    : null;
+    : discussed
+      ? formatSlotLabel(discussed)
+      : null;
   const hasDateAgreement = Boolean(agreement?.dateIso);
-  const agreedSlotLabel = agreement ? formatAgreedSlotLabel(agreement) : null;
+  const hasDiscussedDate = Boolean(discussed?.dateIso);
+  const agreedSlotLabel = slot ? formatAgreedSlotLabel(slot) : null;
   const hasWorkRequest =
     aggregated.labels.includes("scope") ||
     aggregated.labels.includes("materials") ||
     aggregated.labels.includes("price");
-  const showAgreedDate = hasDateAgreement && !hasWorkRequest;
-  const calendarAction = showAgreedDate
+  const persistedMatchesSlot = sameDateSlot(
+    {
+      date: options.persistedDate,
+      time: options.persistedTime,
+    },
+    {
+      date: slot?.dateIso,
+      time: slot?.timeHm,
+    }
+  );
+  const dateAlreadyResolved =
+    persistedMatchesSlot &&
+    (options.dateState === "confirmed" || options.dateState === "provisional");
+  const showDateCard =
+    Boolean(slot?.dateIso) && !hasWorkRequest && !dateAlreadyResolved;
+  const showAgreedDate = showDateCard && hasDateAgreement;
+  const showDiscussedDate = showDateCard && !hasDateAgreement && hasDiscussedDate;
+  const calendarAction = showDateCard
     ? options.proposalAccepted
       ? "schedule"
       : "hold"
@@ -374,19 +415,29 @@ export function buildConversationResolutionSummary(
     originalRequestWording: aggregated.wording,
     possibleImpacts: aggregated.impacts,
     plannedStartText,
-    plannedStartExact: agreement?.dateIso ?? null,
-    plannedStartTime: agreement?.timeHm ?? null,
+    plannedStartExact: slot?.dateIso ?? null,
+    plannedStartTime: slot?.timeHm ?? null,
     hasCustomerMessages: ordered.some(isCustomerMessage),
     mobileHeadline: showAgreedDate
       ? "Date agreed"
-      : aggregated.mobileHeadline,
-    mobileDescription: showAgreedDate
-      ? (agreedSlotLabel ?? aggregated.mobileDescription)
-      : aggregated.mobileDescription,
-    resolutionFocus: showAgreedDate ? "date_agreed" : aggregated.focus,
+      : showDiscussedDate
+        ? "Date discussed"
+        : aggregated.mobileHeadline,
+    mobileDescription:
+      showAgreedDate || showDiscussedDate
+        ? (agreedSlotLabel ?? aggregated.mobileDescription)
+        : aggregated.mobileDescription,
+    resolutionFocus: showAgreedDate
+      ? "date_agreed"
+      : showDiscussedDate
+        ? "date_discussed"
+        : aggregated.focus,
     hasDateAgreement,
+    hasDiscussedDate,
     agreedSlotLabel,
     calendarAction,
+    showDateActions: showDateCard,
+    canActOnSlot: Boolean(slot?.dateIso && slot.timeHm),
   };
 }
 

@@ -1,6 +1,7 @@
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
 import { formatAttentionReason } from "@/lib/proposals/attention";
-import { isConfirmedBooking, isProvisionalBooking } from "@/lib/proposals/booking";
+import { isConfirmedBooking } from "@/lib/proposals/booking";
+import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
 import {
   isPlannedStartToday,
   isPlannedStartInFuture,
@@ -158,7 +159,11 @@ export function getHomeNotificationCount(proposals: HomeProposal[]): number {
       isActiveHomeProposal(status) &&
       (status === "needs_attention" ||
         status === "waiting_for_customer" ||
-        isProvisionalBooking(proposal.status, proposal.booking_confirmation))
+        buildDateWorkflowSnapshot({
+          status: proposal.status,
+          bookingConfirmation: proposal.booking_confirmation,
+          plannedStartDate: proposal.planned_start_date,
+        }).needsScheduleJob)
     );
   }).length;
 }
@@ -197,23 +202,39 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
     );
 
   const waitingForCustomer = activeProposals
-    .filter(
-      (proposal) =>
-        normalizeProposalStatus(proposal.status) === "waiting_for_customer"
-    )
-    .map((proposal) =>
-      buildCard(proposal, {
+    .filter((proposal) => {
+      const snapshot = buildDateWorkflowSnapshot({
+        status: proposal.status,
+        bookingConfirmation: proposal.booking_confirmation,
+        plannedStartDate: proposal.planned_start_date,
+      });
+      return (
+        normalizeProposalStatus(proposal.status) === "waiting_for_customer" ||
+        snapshot.waitingForDateConfirmation
+      );
+    })
+    .map((proposal) => {
+      const snapshot = buildDateWorkflowSnapshot({
+        status: proposal.status,
+        bookingConfirmation: proposal.booking_confirmation,
+        plannedStartDate: proposal.planned_start_date,
+      });
+      return buildCard(proposal, {
         jobTitle: getProposalSummaryLabel(proposal),
         status: { label: "Waiting", tone: "orange" },
-        attentionNote: "Awaiting customer action",
+        attentionNote: snapshot.waitingForDateConfirmation
+          ? "Waiting for customer to confirm the date"
+          : snapshot.waitingForProposalAcceptance
+            ? "Waiting for customer to accept the proposal"
+            : "Awaiting customer action",
         timeLabel: proposal.sent_at
           ? new Intl.DateTimeFormat("en-GB", {
               day: "numeric",
               month: "short",
             }).format(new Date(proposal.sent_at))
           : undefined,
-      })
-    );
+      });
+    });
 
   const quotesToFinish = activeProposals
     .filter(
@@ -242,16 +263,21 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
     );
 
   const bookingsToConfirm = activeProposals
-    .filter((proposal) =>
-      isProvisionalBooking(proposal.status, proposal.booking_confirmation)
-    )
+    .filter((proposal) => {
+      const snapshot = buildDateWorkflowSnapshot({
+        status: proposal.status,
+        bookingConfirmation: proposal.booking_confirmation,
+        plannedStartDate: proposal.planned_start_date,
+      });
+      return snapshot.needsScheduleJob && snapshot.dateState === "none";
+    })
     .slice(0, 8)
     .map((proposal) =>
       buildCard(proposal, {
         jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Confirm", tone: "orange" },
+        status: { label: "Schedule", tone: "orange" },
         timeLabel: formatScheduleLabel(proposal),
-        attentionNote: "Confirm the booking date and duration",
+        attentionNote: "Schedule the job date",
       })
     );
 

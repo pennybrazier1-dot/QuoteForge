@@ -7317,11 +7317,47 @@ button.qf-booking-preview-day-selectable:focus-visible {
   .qf-resolution-mobile-actions .qf-btn-primary,
   .qf-resolution-mobile-actions .qf-btn-secondary,
   .qf-resolution-mobile-actions a.qf-btn-primary,
-  .qf-resolution-mobile-actions a.qf-btn-secondary {
+  .qf-resolution-mobile-actions a.qf-btn-secondary,
+  .qf-resolution-mobile-actions form,
+  .qf-resolution-mobile-actions form .qf-btn-primary,
+  .qf-resolution-mobile-actions form .qf-btn-secondary {
     width: 100%;
     text-align: center;
     text-decoration: none;
   }
+}
+
+.qf-date-state-banner {
+  padding: 0.95rem 1rem;
+  border-radius: 0.85rem;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.qf-date-state-banner-hold {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.qf-date-state-banner-booked {
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.14);
+}
+
+.qf-date-state-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--foreground);
+}
+
+.qf-date-state-copy,
+.qf-date-state-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 /* Phase 50C — Calendar scheduling workspace */

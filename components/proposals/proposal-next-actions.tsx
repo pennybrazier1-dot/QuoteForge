@@ -9,6 +9,7 @@ import {
   getSendDisabledReason,
   type ProposalActionContext,
 } from "@/lib/proposals/proposal-action-eligibility";
+import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -20,6 +21,8 @@ export type NextActionsProposal = {
   status: string;
   customer_id: string | null;
   customer_email: string | null;
+  bookingConfirmation?: string | null;
+  plannedStartDate?: string | null;
   actionContext: ProposalActionContext;
 };
 
@@ -255,7 +258,42 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         viewCustomer,
       ];
 
-    case "booked":
+    case "booked": {
+      const dateWorkflow = buildDateWorkflowSnapshot({
+        status: normalized,
+        bookingConfirmation: proposal.bookingConfirmation,
+        plannedStartDate: proposal.plannedStartDate,
+      });
+      if (dateWorkflow.isBookedJob) {
+        return [
+          {
+            id: "booked-job",
+            title: "Booked job",
+            description: "The date is confirmed and the job is on the calendar.",
+            icon: ICONS.job,
+            tone: "emerald",
+            primary: true,
+            href: "/calendar",
+          },
+          openPdf,
+          viewCustomer,
+        ];
+      }
+      if (dateWorkflow.waitingForDateConfirmation) {
+        return [
+          {
+            id: "waiting-date",
+            title: "Waiting for date confirmation",
+            description: "The customer still needs to confirm this date.",
+            icon: ICONS.timeline,
+            tone: "amber",
+            primary: true,
+            href: `#proposal-lifecycle`,
+          },
+          openPdf,
+          viewCustomer,
+        ];
+      }
       return [
         {
           id: "schedule-job",
@@ -269,6 +307,7 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
         openPdf,
         viewCustomer,
       ];
+    }
 
     case "completed":
       return [viewCustomer, openPdf];

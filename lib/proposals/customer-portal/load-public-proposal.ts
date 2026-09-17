@@ -17,6 +17,8 @@ import {
 } from "@/lib/proposals/status";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { readDateSlotState } from "@/lib/proposals/date-workflow";
+import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 
 export type PublicProposalViewModel = {
   token: string;
@@ -123,7 +125,16 @@ export async function loadPublicProposalByToken(
   const isDeclined = status === "declined";
   const isClosed = isClosedProposalStatus(status);
 
+  const dateState = readDateSlotState(
+    row.booking_confirmation,
+    row.planned_start_date
+  );
   const plannedStartLabel =
+    formatSlotLabel({
+      dateIso: row.planned_start_date,
+      dateText: row.planned_start_date_text,
+      timeHm: row.planned_start_time,
+    }) ||
     row.planned_start_date_text?.trim() ||
     (row.planned_start_date
       ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(
@@ -131,9 +142,8 @@ export async function loadPublicProposalByToken(
         )
       : null);
   const canRespondToProposedDate =
-    canRespond &&
     !isClosed &&
-    row.booking_confirmation === "provisional" &&
+    dateState === "provisional" &&
     Boolean(plannedStartLabel);
 
   return {

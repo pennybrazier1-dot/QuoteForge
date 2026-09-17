@@ -15,7 +15,7 @@ import {
 import { AuthError } from "@/components/auth/auth-shell";
 import { BookingDialog } from "@/components/proposals/booking-dialog";
 import { DevLifecycleTools } from "@/components/proposals/dev-lifecycle-tools";
-import { isProvisionalBooking } from "@/lib/proposals/booking";
+import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import {
   isProposalStatus,
@@ -115,13 +115,17 @@ export function ProposalLifecycleActions({
     return null;
   }
 
+  const dateWorkflow = buildDateWorkflowSnapshot({
+    status: normalized,
+    bookingConfirmation,
+    plannedStartDate,
+  });
   const showWaiting = normalized === "waiting_for_customer";
   const showAttention = normalized === "needs_attention";
-  const showProvisional = isProvisionalBooking(normalized, bookingConfirmation);
-  const showConfirmedBooked =
-    normalized === "booked" && bookingConfirmation === "confirmed";
+  const showNeedsSchedule = dateWorkflow.needsScheduleJob;
+  const showConfirmedBooked = dateWorkflow.isBookedJob;
 
-  if (!showWaiting && !showAttention && !showProvisional && !showConfirmedBooked) {
+  if (!showWaiting && !showAttention && !showNeedsSchedule && !showConfirmedBooked) {
     return null;
   }
 
@@ -175,19 +179,23 @@ export function ProposalLifecycleActions({
         </div>
       ) : null}
 
-      {showProvisional ? (
+      {showNeedsSchedule ? (
         <div className="qf-workspace-lifecycle-block">
           <p className="qf-workspace-lifecycle-label">
-            Proposal accepted — schedule the actual job when preparation is ready
+            {dateWorkflow.waitingForDateConfirmation
+              ? "Waiting for customer to confirm the date"
+              : "Proposal accepted — schedule the actual job when preparation is ready"}
           </p>
-          <div className="qf-workspace-lifecycle-actions">
-            <a
-              href={`/proposals/${proposalId}/schedule`}
-              className="qf-btn-primary"
-            >
-              Schedule job
-            </a>
-          </div>
+          {dateWorkflow.waitingForDateConfirmation ? null : (
+            <div className="qf-workspace-lifecycle-actions">
+              <a
+                href={`/proposals/${proposalId}/schedule`}
+                className="qf-btn-primary"
+              >
+                Schedule job
+              </a>
+            </div>
+          )}
         </div>
       ) : null}
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractSpecificTimeToHm,
   findLatestConfirmedDateAgreement,
+  findLatestDiscussedDateSlot,
   formatAgreedSlotLabel,
   parseFlexibleDateToIso,
 } from "@/lib/proposals/revision/conversation-agreements";
@@ -86,7 +87,9 @@ describe("findLatestConfirmedDateAgreement", () => {
     expect(agreement).not.toBeNull();
     expect(agreement?.dateIso).toBe("2026-08-12");
     expect(agreement?.timeHm).toBe("10:30");
-    expect(formatAgreedSlotLabel(agreement!)).toBe("12 August · 10:30");
+    expect(formatAgreedSlotLabel(agreement!)).toBe(
+      "Wednesday 12 August · 10:30"
+    );
   });
 
   it("recognises when the customer offers a date and the trader confirms", () => {
@@ -138,6 +141,47 @@ describe("findLatestConfirmedDateAgreement", () => {
     );
 
     expect(agreement).toBeNull();
+  });
+
+  it("does not invent agreement when a date is mentioned but not agreed", () => {
+    const agreement = findLatestConfirmedDateAgreement(
+      [
+        msg({
+          id: "t1",
+          kind: "trader_reply",
+          body: "I could hold Wednesday 12 August at 10:30.",
+          created_at: "2026-08-08T11:00:00.000Z",
+        }),
+        msg({
+          id: "c1",
+          kind: "question",
+          body: "That should work but I need to check with my electrician.",
+          created_at: "2026-08-08T12:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z")
+    );
+
+    expect(agreement).toBeNull();
+    const discussed = findLatestDiscussedDateSlot(
+      [
+        msg({
+          id: "t1",
+          kind: "trader_reply",
+          body: "I could hold Wednesday 12 August at 10:30.",
+          created_at: "2026-08-08T11:00:00.000Z",
+        }),
+        msg({
+          id: "c1",
+          kind: "question",
+          body: "That should work but I need to check with my electrician.",
+          created_at: "2026-08-08T12:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z")
+    );
+    expect(discussed?.dateIso).toBe("2026-08-12");
+    expect(discussed?.timeHm).toBe("10:30");
   });
 
   it("does not invent an agreement when only a vague window was discussed", () => {

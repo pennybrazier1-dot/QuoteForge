@@ -54,6 +54,9 @@ describe("visit helpers", () => {
     expect(jobs[0]?.tone).toBe("site_visit");
     expect(jobs[0]?.badgeLabel).toBe("Initial assessment");
     expect(jobs[0]?.customer).toBe("Alex Customer");
+    expect(jobs[0]?.kind).toBe("site_visit");
+    expect(jobs[0]?.href).not.toMatch(/\/proposals\//);
+    expect(jobs[0]?.kind).not.toBe("proposal");
   });
 
   it("extracts organised notes categories from free text", () => {

@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 type RecordProposalEventInput = {
   workspaceId: string;
   proposalId: string;
-  userId: string;
+  userId?: string | null;
   eventType: "status_change" | "rearranged";
   fromStatus?: string | null;
   toStatus?: string | null;

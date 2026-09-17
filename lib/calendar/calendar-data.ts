@@ -166,14 +166,20 @@ export function buildCalendarJobs(
     const startDate = getCalendarStartDate(proposal);
 
     const isJob = Boolean(
-      startDate && isCalendarEligibleProposal(status, startDate)
+      startDate &&
+        isCalendarEligibleProposal(
+          status,
+          startDate,
+          proposal.booking_confirmation
+        )
     );
     const isHold = Boolean(
       startDate &&
         isCalendarHoldEligible(
           status,
           startDate,
-          proposal.planned_start_time
+          proposal.planned_start_time,
+          proposal.booking_confirmation
         )
     );
 
@@ -183,7 +189,11 @@ export function buildCalendarJobs(
 
     const tone = isHold
       ? "provisional"
-      : getCalendarBookingTone(status, proposal.booking_confirmation);
+      : getCalendarBookingTone(
+          status,
+          proposal.booking_confirmation,
+          startDate
+        );
 
     if (!tone) {
       continue;
@@ -216,7 +226,11 @@ export function buildCalendarJobs(
       dateLabel,
       tone,
       kind: isHold ? "proposal_hold" : "proposal",
-      badgeLabel: isHold ? "Hold" : undefined,
+      badgeLabel: isHold
+        ? proposal.booking_confirmation === "confirmed"
+          ? "Confirmed"
+          : "Hold"
+        : undefined,
       duration: durationText || undefined,
       addressLine: proposal.job_address?.trim() || undefined,
     });

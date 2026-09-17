@@ -79,31 +79,53 @@ describe("buildCalendarJobs", () => {
       }),
     ]);
 
-    expect(jobs).toHaveLength(2);
+    expect(jobs).toHaveLength(1);
     expect(jobs.find((job) => job.id === "waiting-1")).toBeUndefined();
     expect(jobs.find((job) => job.id === "booked-confirmed")?.tone).toBe(
       "confirmed"
     );
-    expect(jobs.find((job) => job.id === "booked-provisional")?.tone).toBe(
-      "provisional"
-    );
+    expect(jobs.find((job) => job.id === "booked-provisional")).toBeUndefined();
     expect(jobs.find((job) => job.id === "ready")).toBeUndefined();
   });
 
-  it("shows an unaccepted held date as a hold, not a job", () => {
+  it("shows a provisional hold in the calendar", () => {
     const jobs = buildCalendarJobs([
       makeProposal({
         id: "held-date",
         status: "needs_attention",
+        booking_confirmation: "provisional",
         planned_start_date: "2026-08-12",
         planned_start_time: "10:30",
       }),
     ]);
 
     expect(jobs).toHaveLength(1);
+    expect(jobs).toHaveLength(1);
     expect(jobs[0]?.kind).toBe("proposal_hold");
     expect(jobs[0]?.tone).toBe("provisional");
     expect(jobs[0]?.badgeLabel).toBe("Hold");
+  });
+
+  it("promotes a hold to one booked job instead of adding a second record", () => {
+    const hold = makeProposal({
+      id: "same-slot",
+      status: "waiting_for_customer",
+      booking_confirmation: "provisional",
+      planned_start_date: "2026-08-12",
+      planned_start_time: "10:30",
+    });
+    const booked = makeProposal({
+      id: "same-slot",
+      status: "booked",
+      booking_confirmation: "confirmed",
+      planned_start_date: "2026-08-12",
+      planned_start_time: "10:30",
+    });
+
+    expect(buildCalendarJobs([hold])).toHaveLength(1);
+    expect(buildCalendarJobs([booked])).toHaveLength(1);
+    expect(buildCalendarJobs([booked])[0]?.kind).toBe("proposal");
+    expect(buildCalendarJobs([booked])[0]?.tone).toBe("confirmed");
   });
 
   it("spans multi-day jobs across each calendar day", () => {
