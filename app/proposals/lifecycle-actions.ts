@@ -21,6 +21,7 @@ import {
 import { promoteBookedJobIfReady } from "@/lib/proposals/date-workflow-persist";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
+import { sendProposalToCustomer } from "@/lib/proposals/send-proposal-to-customer";
 import {
   isProposalStatus,
   normalizeProposalStatus,
@@ -446,6 +447,9 @@ export async function resendToCustomer(
   }
 
   const proposalId = getString(formData, "proposalId");
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
@@ -459,33 +463,22 @@ export async function resendToCustomer(
 
   const currentStatus = normalizeProposalStatus(proposal.status);
 
-  if (currentStatus !== "needs_attention") {
-    return { error: "Only proposals needing attention can be sent back." };
+  if (
+    currentStatus !== "needs_attention" &&
+    currentStatus !== "waiting_for_customer"
+  ) {
+    return { error: "This proposal cannot be sent to the customer right now." };
   }
 
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      status: "waiting_for_customer",
-      attention_reason: null,
-    })
-    .eq("id", proposalId);
-
-  if (updateError) {
-    return {
-      error: updateError.message ?? "Could not update this proposal.",
-    };
-  }
-
-  await recordProposalEvent(supabase, {
-    workspaceId: proposal.workspace_id,
-    proposalId: proposal.id,
+  const result = await sendProposalToCustomer(supabase, {
+    proposalId,
     userId: user.id,
-    eventType: "status_change",
-    fromStatus: currentStatus,
-    toStatus: "waiting_for_customer",
-    note: "Updated quote sent back to customer",
+    userEmail: user.email,
   });
+
+  if (!result.ok) {
+    return { error: result.error };
+  }
 
   revalidateAll(proposalId);
   redirect(`/proposals/${proposalId}`);

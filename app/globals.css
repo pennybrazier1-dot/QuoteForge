@@ -7924,3 +7924,36 @@ button.qf-booking-preview-day-selectable:focus-visible {
 .qf-home-card-details .qf-home-card-attention {
   margin: 0;
 }
+
+.qf-workspace-lifecycle-meta {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.cj-portal-slot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.cj-portal-slot {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--cj-border-strong, rgba(17, 17, 17, 0.16));
+  border-radius: 0.75rem;
+  background: #fff;
+  color: inherit;
+}
+
+.cj-portal-slot input {
+  margin: 0;
+  accent-color: #ff6a1a;
+}

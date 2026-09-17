@@ -1,14 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
-import { sendProposalEmail } from "@/lib/email/send-proposal-email";
-import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
-import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
-import {
-  generateFreshProposalPdfBuffer,
-  loadProposalPdfContext,
-} from "@/lib/proposals/load-proposal-pdf";
+import { sendProposalToCustomer } from "@/lib/proposals/send-proposal-to-customer";
 import { createClient } from "@/lib/supabase/server";
 
 export type SendProposalByEmailState = {
@@ -65,105 +58,17 @@ export async function sendProposalByEmail(
     return { error: "Please enter an email message." };
   }
 
-  const context = await loadProposalPdfContext(supabase, proposalId, user.id);
-
-  if (!context.ok) {
-    return { error: context.error };
-  }
-
-  const { proposal, workspace, workspaceId } = context;
-
-  if (proposal.status !== "ready_to_send") {
-    return {
-      error: "Only proposals that are ready to send can be emailed to customers.",
-    };
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const senderName = profile?.full_name?.trim() || user.email || "Reanvil user";
-  const sentAt = new Date().toISOString();
-
-  const tokenResult = await ensureProposalCustomerAccessToken(
-    supabase,
-    proposalId
-  );
-  if (!tokenResult.ok) {
-    return { error: tokenResult.error };
-  }
-  const portalUrl = buildCustomerProposalPortalUrl(tokenResult.token);
-
-  // Always include the secure respond link, even if trader edits the message.
-  const messageWithLink = /\/p\/[A-Za-z0-9]+/.test(message)
-    ? message
-    : `${message.trim()}\n\nView & respond to your proposal:\n${portalUrl}`;
-
-  let pdfBuffer: Buffer;
-
-  try {
-    pdfBuffer = await generateFreshProposalPdfBuffer(proposal, workspace);
-  } catch (error) {
-    console.error("Failed to generate proposal PDF for email:", error);
-    return { error: "Could not generate the proposal PDF. Please try again." };
-  }
-
-  const emailResult = await sendProposalEmail({
-    to: customerEmail,
+  const result = await sendProposalToCustomer(supabase, {
+    proposalId,
+    userId: user.id,
+    userEmail: user.email,
+    customerEmail,
     subject,
-    message: messageWithLink,
-    pdfBuffer,
-    replyTo: workspace.contact_email,
-    businessName: resolveCustomerFacingBusinessName(workspace.business_name),
-    ctaUrl: portalUrl,
-    ctaLabel: "View & respond to proposal",
+    message,
   });
 
-  if (!emailResult.ok) {
-    return { error: emailResult.error };
-  }
-
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      status: "waiting_for_customer",
-      sent_at: sentAt,
-      customer_email: customerEmail,
-    })
-    .eq("id", proposalId)
-    .eq("status", "ready_to_send");
-
-  if (updateError) {
-    console.error("Proposal status update failed after email send:", updateError);
-    return {
-      error:
-        "The email was sent, but Reanvil could not update the proposal status. Please refresh and check the proposal.",
-    };
-  }
-
-  const { error: eventError } = await supabase.from("proposal_status_events").insert({
-    workspace_id: workspaceId,
-    proposal_id: proposalId,
-    event_type: "emailed",
-    from_status: "ready_to_send",
-    to_status: "waiting_for_customer",
-    note: `Proposal emailed to ${customerEmail}`,
-    metadata: {
-      recipient_email: customerEmail,
-      subject,
-      sender_name: senderName,
-      provider: "resend",
-      provider_message_id: emailResult.messageId,
-    },
-    created_by: user.id,
-    created_at: sentAt,
-  });
-
-  if (eventError) {
-    console.error("Failed to record proposal email event:", eventError);
+  if (!result.ok) {
+    return { error: result.error };
   }
 
   revalidatePath("/dashboard");
