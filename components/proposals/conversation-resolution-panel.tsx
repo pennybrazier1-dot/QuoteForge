@@ -11,6 +11,7 @@ import {
   type ConversationResolutionSummary,
 } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import {
+  acceptCustomerRequestedDate,
   confirmConversationDate,
   holdConversationDate,
   type DateWorkflowActionState,
@@ -102,6 +103,10 @@ export function ConversationResolutionPanel({
     holdConversationDate,
     dateInitialState
   );
+  const [acceptRequestedState, acceptRequestedAction] = useActionState(
+    acceptCustomerRequestedDate,
+    dateInitialState
+  );
 
   const updateHref = buildProposalRevisePath(proposalId);
   const calendarHref = buildCalendarActionHref(proposalId, summary);
@@ -110,7 +115,8 @@ export function ConversationResolutionPanel({
   const dateCard =
     summary.resolutionFocus === "date_agreed" ||
     summary.resolutionFocus === "date_discussed";
-  const dateError = confirmState.error || holdState.error;
+  const dateError =
+    confirmState.error || holdState.error || acceptRequestedState.error;
 
   return (
     <section
@@ -192,6 +198,65 @@ export function ConversationResolutionPanel({
               You choose the path. Nothing is changed until you confirm.
             </p>
             <div className="qf-resolution-action-grid">
+              {summary.showAcceptRequestedDate ? (
+                <div className="qf-resolution-action-option">
+                  <form action={acceptRequestedAction}>
+                    <input type="hidden" name="proposalId" value={proposalId} />
+                    <input
+                      type="hidden"
+                      name="plannedStartDateExact"
+                      value={summary.requestedStartExact ?? ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="plannedStartTime"
+                      value={summary.requestedStartTime ?? ""}
+                    />
+                    <input
+                      type="hidden"
+                      name="plannedStartDateText"
+                      value={summary.requestedSlotLabel ?? ""}
+                    />
+                    <DateActionButton
+                      label="Accept requested date"
+                      pendingLabel="Booking…"
+                    />
+                  </form>
+                  <p className="qf-resolution-action-hint">
+                    {summary.requestedSlotLabel
+                      ? `Books ${summary.requestedSlotLabel} because the customer asked for it.`
+                      : "Agree to the customer's requested date and book the job."}
+                  </p>
+                </div>
+              ) : null}
+              {summary.showAcceptRequestedDate || summary.resolutionFocus === "date" ? (
+                <div className="qf-resolution-action-option">
+                  <form action={holdAction}>
+                    <input type="hidden" name="proposalId" value={proposalId} />
+                    <label className="qf-resolution-action-hint" htmlFor="suggest-date">
+                      Suggest another date/time
+                    </label>
+                    <input
+                      id="suggest-date"
+                      type="date"
+                      name="plannedStartDateExact"
+                      className="qf-field"
+                      required
+                    />
+                    <input
+                      type="time"
+                      name="plannedStartTime"
+                      className="qf-field"
+                      required
+                    />
+                    <DateActionButton
+                      label="Suggest another date/time"
+                      pendingLabel="Sending…"
+                      variant="secondary"
+                    />
+                  </form>
+                </div>
+              ) : null}
               {summary.showDateActions ? (
                 <>
                   <div className="qf-resolution-action-option">
@@ -340,26 +405,45 @@ export function ConversationResolutionPanel({
                   Change / Reply
                 </button>
               </div>
-            ) : summary.resolutionFocus === "date" ? (
+            ) : summary.resolutionFocus === "date" ||
+              summary.showAcceptRequestedDate ? (
               <>
                 <h2 className="qf-resolution-mobile-next-title">
-                  Can you accommodate this?
+                  Customer requested a different date/time
                 </h2>
+                <p className="qf-resolution-mobile-description">
+                  {summary.requestedSlotLabel || summary.mobileDescription}
+                </p>
                 <div className="qf-resolution-mobile-actions">
-                  <button
-                    type="button"
-                    className="qf-btn-primary"
-                    onClick={() => focusProposalConversationComposer()}
-                  >
-                    Reply with availability
-                  </button>
-                  <button
-                    type="button"
-                    className="qf-btn-secondary"
-                    onClick={() => focusProposalConversationComposer()}
-                  >
-                    No
-                  </button>
+                  {summary.showAcceptRequestedDate ? (
+                    <form action={acceptRequestedAction}>
+                      <input type="hidden" name="proposalId" value={proposalId} />
+                      <input
+                        type="hidden"
+                        name="plannedStartDateExact"
+                        value={summary.requestedStartExact ?? ""}
+                      />
+                      <input
+                        type="hidden"
+                        name="plannedStartTime"
+                        value={summary.requestedStartTime ?? ""}
+                      />
+                      <DateActionButton
+                        label="Accept requested date"
+                        pendingLabel="Booking…"
+                      />
+                    </form>
+                  ) : null}
+                  <form action={holdAction}>
+                    <input type="hidden" name="proposalId" value={proposalId} />
+                    <input type="date" name="plannedStartDateExact" required />
+                    <input type="time" name="plannedStartTime" required />
+                    <DateActionButton
+                      label="Suggest another date/time"
+                      pendingLabel="Sending…"
+                      variant="secondary"
+                    />
+                  </form>
                 </div>
               </>
             ) : (

@@ -72,9 +72,22 @@ export default async function ProposalPage({ params }: PageProps) {
     notFound();
   }
 
+  let linkedCustomerEmail: string | null = null;
+  if (proposal.customer_id) {
+    const { data: linkedCustomer } = await supabase
+      .from("customers")
+      .select("email")
+      .eq("id", proposal.customer_id)
+      .maybeSingle();
+    linkedCustomerEmail = linkedCustomer?.email?.trim() || null;
+  }
+
   return (
     <ProposalWorkspace
-      proposal={proposal}
+      proposal={{
+        ...proposal,
+        linked_customer_email: linkedCustomerEmail,
+      }}
       businessName={resolveCustomerFacingBusinessName(
         workspace?.business_name
       )}

@@ -8,15 +8,30 @@ import {
   notifyConversationParticipant,
 } from "@/lib/proposals/customer-portal/conversation-notify";
 import { loadPublicProposalByToken } from "@/lib/proposals/customer-portal/load-public-proposal";
+import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
 import {
+  bookingConfirmationAfterCustomerAccept,
+  canShowFinalAccept,
+  hasExactWorkSchedule,
+} from "@/lib/proposals/acceptance-rules";
+import { decodePublicSlotId } from "@/lib/proposals/customer-availability";
+import { loadWorkspaceOccupiedSlots } from "@/lib/proposals/customer-availability-load";
+import { sendNotificationEmail } from "@/lib/email/send-notification-email";
+import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { plannedStartToDbFields } from "@/lib/proposals/planned-start-date";
+import { buildScheduleDateLabel } from "@/lib/proposals/schedule/schedule-fields";
+import {
+  holdExpiresAt,
+  isSlotTakenByOther,
+  TEMP_HOLD_ACTION,
+} from "@/lib/proposals/slot-hold";
+import {
   applyCustomerConfirmDate,
   applyCustomerRequestAnotherDate,
-  bookingConfirmationAfterAccept,
   buildDateWorkflowSnapshot,
   nextStatusAfterDateResolved,
-  readDateSlotState,
 } from "@/lib/proposals/date-workflow";
 import {
   hasOtherUnresolvedWorkRequests,
@@ -34,7 +49,8 @@ export type CustomerPortalActionState = {
     | "changes"
     | "date_accepted"
     | "date_change_requested"
-    | "declined";
+    | "declined"
+    | "slot_held";
 };
 
 function createPortalClient() {
@@ -77,13 +93,40 @@ export async function acceptPublicProposal(
     return { error: "The proposal portal is not configured yet." };
   }
 
+  const slotId = getString(formData, "slotId");
+  if (slotId) {
+    const held = await applyPublicSlotHold(supabase, loaded, slotId, {
+      confirmImmediately: true,
+    });
+    if (!held.ok) {
+      return { error: held.error };
+    }
+    loaded.proposal.planned_start_date = held.startDate;
+    loaded.proposal.planned_start_time = held.startTime ?? null;
+    loaded.proposal.planned_start_date_text = held.dateText;
+  }
+
+  const canAccept = canShowFinalAccept({
+    canRespond: true,
+    plannedStartDate: loaded.proposal.planned_start_date,
+    plannedStartTime: loaded.proposal.planned_start_time,
+    estimatedDuration: loaded.proposal.estimated_duration,
+  });
+  if (!canAccept) {
+    return {
+      error: "Please choose an available date before accepting this proposal.",
+    };
+  }
+
   const fromStatus = normalizeProposalStatus(loaded.proposal.status);
   const acceptedAt = new Date().toISOString();
-  const dateState = readDateSlotState(
-    loaded.proposal.booking_confirmation,
-    loaded.proposal.planned_start_date
+  const bookingConfirmation = bookingConfirmationAfterCustomerAccept(
+    hasExactWorkSchedule({
+      plannedStartDate: loaded.proposal.planned_start_date,
+      plannedStartTime: loaded.proposal.planned_start_time,
+      estimatedDuration: loaded.proposal.estimated_duration,
+    })
   );
-  const bookingConfirmation = bookingConfirmationAfterAccept(dateState);
 
   const { error: updateError } = await supabase
     .from("proposals")
@@ -161,6 +204,8 @@ export async function acceptPublicProposal(
     accepted_at: acceptedAt,
     booking_confirmation: bookingConfirmation,
   }, { acceptedAt });
+
+  await sendCustomerBookingConfirmation(loaded, acceptedAt);
 
   await revalidateTraderViews(loaded.proposal.id);
   revalidatePath(`/p/${token}`);
@@ -432,9 +477,12 @@ export async function requestAnotherScheduleDate(
     return { error: loaded.error };
   }
 
-  if (!loaded.view.canRespondToProposedDate) {
-    return { error: "There is no provisional date waiting for your response." };
+  if (!loaded.view.canRespond || loaded.view.isClosed) {
+    return { error: "This proposal is no longer open for replies." };
   }
+
+  const requestedDate = getString(formData, "requestedDate");
+  const requestedTime = getString(formData, "requestedTime");
 
   const supabase = createPortalClient();
   if (!supabase) {
@@ -450,9 +498,16 @@ export async function requestAnotherScheduleDate(
       proposal_id: loaded.proposal.id,
       kind: "change_request",
       direction: "customer",
-      body: currentDate
-        ? `I'd like a different date instead of ${currentDate}. ${message}`
-        : message,
+      body: [
+        currentDate
+          ? `I'd like a different date instead of ${currentDate}.`
+          : "I'd like a different date/time.",
+        requestedDate ? `Requested date: ${requestedDate}` : "",
+        requestedTime ? `Requested time: ${requestedTime}` : "",
+        message,
+      ]
+        .filter(Boolean)
+        .join("\n"),
       created_by: null,
     });
 
@@ -468,6 +523,8 @@ export async function requestAnotherScheduleDate(
     metadata: {
       action: "request_another_date",
       previous_proposed_date: currentDate,
+      requested_date: requestedDate || null,
+      requested_time: requestedTime || null,
     },
   });
 
@@ -555,3 +612,174 @@ export async function declinePublicProposal(
 
   return { ok: true, result: "declined" };
 }
+
+export async function holdPublicAvailabilitySlot(
+  _prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  const token = getString(formData, "token");
+  const slotId = getString(formData, "slotId");
+  const loaded = await loadPublicProposalByToken(token);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+  if (!loaded.view.canRespond || loaded.view.isClosed) {
+    return { error: "This proposal is no longer open." };
+  }
+
+  const supabase = createPortalClient();
+  if (!supabase) {
+    return { error: "The proposal portal is not configured yet." };
+  }
+
+  const held = await applyPublicSlotHold(supabase, loaded, slotId, {
+    confirmImmediately: false,
+  });
+  if (!held.ok) {
+    return { error: held.error };
+  }
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+  return { ok: true, result: "slot_held" };
+}
+
+async function applyPublicSlotHold(
+  supabase: NonNullable<ReturnType<typeof createPortalClient>>,
+  loaded: Extract<
+    Awaited<ReturnType<typeof loadPublicProposalByToken>>,
+    { ok: true }
+  >,
+  slotId: string,
+  options: { confirmImmediately: boolean }
+): Promise<
+  | {
+      ok: true;
+      startDate: string;
+      startTime: string | null;
+      dateText: string;
+    }
+  | { ok: false; error: string }
+> {
+  const decoded = decodePublicSlotId(slotId);
+  if (!decoded) {
+    return { error: "Please choose an available date.", ok: false };
+  }
+
+  const now = new Date();
+  const occupied = await loadWorkspaceOccupiedSlots(
+    supabase,
+    loaded.workspaceId,
+    now
+  );
+  if (
+    isSlotTakenByOther(
+      {
+        startDate: decoded.startDate,
+        endDate: decoded.endDate || decoded.startDate,
+        startTime: decoded.startTime || "09:00",
+      },
+      occupied,
+      loaded.proposal.id,
+      now
+    )
+  ) {
+    return {
+      ok: false,
+      error: "That time is no longer available. Please choose another.",
+    };
+  }
+
+  const startTime = decoded.startTime || "09:00";
+  const dateText = buildScheduleDateLabel({
+    dateIso: decoded.startDate,
+    time: startTime,
+  });
+  const plannedFields = plannedStartToDbFields({
+    plannedStartDate: dateText,
+    plannedStartDateExact: decoded.startDate,
+  });
+
+  const { error } = await supabase
+    .from("proposals")
+    .update({
+      booking_confirmation: options.confirmImmediately
+        ? "confirmed"
+        : "provisional",
+      planned_start_time: startTime,
+      ...plannedFields,
+    })
+    .eq("id", loaded.proposal.id);
+
+  if (error) {
+    return { ok: false, error: error.message || "Could not hold that date." };
+  }
+
+  if (!options.confirmImmediately) {
+    await supabase.from("proposal_status_events").insert({
+      workspace_id: loaded.workspaceId,
+      proposal_id: loaded.proposal.id,
+      event_type: "status_change",
+      from_status: loaded.proposal.status,
+      to_status: loaded.proposal.status,
+      note: "Customer selected an available slot",
+      metadata: {
+        source: "customer_portal",
+        action: TEMP_HOLD_ACTION,
+        hold_kind: "customer_temp",
+        hold_expires_at: holdExpiresAt(now),
+        planned_start_date: decoded.startDate,
+        planned_start_time: startTime,
+      },
+      created_by: null,
+    });
+  }
+
+  return {
+    ok: true,
+    startDate: decoded.startDate,
+    startTime,
+    dateText,
+  };
+}
+
+async function sendCustomerBookingConfirmation(
+  loaded: Extract<
+    Awaited<ReturnType<typeof loadPublicProposalByToken>>,
+    { ok: true }
+  >,
+  acceptedAt: string
+) {
+  const to = loaded.proposal.customer_email?.trim();
+  if (!to) {
+    return;
+  }
+
+  const slotLabel =
+    loaded.view.selectedSlotLabel ||
+    loaded.view.plannedStartLabel ||
+    "the agreed date";
+  const businessName = resolveCustomerFacingBusinessName(
+    loaded.workspace.business_name
+  );
+
+  await sendNotificationEmail({
+    to,
+    subject: `Booking confirmed – ${businessName}`,
+    message: [
+      `Hi${loaded.view.customerName ? ` ${loaded.view.customerName}` : ""},`,
+      "",
+      `Your booking with ${businessName} is confirmed.`,
+      slotLabel,
+      "",
+      "You can review the accepted proposal from your original link.",
+    ].join("\n"),
+    businessName,
+    replyTo: loaded.workspace.contact_email,
+    ctaUrl: buildCustomerProposalPortalUrl(loaded.view.token),
+    ctaLabel: "View proposal",
+  });
+
+  void acceptedAt;
+}
+

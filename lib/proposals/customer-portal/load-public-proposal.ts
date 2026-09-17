@@ -17,6 +17,13 @@ import {
 } from "@/lib/proposals/status";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { canShowFinalAccept } from "@/lib/proposals/acceptance-rules";
+import {
+  expireAbandonedTempHold,
+  loadPublicAvailabilityForProposal,
+} from "@/lib/proposals/customer-availability-load";
+import type { PublicAvailabilitySlot } from "@/lib/proposals/customer-availability";
+import { scheduleModeForDuration } from "@/lib/proposals/customer-availability";
 import { readDateSlotState } from "@/lib/proposals/date-workflow";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 
@@ -33,6 +40,13 @@ export type PublicProposalViewModel = {
   /** Trader proposed a provisional date; customer must accept or request another. */
   canRespondToProposedDate: boolean;
   proposedDateLabel: string | null;
+  /** Final Accept is only shown when an exact work slot is already set. */
+  canAcceptProposal: boolean;
+  needsDateChoice: boolean;
+  scheduleMode: "range" | "appointment" | null;
+  availabilitySlots: PublicAvailabilitySlot[];
+  selectedSlotLabel: string | null;
+  dateOfferSource: "proposal" | "trader" | "customer_selected" | null;
   businessName: string;
   tradeType: string | null;
   contactEmail: string | null;
@@ -95,7 +109,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, customer_id, job_address, booking_confirmation, planned_start_time`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -125,6 +139,23 @@ export async function loadPublicProposalByToken(
   const isDeclined = status === "declined";
   const isClosed = isClosedProposalStatus(status);
 
+  if (canRespond && !isClosed) {
+    const expired = await expireAbandonedTempHold(supabase, {
+      id: row.id,
+      workspace_id: row.workspace_id,
+      status: row.status,
+      accepted_at: row.accepted_at,
+      booking_confirmation: row.booking_confirmation,
+      planned_start_date: row.planned_start_date,
+    });
+    if (expired) {
+      row.booking_confirmation = null;
+      row.planned_start_date = null;
+      row.planned_start_date_text = null;
+      row.planned_start_time = null;
+    }
+  }
+
   const dateState = readDateSlotState(
     row.booking_confirmation,
     row.planned_start_date
@@ -145,6 +176,30 @@ export async function loadPublicProposalByToken(
     !isClosed &&
     dateState === "provisional" &&
     Boolean(plannedStartLabel);
+  const canAcceptProposal = canShowFinalAccept({
+    canRespond: canRespond && !isClosed,
+    plannedStartDate: row.planned_start_date,
+    plannedStartTime: row.planned_start_time,
+    estimatedDuration: row.estimated_duration,
+  });
+  const needsDateChoice = canRespond && !isClosed && !canAcceptProposal;
+  const scheduleMode = needsDateChoice
+    ? scheduleModeForDuration(row.estimated_duration)
+    : null;
+
+  const availabilitySlots = needsDateChoice
+    ? await loadPublicAvailabilityForProposal(supabase, {
+        workspaceId: row.workspace_id,
+        proposalId: row.id,
+        estimatedDuration: row.estimated_duration,
+      })
+    : [];
+
+  const dateOfferSource = canAcceptProposal
+    ? dateState === "provisional"
+      ? "trader"
+      : "proposal"
+    : null;
 
   return {
     ok: true,
@@ -163,6 +218,12 @@ export async function loadPublicProposalByToken(
       isClosed,
       canRespondToProposedDate,
       proposedDateLabel: canRespondToProposedDate ? plannedStartLabel : null,
+      canAcceptProposal,
+      needsDateChoice,
+      scheduleMode,
+      availabilitySlots,
+      selectedSlotLabel: canAcceptProposal ? plannedStartLabel : null,
+      dateOfferSource,
       businessName: resolveCustomerFacingBusinessName(workspaceRow.business_name),
       tradeType: workspaceRow.trade_type,
       contactEmail: workspaceRow.contact_email,

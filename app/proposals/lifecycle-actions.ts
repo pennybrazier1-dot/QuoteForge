@@ -29,6 +29,7 @@ import {
 
 export type LifecycleActionState = {
   error?: string;
+  success?: boolean;
 };
 
 function getString(formData: FormData, key: string): string {
@@ -474,6 +475,7 @@ export async function resendToCustomer(
     proposalId,
     userId: user.id,
     userEmail: user.email,
+    kind: currentStatus === "waiting_for_customer" ? "reminder" : "revised",
   });
 
   if (!result.ok) {
@@ -481,5 +483,10 @@ export async function resendToCustomer(
   }
 
   revalidateAll(proposalId);
+
+  if (currentStatus === "waiting_for_customer") {
+    return { success: true };
+  }
+
   redirect(`/proposals/${proposalId}`);
 }

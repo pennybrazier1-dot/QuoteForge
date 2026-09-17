@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import {
+  resendToCustomer,
+  type LifecycleActionState,
+} from "@/app/proposals/lifecycle-actions";
+import {
   updateProposalStatus,
   type UpdateProposalStatusState,
 } from "@/app/proposals/status-actions";
@@ -14,6 +18,7 @@ import {
   canMarkProposalReadyToSend,
   canOpenSendProposalDialog,
   canPreviewProposalPdf,
+  getResendWaitingEnablement,
   canUseSendAction,
   getSendDisabledReason,
   type ProposalActionContext,
@@ -21,6 +26,7 @@ import {
 import { isProposalStatus } from "@/lib/proposals/status";
 
 const initialState: UpdateProposalStatusState = {};
+const resendInitialState: LifecycleActionState = {};
 
 type ProposalWorkspaceActionsProps = {
   proposalId: string;
@@ -79,6 +85,30 @@ const EDIT_ICON = (
   </svg>
 );
 
+function ResendButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled || pending}
+      className={`qf-workspace-action qf-workspace-action-primary${
+        disabled ? " qf-workspace-action-disabled" : ""
+      }`}
+    >
+      {SEND_ICON}
+      <span className="qf-workspace-action-label">
+        <span className="qf-workspace-action-label-short">
+          {pending ? "…" : "Resend"}
+        </span>
+        <span className="qf-workspace-action-label-long">
+          {pending ? "Sending…" : "Resend proposal"}
+        </span>
+      </span>
+    </button>
+  );
+}
+
 function MarkReadyButton({
   formAction,
   proposalId,
@@ -119,11 +149,22 @@ export function ProposalWorkspaceActions({
   actionContext,
 }: ProposalWorkspaceActionsProps) {
   const [state, formAction] = useActionState(updateProposalStatus, initialState);
+  const [resendState, resendAction] = useActionState(
+    resendToCustomer,
+    resendInitialState
+  );
   const { openSendDialog } = useSendProposalDialog();
   const canEdit = canEditProposalActions(status);
   const canPreview = canPreviewProposalPdf(actionContext);
   const canSend = canUseSendAction(actionContext);
   const canOpenSend = canOpenSendProposalDialog(actionContext);
+  const resendWaiting = getResendWaitingEnablement({
+    status,
+    customerEmail: actionContext.customer_email,
+    linkedCustomerEmail: actionContext.linked_customer_email,
+  });
+  const canResendWaiting = resendWaiting.shown;
+  const canResendWaitingNow = resendWaiting.enabled;
   const sendDisabledReason = getSendDisabledReason(actionContext);
   const showMarkReady =
     isProposalStatus(status) &&
@@ -132,10 +173,22 @@ export function ProposalWorkspaceActions({
 
   return (
     <section className="qf-workspace-actions" aria-label="Proposal actions">
-      {state.error ? <AuthError message={state.error} /> : null}
+      {state.error || resendState.error ? (
+        <AuthError message={state.error || resendState.error || ""} />
+      ) : null}
+      {resendState.success ? (
+        <p className="qf-workspace-actions-success" role="status">
+          Proposal resent
+        </p>
+      ) : null}
 
       <div className="qf-workspace-actions-list">
-        {canOpenSend ? (
+        {canResendWaiting ? (
+          <form action={resendAction} className="qf-workspace-actions-item">
+            <input type="hidden" name="proposalId" value={proposalId} />
+            <ResendButton disabled={!canResendWaitingNow} />
+          </form>
+        ) : canOpenSend ? (
           <button
             type="button"
             onClick={openSendDialog}
@@ -220,7 +273,11 @@ export function ProposalWorkspaceActions({
         )}
       </div>
 
-      {!canSend && sendDisabledReason ? (
+      {canResendWaiting && !canResendWaitingNow ? (
+        <p className="qf-workspace-actions-hint">
+          Add a customer email address to resend this proposal.
+        </p>
+      ) : !canSend && !canResendWaiting && sendDisabledReason ? (
         <p className="qf-workspace-actions-hint">{sendDisabledReason}</p>
       ) : null}
     </section>

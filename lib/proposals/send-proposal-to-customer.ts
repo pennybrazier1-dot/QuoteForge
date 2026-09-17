@@ -12,7 +12,8 @@ import {
   buildProposalEmailEvent,
   canSendProposalEmail,
   completeProposalEmailDelivery,
-  isRevisedProposalSend,
+  resolveProposalEmailSendKind,
+  type ProposalEmailSendKind,
 } from "@/lib/proposals/proposal-email-delivery";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
@@ -41,6 +42,7 @@ export async function sendProposalToCustomer(
     customerEmail?: string | null;
     subject?: string | null;
     message?: string | null;
+    kind?: ProposalEmailSendKind;
   },
   deps: SendProposalToCustomerDeps = {}
 ): Promise<SendProposalToCustomerResult> {
@@ -66,7 +68,15 @@ export async function sendProposalToCustomer(
     };
   }
 
-  const recipient = (input.customerEmail || proposal.customer_email || "").trim();
+  let recipient = (input.customerEmail || proposal.customer_email || "").trim();
+  if (!recipient && proposal.customer_id) {
+    const { data: linkedCustomer } = await supabase
+      .from("customers")
+      .select("email")
+      .eq("id", proposal.customer_id)
+      .maybeSingle();
+    recipient = linkedCustomer?.email?.trim() || "";
+  }
   if (!recipient) {
     return {
       ok: false,
@@ -91,12 +101,12 @@ export async function sendProposalToCustomer(
     return { ok: false, error: tokenResult.error, emailSent: false };
   }
   const portalUrl = buildCustomerProposalPortalUrl(tokenResult.token);
-  const revised = isRevisedProposalSend(status);
+  const kind = resolveProposalEmailSendKind(status, input.kind);
   const defaults = buildProposalEmailCopy({
     customerName: proposal.customer_name,
     businessName: resolveCustomerFacingBusinessName(workspace.business_name),
     portalUrl,
-    revised,
+    kind,
   });
   const subject = input.subject?.trim() || defaults.subject;
   const rawMessage = input.message?.trim() || defaults.message;
@@ -146,17 +156,22 @@ export async function sendProposalToCustomer(
     senderName,
     messageId: delivery.messageId,
     portalUrl,
-    revised,
+    kind,
   });
+
+  const update =
+    kind === "reminder"
+      ? { sent_at: sentAt }
+      : {
+          status: "waiting_for_customer",
+          sent_at: sentAt,
+          customer_email: recipient,
+          attention_reason: null,
+        };
 
   const { error: updateError } = await supabase
     .from("proposals")
-    .update({
-      status: "waiting_for_customer",
-      sent_at: sentAt,
-      customer_email: recipient,
-      attention_reason: null,
-    })
+    .update(update)
     .eq("id", input.proposalId);
 
   if (updateError) {
@@ -174,7 +189,7 @@ export async function sendProposalToCustomer(
     proposal_id: input.proposalId,
     event_type: event.eventType,
     from_status: status,
-    to_status: "waiting_for_customer",
+    to_status: kind === "reminder" ? status : "waiting_for_customer",
     note: event.note,
     metadata: event.metadata,
     created_by: input.userId,

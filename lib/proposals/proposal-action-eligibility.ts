@@ -12,6 +12,7 @@ export type ProposalActionContext = {
   rough_notes?: string | null;
   customer_name?: string | null;
   customer_email?: string | null;
+  linked_customer_email?: string | null;
   total_amount?: number | null;
 };
 
@@ -105,6 +106,77 @@ export function getSendDisabledReason(
   }
 
   return null;
+}
+
+export function resolveResendCustomerEmail(
+  ...emails: Array<string | null | undefined>
+): string | null {
+  for (const email of emails) {
+    const trimmed = email?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return null;
+}
+
+export function isClosedForResend(status: string): boolean {
+  const normalized = normalizeProposalStatus(status);
+  return (
+    normalized === "booked" ||
+    normalized === "completed" ||
+    normalized === "declined" ||
+    normalized === "cancelled"
+  );
+}
+
+/** Show Resend while the proposal is waiting — date state does not matter. */
+export function canShowResendWaitingProposal(status: string): boolean {
+  return normalizeProposalStatus(status) === "waiting_for_customer";
+}
+
+export type ResendWaitingEnablement = {
+  shown: boolean;
+  enabled: boolean;
+  reason: "no_email" | "closed" | "sending" | "not_waiting" | null;
+};
+
+/**
+ * Enable Resend only for waiting_for_customer with an email,
+ * or while a send is in progress. Date / hold / accepted_at must not block it.
+ */
+export function getResendWaitingEnablement(input: {
+  status: string;
+  customerEmail?: string | null;
+  linkedCustomerEmail?: string | null;
+  sending?: boolean;
+  bookingConfirmation?: string | null;
+  acceptedAt?: string | null;
+  sentAt?: string | null;
+}): ResendWaitingEnablement {
+  void input.bookingConfirmation;
+  void input.acceptedAt;
+  void input.sentAt;
+
+  if (isClosedForResend(input.status)) {
+    return { shown: false, enabled: false, reason: "closed" };
+  }
+
+  if (!canShowResendWaitingProposal(input.status)) {
+    return { shown: false, enabled: false, reason: "not_waiting" };
+  }
+
+  const email = resolveResendCustomerEmail(
+    input.customerEmail,
+    input.linkedCustomerEmail
+  );
+  if (!email) {
+    return { shown: true, enabled: false, reason: "no_email" };
+  }
+  if (input.sending) {
+    return { shown: true, enabled: false, reason: "sending" };
+  }
+  return { shown: true, enabled: true, reason: null };
 }
 
 export function canEditProposalActions(status: string): boolean {

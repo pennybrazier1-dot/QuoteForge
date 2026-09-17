@@ -8,6 +8,7 @@ import {
   acceptPublicProposal,
   askPublicProposalQuestion,
   declinePublicProposal,
+  holdPublicAvailabilitySlot,
   requestAnotherScheduleDate,
   requestPublicProposalChanges,
   type CustomerPortalActionState,
@@ -82,6 +83,7 @@ export function CustomerProposalPortal({
   const [mode, setMode] = useState<
     "idle" | "accept" | "question" | "changes" | "request_date" | "decline"
   >("idle");
+  const [selectedSlotId, setSelectedSlotId] = useState("");
   const [acceptState, acceptAction, acceptPending] = useActionState(
     acceptPublicProposal,
     initialState
@@ -100,6 +102,10 @@ export function CustomerProposalPortal({
   );
   const [requestDateState, requestDateAction, requestDatePending] =
     useActionState(requestAnotherScheduleDate, initialState);
+  const [holdState, holdAction, holdPending] = useActionState(
+    holdPublicAvailabilitySlot,
+    initialState
+  );
   const [declineState, declineAction, declinePending] = useActionState(
     declinePublicProposal,
     initialState
@@ -118,6 +124,7 @@ export function CustomerProposalPortal({
     changesState.error ||
     acceptDateState.error ||
     requestDateState.error ||
+    holdState.error ||
     declineState.error ||
     null;
 
@@ -128,6 +135,7 @@ export function CustomerProposalPortal({
       acceptState.ok ||
       acceptDateState.ok ||
       requestDateState.ok ||
+      holdState.ok ||
       declineState.ok
     ) {
       router.refresh();
@@ -138,6 +146,7 @@ export function CustomerProposalPortal({
     acceptState.ok,
     acceptDateState.ok,
     requestDateState.ok,
+    holdState.ok,
     declineState.ok,
     router,
   ]);
@@ -178,8 +187,8 @@ export function CustomerProposalPortal({
           <p className="cj-job-eyebrow">Accepted</p>
           <h1 className="cj-job-title">Thank you</h1>
           <p className="cj-job-copy">
-            Thanks, your proposal has been accepted. The trader will contact
-            you about next steps.
+            Your proposal and booking are confirmed
+            {view.plannedStartLabel ? ` for ${view.plannedStartLabel}` : ""}.
           </p>
           <a
             className="cj-btn-secondary cj-portal-pdf"
@@ -188,7 +197,7 @@ export function CustomerProposalPortal({
             Download PDF
           </a>
         </section>
-        {view.canRespondToProposedDate && view.proposedDateLabel ? (
+        {view.canRespondToProposedDate && view.proposedDateLabel && !view.canAcceptProposal ? (
           <ProposedBookingCard
             view={view}
             error={error}
@@ -218,9 +227,8 @@ export function CustomerProposalPortal({
           <p className="cj-job-eyebrow">Date confirmed</p>
           <h1 className="cj-job-title">Thank you</h1>
           <p className="cj-job-copy">
-            You’ve confirmed the date
-            {view.plannedStartLabel ? ` (${view.plannedStartLabel})` : ""}.
-            This does not accept the proposal.
+            You’ve confirmed
+            {view.plannedStartLabel ? ` ${view.plannedStartLabel}` : " this date"}.
           </p>
         </section>
         <CustomerPortalConversation
@@ -290,7 +298,9 @@ export function CustomerProposalPortal({
 
       <ProposalBody view={view} />
 
-      {view.canRespondToProposedDate && view.proposedDateLabel ? (
+      {view.canRespondToProposedDate &&
+      view.proposedDateLabel &&
+      !view.canAcceptProposal ? (
         <ProposedBookingCard
           view={view}
           error={error}
@@ -314,8 +324,9 @@ export function CustomerProposalPortal({
         <section className="cj-job-card cj-portal-actions">
           <h2 className="cj-job-section-title">Your response</h2>
           <p className="cj-job-copy">
-            Accept the proposal, ask a question, request a change, or decline.
-            You don’t need an account.
+            {view.canAcceptProposal
+              ? "Accept the proposal, request a change, ask a question, or decline."
+              : "Choose an available date before you can accept this proposal."}
           </p>
 
           {error ? (
@@ -326,19 +337,38 @@ export function CustomerProposalPortal({
 
           {mode === "idle" ? (
             <div className="cj-portal-action-row">
+              {view.canAcceptProposal ? (
+                <button
+                  type="button"
+                  className="cj-btn-primary"
+                  onClick={() => setMode("accept")}
+                >
+                  {view.dateOfferSource === "trader"
+                    ? "Accept proposal & date"
+                    : "Accept proposal"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="cj-btn-primary"
+                  onClick={() => setMode("accept")}
+                >
+                  Choose a date
+                </button>
+              )}
               <button
                 type="button"
-                className="cj-btn-primary"
-                onClick={() => setMode("accept")}
+                className="cj-btn-secondary"
+                onClick={() => setMode("request_date")}
               >
-                Accept proposal
+                Request different date/time
               </button>
               <button
                 type="button"
                 className="cj-btn-secondary"
                 onClick={() => setMode("changes")}
               >
-                Request changes
+                Request a change
               </button>
               <button
                 type="button"
@@ -357,11 +387,17 @@ export function CustomerProposalPortal({
             </div>
           ) : null}
 
-          {mode === "accept" ? (
+          {mode === "accept" && view.canAcceptProposal ? (
             <form action={acceptAction} className="cj-portal-form">
               <input type="hidden" name="token" value={view.token} />
               <p className="cj-job-copy">
-                You’re happy to go ahead at <strong>{view.priceLabel}</strong>{" "}
+                You’re happy to go ahead at <strong>{view.priceLabel}</strong>
+                {view.selectedSlotLabel ? (
+                  <>
+                    {" "}
+                    on <strong>{view.selectedSlotLabel}</strong>
+                  </>
+                ) : null}{" "}
                 with {view.businessName}.
               </p>
               <label className="cj-portal-label" htmlFor="accept-note">
@@ -380,13 +416,138 @@ export function CustomerProposalPortal({
                   className="cj-btn-primary"
                   disabled={acceptPending}
                 >
-                  {acceptPending ? "Accepting…" : "Confirm acceptance"}
+                  {acceptPending
+                    ? "Accepting…"
+                    : view.dateOfferSource === "trader"
+                      ? "Accept proposal & date"
+                      : "Accept proposal"}
                 </button>
                 <button
                   type="button"
                   className="cj-btn-secondary"
                   onClick={() => setMode("idle")}
                   disabled={acceptPending}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {mode === "accept" && !view.canAcceptProposal ? (
+            <form action={acceptAction} className="cj-portal-form">
+              <input type="hidden" name="token" value={view.token} />
+              <p className="cj-job-copy">
+                {view.scheduleMode === "range"
+                  ? "Choose a date range that fits the work."
+                  : "Choose one available appointment."}
+              </p>
+              {view.availabilitySlots.length === 0 ? (
+                <p className="cj-job-copy">
+                  No offered times are available right now. Request a different
+                  date/time and the trader will suggest another.
+                </p>
+              ) : (
+                <ul className="cj-portal-slot-list">
+                  {view.availabilitySlots.map((slot) => (
+                    <li key={slot.id}>
+                      <label className="cj-portal-slot">
+                        <input
+                          type="radio"
+                          name="slotId"
+                          value={slot.id}
+                          checked={selectedSlotId === slot.id}
+                          onChange={() => {
+                            setSelectedSlotId(slot.id);
+                            const data = new FormData();
+                            data.set("token", view.token);
+                            data.set("slotId", slot.id);
+                            holdAction(data);
+                          }}
+                        />
+                        <span>{slot.label}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="cj-portal-form-actions">
+                <button
+                  type="submit"
+                  className="cj-btn-primary"
+                  disabled={acceptPending || holdPending || !selectedSlotId}
+                >
+                  {acceptPending
+                    ? "Booking…"
+                    : view.scheduleMode === "range"
+                      ? "Accept proposal & book these dates"
+                      : "Accept proposal & book this time"}
+                </button>
+                <button
+                  type="button"
+                  className="cj-btn-secondary"
+                  onClick={() => setMode("request_date")}
+                  disabled={acceptPending}
+                >
+                  Request different date/time
+                </button>
+                <button
+                  type="button"
+                  className="cj-btn-secondary"
+                  onClick={() => setMode("idle")}
+                  disabled={acceptPending}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {mode === "request_date" ? (
+            <form action={requestDateAction} className="cj-portal-form">
+              <input type="hidden" name="token" value={view.token} />
+              <label className="cj-portal-label" htmlFor="requested-date">
+                Date that would work
+              </label>
+              <input
+                id="requested-date"
+                type="date"
+                name="requestedDate"
+                className="cj-portal-textarea"
+              />
+              <label className="cj-portal-label" htmlFor="requested-time">
+                Time (optional)
+              </label>
+              <input
+                id="requested-time"
+                type="time"
+                name="requestedTime"
+                className="cj-portal-textarea"
+              />
+              <label className="cj-portal-label" htmlFor="request-date-message">
+                Anything else we should know?
+              </label>
+              <textarea
+                id="request-date-message"
+                name="message"
+                required
+                rows={3}
+                className="cj-portal-textarea"
+                placeholder="e.g. Mornings are better, or the week after."
+              />
+              <div className="cj-portal-form-actions">
+                <button
+                  type="submit"
+                  className="cj-btn-primary"
+                  disabled={requestDatePending}
+                >
+                  {requestDatePending ? "Sending…" : "Request different date/time"}
+                </button>
+                <button
+                  type="button"
+                  className="cj-btn-secondary"
+                  onClick={() => setMode("idle")}
+                  disabled={requestDatePending}
                 >
                   Cancel
                 </button>
@@ -539,8 +700,9 @@ function ProposedBookingCard({
         <strong>{view.proposedDateLabel}</strong>
       </p>
       <p className="cj-job-copy">
-        Confirm this date if it works, or request another date. This does not
-        accept the proposal.
+        {view.canAcceptProposal
+          ? "New date proposed. Accept the proposal and this date together, or request another date/time."
+          : "Confirm this date if it works, or request another date."}
       </p>
 
       {error ? (
@@ -558,7 +720,11 @@ function ProposedBookingCard({
               className="cj-btn-primary"
               disabled={acceptDatePending}
             >
-              {acceptDatePending ? "Saving…" : "Confirm date"}
+              {acceptDatePending
+                ? "Saving…"
+                : view.canAcceptProposal
+                  ? "Accept proposal & date"
+                  : "Confirm date"}
             </button>
           </form>
           <button

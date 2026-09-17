@@ -3,14 +3,21 @@ import {
   buildProposalEmailCopy,
   buildProposalEmailEvent,
   canResendProposalEmail,
+  canResendWaitingProposal,
   canSendProposalEmail,
   completeProposalEmailDelivery,
+  reminderResendSideEffects,
+  resolveProposalEmailSendKind,
   shouldRecordProposalSent,
 } from "@/lib/proposals/proposal-email-delivery";
 describe("proposal email delivery", () => {
   it("allows resend from needs attention or waiting, not from a status change alone", () => {
     expect(canResendProposalEmail("needs_attention")).toBe(true);
     expect(canResendProposalEmail("waiting_for_customer")).toBe(true);
+    expect(canResendWaitingProposal("waiting_for_customer")).toBe(true);
+    expect(resolveProposalEmailSendKind("waiting_for_customer")).toBe(
+      "reminder"
+    );
     expect(canSendProposalEmail("ready_to_send")).toBe(true);
     expect(canSendProposalEmail("booked")).toBe(false);
   });
@@ -99,5 +106,51 @@ describe("proposal email delivery", () => {
     );
     expect(result.sent).toBe(false);
     expect(shouldRecordProposalSent(result.sent)).toBe(false);
+  });
+
+  it("resends the same portal link and PDF without creating new records", () => {
+    const portalUrl = "https://app.reanvil.com/p/existingToken";
+    const copy = buildProposalEmailCopy({
+      customerName: "Michael Carter",
+      businessName: "Reanvil Joinery",
+      portalUrl,
+      kind: "reminder",
+    });
+    const event = buildProposalEmailEvent({
+      recipientEmail: "michael@example.com",
+      subject: copy.subject,
+      senderName: "Trader",
+      messageId: "msg_resend_1",
+      portalUrl,
+      kind: "reminder",
+    });
+    const sideEffects = reminderResendSideEffects();
+
+    expect(copy.message).toContain(portalUrl);
+    expect(copy.message).toMatch(/PDF/);
+    expect(event.note).toBe("Proposal resent");
+    expect(event.metadata.provider_message_id).toBe("msg_resend_1");
+    expect(event.metadata.attached_pdf).toBe(true);
+    expect(event.metadata.portal_url).toBe(portalUrl);
+    expect(sideEffects.nextStatus).toBe("waiting_for_customer");
+    expect(sideEffects.createsProposal).toBe(false);
+    expect(sideEffects.createsJob).toBe(false);
+    expect(sideEffects.writesCalendar).toBe(false);
+    expect(sideEffects.rotatesPortalToken).toBe(false);
+    expect(sideEffects.changesProposalContent).toBe(false);
+    expect(sideEffects.touchedFields).toEqual(["sent_at"]);
+  });
+
+  it("keeps Waiting for Customer after a successful reminder resend", () => {
+    const success = completeProposalEmailDelivery({
+      ok: true,
+      messageId: "msg_ok",
+    });
+    expect(success.sent).toBe(true);
+    expect(shouldRecordProposalSent(success.sent)).toBe(true);
+    expect(reminderResendSideEffects().nextStatus).toBe("waiting_for_customer");
+    expect(resolveProposalEmailSendKind("waiting_for_customer", "reminder")).toBe(
+      "reminder"
+    );
   });
 });

@@ -264,11 +264,10 @@ export async function notifyCustomerProposedDate(
     message: [
       `Hi${proposal.customer_name ? ` ${proposal.customer_name}` : ""},`,
       "",
-      `${businessName} has held this date provisionally:`,
+      `${businessName} has proposed this date:`,
       slotLabel,
       "",
-      "Open your proposal link to confirm the date or request another one.",
-      "Confirming the date does not accept the proposal.",
+      "Open your proposal link to accept the proposal and this date, or request another one.",
     ].join("\n"),
     businessName,
     ctaUrl: buildCustomerConversationUrl(token),

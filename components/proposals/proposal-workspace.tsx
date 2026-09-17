@@ -9,6 +9,7 @@ import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecy
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
 import { ProposalTimeline } from "@/components/proposals/proposal-timeline";
 import { ProposalWorkspaceActions } from "@/components/proposals/proposal-workspace-actions";
+import { WorkspaceDisclosure } from "@/components/proposals/workspace-disclosure";
 import { SendProposalProvider } from "@/components/proposals/send-proposal-provider";
 import { TestMarkAsSentButton } from "@/components/proposals/test-mark-as-sent-button";
 import { TestSendSuccessNotice } from "@/components/proposals/test-send-success-notice";
@@ -30,6 +31,13 @@ import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import {
+  WAITING_PAGE_STATUS_TITLE,
+  isWaitingForCustomerPage,
+  shouldShowWaitingDateConfirmedBanner,
+  shouldShowWaitingHoldBanner,
+  waitingPageStatusSupport,
+} from "@/lib/proposals/waiting-page-layout";
+import {
   mapDbRowToStructuredProposal,
 } from "@/lib/proposals/structured-proposal";
 
@@ -43,6 +51,7 @@ export type ProposalWorkspaceData = {
   customer_name: string | null;
   customer_id: string | null;
   customer_email: string | null;
+  linked_customer_email?: string | null;
   customer_phone: string | null;
   customer_address: string | null;
   total_amount: number;
@@ -125,13 +134,6 @@ const USER_ICON = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
-  </svg>
-);
-
-const CLOCK_ICON = (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 6v6l4 2" />
   </svg>
 );
 
@@ -254,23 +256,23 @@ function ProposalWorkspaceRight({
   return (
     <div className="qf-proposal-col-right">
       <SectionCard className="qf-card-form">
-        <WorkspaceCardHeading title="Customer Details" icon={USER_ICON} />
-        <dl className="mt-4 space-y-4">
-          <CustomerDetailRow label="Name" value={proposal.customer_name} />
-          <CustomerDetailRow label="Phone" value={proposal.customer_phone} />
-          <CustomerDetailRow label="Email" value={proposal.customer_email} />
-          <CustomerDetailRow
-            label="Property address"
-            value={proposal.customer_address ?? proposal.job_address}
-          />
-        </dl>
+        <WorkspaceDisclosure title="Customer details">
+          <dl className="space-y-4">
+            <CustomerDetailRow label="Name" value={proposal.customer_name} />
+            <CustomerDetailRow label="Phone" value={proposal.customer_phone} />
+            <CustomerDetailRow label="Email" value={proposal.customer_email} />
+            <CustomerDetailRow
+              label="Property address"
+              value={proposal.customer_address ?? proposal.job_address}
+            />
+          </dl>
+        </WorkspaceDisclosure>
       </SectionCard>
 
       {showConversation ? (
         <div id="customer-replies">
           <SectionCard className="qf-card-form">
-            <WorkspaceCardHeading title="Conversation" icon={USER_ICON} />
-            <div className="mt-4">
+            <WorkspaceDisclosure title="Conversation">
               <ProposalConversationPanel
                 proposalId={proposal.id}
                 messages={customerMessages}
@@ -282,17 +284,16 @@ function ProposalWorkspaceRight({
                   normalizeProposalStatus(proposal.status) === "booked"
                 }
               />
-            </div>
+            </WorkspaceDisclosure>
           </SectionCard>
         </div>
       ) : null}
 
       <div id="proposal-timeline">
         <SectionCard className="qf-card-form">
-          <WorkspaceCardHeading title="Proposal Timeline" icon={CLOCK_ICON} />
-          <div className="mt-4">
+          <WorkspaceDisclosure title="Proposal timeline">
             <ProposalTimeline proposal={proposal} statusEvents={statusEvents} />
-          </div>
+          </WorkspaceDisclosure>
         </SectionCard>
       </div>
     </div>
@@ -360,6 +361,7 @@ export function ProposalWorkspace({
     rough_notes: proposal.rough_notes,
     customer_name: proposal.customer_name,
     customer_email: proposal.customer_email,
+    linked_customer_email: proposal.linked_customer_email ?? null,
     total_amount: proposal.total_amount,
   };
   return (
@@ -409,7 +411,20 @@ export function ProposalWorkspace({
         </div>
       </header>
 
-      {dateWorkflow.waitingForProposalAcceptance && confirmedSlotLabel ? (
+      {isWaitingForCustomerPage(proposal.status) ? (
+        <section className="qf-waiting-status" role="status">
+          <p className="qf-waiting-status-title">{WAITING_PAGE_STATUS_TITLE}</p>
+          {waitingPageStatusSupport(proposal.customer_name) ? (
+            <p className="qf-waiting-status-copy">
+              {waitingPageStatusSupport(proposal.customer_name)}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {shouldShowWaitingDateConfirmedBanner(proposal.status) &&
+      dateWorkflow.waitingForProposalAcceptance &&
+      confirmedSlotLabel ? (
         <section className="qf-date-state-banner" role="status">
           <p className="qf-date-state-title">Date confirmed ✓</p>
           <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
@@ -419,7 +434,8 @@ export function ProposalWorkspace({
         </section>
       ) : null}
 
-      {dateWorkflow.waitingForDateConfirmation &&
+      {shouldShowWaitingHoldBanner(proposal.status) &&
+      dateWorkflow.waitingForDateConfirmation &&
       !dateWorkflow.proposalAccepted &&
       confirmedSlotLabel ? (
         <section className="qf-date-state-banner qf-date-state-banner-hold" role="status">
@@ -476,7 +492,11 @@ export function ProposalWorkspace({
             bookingConfirmation={proposal.booking_confirmation}
             plannedStartDateText={proposal.planned_start_date_text}
             plannedStartDate={proposal.planned_start_date}
+            plannedStartTime={proposal.planned_start_time}
             estimatedDuration={proposal.estimated_duration}
+            customerName={proposal.customer_name}
+            proposalTotalLabel={formatPenceAsGbp(proposal.total_amount)}
+            sentAt={proposal.sent_at}
             calendarProposals={calendarProposals}
             devTestingEnabled={devTestingEnabled}
           />
@@ -548,7 +568,11 @@ export function ProposalWorkspace({
                 bookingConfirmation={proposal.booking_confirmation}
                 plannedStartDateText={proposal.planned_start_date_text}
                 plannedStartDate={proposal.planned_start_date}
+                plannedStartTime={proposal.planned_start_time}
                 estimatedDuration={proposal.estimated_duration}
+                customerName={proposal.customer_name}
+                proposalTotalLabel={formatPenceAsGbp(proposal.total_amount)}
+                sentAt={proposal.sent_at}
                 calendarProposals={calendarProposals}
                 devTestingEnabled={devTestingEnabled}
               />

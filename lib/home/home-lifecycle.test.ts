@@ -84,6 +84,24 @@ describe("homepage lifecycle buckets", () => {
     expect(item.notes[0]).toMatch(/date change/i);
   });
 
+  it("keeps a Michael Carter confirmed date in Waiting until the proposal is accepted", () => {
+    const item = classifyHomeProposal(
+      proposal({
+        id: "michael-carter",
+        status: "waiting_for_customer",
+        customer_name: "Michael Carter",
+        booking_confirmation: "confirmed",
+        planned_start_date: "2026-08-12",
+        planned_start_time: "10:30",
+        accepted_at: null,
+      }),
+      now
+    );
+    expect(item.bucket).toBe("waiting_for_customers");
+    expect(item.bucket).not.toBe("booked_job");
+    expect(item.notes).toContain("Waiting for proposal acceptance");
+  });
+
   it("moves a confirmed date and unaccepted proposal to Waiting for customers", () => {
     const item = classifyHomeProposal(
       proposal({

@@ -269,6 +269,25 @@ describe("buildConversationResolutionSummary", () => {
       summary.customerRequestItems.some((item) => /date|timing/i.test(item))
     ).toBe(false);
   });
+
+  it("surfaces a customer requested date so the trader can accept it", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "d1",
+          kind: "change_request",
+          body: "I'd like a different date/time.\nRequested date: 2026-10-13\nRequested time: 14:00\nMornings are better.",
+          created_at: "2026-08-08T12:00:00.000Z",
+        }),
+      ],
+      new Date("2026-08-08T12:00:00.000Z"),
+      { attentionReason: "customer_requested_date_change" }
+    );
+
+    expect(summary.requestedStartExact).toBe("2026-10-13");
+    expect(summary.requestedStartTime).toBe("14:00");
+    expect(summary.showAcceptRequestedDate).toBe(true);
+  });
 });
 
 describe("requestItemTitleFromMessage", () => {

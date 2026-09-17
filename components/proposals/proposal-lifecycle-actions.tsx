@@ -55,7 +55,11 @@ type ProposalLifecycleActionsProps = {
   bookingConfirmation: string | null;
   plannedStartDateText: string | null;
   plannedStartDate: string | null;
+  plannedStartTime?: string | null;
   estimatedDuration: string | null;
+  customerName?: string | null;
+  proposalTotalLabel?: string | null;
+  sentAt?: string | null;
   calendarProposals: CalendarProposal[];
   devTestingEnabled: boolean;
 };
@@ -120,17 +124,34 @@ export function ProposalLifecycleActions({
     bookingConfirmation,
     plannedStartDate,
   });
-  const showWaiting = normalized === "waiting_for_customer";
+  const waitingStatus = normalized === "waiting_for_customer";
   const showAttention = normalized === "needs_attention";
   const showNeedsSchedule = dateWorkflow.needsScheduleJob;
   const showConfirmedBooked = dateWorkflow.isBookedJob;
 
-  if (!showWaiting && !showAttention && !showNeedsSchedule && !showConfirmedBooked) {
+  if (
+    !waitingStatus &&
+    !showAttention &&
+    !showNeedsSchedule &&
+    !showConfirmedBooked
+  ) {
     return null;
   }
 
   const error =
     declineState.error || lifecycleState.error || resendState.error;
+
+  if (
+    waitingStatus &&
+    !showAttention &&
+    !showNeedsSchedule &&
+    !showConfirmedBooked &&
+    !error &&
+    !resendState.success &&
+    !devTestingEnabled
+  ) {
+    return null;
+  }
 
   return (
     <section
@@ -139,20 +160,18 @@ export function ProposalLifecycleActions({
       id="proposal-lifecycle"
     >
       {error ? <AuthError message={error} /> : null}
+      {resendState.success ? (
+        <p className="qf-workspace-actions-success" role="status">
+          Proposal resent
+        </p>
+      ) : null}
 
-      {showWaiting ? (
-        <div className="qf-workspace-lifecycle-block">
-          <DevLifecycleTools
-            proposalId={proposalId}
-            status={status}
-            devTestingEnabled={devTestingEnabled}
-          />
-          <p className="qf-workspace-lifecycle-label">Waiting for customer</p>
-          <p className="qf-workspace-lifecycle-copy">
-            The customer chooses what happens next from their proposal link:
-            Accept, Ask a question, Request a change, or Decline.
-          </p>
-        </div>
+      {waitingStatus ? (
+        <DevLifecycleTools
+          proposalId={proposalId}
+          status={status}
+          devTestingEnabled={devTestingEnabled}
+        />
       ) : null}
 
       {showAttention ? (
@@ -162,8 +181,8 @@ export function ProposalLifecycleActions({
             <form action={resendAction} className="w-full">
               <input type="hidden" name="proposalId" value={proposalId} />
               <ActionButton
-                label="Send updated quote"
-                pendingLabel="Updating…"
+                label="Send updated proposal"
+                pendingLabel="Sending…"
                 variant="primary"
               />
             </form>

@@ -280,3 +280,86 @@ export async function holdConversationDate(
   revalidateDatePaths(proposalId, loaded.proposal.customer_access_token);
   redirect(`/proposals/${proposalId}`);
 }
+
+export async function acceptCustomerRequestedDate(
+  _prev: DateWorkflowActionState,
+  formData: FormData
+): Promise<DateWorkflowActionState> {
+  const proposalId = getString(formData, "proposalId");
+  const dateIso = getString(formData, "plannedStartDateExact");
+  const timeHm = normalizePlannedStartTime(
+    getString(formData, "plannedStartTime")
+  );
+  const dateText = getString(formData, "plannedStartDateText");
+
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+  if (!dateIso) {
+    return { error: "The customer has not requested an exact date yet." };
+  }
+
+  const loaded = await loadTraderProposal(proposalId);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+
+  const supabase = await createClient();
+  const acceptedAt = new Date().toISOString();
+  const startTime = timeHm || "09:00";
+  const slotLabel = formatSlotLabel({
+    dateIso,
+    dateText,
+    timeHm: startTime,
+  });
+
+  const saved = await persistProposalDateSlot(supabase, loaded.proposal, {
+    dateIso,
+    timeHm: startTime,
+    dateText:
+      dateText ||
+      buildScheduleDateLabel({
+        dateIso,
+        time: startTime,
+      }),
+    nextDateState: "confirmed",
+    nextStatus: "booked",
+    userId: loaded.userId,
+    eventNote: `Accepted customer's requested date: ${slotLabel}`,
+    metadata: {
+      action: "trader_accept_requested_date",
+      books_job: true,
+    },
+    attentionReason: null,
+  });
+  if (saved.error) {
+    return { error: saved.error };
+  }
+
+  await supabase
+    .from("proposals")
+    .update({
+      status: "booked",
+      accepted_at: loaded.proposal.accepted_at || acceptedAt,
+      booked_at: acceptedAt,
+      booking_confirmation: "confirmed",
+      attention_reason: null,
+    })
+    .eq("id", proposalId);
+
+  await promoteBookedJobIfReady(
+    supabase,
+    {
+      ...loaded.proposal,
+      status: "booked",
+      accepted_at: loaded.proposal.accepted_at || acceptedAt,
+      booking_confirmation: "confirmed",
+      planned_start_date: dateIso,
+      planned_start_time: startTime,
+    },
+    { acceptedAt, userId: loaded.userId }
+  );
+
+  revalidateDatePaths(proposalId, loaded.proposal.customer_access_token);
+  redirect(`/proposals/${proposalId}`);
+}

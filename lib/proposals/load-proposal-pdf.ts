@@ -14,6 +14,7 @@ export type ProposalPdfSource = {
   proposal_number: string;
   status: string;
   created_at: string;
+  customer_id?: string | null;
   customer_name: string | null;
   customer_address: string | null;
   customer_email: string | null;

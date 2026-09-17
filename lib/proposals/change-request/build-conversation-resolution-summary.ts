@@ -66,7 +66,42 @@ export type ConversationResolutionSummary = {
   canActOnSlot: boolean;
   /** False when the only outstanding request was a now-resolved date. */
   hasActiveAttention: boolean;
+  requestedStartExact: string | null;
+  requestedStartTime: string | null;
+  requestedSlotLabel: string | null;
+  showAcceptRequestedDate: boolean;
 };
+
+function parseRequestedSlot(
+  messages: ProposalCustomerMessage[]
+): { dateIso: string | null; timeHm: string | null; label: string | null } {
+  const latest = [...messages]
+    .reverse()
+    .find(
+      (message) =>
+        message.direction !== "trader" &&
+        message.kind !== "trader_reply" &&
+        /requested date:/i.test(message.body)
+    );
+  if (!latest) {
+    return { dateIso: null, timeHm: null, label: null };
+  }
+  const dateMatch = latest.body.match(
+    /requested date:\s*(\d{4}-\d{2}-\d{2})/i
+  );
+  const timeMatch = latest.body.match(
+    /requested time:\s*(\d{1,2}:\d{2})/i
+  );
+  const dateIso = dateMatch?.[1] ?? null;
+  const timeHm = timeMatch?.[1] ?? null;
+  return {
+    dateIso,
+    timeHm,
+    label: dateIso
+      ? formatSlotLabel({ dateIso, timeHm: timeHm ?? undefined })
+      : null,
+  };
+}
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
   return message.direction !== "trader" && message.kind !== "trader_reply";
@@ -421,6 +456,7 @@ export function buildConversationResolutionSummary(
     showDateCard ||
     (!dateAlreadyResolved && aggregated.focus === "date") ||
     (dateAlreadyResolved && activeRequestItems.length > 0);
+  const requested = parseRequestedSlot(ordered);
   const showAgreedDate = showDateCard && hasDateAgreement;
   const showDiscussedDate = showDateCard && !hasDateAgreement && hasDiscussedDate;
   const calendarAction = showDateCard
@@ -461,6 +497,13 @@ export function buildConversationResolutionSummary(
     showDateActions: showDateCard,
     canActOnSlot: Boolean(slot?.dateIso && slot.timeHm),
     hasActiveAttention,
+    requestedStartExact: requested.dateIso,
+    requestedStartTime: requested.timeHm,
+    requestedSlotLabel: requested.label,
+    showAcceptRequestedDate:
+      Boolean(requested.dateIso) &&
+      (options.attentionReason === "customer_requested_date_change" ||
+        aggregated.focus === "date"),
   };
 }
 
