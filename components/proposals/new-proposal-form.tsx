@@ -426,7 +426,7 @@ export function NewProposalForm({
         : "Save Draft";
 
   return (
-    <form action={formAction} className="qf-proposal-page qf-mobile-safe">
+    <form action={formAction} className="qf-proposal-page qf-mobile-form-page qf-mobile-safe">
       {mode === "edit" && proposalId ? (
         <input type="hidden" name="proposalId" value={proposalId} />
       ) : null}

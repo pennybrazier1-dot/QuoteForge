@@ -7,10 +7,15 @@ import {
   initialVisitCreateSideEffects,
   MOBILE_NEW_MENU_OPTIONS,
   MOBILE_NEW_MENU_TITLE,
+  MOBILE_NEW_MENU_VISUAL,
   MOBILE_NEW_QUOTE_HREF,
   MOBILE_NEW_VISIT_HREF,
   mobilePlusOpensNewMenu,
 } from "@/lib/layout/mobile-new-menu";
+import {
+  MOBILE_FORM_LAYOUT,
+  mobileFormUsesHomeWidth,
+} from "@/lib/layout/mobile-form-layout";
 import type { VisitRecord } from "@/lib/visits/types";
 
 function savedVisit(overrides: Partial<VisitRecord> = {}): VisitRecord {
@@ -96,6 +101,31 @@ describe("mobile New (+) menu", () => {
       "today_visit",
       "upcoming_visit",
     ]);
+  });
+
+  it("uses the same orange border tokens as Home and proposal cards", () => {
+    expect(MOBILE_NEW_MENU_VISUAL.sheetBorderToken).toBe(
+      "var(--card-border-color)"
+    );
+    expect(MOBILE_NEW_MENU_VISUAL.optionBorderToken).toBe(
+      "var(--card-border-color)"
+    );
+    expect(MOBILE_NEW_MENU_VISUAL.accentToken).toBe("var(--accent)");
+    expect(MOBILE_NEW_MENU_VISUAL.radiusToken).toBe("var(--radius-card)");
+    expect(MOBILE_NEW_MENU_VISUAL.pagePaddingToken).toBe(
+      "var(--page-padding-mobile)"
+    );
+  });
+
+  it("keeps Initial Visit and Quote forms on the Home mobile width", () => {
+    expect(mobileFormUsesHomeWidth()).toBe(true);
+    expect(MOBILE_FORM_LAYOUT.extraInlinePadding).toBe("0");
+    expect(MOBILE_FORM_LAYOUT.maxWidth).toBe("100%");
+    expect(MOBILE_FORM_LAYOUT.cardPadding).toBe("1rem");
+    expect(MOBILE_FORM_LAYOUT.cardGap).toBe("0.75rem");
+    expect(MOBILE_FORM_LAYOUT.pagePaddingToken).toBe(
+      "var(--page-padding-mobile)"
+    );
   });
 
   it("keeps desktop Visits and New Quote navigation", () => {

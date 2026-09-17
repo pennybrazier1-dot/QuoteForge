@@ -2,6 +2,17 @@ import { DESKTOP_SIDEBAR_ITEMS } from "@/lib/layout/app-nav";
 
 export const MOBILE_NEW_MENU_TITLE = "New";
 
+/** Same Reanvil orange / charcoal tokens as Home and proposal cards. */
+export const MOBILE_NEW_MENU_VISUAL = {
+  sheetBorderToken: "var(--card-border-color)",
+  optionBorderToken: "var(--card-border-color)",
+  accentToken: "var(--accent)",
+  sheetBackgroundToken: "var(--background-card)",
+  optionBackgroundToken: "var(--background-card-inset)",
+  radiusToken: "var(--radius-card)",
+  pagePaddingToken: "var(--page-padding-mobile)",
+} as const;
+
 export const MOBILE_NEW_VISIT_HREF = "/visits/new";
 export const MOBILE_NEW_QUOTE_HREF = "/proposals/new";
 

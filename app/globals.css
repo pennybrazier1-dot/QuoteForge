@@ -8075,10 +8075,12 @@ button.qf-booking-preview-day-selectable:focus-visible {
   position: relative;
   z-index: 1;
   width: min(100%, 28rem);
-  padding: 1.25rem 1.15rem calc(1.15rem + env(safe-area-inset-bottom, 0px));
-  border-radius: 1.15rem 1.15rem 0 0;
-  border: 1px solid var(--border-card);
+  padding: 1.25rem var(--page-padding-mobile)
+    calc(1.15rem + env(safe-area-inset-bottom, 0px));
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  border: 2px solid var(--card-border-color);
   background: var(--background-card);
+  box-shadow: var(--card-shadow);
 }
 
 .qf-new-menu-title {
@@ -8096,20 +8098,42 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-new-menu-option {
   display: grid;
-  gap: 0.3rem;
-  min-height: 4.25rem;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.85rem;
+  align-items: start;
+  min-height: var(--touch-target-comfortable);
   padding: 0.95rem 1rem;
-  border-radius: 0.9rem;
-  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  border: 2px solid var(--card-border-color);
   background: var(--background-card-inset);
   text-decoration: none;
   color: inherit;
 }
 
+.qf-new-menu-option-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.1rem;
+  color: var(--accent);
+}
+
+.qf-new-menu-option-label,
+.qf-new-menu-option-subtitle {
+  grid-column: 2;
+}
+
 .qf-new-menu-option:hover,
 .qf-new-menu-option:focus-visible {
-  border-color: var(--border-card-accent);
+  border-color: var(--accent);
   outline: none;
+  box-shadow: 0 0 0 3px var(--ring-field-focus);
+}
+
+.qf-new-menu-option:active {
+  transform: scale(0.99);
 }
 
 .qf-new-menu-option-label {
@@ -8130,12 +8154,50 @@ button.qf-booking-preview-day-selectable:focus-visible {
   min-height: 3rem;
   margin-top: 0.85rem;
   border: none;
-  border-radius: 0.9rem;
+  border-radius: var(--radius-card);
   background: transparent;
   color: var(--muted);
   font: inherit;
   font-weight: 650;
   cursor: pointer;
+}
+
+@media (max-width: 1023px) {
+  .qf-mobile-form-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .qf-app-main > .qf-mobile-form-page {
+    margin-inline: 0;
+    padding-inline: 0;
+    padding-block: 0.25rem 1rem;
+  }
+
+  .qf-mobile-form-page .qf-card,
+  .qf-mobile-form-page .qf-card-inset,
+  .qf-mobile-form-page .qf-card-accent,
+  .qf-mobile-form-page .qf-card.qf-card-form,
+  .qf-proposal-page.qf-mobile-form-page .qf-card,
+  .qf-proposal-page.qf-mobile-form-page .qf-card.qf-card-form {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+    border-radius: var(--radius-card);
+  }
+
+  .qf-mobile-form-page .qf-stack,
+  .qf-mobile-form-page .qf-proposal-layout,
+  .qf-mobile-form-page .qf-proposal-col-left,
+  .qf-mobile-form-page .qf-proposal-col-right,
+  .qf-mobile-form-page .qf-quote-prep-layout {
+    gap: 0.75rem;
+  }
+
+  .qf-mobile-form-page .qf-proposal-header {
+    margin-bottom: 1.25rem;
+  }
 }
 
 .qf-customer-view-tabs {
@@ -8324,24 +8386,65 @@ button.qf-booking-preview-day-selectable:focus-visible {
 }
 
 .qf-attention-panel {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 230;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 0.85rem;
-  max-height: min(70vh, 32rem);
-  padding: 1.15rem 1.1rem calc(1.1rem + env(safe-area-inset-bottom, 0px));
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid var(--border-card);
-  border-radius: 1.15rem 1.15rem 0 0;
   background: var(--background-card);
+}
+
+.qf-attention-panel:focus {
+  outline: none;
+}
+
+.qf-attention-scroll {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+
+.qf-attention-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 230;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  padding-bottom: var(
+    --qf-bottom-nav-measured-height,
+    var(--qf-bottom-nav-total-height)
+  );
+  pointer-events: none;
+}
+
+.qf-attention-layer .qf-attention-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: auto;
+}
+
+.qf-attention-layer .qf-attention-panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-height: min(70dvh, 100%);
+  padding: 1.15rem 1.1rem 1rem;
+  border-radius: 1.15rem 1.15rem 0 0;
   box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.32);
+  pointer-events: auto;
 }
 
 .qf-attention-title {
   margin: 0;
+  flex: 0 0 auto;
   font-size: 1.2rem;
   font-weight: 750;
   letter-spacing: -0.03em;
@@ -8360,7 +8463,7 @@ button.qf-booking-preview-day-selectable:focus-visible {
   display: grid;
   gap: 0.55rem;
   margin: 0;
-  padding: 0;
+  padding: 0 0 0.25rem;
   list-style: none;
 }
 
@@ -8416,12 +8519,18 @@ button.qf-booking-preview-day-selectable:focus-visible {
   letter-spacing: 0.02em;
 }
 
+html.qf-attention-scroll-lock,
+html.qf-attention-scroll-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
 @media (min-width: 1024px) {
   .qf-attention-overlay {
     background: transparent;
   }
 
-  .qf-attention-panel {
+  .qf-attention .qf-attention-panel {
     position: absolute;
     top: calc(100% + 0.5rem);
     right: 0;

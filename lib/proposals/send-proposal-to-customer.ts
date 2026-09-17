@@ -1,13 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { sendProposalEmail } from "@/lib/email/send-proposal-email";
-import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { PROPOSAL_EMAIL_CTA_LABEL } from "@/lib/email/proposal-email-tokens";
+import {
+  buildProposalEmailContentFields,
+  resolveProposalEmailBusinessName,
+  sanitizeProposalEmailSubject,
+} from "@/lib/email/proposal-email-presentation";
+import { resolveCustomerFacingBusinessLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
 import {
   buildCustomerProposalPdfUrl,
   buildCustomerProposalPortalUrl,
 } from "@/lib/proposals/customer-portal/token";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
-import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 import {
   generateFreshProposalPdfBuffer,
   loadProposalPdfContext,
@@ -108,27 +113,26 @@ export async function sendProposalToCustomer(
   const portalUrl = buildCustomerProposalPortalUrl(tokenResult.token);
   const pdfUrl = buildCustomerProposalPdfUrl(tokenResult.token);
   const kind = resolveProposalEmailSendKind(status, input.kind);
-  const businessName = resolveCustomerFacingBusinessName(workspace.business_name);
+  const businessName = resolveProposalEmailBusinessName(workspace.business_name) || "";
   const defaults = buildProposalEmailCopy({
     customerName: proposal.customer_name,
     businessName,
     portalUrl,
     kind,
   });
-  const subject = input.subject?.trim() || defaults.subject;
+  const subject = sanitizeProposalEmailSubject(
+    input.subject?.trim() || defaults.subject,
+    workspace.business_name
+  );
   const rawMessage = input.message?.trim() || defaults.message;
   const message = /\/p\/[A-Za-z0-9]+/.test(rawMessage)
     ? rawMessage
     : `${rawMessage}\n\nView your proposal:\n${portalUrl}`;
-  const proposedDateLabel =
-    formatSlotLabel({
-      dateIso: proposal.planned_start_date,
-      dateText: proposal.planned_start_date_text,
-    }) || proposal.planned_start_date_text?.trim() || null;
-  const scopeSummary =
-    proposal.job_summary?.trim() ||
-    proposal.scope_of_work?.trim()?.split("\n")[0] ||
-    null;
+  const fields = buildProposalEmailContentFields(proposal);
+  const priceLabel =
+    proposal.total_amount > 0
+      ? formatPenceAsGbp(proposal.total_amount)
+      : null;
 
   let pdfBuffer: Buffer;
   try {
@@ -149,15 +153,17 @@ export async function sendProposalToCustomer(
     pdfBuffer,
     replyTo: workspace.contact_email,
     businessName,
+    businessLogoUrl: resolveCustomerFacingBusinessLogoUrl(null),
+    customerName: proposal.customer_name,
     ctaUrl: portalUrl,
-    ctaLabel: "View proposal",
+    ctaLabel: PROPOSAL_EMAIL_CTA_LABEL,
     pdfUrl,
-    title:
-      proposal.job_summary?.trim()?.split("\n")[0] ||
-      `Proposal ${proposal.proposal_number}`,
-    priceLabel: formatPenceAsGbp(proposal.total_amount),
-    proposedDateLabel,
-    scopeSummary,
+    title: fields.title,
+    jobSubtitle: fields.jobSubtitle,
+    priceLabel,
+    proposedDateLabel: fields.proposedDateLabel,
+    durationLabel: fields.durationLabel,
+    scopeSummary: fields.scopeSummary,
   });
 
   const delivery = completeProposalEmailDelivery(providerResult);

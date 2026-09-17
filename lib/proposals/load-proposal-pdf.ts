@@ -33,6 +33,8 @@ export type ProposalPdfSource = {
   things_to_confirm_items: unknown;
   planned_start_date_text?: string | null;
   planned_start_date?: string | null;
+  planned_start_time?: string | null;
+  title?: string | null;
 };
 
 export type WorkspacePdfSource = {

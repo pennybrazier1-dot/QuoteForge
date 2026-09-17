@@ -140,7 +140,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const previewProposal = mapQuoteDraftToGeneratedProposal(draft);
 
   return (
-    <div className="qf-quote-prep-page qf-mobile-safe">
+    <div className="qf-quote-prep-page qf-mobile-form-page qf-mobile-safe">
       <header className="qf-proposal-header">
         <h1 className="qf-proposal-title">Prepare Quote</h1>
         <p className="qf-proposal-subtitle">

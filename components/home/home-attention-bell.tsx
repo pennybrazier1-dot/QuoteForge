@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import type { RefObject } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import {
   HOME_ATTENTION_EMPTY,
   HOME_ATTENTION_TITLE,
   type HomeAttentionItem,
 } from "@/lib/home/home-attention";
+import {
+  lockAttentionBackgroundScroll,
+  readAttentionSheetViewport,
+  shouldAllowAttentionTouchMove,
+  unlockAttentionBackgroundScroll,
+  type AttentionBackgroundScrollLock,
+  type AttentionSheetViewport,
+} from "@/lib/home/home-attention-sheet";
 
 function AttentionList({
   items,
@@ -40,27 +50,132 @@ function AttentionList({
   );
 }
 
+function AttentionPanel({
+  titleId,
+  items,
+  viewport,
+  panelRef,
+  onClose,
+}: {
+  titleId: string;
+  items: HomeAttentionItem[];
+  viewport: AttentionSheetViewport;
+  panelRef: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      ref={panelRef}
+      className="qf-attention-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      tabIndex={-1}
+      data-attention-mode={viewport}
+    >
+      <h2 id={titleId} className="qf-attention-title">
+        {HOME_ATTENTION_TITLE}
+      </h2>
+      <div className="qf-attention-scroll" data-attention-scroll="true">
+        <AttentionList items={items} onNavigate={onClose} />
+      </div>
+    </div>
+  );
+}
+
+function subscribeAttentionViewport(onStoreChange: () => void) {
+  const media = window.matchMedia("(min-width: 1024px)");
+  media.addEventListener("change", onStoreChange);
+  return () => media.removeEventListener("change", onStoreChange);
+}
+
+function getAttentionViewportSnapshot(): AttentionSheetViewport {
+  return readAttentionSheetViewport(window.innerWidth);
+}
+
 export function HomeAttentionBell({ items }: { items: HomeAttentionItem[] }) {
   const [open, setOpen] = useState(false);
+  const viewport = useSyncExternalStore(
+    subscribeAttentionViewport,
+    getAttentionViewportSnapshot,
+    () => "mobile" as const
+  );
   const titleId = useId();
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const scrollLockRef = useRef<AttentionBackgroundScrollLock | null>(null);
   const count = items.length;
 
   useEffect(() => {
     if (!open) {
       return;
     }
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
+        bellRef.current?.focus();
       }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
+  useEffect(() => {
+    if (!open || viewport !== "mobile") {
+      return;
+    }
+
+    scrollLockRef.current = lockAttentionBackgroundScroll();
+    const onTouchMove = (event: TouchEvent) => {
+      if (!shouldAllowAttentionTouchMove(event.target)) {
+        event.preventDefault();
+      }
+    };
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+
+    return () => {
+      document.removeEventListener("touchmove", onTouchMove);
+      unlockAttentionBackgroundScroll(scrollLockRef.current);
+      scrollLockRef.current = null;
+    };
+  }, [open, viewport]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    panelRef.current?.focus();
+  }, [open, viewport]);
+
+  function close() {
+    setOpen(false);
+    bellRef.current?.focus();
+  }
+
+  const panel = (
+    <AttentionPanel
+      titleId={titleId}
+      items={items}
+      viewport={viewport}
+      panelRef={panelRef}
+      onClose={close}
+    />
+  );
+
+  const overlay = (
+    <button
+      type="button"
+      className="qf-attention-overlay"
+      aria-label="Close attention list"
+      onClick={close}
+    />
+  );
+
   return (
     <div className="qf-attention">
       <button
+        ref={bellRef}
         type="button"
         className="qf-home-notifications qf-touch-target"
         aria-expanded={open}
@@ -91,27 +206,22 @@ export function HomeAttentionBell({ items }: { items: HomeAttentionItem[] }) {
         ) : null}
       </button>
 
-      {open ? (
+      {open && viewport === "desktop" ? (
         <>
-          <button
-            type="button"
-            className="qf-attention-overlay"
-            aria-label="Close attention list"
-            onClick={() => setOpen(false)}
-          />
-          <div
-            className="qf-attention-panel"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-          >
-            <h2 id={titleId} className="qf-attention-title">
-              {HOME_ATTENTION_TITLE}
-            </h2>
-            <AttentionList items={items} onNavigate={() => setOpen(false)} />
-          </div>
+          {overlay}
+          {panel}
         </>
       ) : null}
+
+      {open && viewport === "mobile" && typeof document !== "undefined"
+        ? createPortal(
+            <div className="qf-attention-layer" data-attention-sheet="mobile">
+              {overlay}
+              {panel}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }

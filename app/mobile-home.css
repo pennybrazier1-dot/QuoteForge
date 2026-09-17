@@ -628,27 +628,42 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   color: #ff6a1a;
 }
 
+@media (max-width: 1023px) {
+  html.qf-attention-scroll-lock:has(.qf-app),
+  html.qf-attention-scroll-lock:has(.qf-app) body {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+}
+
+.qf-attention-layer .qf-attention-panel,
 .qf-app[data-qf-theme="dark"] .qf-attention-panel {
-  border-color: var(--qf-border);
+  border-color: var(--qf-border, rgba(255, 255, 255, 0.12));
   background: #111114;
 }
 
+.qf-attention-layer .qf-attention-title,
+.qf-attention-layer .qf-attention-item-name,
 .qf-app[data-qf-theme="dark"] .qf-attention-title,
 .qf-app[data-qf-theme="dark"] .qf-attention-item-name {
   color: #f5f5f7;
 }
 
+.qf-attention-layer .qf-attention-empty,
+.qf-attention-layer .qf-attention-item-reason,
 .qf-app[data-qf-theme="dark"] .qf-attention-empty,
 .qf-app[data-qf-theme="dark"] .qf-attention-item-reason {
   color: #a1a1aa;
 }
 
+.qf-attention-layer .qf-attention-item,
 .qf-app[data-qf-theme="dark"] .qf-attention-item {
-  border-color: var(--qf-border);
+  border-color: var(--qf-border, rgba(255, 255, 255, 0.12));
   background: #16161e;
 }
 
+.qf-attention-layer .qf-attention-item-type,
 .qf-app[data-qf-theme="dark"] .qf-attention-item-type {
-  background: var(--qf-orange-soft);
+  background: var(--qf-orange-soft, rgba(255, 106, 26, 0.18));
   color: #ff6a1a;
 }

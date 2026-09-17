@@ -24,7 +24,7 @@ export function MobileQuoteCapture({
   subtitle?: string;
 }) {
   return (
-    <div className="qf-mobile-quote-capture qf-mobile-safe">
+    <div className="qf-mobile-quote-capture qf-mobile-form-page qf-mobile-safe">
       <header className="qf-proposal-header">
         <h1 className="qf-proposal-title">{title}</h1>
         <p className="qf-proposal-subtitle">{subtitle}</p>

@@ -1,3 +1,9 @@
+import {
+  buildProposalEmailSubject,
+  proposalEmailFirstName,
+  resolveProposalEmailBusinessName,
+} from "@/lib/email/proposal-email-presentation";
+
 export type SendProposalContext = {
   proposalId: string;
   proposalNumber: string;
@@ -12,8 +18,7 @@ export function buildSendProposalSubject(
   _customerName: string,
   businessName?: string
 ): string {
-  const business = businessName?.trim() || "your business";
-  return `Your proposal from ${business} is ready`;
+  return buildProposalEmailSubject(businessName);
 }
 
 export function buildSendProposalMessage(
@@ -21,22 +26,24 @@ export function buildSendProposalMessage(
   businessName: string,
   portalUrl?: string
 ): string {
-  const name = customerName.trim() || "there";
-  const business = businessName.trim() || "Your business";
+  const name = proposalEmailFirstName(customerName) || "there";
+  const business = resolveProposalEmailBusinessName(businessName);
+  const fromLine = business
+    ? `Your proposal from ${business} is ready.`
+    : "Your proposal is ready.";
+  const signOff = business ? `\nKind regards,\n${business}` : "\nKind regards";
   const linkBlock = portalUrl?.trim()
     ? `\nView your proposal:\n${portalUrl.trim()}\n`
     : "";
 
   return `Hi ${name},
 
-Your proposal from ${business} is ready.
+${fromLine}
 
 You can review it online and reply on the proposal page if you have a question.
 ${linkBlock}
 A PDF copy is also attached for your records.
-
-Kind regards,
-${business}`;
+${signOff}`;
 }
 
 export function getSendProposalPdfFileName(proposalNumber: string): string {

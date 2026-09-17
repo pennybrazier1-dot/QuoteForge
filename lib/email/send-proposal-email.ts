@@ -1,8 +1,6 @@
 import { Resend } from "resend";
-import {
-  buildProposalEmailHtml,
-  proposalEmailIntroHtml,
-} from "@/lib/email/proposal-email-html";
+import { buildProposalEmailHtml } from "@/lib/email/proposal-email-html";
+import { PROPOSAL_EMAIL_CTA_LABEL } from "@/lib/email/proposal-email-tokens";
 
 export type SendProposalEmailInput = {
   to: string;
@@ -16,9 +14,12 @@ export type SendProposalEmailInput = {
   ctaUrl?: string | null;
   ctaLabel?: string | null;
   pdfUrl?: string | null;
+  customerName?: string | null;
   title?: string | null;
+  jobSubtitle?: string | null;
   priceLabel?: string | null;
   proposedDateLabel?: string | null;
+  durationLabel?: string | null;
   scopeSummary?: string | null;
 };
 
@@ -43,24 +44,24 @@ function getFromAddress(businessName: string): string | null {
     return configuredFrom;
   }
 
-  if (!businessName.trim()) {
-    return null;
-  }
-
-  return `${businessName} <onboarding@resend.dev>`;
+  const fromName = businessName.trim() || "Proposal";
+  return `${fromName} <onboarding@resend.dev>`;
 }
 
+/** Single HTML template for Send and Resend. */
 export function buildHtmlEmail(input: SendProposalEmailInput): string {
   return buildProposalEmailHtml({
     businessName: input.businessName,
     businessLogoUrl: input.businessLogoUrl,
-    introHtml: proposalEmailIntroHtml(input.message),
+    customerName: input.customerName,
     portalUrl: input.ctaUrl || "",
     pdfUrl: input.pdfUrl,
-    ctaLabel: input.ctaLabel?.trim() || "View proposal",
+    ctaLabel: input.ctaLabel?.trim() || PROPOSAL_EMAIL_CTA_LABEL,
     title: input.title,
+    jobSubtitle: input.jobSubtitle,
     priceLabel: input.priceLabel,
     proposedDateLabel: input.proposedDateLabel,
+    durationLabel: input.durationLabel,
     scopeSummary: input.scopeSummary,
   });
 }

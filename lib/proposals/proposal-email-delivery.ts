@@ -1,3 +1,8 @@
+import {
+  buildProposalEmailSubject,
+  proposalEmailFirstName,
+  resolveProposalEmailBusinessName,
+} from "@/lib/email/proposal-email-presentation";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import {
   buildSendProposalMessage,
@@ -108,17 +113,24 @@ export function buildProposalEmailCopy(input: {
   revised?: boolean;
   kind?: ProposalEmailSendKind;
 }): { subject: string; message: string } {
-  const name = input.customerName?.trim() || "there";
-  const business = input.businessName.trim() || "Your business";
+  const name = proposalEmailFirstName(input.customerName) || "there";
+  const business = resolveProposalEmailBusinessName(input.businessName);
   const kind =
     input.kind ?? (input.revised ? "revised" : "first_send");
+  const fromLine = business
+    ? `Your proposal from ${business} is ready.`
+    : "Your proposal is ready.";
+  const updatedLine = business
+    ? `Your updated proposal from ${business} is ready.`
+    : "Your updated proposal is ready.";
+  const signOff = business ? `\nKind regards,\n${business}` : "\nKind regards";
 
   if (kind === "reminder") {
     return {
-      subject: `Your proposal from ${business} is ready`,
+      subject: buildProposalEmailSubject(input.businessName),
       message: `Hi ${name},
 
-Your proposal from ${business} is ready.
+${fromLine}
 
 You can review it again on the proposal page.
 
@@ -126,24 +138,24 @@ View your proposal:
 ${input.portalUrl}
 
 A PDF copy is also attached for your records.
-
-Kind regards,
-${business}`,
+${signOff}`,
     };
   }
 
   if (kind !== "revised") {
     return {
-      subject: buildSendProposalSubject(name, business),
-      message: buildSendProposalMessage(name, business, input.portalUrl),
+      subject: buildSendProposalSubject(name, business ?? undefined),
+      message: buildSendProposalMessage(name, business ?? "", input.portalUrl),
     };
   }
 
   return {
-    subject: `Your updated proposal from ${business} is ready`,
+    subject: business
+      ? `Your updated proposal from ${business} is ready`
+      : "Your updated proposal is ready",
     message: `Hi ${name},
 
-Your updated proposal from ${business} is ready.
+${updatedLine}
 
 You can review the latest version on the proposal page.
 
@@ -151,9 +163,7 @@ View your proposal:
 ${input.portalUrl}
 
 A PDF copy is also attached for your records.
-
-Kind regards,
-${business}`,
+${signOff}`,
   };
 }
 
