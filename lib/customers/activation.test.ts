@@ -49,6 +49,36 @@ describe("active customer eligibility", () => {
     ).toBe(false);
   });
 
+  it("does not activate accepted work until the date is confirmed and a job exists", () => {
+    expect(
+      proposalQualifiesForActiveCustomer({
+        acceptedAt: NOW,
+        bookingConfirmation: null,
+        hasJob: true,
+        status: "booked",
+      })
+    ).toBe(false);
+    expect(
+      proposalQualifiesForActiveCustomer({
+        acceptedAt: NOW,
+        bookingConfirmation: "confirmed",
+        hasJob: false,
+        status: "booked",
+      })
+    ).toBe(false);
+  });
+
+  it("treats a booked status as accepted when accepted_at is missing", () => {
+    expect(
+      proposalQualifiesForActiveCustomer({
+        acceptedAt: null,
+        bookingConfirmation: "confirmed",
+        hasJob: true,
+        status: "booked",
+      })
+    ).toBe(true);
+  });
+
   it("does not activate enquiry, visit, draft, or sent-proposal-only people", () => {
     expect(
       shouldEnsureActiveCustomer({

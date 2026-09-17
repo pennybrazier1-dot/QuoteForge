@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCustomerActivityItems,
   CUSTOMER_DETAIL_SECTIONS,
+  customerCurrentWorkMeta,
+  customerCurrentWorkTitle,
   customerDetailSectionDefaultOpen,
   LAST_MINUTE_CANCELLATION_SUPPORTED,
   splitCustomerJobs,
@@ -42,6 +44,33 @@ describe("customer detail hierarchy", () => {
     ]);
     expect(split.current.map((job) => job.id)).toEqual(["job-now"]);
     expect(split.history.map((job) => job.id)).toEqual(["job-old"]);
+  });
+
+  it("shows the booked job title and confirmed date on current work", () => {
+    expect(
+      customerCurrentWorkTitle({
+        id: "job-now",
+        status: "scheduled",
+        accepted_at: "2026-08-01T00:00:00.000Z",
+        proposal_id: "p1",
+        title: "Block-pave driveway",
+        plannedStartDate: "2026-08-12",
+        plannedStartTime: "10:30",
+        bookingConfirmation: "confirmed",
+      })
+    ).toBe("Block-pave driveway");
+    expect(
+      customerCurrentWorkMeta({
+        id: "job-now",
+        status: "scheduled",
+        accepted_at: "2026-08-01T00:00:00.000Z",
+        proposal_id: "p1",
+        title: "Block-pave driveway",
+        plannedStartDate: "2026-08-12",
+        plannedStartTime: "10:30",
+        bookingConfirmation: "confirmed",
+      })
+    ).toBe("12 August · 10:30 · Booked");
   });
 
   it("keeps cancelled visits in history without inventing last-minute cancellations", () => {

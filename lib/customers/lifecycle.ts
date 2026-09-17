@@ -31,6 +31,7 @@ export type CustomerMatchCandidate = {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
+  address_line_1?: string | null;
   anonymised_at?: string | null;
 };
 
@@ -129,7 +130,8 @@ export function shouldEnsureActiveCustomer(input: {
 }): boolean {
   return (
     input.proposalAccepted &&
-    (input.jobCreatedOrActivated || input.bookingConfirmed)
+    input.jobCreatedOrActivated &&
+    input.bookingConfirmed
   );
 }
 
@@ -339,7 +341,13 @@ export function planEnsureActiveCustomer(input: {
       reused: true,
       customerId: matched.id,
       matchReason,
-      activatePatch,
+      activatePatch: {
+        ...activatePatch,
+        name: matched.name?.trim() || name,
+        email: matched.email?.trim() || email,
+        phone: matched.phone?.trim() || phone,
+        address_line_1: matched.address_line_1?.trim() || address,
+      },
     };
   }
 

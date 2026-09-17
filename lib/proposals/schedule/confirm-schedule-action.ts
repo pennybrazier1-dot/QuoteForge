@@ -197,6 +197,9 @@ export async function confirmSchedule(
         job_address: proposal.job_address,
         planned_start_date:
           plannedFields.planned_start_date ?? proposal.planned_start_date,
+        booking_confirmation: effectiveBookingConfirmation,
+        accepted_at: proposal.accepted_at,
+        status: "booked",
         materials: proposal.materials,
       }
     );

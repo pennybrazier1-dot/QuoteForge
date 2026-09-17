@@ -59,6 +59,10 @@ export type CustomerDetailJob = {
   accepted_at: string | null;
   completed_at?: string | null;
   proposal_id: string | null;
+  title?: string | null;
+  plannedStartDate?: string | null;
+  plannedStartTime?: string | null;
+  bookingConfirmation?: string | null;
 };
 
 export type CustomerDetailProposal = {
@@ -132,6 +136,35 @@ export function splitCustomerVisits(visits: CustomerDetailVisit[]): {
 
 export function customerJobLabel(status: string): string {
   return formatJobStatus(status);
+}
+
+export function formatCustomerWorkDate(value?: string | null): string | null {
+  if (!value?.trim()) {
+    return null;
+  }
+  const parsed = new Date(
+    value.includes("T") ? value : `${value.trim()}T00:00:00`
+  );
+  if (Number.isNaN(parsed.getTime())) {
+    return value.trim();
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "long",
+  }).format(parsed);
+}
+
+export function customerCurrentWorkTitle(job: CustomerDetailJob): string {
+  return job.title?.trim() || customerJobLabel(job.status);
+}
+
+export function customerCurrentWorkMeta(job: CustomerDetailJob): string {
+  const when = [formatCustomerWorkDate(job.plannedStartDate), job.plannedStartTime]
+    .filter(Boolean)
+    .join(" · ");
+  const status =
+    job.bookingConfirmation === "confirmed" ? "Booked" : customerJobLabel(job.status);
+  return [when || null, status].filter(Boolean).join(" · ");
 }
 
 export function customerProposalLabel(status: string): string {

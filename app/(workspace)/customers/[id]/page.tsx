@@ -33,7 +33,9 @@ export default async function CustomerPage({ params }: PageProps) {
     await Promise.all([
       supabase
         .from("proposals")
-        .select("id, proposal_number, title, status, total_amount, created_at")
+        .select(
+          "id, proposal_number, title, status, total_amount, created_at, planned_start_date, planned_start_time, booking_confirmation"
+        )
         .eq("customer_id", id)
         .order("created_at", { ascending: false }),
       supabase
@@ -83,7 +85,18 @@ export default async function CustomerPage({ params }: PageProps) {
       <div className="mt-6 qf-stack">
         <CustomerDetailView
           customer={customer}
-          jobs={jobsData ?? []}
+          jobs={(jobsData ?? []).map((job) => {
+            const proposal = (proposalsData ?? []).find(
+              (item) => item.id === job.proposal_id
+            );
+            return {
+              ...job,
+              title: proposal?.title ?? null,
+              plannedStartDate: proposal?.planned_start_date ?? null,
+              plannedStartTime: proposal?.planned_start_time ?? null,
+              bookingConfirmation: proposal?.booking_confirmation ?? null,
+            };
+          })}
           proposals={proposalsData ?? []}
           visits={visitsData ?? []}
           activity={(activityData ?? []).map((event) => ({

@@ -185,6 +185,9 @@ export async function acceptPublicProposal(
       customer_address: loaded.proposal.customer_address ?? null,
       job_address: loaded.proposal.job_address ?? null,
       planned_start_date: loaded.proposal.planned_start_date ?? null,
+      booking_confirmation: bookingConfirmation,
+      accepted_at: acceptedAt,
+      status: "booked",
       materials: loaded.proposal.materials,
     },
     { acceptedAt }

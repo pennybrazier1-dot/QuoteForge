@@ -4,6 +4,7 @@ import {
   phonesMatch,
   shouldEnsureActiveCustomer,
   type CustomerMatchCandidate,
+  type EnsureCustomerSource,
 } from "@/lib/customers/lifecycle";
 
 export type QualifyingProposalInput = {
@@ -29,15 +30,62 @@ export type ActivationCustomer = CustomerMatchCandidate & {
   deletionRequestedAt?: string | null;
 };
 
+export function firstNonEmptyContact(
+  ...values: Array<string | null | undefined>
+): string | null {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+  return null;
+}
+
+export function mergeCustomerContactSources(
+  sources: Array<EnsureCustomerSource | null | undefined>
+): EnsureCustomerSource {
+  return {
+    name: firstNonEmptyContact(...sources.map((source) => source?.name)),
+    email: firstNonEmptyContact(...sources.map((source) => source?.email)),
+    phone: firstNonEmptyContact(...sources.map((source) => source?.phone)),
+    address: firstNonEmptyContact(...sources.map((source) => source?.address)),
+  };
+}
+
+export function isProposalAcceptedForCustomer(
+  input: QualifyingProposalInput
+): boolean {
+  const status = (input.status ?? "").toLowerCase();
+  return (
+    Boolean(input.acceptedAt) || status === "booked" || status === "completed"
+  );
+}
+
+export function isBookingConfirmedForCustomer(
+  bookingConfirmation?: string | null
+): boolean {
+  return bookingConfirmation === "confirmed";
+}
+
 export function proposalQualifiesForActiveCustomer(
   input: QualifyingProposalInput
 ): boolean {
   return shouldEnsureActiveCustomer({
-    proposalAccepted: Boolean(input.acceptedAt),
-    jobCreatedOrActivated:
-      Boolean(input.hasJob) || input.status === "completed",
-    bookingConfirmed: input.bookingConfirmation === "confirmed",
+    proposalAccepted: isProposalAcceptedForCustomer(input),
+    jobCreatedOrActivated: Boolean(input.hasJob),
+    bookingConfirmed: isBookingConfirmedForCustomer(input.bookingConfirmation),
   });
+}
+
+export function shouldPreserveCustomerLifecycle(input: {
+  archivedAt?: string | null;
+  deletionRequestedAt?: string | null;
+  anonymisedAt?: string | null;
+}): boolean {
+  return Boolean(
+    input.archivedAt || input.deletionRequestedAt || input.anonymisedAt
+  );
 }
 
 export function shouldDeactivateLegacyAutoCustomer(input: {
@@ -96,7 +144,15 @@ export function planAcceptedWorkCustomerBackfill(input: {
     });
 
     if (matched) {
-      activateIds.add(matched.id);
+      if (
+        !shouldPreserveCustomerLifecycle({
+          archivedAt: matched.archivedAt,
+          deletionRequestedAt: matched.deletionRequestedAt,
+          anonymisedAt: matched.anonymised_at,
+        })
+      ) {
+        activateIds.add(matched.id);
+      }
       qualifyingByCustomer.add(matched.id);
       if (proposal.customerId !== matched.id) {
         reuseLinks.push({ proposalId: proposal.id, customerId: matched.id });

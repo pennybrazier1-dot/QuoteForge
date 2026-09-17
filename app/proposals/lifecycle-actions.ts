@@ -132,6 +132,9 @@ export async function markProposalAccepted(
       customer_address: proposal.customer_address,
       job_address: proposal.job_address,
       planned_start_date: proposal.planned_start_date,
+      booking_confirmation: bookingConfirmation,
+      accepted_at: acceptedAt,
+      status: "booked",
       materials: proposal.materials,
     },
     { acceptedAt }
@@ -332,6 +335,9 @@ export async function confirmBooking(
     job_address: proposal.job_address,
     planned_start_date:
       plannedFields.planned_start_date ?? proposal.planned_start_date,
+    booking_confirmation: bookingConfirmation,
+    accepted_at: proposal.accepted_at ?? now,
+    status: "booked",
     materials: proposal.materials,
   }, { acceptedAt: now });
 

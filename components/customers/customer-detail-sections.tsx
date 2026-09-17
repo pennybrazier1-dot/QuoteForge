@@ -6,6 +6,8 @@ import { formatCustomerCreatedAt } from "@/lib/customers/format";
 import {
   buildCustomerActivityItems,
   CUSTOMER_DETAIL_SECTIONS,
+  customerCurrentWorkMeta,
+  customerCurrentWorkTitle,
   customerJobLabel,
   customerProposalLabel,
   customerVisitLabel,
@@ -111,12 +113,10 @@ export function CustomerDetailSections({
                   className="qf-customer-detail-item"
                 >
                   <p className="qf-customer-detail-item-title">
-                    {customerJobLabel(job.status)}
+                    {customerCurrentWorkTitle(job)}
                   </p>
                   <p className="qf-customer-detail-item-meta">
-                    {job.accepted_at
-                      ? `Accepted ${formatCustomerCreatedAt(job.accepted_at)}`
-                      : "Current job"}
+                    {customerCurrentWorkMeta(job)}
                   </p>
                 </Link>
               </li>

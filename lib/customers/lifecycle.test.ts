@@ -63,21 +63,28 @@ describe("customer auto-create trigger", () => {
     ).toBe(false);
   });
 
-  it("creates or links a customer when accepted work is booked or a job exists", () => {
+  it("creates or links a customer only when accepted, confirmed, and a job exists", () => {
+    expect(
+      shouldEnsureActiveCustomer({
+        proposalAccepted: true,
+        jobCreatedOrActivated: true,
+        bookingConfirmed: true,
+      })
+    ).toBe(true);
     expect(
       shouldEnsureActiveCustomer({
         proposalAccepted: true,
         jobCreatedOrActivated: true,
         bookingConfirmed: false,
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       shouldEnsureActiveCustomer({
         proposalAccepted: true,
         jobCreatedOrActivated: false,
         bookingConfirmed: true,
       })
-    ).toBe(true);
+    ).toBe(false);
     expect(
       shouldEnsureActiveCustomer({
         proposalAccepted: false,

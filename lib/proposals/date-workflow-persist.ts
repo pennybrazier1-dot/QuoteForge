@@ -84,6 +84,9 @@ export async function promoteBookedJobIfReady(
       customer_address: proposal.customer_address ?? null,
       job_address: proposal.job_address ?? null,
       planned_start_date: proposal.planned_start_date ?? null,
+      booking_confirmation: proposal.booking_confirmation ?? null,
+      accepted_at: proposal.accepted_at ?? null,
+      status: proposal.status,
       materials: proposal.materials,
     },
     { acceptedAt: options?.acceptedAt }

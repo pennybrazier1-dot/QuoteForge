@@ -17,6 +17,9 @@ export type ProposalJobSeed = {
   customer_address: string | null;
   job_address: string | null;
   planned_start_date: string | null;
+  booking_confirmation?: string | null;
+  accepted_at?: string | null;
+  status?: string | null;
   materials: unknown;
 };
 
@@ -233,7 +236,7 @@ async function linkAcceptedWorkCustomer(
     },
     proposalAccepted: true,
     jobCreatedOrActivated: true,
-    bookingConfirmed: false,
+    bookingConfirmed: proposal.booking_confirmation === "confirmed",
   });
 
   if (!result.ok || result.skipped) {
