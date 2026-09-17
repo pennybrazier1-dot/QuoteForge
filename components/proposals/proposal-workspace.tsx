@@ -322,9 +322,15 @@ export function ProposalWorkspace({
       message.kind !== "trader_reply" &&
       message.body.trim().length > 0
   );
+  const proposalAccepted =
+    status === "booked" ||
+    status === "completed" ||
+    Boolean(proposal.accepted_at);
   const resolutionSummary =
     status === "needs_attention" && hasCustomerMessages
-      ? buildConversationResolutionSummary(customerMessages)
+      ? buildConversationResolutionSummary(customerMessages, new Date(), {
+          proposalAccepted,
+        })
       : null;
   const actionContext = {
     status: proposal.status,
@@ -465,6 +471,9 @@ export function ProposalWorkspace({
             proposalId={proposal.id}
             messages={customerMessages}
             headingIcon={USER_ICON}
+            hideReplyUntilRequested={
+              resolutionSummary.resolutionFocus === "date_agreed"
+            }
           />
 
           <section

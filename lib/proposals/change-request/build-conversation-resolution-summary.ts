@@ -3,13 +3,17 @@ import type { ChangeRequestLabel } from "@/lib/proposals/change-request/analyze-
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
   findLatestConfirmedDateAgreement,
+  formatAgreedSlotLabel,
   formatAgreementDateLabel,
   isVagueDateWindowOnly,
 } from "@/lib/proposals/revision/conversation-agreements";
 import { buildScheduleWorkspacePath } from "@/lib/proposals/schedule/schedule-fields";
 
 /** Primary mobile next-step mode for the trader attention screen. */
-export type ConversationResolutionFocus = "date" | "update";
+export type ConversationResolutionFocus = "date" | "date_agreed" | "update";
+
+/** Calendar next step after a date is agreed in conversation. */
+export type ConversationCalendarAction = "hold" | "schedule";
 
 /** Soft calendar prefill / aggregated request wording for the resolution UI. */
 export type ConversationResolutionSummary = {
@@ -27,6 +31,7 @@ export type ConversationResolutionSummary = {
    */
   plannedStartText: string | null;
   plannedStartExact: string | null;
+  plannedStartTime: string | null;
   hasCustomerMessages: boolean;
   /**
    * Mobile trader card: plain-language “what happened”.
@@ -37,6 +42,12 @@ export type ConversationResolutionSummary = {
   mobileDescription: string;
   /** Which primary resolution UI to show on mobile. */
   resolutionFocus: ConversationResolutionFocus;
+  /** True when both sides confirmed a specific date. */
+  hasDateAgreement: boolean;
+  /** Display label such as "12 August · 10:30". */
+  agreedSlotLabel: string | null;
+  /** Hold the date before acceptance, or schedule the job after. */
+  calendarAction: ConversationCalendarAction | null;
 };
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
@@ -324,19 +335,37 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
   };
 }
 
+export type ConversationResolutionOptions = {
+  /** Accepted proposals schedule a job. Others only hold a date. */
+  proposalAccepted?: boolean;
+};
+
 /**
  * Builds request context for the resolution UI from the full conversation thread.
- * Soft date prefill may use the thread silently — never exposes "outcome" copy.
+ * A confirmed date/time becomes the mobile outcome. Nothing is invented.
  */
 export function buildConversationResolutionSummary(
   messages: ProposalCustomerMessage[],
-  now: Date = new Date()
+  now: Date = new Date(),
+  options: ConversationResolutionOptions = {}
 ): ConversationResolutionSummary {
   const ordered = orderedMessages(messages);
   const aggregated = buildAggregatedRequests(ordered);
   const agreement = findLatestConfirmedDateAgreement(ordered, now);
   const plannedStartText = agreement
     ? formatAgreementDateLabel(agreement)
+    : null;
+  const hasDateAgreement = Boolean(agreement?.dateIso);
+  const agreedSlotLabel = agreement ? formatAgreedSlotLabel(agreement) : null;
+  const hasWorkRequest =
+    aggregated.labels.includes("scope") ||
+    aggregated.labels.includes("materials") ||
+    aggregated.labels.includes("price");
+  const showAgreedDate = hasDateAgreement && !hasWorkRequest;
+  const calendarAction = showAgreedDate
+    ? options.proposalAccepted
+      ? "schedule"
+      : "hold"
     : null;
 
   return {
@@ -346,10 +375,18 @@ export function buildConversationResolutionSummary(
     possibleImpacts: aggregated.impacts,
     plannedStartText,
     plannedStartExact: agreement?.dateIso ?? null,
+    plannedStartTime: agreement?.timeHm ?? null,
     hasCustomerMessages: ordered.some(isCustomerMessage),
-    mobileHeadline: aggregated.mobileHeadline,
-    mobileDescription: aggregated.mobileDescription,
-    resolutionFocus: aggregated.focus,
+    mobileHeadline: showAgreedDate
+      ? "Date agreed"
+      : aggregated.mobileHeadline,
+    mobileDescription: showAgreedDate
+      ? (agreedSlotLabel ?? aggregated.mobileDescription)
+      : aggregated.mobileDescription,
+    resolutionFocus: showAgreedDate ? "date_agreed" : aggregated.focus,
+    hasDateAgreement,
+    agreedSlotLabel,
+    calendarAction,
   };
 }
 
@@ -357,11 +394,13 @@ export function buildCalendarActionHref(
   proposalId: string,
   summary: Pick<
     ConversationResolutionSummary,
-    "plannedStartText" | "plannedStartExact"
+    "plannedStartText" | "plannedStartExact" | "plannedStartTime" | "calendarAction"
   >
 ): string {
   return buildScheduleWorkspacePath(proposalId, {
     suggestedDateText: summary.plannedStartText,
     suggestedDateExact: summary.plannedStartExact,
+    suggestedTime: summary.plannedStartTime,
+    mode: summary.calendarAction === "hold" ? "hold" : undefined,
   });
 }

@@ -47,8 +47,8 @@ export function needsBookingConfirmation(
 }
 
 /**
- * Whether a proposal can appear on the calendar.
- * Proposal discussions never block the job calendar. Only an accepted proposal
+ * Whether a proposal can appear on the calendar as a job.
+ * Proposal discussions never become jobs. Only an accepted proposal
  * with a real start date qualifies.
  */
 export function isCalendarEligibleProposal(
@@ -62,6 +62,28 @@ export function isCalendarEligibleProposal(
   }
 
   return (CALENDAR_ELIGIBLE_STATUSES as readonly string[]).includes(normalized);
+}
+
+const CALENDAR_HOLD_STATUSES = [
+  "waiting_for_customer",
+  "needs_attention",
+] as const;
+
+/**
+ * A trader-held date before acceptance. This is not a job.
+ * Requires an exact start time so quote discussion dates stay off the calendar.
+ */
+export function isCalendarHoldEligible(
+  status: string,
+  plannedStartDate: string | null | undefined,
+  plannedStartTime?: string | null | undefined
+): boolean {
+  if (!plannedStartDate?.trim() || !plannedStartTime?.trim()) {
+    return false;
+  }
+
+  const normalized = normalizeProposalStatus(status);
+  return (CALENDAR_HOLD_STATUSES as readonly string[]).includes(normalized);
 }
 
 /**

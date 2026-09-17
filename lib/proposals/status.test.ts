@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canTransitionStatus,
+  isClosedProposalStatus,
   isProposalStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
@@ -31,5 +32,13 @@ describe("proposal status transitions", () => {
   it("normalizes legacy accepted status to booked", () => {
     expect(normalizeProposalStatus("accepted")).toBe("booked");
     expect(isProposalStatus("accepted")).toBe(true);
+  });
+
+  it("lets the customer decline a sent proposal", () => {
+    expect(canTransitionStatus("waiting_for_customer", "declined")).toBe(true);
+    expect(canTransitionStatus("needs_attention", "declined")).toBe(true);
+    expect(isClosedProposalStatus("declined")).toBe(true);
+    expect(isClosedProposalStatus("cancelled")).toBe(true);
+    expect(isClosedProposalStatus("waiting_for_customer")).toBe(false);
   });
 });

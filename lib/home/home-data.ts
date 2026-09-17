@@ -275,14 +275,21 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
     );
 
   const cancelledJobs = proposals
-    .filter(
-      (proposal) => normalizeProposalStatus(proposal.status) === "cancelled"
-    )
+    .filter((proposal) => {
+      const status = normalizeProposalStatus(proposal.status);
+      return status === "cancelled" || status === "declined";
+    })
     .slice(0, 8)
     .map((proposal) =>
       buildCard(proposal, {
         jobTitle: getProposalSummaryLabel(proposal),
-        status: { label: "Cancelled", tone: "orange" },
+        status: {
+          label:
+            normalizeProposalStatus(proposal.status) === "declined"
+              ? "Declined"
+              : "Cancelled",
+          tone: "orange",
+        },
       })
     );
 
@@ -348,11 +355,11 @@ export function buildHomeSections(proposals: HomeProposal[]): HomeSection[] {
   if (cancelledJobs.length > 0) {
     sections.push({
       id: "cancelled-jobs",
-      title: "Cancelled Jobs",
+      title: "Closed Jobs",
       tone: "orange",
       viewAllHref: "/proposals",
       cards: cancelledJobs,
-      emptyMessage: "No cancelled jobs.",
+      emptyMessage: "No closed jobs.",
     });
   }
 

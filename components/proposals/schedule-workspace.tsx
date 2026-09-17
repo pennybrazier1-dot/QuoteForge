@@ -36,6 +36,7 @@ import {
   formatPlannedStartExact,
   normalizePlannedStartExact,
 } from "@/lib/proposals/planned-start-date";
+import { confirmCalendarHold } from "@/lib/proposals/schedule/confirm-calendar-hold-action";
 import {
   confirmSchedule,
   type ConfirmScheduleState,
@@ -88,6 +89,8 @@ export type ScheduleWorkspaceProposal = {
   bookingConfirmation: BookingConfirmation | null;
   /** From needs_attention: propose provisional date; customer must accept. */
   requireCustomerDateAcceptance?: boolean;
+  /** Pre-acceptance hold only — never creates a job. */
+  scheduleMode?: "hold" | "job";
 };
 
 function ConfirmButton({
@@ -150,19 +153,24 @@ export function ScheduleWorkspace({
   calendarProposals,
   suggestedDateText = null,
   suggestedDateExact = null,
+  suggestedTime = null,
 }: {
   proposal: ScheduleWorkspaceProposal;
   calendarProposals: CalendarProposal[];
   suggestedDateText?: string | null;
   suggestedDateExact?: string | null;
+  suggestedTime?: string | null;
 }) {
   const todayIso = useMemo(() => toIsoDate(new Date()), []);
+  const holdMode = proposal.scheduleMode === "hold";
   const initialExact =
     normalizePlannedStartExact(suggestedDateExact) ??
     normalizePlannedStartExact(proposal.plannedStartDate) ??
     null;
   const initialTime =
-    normalizePlannedStartTime(proposal.plannedStartTime) ?? "09:00";
+    normalizePlannedStartTime(suggestedTime) ??
+    normalizePlannedStartTime(proposal.plannedStartTime) ??
+    "09:00";
 
   const [view, setView] = useState<ScheduleView>("month");
   const [anchor, setAnchor] = useState(() =>
@@ -181,7 +189,7 @@ export function ScheduleWorkspace({
   );
   const [acknowledgedClash, setAcknowledgedClash] = useState(false);
   const [confirmState, confirmAction] = useActionState(
-    confirmSchedule,
+    holdMode ? confirmCalendarHold : confirmSchedule,
     confirmInitialState
   );
 
@@ -234,7 +242,7 @@ export function ScheduleWorkspace({
 
   const needsAcknowledgment = clashAnalysis.hasStrongOrWarning;
   const canConfirm =
-    Boolean(draftDate && draftTime && duration.trim()) &&
+    Boolean(draftDate && draftTime && (holdMode || duration.trim())) &&
     (!needsAcknowledgment || acknowledgedClash);
 
   const suggestedLabel =
@@ -553,7 +561,9 @@ export function ScheduleWorkspace({
 
         <aside className="qf-schedule-panel" aria-label="Current job">
           <div className="qf-schedule-panel-card">
-            <h2 className="qf-schedule-panel-title">Current job</h2>
+            <h2 className="qf-schedule-panel-title">
+              {holdMode ? "Calendar hold" : "Current job"}
+            </h2>
             <dl className="qf-schedule-facts">
               <div>
                 <dt>Customer</dt>
@@ -578,9 +588,11 @@ export function ScheduleWorkspace({
               </div>
             </dl>
             <p className="qf-schedule-note">
-              {requireCustomerDateAcceptance
-                ? "Saves a provisional hold and asks the customer to accept. Confirmed only after they accept."
-                : "Nothing is booked until you confirm"}
+              {holdMode
+                ? "This holds the date in your calendar only. It does not create a job. The customer can still accept the proposal."
+                : requireCustomerDateAcceptance
+                  ? "Saves a provisional hold and asks the customer to accept. Confirmed only after they accept."
+                  : "Nothing is booked until you confirm"}
             </p>
           </div>
 
@@ -661,7 +673,14 @@ export function ScheduleWorkspace({
               />
             </label>
 
-            {requireCustomerDateAcceptance ? (
+            {holdMode ? (
+              <div className="qf-schedule-status qf-schedule-customer-accept-note">
+                <p className="qf-schedule-note">
+                  Saving holds this date in your calendar. It does not create or
+                  confirm a job. The customer can still accept the proposal.
+                </p>
+              </div>
+            ) : requireCustomerDateAcceptance ? (
               <div className="qf-schedule-status qf-schedule-customer-accept-note">
                 <p className="qf-schedule-note">
                   This creates a provisional hold and asks the customer to
@@ -704,11 +723,13 @@ export function ScheduleWorkspace({
             <ConfirmButton
               disabled={!canConfirm}
               label={
-                requireCustomerDateAcceptance
-                  ? "Propose provisional date"
-                  : bookingStatus === "confirmed"
-                    ? "Confirm schedule"
-                    : "Hold date (provisional)"
+                holdMode
+                  ? "Hold in calendar"
+                  : requireCustomerDateAcceptance
+                    ? "Propose provisional date"
+                    : bookingStatus === "confirmed"
+                      ? "Confirm schedule"
+                      : "Hold date (provisional)"
               }
             />
           </form>

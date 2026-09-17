@@ -11,7 +11,10 @@ import type {
   ProposalPdfSource,
   WorkspacePdfSource,
 } from "@/lib/proposals/load-proposal-pdf";
-import { normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  isClosedProposalStatus,
+  normalizeProposalStatus,
+} from "@/lib/proposals/status";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 
@@ -23,6 +26,7 @@ export type PublicProposalViewModel = {
   status: string;
   canRespond: boolean;
   isAccepted: boolean;
+  isDeclined: boolean;
   isClosed: boolean;
   /** Trader proposed a provisional date; customer must accept or request another. */
   canRespondToProposedDate: boolean;
@@ -116,7 +120,8 @@ export async function loadPublicProposalByToken(
   const canRespond =
     status === "waiting_for_customer" || status === "needs_attention";
   const isAccepted = status === "booked" || status === "completed";
-  const isClosed = status === "cancelled";
+  const isDeclined = status === "declined";
+  const isClosed = isClosedProposalStatus(status);
 
   const plannedStartLabel =
     row.planned_start_date_text?.trim() ||
@@ -144,6 +149,7 @@ export async function loadPublicProposalByToken(
       status,
       canRespond: canRespond && !isClosed,
       isAccepted,
+      isDeclined,
       isClosed,
       canRespondToProposedDate,
       proposedDateLabel: canRespondToProposedDate ? plannedStartLabel : null,

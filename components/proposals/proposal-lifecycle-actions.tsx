@@ -4,12 +4,10 @@ import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  recordCustomerAttention,
   recordCustomerDecline,
   type CustomerResponseState,
 } from "@/app/proposals/customer-response-actions";
 import {
-  markProposalAccepted,
   markJobComplete,
   resendToCustomer,
   type LifecycleActionState,
@@ -17,7 +15,6 @@ import {
 import { AuthError } from "@/components/auth/auth-shell";
 import { BookingDialog } from "@/components/proposals/booking-dialog";
 import { DevLifecycleTools } from "@/components/proposals/dev-lifecycle-tools";
-import { ATTENTION_REASONS, formatAttentionReason } from "@/lib/proposals/attention";
 import { isProvisionalBooking } from "@/lib/proposals/booking";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import {
@@ -75,20 +72,12 @@ export function ProposalLifecycleActions({
 }: ProposalLifecycleActionsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [responseState, responseAction] = useActionState(
-    recordCustomerAttention,
-    responseInitialState
-  );
   const [declineState, declineAction] = useActionState(
     recordCustomerDecline,
     responseInitialState
   );
   const [lifecycleState, lifecycleAction] = useActionState(
     markJobComplete,
-    lifecycleInitialState
-  );
-  const [acceptState, acceptAction] = useActionState(
-    markProposalAccepted,
     lifecycleInitialState
   );
   const [resendState, resendAction] = useActionState(
@@ -137,11 +126,7 @@ export function ProposalLifecycleActions({
   }
 
   const error =
-    responseState.error ||
-    declineState.error ||
-    lifecycleState.error ||
-    acceptState.error ||
-    resendState.error;
+    declineState.error || lifecycleState.error || resendState.error;
 
   return (
     <section
@@ -158,35 +143,11 @@ export function ProposalLifecycleActions({
             status={status}
             devTestingEnabled={devTestingEnabled}
           />
-          <p className="qf-workspace-lifecycle-label">Customer response</p>
-          <div className="qf-workspace-lifecycle-actions">
-            <form action={acceptAction} className="w-full">
-              <input type="hidden" name="proposalId" value={proposalId} />
-              <ActionButton
-                label="Mark accepted"
-                pendingLabel="Starting job preparation…"
-                variant="primary"
-              />
-            </form>
-            {ATTENTION_REASONS.map((reason) => (
-              <form key={reason} action={responseAction} className="w-full">
-                <input type="hidden" name="proposalId" value={proposalId} />
-                <input type="hidden" name="attentionReason" value={reason} />
-                <ActionButton
-                  label={formatAttentionReason(reason)}
-                  pendingLabel="Saving…"
-                />
-              </form>
-            ))}
-            <form action={declineAction} className="w-full">
-              <input type="hidden" name="proposalId" value={proposalId} />
-              <ActionButton
-                label="Customer declined"
-                pendingLabel="Cancelling…"
-                variant="danger"
-              />
-            </form>
-          </div>
+          <p className="qf-workspace-lifecycle-label">Waiting for customer</p>
+          <p className="qf-workspace-lifecycle-copy">
+            The customer chooses what happens next from their proposal link:
+            Accept, Ask a question, Request a change, or Decline.
+          </p>
         </div>
       ) : null}
 

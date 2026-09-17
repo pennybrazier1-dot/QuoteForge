@@ -26,12 +26,15 @@ export function AttentionConversationSection({
   proposalId,
   messages,
   headingIcon,
+  hideReplyUntilRequested = false,
 }: {
   proposalId: string;
   messages: ProposalCustomerMessage[];
   headingIcon: ReactNode;
+  hideReplyUntilRequested?: boolean;
 }) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [showReply, setShowReply] = useState(!hideReplyUntilRequested);
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_QUERY);
@@ -40,6 +43,26 @@ export function AttentionConversationSection({
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
   }, []);
+
+  useEffect(() => {
+    const showComposer = () => setShowReply(true);
+    window.addEventListener("proposal-conversation-focus", showComposer);
+    return () => {
+      window.removeEventListener("proposal-conversation-focus", showComposer);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!hideReplyUntilRequested || !showReply) {
+      return;
+    }
+    const compose = document.getElementById("proposal-conversation-compose");
+    const textarea = document.getElementById("trader-reply");
+    compose?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (textarea instanceof HTMLTextAreaElement) {
+      textarea.focus();
+    }
+  }, [hideReplyUntilRequested, showReply]);
 
   // Avoid flashing the wrong layout before we know the viewport.
   if (isMobile === null) {
@@ -64,18 +87,20 @@ export function AttentionConversationSection({
           </div>
         </details>
 
-        <SectionCard className="qf-card-form qf-attention-reply-card">
-          <CardHeading title="Reply to customer" icon={headingIcon} />
-          <div className="mt-4">
-            <ProposalConversationPanel
-              proposalId={proposalId}
-              messages={messages}
-              canReply
-              showThread={false}
-              showReviseLink={false}
-            />
-          </div>
-        </SectionCard>
+        {showReply ? (
+          <SectionCard className="qf-card-form qf-attention-reply-card">
+            <CardHeading title="Reply to customer" icon={headingIcon} />
+            <div className="mt-4">
+              <ProposalConversationPanel
+                proposalId={proposalId}
+                messages={messages}
+                canReply
+                showThread={false}
+                showReviseLink={false}
+              />
+            </div>
+          </SectionCard>
+        ) : null}
       </div>
     );
   }

@@ -19,7 +19,8 @@ export type CustomerPortalActionState = {
     | "question"
     | "changes"
     | "date_accepted"
-    | "date_change_requested";
+    | "date_change_requested"
+    | "declined";
 };
 
 function createPortalClient() {
@@ -475,4 +476,62 @@ export async function requestAnotherScheduleDate(
   revalidatePath(`/p/${token}`);
 
   return { ok: true, result: "date_change_requested" };
+}
+
+export async function declinePublicProposal(
+  _prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  const token = getString(formData, "token");
+  const note = getString(formData, "note");
+
+  const loaded = await loadPublicProposalByToken(token);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+
+  if (!loaded.view.canRespond || loaded.view.isAccepted || loaded.view.isClosed) {
+    return { error: "This proposal can no longer be declined." };
+  }
+
+  const supabase = createPortalClient();
+  if (!supabase) {
+    return { error: "The proposal portal is not configured yet." };
+  }
+
+  const fromStatus = normalizeProposalStatus(loaded.proposal.status);
+
+  const { error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      status: "declined",
+      attention_reason: null,
+    })
+    .eq("id", loaded.proposal.id)
+    .in("status", ["waiting_for_customer", "needs_attention"]);
+
+  if (updateError) {
+    return { error: updateError.message || "Could not decline this proposal." };
+  }
+
+  await supabase.from("proposal_status_events").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    event_type: "status_change",
+    from_status: fromStatus,
+    to_status: "declined",
+    note: note
+      ? `Customer declined: ${note}`
+      : "Customer declined the proposal",
+    metadata: {
+      source: "customer_portal",
+      action: "declined",
+    },
+    created_by: null,
+  });
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+
+  return { ok: true, result: "declined" };
 }

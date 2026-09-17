@@ -90,6 +90,22 @@ describe("buildCalendarJobs", () => {
     expect(jobs.find((job) => job.id === "ready")).toBeUndefined();
   });
 
+  it("shows an unaccepted held date as a hold, not a job", () => {
+    const jobs = buildCalendarJobs([
+      makeProposal({
+        id: "held-date",
+        status: "needs_attention",
+        planned_start_date: "2026-08-12",
+        planned_start_time: "10:30",
+      }),
+    ]);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.kind).toBe("proposal_hold");
+    expect(jobs[0]?.tone).toBe("provisional");
+    expect(jobs[0]?.badgeLabel).toBe("Hold");
+  });
+
   it("spans multi-day jobs across each calendar day", () => {
     const jobs = buildCalendarJobs([
       makeProposal({

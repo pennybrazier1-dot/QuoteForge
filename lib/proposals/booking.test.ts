@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCalendarBookingTone,
   isCalendarEligibleProposal,
+  isCalendarHoldEligible,
 } from "@/lib/proposals/booking";
 
 describe("proposal job calendar eligibility", () => {
@@ -20,5 +21,18 @@ describe("proposal job calendar eligibility", () => {
     expect(isCalendarEligibleProposal("booked", "2026-10-12")).toBe(true);
     expect(getCalendarBookingTone("booked", "provisional")).toBe("provisional");
     expect(getCalendarBookingTone("booked", "confirmed")).toBe("confirmed");
+  });
+
+  it("treats an unaccepted date with a start time as a calendar hold, not a job", () => {
+    expect(
+      isCalendarHoldEligible("needs_attention", "2026-08-12", "10:30")
+    ).toBe(true);
+    expect(
+      isCalendarHoldEligible("waiting_for_customer", "2026-08-12", "10:30")
+    ).toBe(true);
+    expect(isCalendarHoldEligible("needs_attention", "2026-08-12", null)).toBe(
+      false
+    );
+    expect(isCalendarHoldEligible("booked", "2026-08-12", "10:30")).toBe(false);
   });
 });

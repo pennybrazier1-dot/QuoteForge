@@ -1935,6 +1935,13 @@ a.qf-card-inset:hover {
   padding-top: 0.25rem;
 }
 
+.qf-enquiry-path-copy {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
 .qf-enquiry-back-link {
   display: inline-flex;
   width: auto;
@@ -4180,6 +4187,13 @@ a.qf-card-inset:hover {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--foreground);
+}
+
+.qf-workspace-lifecycle-copy {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 @media (max-width: 1023px) {
@@ -7258,6 +7272,11 @@ button.qf-booking-preview-day-selectable:focus-visible {
     border-radius: 0.85rem;
     border: 1px solid rgba(255, 106, 26, 0.35);
     background: rgba(255, 106, 26, 0.1);
+  }
+
+  .qf-resolution-mobile-card-agreed {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.1);
   }
 
   .qf-resolution-mobile-headline {

@@ -55,8 +55,8 @@ export function canEditProposal(status: string): status is EditableProposalStatu
 const VALID_TRANSITIONS: Record<ProposalStatus, ProposalStatus[]> = {
   draft: ["ready_to_send", "cancelled"],
   ready_to_send: ["waiting_for_customer", "cancelled"],
-  waiting_for_customer: ["needs_attention", "booked", "cancelled"],
-  needs_attention: ["waiting_for_customer", "booked", "cancelled"],
+  waiting_for_customer: ["needs_attention", "booked", "declined", "cancelled"],
+  needs_attention: ["waiting_for_customer", "booked", "declined", "cancelled"],
   booked: ["completed", "cancelled"],
   completed: [],
   cancelled: [],
@@ -204,6 +204,12 @@ export function isQuotePhaseStatus(status: string): boolean {
     normalized === "waiting_for_customer" ||
     normalized === "needs_attention"
   );
+}
+
+/** Customer declined or the job was cancelled — no further customer action. */
+export function isClosedProposalStatus(status: string): boolean {
+  const normalized = normalizeProposalStatus(status);
+  return normalized === "cancelled" || normalized === "declined";
 }
 
 export function isJobPhaseStatus(status: string): boolean {

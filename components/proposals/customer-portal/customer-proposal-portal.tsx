@@ -7,6 +7,7 @@ import {
   acceptProposedScheduleDate,
   acceptPublicProposal,
   askPublicProposalQuestion,
+  declinePublicProposal,
   requestAnotherScheduleDate,
   requestPublicProposalChanges,
   type CustomerPortalActionState,
@@ -79,7 +80,7 @@ export function CustomerProposalPortal({
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<
-    "idle" | "accept" | "question" | "changes" | "request_date"
+    "idle" | "accept" | "question" | "changes" | "request_date" | "decline"
   >("idle");
   const [acceptState, acceptAction, acceptPending] = useActionState(
     acceptPublicProposal,
@@ -99,19 +100,25 @@ export function CustomerProposalPortal({
   );
   const [requestDateState, requestDateAction, requestDatePending] =
     useActionState(requestAnotherScheduleDate, initialState);
+  const [declineState, declineAction, declinePending] = useActionState(
+    declinePublicProposal,
+    initialState
+  );
 
   const successResult =
     acceptState.result ||
     questionState.result ||
     changesState.result ||
     acceptDateState.result ||
-    requestDateState.result;
+    requestDateState.result ||
+    declineState.result;
   const error =
     acceptState.error ||
     questionState.error ||
     changesState.error ||
     acceptDateState.error ||
     requestDateState.error ||
+    declineState.error ||
     null;
 
   useEffect(() => {
@@ -120,7 +127,8 @@ export function CustomerProposalPortal({
       changesState.ok ||
       acceptState.ok ||
       acceptDateState.ok ||
-      requestDateState.ok
+      requestDateState.ok ||
+      declineState.ok
     ) {
       router.refresh();
     }
@@ -130,8 +138,24 @@ export function CustomerProposalPortal({
     acceptState.ok,
     acceptDateState.ok,
     requestDateState.ok,
+    declineState.ok,
     router,
   ]);
+
+  if (successResult === "declined" || view.isDeclined) {
+    return (
+      <PortalShell businessName={view.businessName}>
+        <section className="cj-job-card">
+          <p className="cj-job-eyebrow">Declined</p>
+          <h1 className="cj-job-title">Proposal declined</h1>
+          <p className="cj-job-copy">
+            You declined this proposal. If that was a mistake, contact{" "}
+            {view.businessName}.
+          </p>
+        </section>
+      </PortalShell>
+    );
+  }
 
   if (view.isClosed) {
     return (
@@ -336,8 +360,8 @@ export function CustomerProposalPortal({
         <section className="cj-job-card cj-portal-actions">
           <h2 className="cj-job-section-title">Your response</h2>
           <p className="cj-job-copy">
-            Accept the proposal, request changes, or keep chatting above. You
-            don’t need an account.
+            Accept the proposal, ask a question, request a change, or decline.
+            You don’t need an account.
           </p>
 
           {error ? (
@@ -368,6 +392,13 @@ export function CustomerProposalPortal({
                 onClick={() => setMode("question")}
               >
                 Ask a question
+              </button>
+              <button
+                type="button"
+                className="cj-btn-secondary"
+                onClick={() => setMode("decline")}
+              >
+                Decline
               </button>
             </div>
           ) : null}
@@ -470,6 +501,42 @@ export function CustomerProposalPortal({
                   className="cj-btn-secondary"
                   onClick={() => setMode("idle")}
                   disabled={changesPending}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : null}
+
+          {mode === "decline" ? (
+            <form action={declineAction} className="cj-portal-form">
+              <input type="hidden" name="token" value={view.token} />
+              <p className="cj-job-copy">
+                This closes the proposal. The trader will see that you declined.
+              </p>
+              <label className="cj-portal-label" htmlFor="decline-note">
+                Optional reason
+              </label>
+              <textarea
+                id="decline-note"
+                name="note"
+                rows={3}
+                className="cj-portal-textarea"
+                placeholder="You can leave this blank."
+              />
+              <div className="cj-portal-form-actions">
+                <button
+                  type="submit"
+                  className="cj-btn-primary"
+                  disabled={declinePending}
+                >
+                  {declinePending ? "Declining…" : "Confirm decline"}
+                </button>
+                <button
+                  type="button"
+                  className="cj-btn-secondary"
+                  onClick={() => setMode("idle")}
+                  disabled={declinePending}
                 >
                   Cancel
                 </button>

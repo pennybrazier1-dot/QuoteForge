@@ -354,6 +354,12 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         </div>
 
         <div className="qf-enquiry-actions qf-enquiry-detail-actions">
+          {!isDeclined ? (
+            <p className="qf-enquiry-path-copy">
+              Need to inspect or measure first? Book a visit. If you already
+              have enough detail, create a quote.
+            </p>
+          ) : null}
           {showReviewButton ? (
             <button
               type="button"

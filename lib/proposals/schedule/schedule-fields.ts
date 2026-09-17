@@ -50,6 +50,8 @@ export function buildScheduleWorkspacePath(
   hints?: {
     suggestedDateText?: string | null;
     suggestedDateExact?: string | null;
+    suggestedTime?: string | null;
+    mode?: "hold" | "schedule";
   }
 ): string {
   const params = new URLSearchParams();
@@ -58,6 +60,13 @@ export function buildScheduleWorkspacePath(
   }
   if (hints?.suggestedDateExact?.trim()) {
     params.set("suggestedDateExact", hints.suggestedDateExact.trim());
+  }
+  const time = normalizePlannedStartTime(hints?.suggestedTime);
+  if (time) {
+    params.set("suggestedTime", time);
+  }
+  if (hints?.mode === "hold") {
+    params.set("mode", "hold");
   }
   const query = params.toString();
   return query

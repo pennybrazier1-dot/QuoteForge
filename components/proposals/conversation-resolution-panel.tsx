@@ -6,7 +6,10 @@ import {
   markChangeRequestResolved,
   type ChangeRequestActionState,
 } from "@/lib/proposals/change-request/actions";
-import type { ConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
+import {
+  buildCalendarActionHref,
+  type ConversationResolutionSummary,
+} from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
@@ -37,8 +40,12 @@ export function ConversationResolutionPanel({
   );
 
   const updateHref = buildProposalRevisePath(proposalId);
+  const calendarHref = buildCalendarActionHref(proposalId, summary);
+  const calendarLabel =
+    summary.calendarAction === "schedule" ? "Schedule job" : "Hold in calendar";
   const showSummary = section === "summary" || section === "all";
   const showActions = section === "actions" || section === "all";
+  const dateAgreed = summary.resolutionFocus === "date_agreed";
 
   return (
     <section
@@ -59,6 +66,12 @@ export function ConversationResolutionPanel({
             </div>
 
             <div className="qf-resolution-summary">
+              {dateAgreed && summary.agreedSlotLabel ? (
+                <div className="qf-resolution-block">
+                  <h3 className="qf-resolution-label">Date agreed</h3>
+                  <p className="qf-resolution-copy">{summary.agreedSlotLabel}</p>
+                </div>
+              ) : null}
               <div className="qf-resolution-block">
                 <h3 className="qf-resolution-label">Customer requests</h3>
                 {summary.customerRequestItems.length > 0 ? (
@@ -111,6 +124,18 @@ export function ConversationResolutionPanel({
               You choose the path. Nothing is changed until you confirm.
             </p>
             <div className="qf-resolution-action-grid">
+              {dateAgreed ? (
+                <div className="qf-resolution-action-option">
+                  <a href={calendarHref} className="qf-btn-primary">
+                    {calendarLabel}
+                  </a>
+                  <p className="qf-resolution-action-hint">
+                    {summary.calendarAction === "schedule"
+                      ? "Opens the job calendar with the agreed date. Nothing is saved until you confirm."
+                      : "Holds this date in your calendar only. It does not create a job."}
+                  </p>
+                </div>
+              ) : null}
               <div className="qf-resolution-action-option">
                 <a href={updateHref} className="qf-btn-secondary">
                   Update proposal
@@ -148,7 +173,12 @@ export function ConversationResolutionPanel({
       {/* Mobile: situation + next action only. */}
       <div className="qf-resolution-mobile">
         {showSummary ? (
-          <div className="qf-resolution-mobile-card" role="status">
+          <div
+            className={`qf-resolution-mobile-card${
+              dateAgreed ? " qf-resolution-mobile-card-agreed" : ""
+            }`}
+            role="status"
+          >
             <p className="qf-resolution-mobile-headline">
               {summary.mobileHeadline}
             </p>
@@ -169,7 +199,20 @@ export function ConversationResolutionPanel({
             className="qf-resolution-mobile-next"
             aria-label="What to do next"
           >
-            {summary.resolutionFocus === "date" ? (
+            {dateAgreed ? (
+              <div className="qf-resolution-mobile-actions">
+                <a href={calendarHref} className="qf-btn-primary">
+                  {calendarLabel}
+                </a>
+                <button
+                  type="button"
+                  className="qf-btn-secondary"
+                  onClick={() => focusProposalConversationComposer()}
+                >
+                  Reply
+                </button>
+              </div>
+            ) : summary.resolutionFocus === "date" ? (
               <>
                 <h2 className="qf-resolution-mobile-next-title">
                   Can you accommodate this?

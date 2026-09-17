@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 
 export const CALENDAR_PROPOSAL_SELECT =
-  "id, proposal_number, customer_name, title, job_summary, rough_notes, status, booking_confirmation, planned_start_date, planned_start_date_text, estimated_duration, things_to_confirm, job_address";
+  "id, proposal_number, customer_name, title, job_summary, rough_notes, status, booking_confirmation, planned_start_date, planned_start_date_text, planned_start_time, estimated_duration, things_to_confirm, job_address";
 
 export const CALENDAR_PROPOSAL_STATUSES = [
   "waiting_for_customer",

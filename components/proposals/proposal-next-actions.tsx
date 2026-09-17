@@ -226,22 +226,14 @@ function buildNextActions(proposal: NextActionsProposal): NextAction[] {
     case "waiting_for_customer":
       return [
         {
-          id: "mark-accepted",
-          title: "Mark Accepted",
-          description:
-            "Customer accepted this proposal — start job preparation before scheduling work.",
-          icon: ICONS.job,
-          tone: "accent",
-          primary: true,
-          href: "#proposal-lifecycle",
-        },
-        {
           id: "view-timeline",
-          title: "View Timeline",
-          description: "See when this quote was sent and what happens next.",
+          title: "Waiting for customer",
+          description:
+            "The customer accepts, asks a question, requests a change, or declines from their proposal link.",
           icon: ICONS.timeline,
           tone: "muted",
-          href: "#proposal-timeline",
+          primary: true,
+          href: "#proposal-lifecycle",
         },
         openPdf,
         sendReminder,

@@ -2,6 +2,7 @@ import { getProposalSummaryLabel } from "@/lib/proposals/display";
 import {
   getCalendarBookingTone,
   isCalendarEligibleProposal,
+  isCalendarHoldEligible,
 } from "@/lib/proposals/booking";
 import { parseEstimatedDuration } from "@/lib/proposals/duration";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
@@ -14,7 +15,7 @@ export type CalendarView = "month" | "week" | "day" | "year";
 
 export type CalendarEventTone = "confirmed" | "provisional" | "site_visit";
 
-export type CalendarJobKind = "proposal" | "site_visit";
+export type CalendarJobKind = "proposal" | "proposal_hold" | "site_visit";
 
 export type CalendarProposal = {
   id: string;
@@ -27,6 +28,7 @@ export type CalendarProposal = {
   booking_confirmation: string | null;
   planned_start_date: string | null;
   planned_start_date_text: string | null;
+  planned_start_time?: string | null;
   estimated_duration: string | null;
   things_to_confirm?: string | null;
   job_address: string | null;
@@ -163,11 +165,25 @@ export function buildCalendarJobs(
     const status = normalizeProposalStatus(proposal.status);
     const startDate = getCalendarStartDate(proposal);
 
-    if (!startDate || !isCalendarEligibleProposal(status, startDate)) {
+    const isJob = Boolean(
+      startDate && isCalendarEligibleProposal(status, startDate)
+    );
+    const isHold = Boolean(
+      startDate &&
+        isCalendarHoldEligible(
+          status,
+          startDate,
+          proposal.planned_start_time
+        )
+    );
+
+    if (!startDate || (!isJob && !isHold)) {
       continue;
     }
 
-    const tone = getCalendarBookingTone(status, proposal.booking_confirmation);
+    const tone = isHold
+      ? "provisional"
+      : getCalendarBookingTone(status, proposal.booking_confirmation);
 
     if (!tone) {
       continue;
@@ -199,6 +215,8 @@ export function buildCalendarJobs(
       spanDates,
       dateLabel,
       tone,
+      kind: isHold ? "proposal_hold" : "proposal",
+      badgeLabel: isHold ? "Hold" : undefined,
       duration: durationText || undefined,
       addressLine: proposal.job_address?.trim() || undefined,
     });

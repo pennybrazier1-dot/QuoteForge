@@ -6,7 +6,10 @@ import {
   isBookingConfirmation,
   type BookingConfirmation,
 } from "@/lib/proposals/booking";
+import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
 import { getProposalSummaryLabel } from "@/lib/proposals/display";
+import { findLatestConfirmedDateAgreement } from "@/lib/proposals/revision/conversation-agreements";
+import { normalizePlannedStartTime } from "@/lib/proposals/schedule/schedule-fields";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
@@ -20,6 +23,8 @@ type PageProps = {
   searchParams: Promise<{
     suggestedDate?: string;
     suggestedDateExact?: string;
+    suggestedTime?: string;
+    mode?: string;
   }>;
 };
 
@@ -61,12 +66,25 @@ export default async function ProposalSchedulePage({
     ? (row.booking_confirmation as BookingConfirmation)
     : null;
   const status = normalizeProposalStatus(row.status);
+  const holdMode = query.mode === "hold";
+  const canHold =
+    holdMode &&
+    (status === "waiting_for_customer" || status === "needs_attention");
 
   // A job date is operational scheduling, not a proposal discussion.
-  // Before acceptance, use the customer conversation or update the proposal.
-  if (status !== "booked") {
+  // Before acceptance, only a calendar hold is allowed.
+  if (status !== "booked" && !canHold) {
     redirect(`/proposals/${row.id}#customer-replies`);
   }
+
+  const messages = await loadProposalCustomerMessages(supabase, row.id);
+  const agreement = findLatestConfirmedDateAgreement(messages);
+  const suggestedDateExact =
+    query.suggestedDateExact ?? agreement?.dateIso ?? null;
+  const suggestedTime =
+    normalizePlannedStartTime(query.suggestedTime) ??
+    agreement?.timeHm ??
+    null;
 
   return (
     <ScheduleWorkspace
@@ -81,10 +99,12 @@ export default async function ProposalSchedulePage({
         plannedStartTime: row.planned_start_time ?? null,
         bookingConfirmation,
         requireCustomerDateAcceptance: false,
+        scheduleMode: canHold ? "hold" : "job",
       }}
       calendarProposals={calendarProposals}
-      suggestedDateText={query.suggestedDate ?? null}
-      suggestedDateExact={query.suggestedDateExact ?? null}
+      suggestedDateText={query.suggestedDate ?? agreement?.dateText ?? null}
+      suggestedDateExact={suggestedDateExact}
+      suggestedTime={suggestedTime}
     />
   );
 }

@@ -234,7 +234,7 @@ export async function simulateCustomerDeclined(
   const { error: updateError } = await supabase
     .from("proposals")
     .update({
-      status: "cancelled",
+      status: "declined",
       attention_reason: null,
     })
     .eq("id", proposalId);
@@ -249,7 +249,7 @@ export async function simulateCustomerDeclined(
     userId: user.id,
     eventType: "status_change",
     fromStatus: currentStatus,
-    toStatus: "cancelled",
+    toStatus: "declined",
     note: "Simulated customer declined",
     metadata: { simulated: true },
   });

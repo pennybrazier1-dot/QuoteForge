@@ -138,7 +138,7 @@ export async function recordCustomerDecline(
     currentStatus !== "waiting_for_customer" &&
     currentStatus !== "needs_attention"
   ) {
-    return { error: "This proposal cannot be declined from its current status." };
+    return { error: "This proposal cannot be cancelled from its current status." };
   }
 
   const { error: updateError } = await supabase
@@ -162,7 +162,7 @@ export async function recordCustomerDecline(
     eventType: "status_change",
     fromStatus: currentStatus,
     toStatus: "cancelled",
-    note: "Customer declined",
+    note: "Job cancelled",
   });
 
   revalidateAll(proposalId);
