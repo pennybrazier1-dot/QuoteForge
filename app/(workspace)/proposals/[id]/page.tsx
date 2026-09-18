@@ -7,6 +7,9 @@ import { isConversationDeepLink } from "@/lib/proposals/customer-portal/conversa
 import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
+import { enabledPaymentMethods } from "@/lib/payments/job-payment";
+import { emptyPaymentSettings } from "@/lib/payments/settings";
+import type { WorkspacePaymentSettings } from "@/lib/payments/types";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -48,7 +51,7 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
     supabase
       .from("proposals")
       .select(
-        "id, proposal_number, status, title, job_address, rough_notes, customer_id, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at, updated_at, sent_at, accepted_at, booked_at, completed_at, attention_reason, booking_confirmation, job_summary, scope_of_work, materials, labour_description, estimated_duration, planned_start_date_text, planned_start_date, planned_start_time, things_to_confirm_items, ai_optional_extras, payment_terms"
+        "id, proposal_number, status, title, job_address, rough_notes, customer_id, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at, updated_at, sent_at, accepted_at, booked_at, completed_at, attention_reason, booking_confirmation, job_summary, scope_of_work, materials, labour_description, estimated_duration, planned_start_date_text, planned_start_date, planned_start_time, things_to_confirm_items, ai_optional_extras, payment_terms, payment_status, payment_due_amount, payment_methods_issued, paid_at, closed_at"
       )
       .eq("id", id)
       .maybeSingle(),
@@ -85,11 +88,33 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
     linkedCustomerEmail = linkedCustomer?.email?.trim() || null;
   }
 
+  const { data: paymentSettings } = profile?.workspace_id
+    ? await supabase
+        .from("workspace_payment_settings")
+        .select(
+          "workspace_id, accept_bank_transfer, accept_card_link, accept_card_in_person, accept_cash, accept_other"
+        )
+        .eq("workspace_id", profile.workspace_id)
+        .maybeSingle()
+    : { data: null };
+
+  const enabledMethods = enabledPaymentMethods(
+    (paymentSettings as Pick<
+      WorkspacePaymentSettings,
+      | "accept_bank_transfer"
+      | "accept_card_link"
+      | "accept_card_in_person"
+      | "accept_cash"
+      | "accept_other"
+    > | null) ?? emptyPaymentSettings(profile?.workspace_id ?? "")
+  );
+
   return (
     <ProposalWorkspace
       proposal={{
         ...proposal,
         linked_customer_email: linkedCustomerEmail,
+        enabled_payment_methods: enabledMethods,
       }}
       businessName={resolveCustomerFacingBusinessName(
         workspace?.business_name

@@ -28,6 +28,10 @@ import {
   signedUrlExpiresAtFromNow,
   SITE_VISIT_PHOTO_SIGNED_URL_SECONDS,
 } from "@/lib/enquiries/server/photo-display";
+import {
+  buildPublicEnquiryPath,
+  buildPublicEnquiryUrl,
+} from "@/lib/enquiries/public-link";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import type { SiteVisitSession } from "@/lib/site-visit/types";
 import { createDefaultSiteVisitSession } from "@/lib/site-visit/site-visit-mode-data";
@@ -907,11 +911,8 @@ export async function getOrCreatePublicEnquiryLinkAction(): Promise<
       context.workspaceId,
       context.workspace.public_enquiry_slug
     );
-    const path = `/request-quote/w/${slug}`;
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-      "http://localhost:3000";
-    return { ok: true, data: { slug, path, url: `${siteUrl}${path}` } };
+    const path = buildPublicEnquiryPath(slug);
+    return { ok: true, data: { slug, path, url: buildPublicEnquiryUrl(slug) } };
   } catch {
     return { ok: false, error: "Could not create public enquiry link." };
   }

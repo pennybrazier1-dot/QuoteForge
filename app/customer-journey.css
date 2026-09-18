@@ -2616,3 +2616,27 @@
   background: var(--portal-surface);
 }
 
+.cj-payment-due-card {
+  border: 1px solid var(--cj-border-accent);
+}
+
+.cj-payment-bank {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.cj-payment-bank dt {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cj-text-muted);
+}
+
+.cj-payment-bank dd {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--cj-text);
+}
+

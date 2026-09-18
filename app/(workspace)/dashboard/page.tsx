@@ -19,7 +19,11 @@ const HOME_PROPOSAL_SELECT =
   "id, proposal_number, customer_name, title, job_summary, rough_notes, scope_of_work, job_address, status, attention_reason, booking_confirmation, total_amount, created_at, updated_at, accepted_at, sent_at, booked_at, completed_at, planned_start_date_text, planned_start_date, planned_start_time, estimated_duration";
 
 type PageProps = {
-  searchParams: Promise<{ visitBooked?: string }>;
+  searchParams: Promise<{
+    visitBooked?: string;
+    jobCompleted?: string;
+    completedCustomer?: string;
+  }>;
 };
 
 export default async function HomePage({ searchParams }: PageProps) {
@@ -54,7 +58,7 @@ export default async function HomePage({ searchParams }: PageProps) {
   const proposals = (proposalsData ?? []) as HomeProposal[];
   const groups = buildHomeSectionGroups(proposals, visits);
   const attentionItems = buildHomeAttentionItems(proposals);
-  const { visitBooked } = await searchParams;
+  const { visitBooked, jobCompleted, completedCustomer } = await searchParams;
 
   return (
     <HomeScreen
@@ -62,6 +66,8 @@ export default async function HomePage({ searchParams }: PageProps) {
       attentionItems={attentionItems}
       groups={groups}
       visitBooked={visitBooked === "1"}
+      jobCompleted={jobCompleted === "1"}
+      completedCustomer={completedCustomer ?? null}
     />
   );
 }

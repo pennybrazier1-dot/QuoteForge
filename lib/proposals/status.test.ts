@@ -25,8 +25,12 @@ describe("proposal status transitions", () => {
     expect(canTransitionStatus("ready_to_send", "booked")).toBe(false);
   });
 
-  it("blocks completed from reopening", () => {
-    expect(canTransitionStatus("completed", "booked")).toBe(false);
+  it("allows a completed job to reopen as booked", () => {
+    expect(canTransitionStatus("completed", "booked")).toBe(true);
+  });
+
+  it("allows a paid completed job to close", () => {
+    expect(canTransitionStatus("completed", "closed")).toBe(true);
   });
 
   it("normalizes legacy accepted status to booked", () => {

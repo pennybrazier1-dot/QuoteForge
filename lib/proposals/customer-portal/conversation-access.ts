@@ -1,16 +1,19 @@
 import { isOrdinaryConversation } from "@/lib/proposals/change-request/classify-conversation-intent";
-import { isClosedProposalStatus, normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  isClosedProposalStatus,
+  isFullyClosedJobStatus,
+  normalizeProposalStatus,
+} from "@/lib/proposals/status";
 
 /**
  * Customer/trader messaging stays open for the whole active job.
  * Read-only only when the proposal is genuinely closed.
  *
- * Closed today: cancelled, declined.
- * There is no separate archived/closed-job communication state yet,
- * so booked, in-progress, completed, invoiced, and paid stay replyable.
+ * Messaging stays open through completed and paid.
+ * It becomes read-only after the job is fully closed, or if cancelled/declined.
  */
 export function isConversationReplyable(status: string): boolean {
-  return !isClosedProposalStatus(status);
+  return !isClosedProposalStatus(status) && !isFullyClosedJobStatus(status);
 }
 
 export function shouldFlagAttentionForCustomerMessage(

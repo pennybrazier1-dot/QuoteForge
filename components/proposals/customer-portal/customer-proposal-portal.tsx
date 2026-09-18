@@ -221,6 +221,86 @@ function PortalShell({
   );
 }
 
+function PortalPaymentCard({
+  payment,
+}: {
+  payment: PublicProposalViewModel["payment"];
+}) {
+  if (!payment) {
+    return null;
+  }
+
+  if (payment.status === "paid" || payment.status === "waived") {
+    return (
+      <section className="cj-job-card" aria-label="Payment">
+        <p className="cj-job-eyebrow">Payment</p>
+        <h2 className="cj-job-title">
+          {payment.status === "waived" ? "No payment required" : "Payment received"}
+        </h2>
+        <p className="cj-job-copy">Thank you</p>
+        {payment.amountLabel ? (
+          <p className="cj-portal-summary-price">{payment.amountLabel}</p>
+        ) : null}
+      </section>
+    );
+  }
+
+  if (payment.status !== "requested") {
+    return null;
+  }
+
+  return (
+    <section className="cj-job-card cj-payment-due-card" aria-label="Payment due">
+      <p className="cj-job-eyebrow">Payment due</p>
+      <h2 className="cj-job-title">{payment.jobTitle}</h2>
+      {payment.amountLabel ? (
+        <p className="cj-portal-summary-price">{payment.amountLabel}</p>
+      ) : null}
+      {payment.methodLabels.length > 0 ? (
+        <p className="cj-job-copy">
+          Payment method
+          <br />
+          {payment.methodLabels.join(", ")}
+        </p>
+      ) : null}
+      {payment.bank ? (
+        <dl className="cj-payment-bank">
+          <div>
+            <dt>Account name</dt>
+            <dd>{payment.bank.accountName}</dd>
+          </div>
+          <div>
+            <dt>Sort code</dt>
+            <dd>{payment.bank.sortCode}</dd>
+          </div>
+          <div>
+            <dt>Account number</dt>
+            <dd>{payment.bank.accountNumber}</dd>
+          </div>
+          {payment.bank.reference ? (
+            <div>
+              <dt>Payment reference</dt>
+              <dd>{payment.bank.reference}</dd>
+            </div>
+          ) : null}
+        </dl>
+      ) : null}
+      {payment.cardUrl ? (
+        <a className="cj-btn-primary" href={payment.cardUrl} rel="noreferrer">
+          Pay securely
+        </a>
+      ) : null}
+      {payment.cardInPerson ? (
+        <p className="cj-job-copy">Pay by card with your trader</p>
+      ) : null}
+      {payment.cash ? <p className="cj-job-copy">Cash payment agreed</p> : null}
+      {payment.otherLabel ? (
+        <p className="cj-job-copy">{payment.otherLabel}</p>
+      ) : null}
+    </section>
+  );
+}
+
 function PortalHero({
   view,
 }: {
@@ -393,11 +473,20 @@ export function CustomerProposalPortal({
     return (
       <PortalShell view={view}>
         <section className="cj-job-card cj-portal-success">
-          <p className="cj-job-eyebrow">Accepted</p>
-          <h1 className="cj-job-title">Thank you</h1>
+          <p className="cj-job-eyebrow">
+            {view.isJobClosed ? "Job closed" : "Accepted"}
+          </p>
+          <h1 className="cj-job-title">
+            {view.isJobClosed ? "Job closed" : "Thank you"}
+          </h1>
           <p className="cj-job-copy">
-            Your proposal and booking are confirmed
-            {view.plannedStartLabel ? ` for ${view.plannedStartLabel}` : ""}.
+            {view.isJobClosed
+              ? view.payment?.status === "paid"
+                ? "Payment received. This job is now closed."
+                : "This job is now closed."
+              : `Your proposal and booking are confirmed${
+                  view.plannedStartLabel ? ` for ${view.plannedStartLabel}` : ""
+                }.`}
           </p>
           <a
             className="cj-btn-secondary cj-portal-pdf"
@@ -406,6 +495,7 @@ export function CustomerProposalPortal({
             Download PDF
           </a>
         </section>
+        <PortalPaymentCard payment={view.payment} />
         {view.canRespondToProposedDate &&
         view.proposedDateLabel &&
         !view.canAcceptProposal ? (

@@ -52,6 +52,9 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith("/visits") ||
     pathname.startsWith("/site-visit") ||
     pathname.startsWith("/settings") ||
+    pathname.startsWith("/completed-jobs") ||
+    pathname.startsWith("/closed-jobs") ||
+    pathname.startsWith("/help") ||
     pathname.startsWith("/admin");
 
   if (!user && isProtectedRoute) {
@@ -114,6 +117,9 @@ export async function updateSession(request: NextRequest) {
       pathname.startsWith("/visits") ||
       pathname.startsWith("/site-visit") ||
       pathname.startsWith("/settings") ||
+      pathname.startsWith("/completed-jobs") ||
+      pathname.startsWith("/closed-jobs") ||
+      pathname.startsWith("/help") ||
       pathname.startsWith("/admin") ||
       pathname.startsWith("/calendar") ||
       pathname.startsWith("/more");

@@ -62,6 +62,7 @@ describe("conversation access across the job lifecycle", () => {
   it("locks conversation only when the proposal is genuinely closed", () => {
     expect(isConversationReplyable("cancelled")).toBe(false);
     expect(isConversationReplyable("declined")).toBe(false);
+    expect(isConversationReplyable("closed")).toBe(false);
   });
 });
 

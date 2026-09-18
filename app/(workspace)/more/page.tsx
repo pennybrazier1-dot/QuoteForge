@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  CLOSED_JOBS_PATH,
+  COMPLETED_JOBS_PATH,
+  HELP_SUPPORT_PATH,
+} from "@/lib/jobs/complete-job";
 
 const MORE_LINKS = [
   {
@@ -11,6 +16,21 @@ const MORE_LINKS = [
     href: "/proposals",
     title: "Proposals",
     subtitle: "All your quotes and proposals",
+  },
+  {
+    href: COMPLETED_JOBS_PATH,
+    title: "Completed Jobs",
+    subtitle: "Finished work waiting for payment or close",
+  },
+  {
+    href: CLOSED_JOBS_PATH,
+    title: "Closed Jobs",
+    subtitle: "Fully closed paid work",
+  },
+  {
+    href: HELP_SUPPORT_PATH,
+    title: "Help & Support",
+    subtitle: "Guides and support for using Reanvil",
   },
   {
     href: "/settings",

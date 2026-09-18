@@ -21,8 +21,15 @@ import {
 import { promoteBookedJobIfReady } from "@/lib/proposals/date-workflow-persist";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
 import { syncJobStatusForProposal } from "@/lib/jobs/sync-job-status";
+import {
+  afterJobCompletedRedirect,
+  COMPLETE_JOB_ERROR,
+  COMPLETED_JOBS_PATH,
+  REOPEN_JOB_ERROR,
+} from "@/lib/jobs/complete-job";
 import { sendProposalToCustomer } from "@/lib/proposals/send-proposal-to-customer";
 import {
+  canTransitionStatus,
   isProposalStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
@@ -40,6 +47,9 @@ function revalidateAll(proposalId: string) {
   revalidatePath("/dashboard");
   revalidatePath("/calendar");
   revalidatePath("/proposals");
+  revalidatePath(COMPLETED_JOBS_PATH);
+  revalidatePath("/customers");
+  revalidatePath("/closed-jobs");
   revalidatePath(`/proposals/${proposalId}`);
 }
 
@@ -392,7 +402,7 @@ export async function markJobComplete(
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, workspace_id, booking_confirmation")
+    .select("id, status, workspace_id, booking_confirmation, customer_name")
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -408,17 +418,24 @@ export async function markJobComplete(
 
   const now = new Date().toISOString();
 
-  const { error: updateError } = await supabase
+  const { data: updated, error: updateError } = await supabase
     .from("proposals")
     .update({
       status: "completed",
       completed_at: now,
     })
-    .eq("id", proposalId);
+    .eq("id", proposalId)
+    .select("id, status, completed_at")
+    .maybeSingle();
 
-  if (updateError) {
+  if (
+    updateError ||
+    !updated ||
+    updated.status !== "completed" ||
+    !updated.completed_at
+  ) {
     return {
-      error: updateError.message ?? "Could not mark this job complete.",
+      error: COMPLETE_JOB_ERROR,
     };
   }
 
@@ -437,7 +454,95 @@ export async function markJobComplete(
   });
 
   revalidateAll(proposalId);
-  redirect(`/proposals/${proposalId}`);
+  redirect(afterJobCompletedRedirect(proposal.customer_name));
+}
+
+export async function reopenCompletedJob(
+  _prevState: LifecycleActionState,
+  formData: FormData
+): Promise<LifecycleActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding first." };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const { data: proposal, error: loadError } = await supabase
+    .from("proposals")
+    .select("id, status, workspace_id")
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (loadError || !proposal) {
+    return { error: "Proposal not found." };
+  }
+
+  const currentStatus = normalizeProposalStatus(proposal.status);
+  if (currentStatus !== "completed") {
+    return { error: "Only completed jobs can be reopened." };
+  }
+
+  if (
+    isProposalStatus(currentStatus) &&
+    !canTransitionStatus(currentStatus, "booked")
+  ) {
+    return { error: REOPEN_JOB_ERROR };
+  }
+
+  const { data: updated, error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      status: "booked",
+      completed_at: null,
+      payment_status: "not_requested",
+      payment_requested_at: null,
+      payment_due_amount: null,
+      payment_methods_issued: [],
+      paid_at: null,
+      payment_method: null,
+      issued_bank_account_name: null,
+      issued_bank_sort_code: null,
+      issued_bank_account_number: null,
+      issued_bank_reference: null,
+      issued_payment_url: null,
+      closed_at: null,
+    })
+    .eq("id", proposalId)
+    .select("id, status, completed_at")
+    .maybeSingle();
+
+  if (updateError || !updated || updated.status !== "booked") {
+    return { error: REOPEN_JOB_ERROR };
+  }
+
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: user.id,
+    eventType: "status_change",
+    fromStatus: currentStatus,
+    toStatus: "booked",
+    note: "Job reopened",
+  });
+
+  await syncJobStatusForProposal(supabase, proposal.id, "scheduled", {
+    completed_at: null,
+  });
+
+  revalidateAll(proposalId);
+  return { success: true };
 }
 
 export async function resendToCustomer(

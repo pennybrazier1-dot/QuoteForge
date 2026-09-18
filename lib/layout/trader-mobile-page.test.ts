@@ -183,6 +183,8 @@ describe("trader mobile page width", () => {
       TRADER_MOBILE_PAGE_SOURCES.enquiries,
       TRADER_MOBILE_PAGE_SOURCES.enquiryDetail,
       TRADER_MOBILE_PAGE_SOURCES.quotePrep,
+      TRADER_MOBILE_PAGE_SOURCES.completedJobsScreen,
+      TRADER_MOBILE_PAGE_SOURCES.help,
     ];
     for (const file of extra) {
       const source = readRepo(file);

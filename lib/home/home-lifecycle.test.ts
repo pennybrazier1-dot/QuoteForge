@@ -148,6 +148,22 @@ describe("homepage lifecycle buckets", () => {
     expect(item.notes[0]).toBe("Schedule job");
   });
 
+  it("keeps completed jobs out of active Home work", () => {
+    const item = classifyHomeProposal(
+      proposal({
+        id: "p-done",
+        status: "completed",
+        accepted_at: "2026-08-08T12:00:00.000Z",
+        booking_confirmation: "confirmed",
+        planned_start_date: "2026-08-12",
+        planned_start_time: "10:30",
+        completed_at: "2026-08-12T16:00:00.000Z",
+      }),
+      now
+    );
+    expect(item.bucket).toBe("none");
+  });
+
   it("puts accepted plus confirmed date in Booked jobs, or Today's jobs when it is today", () => {
     const booked = classifyHomeProposal(
       proposal({

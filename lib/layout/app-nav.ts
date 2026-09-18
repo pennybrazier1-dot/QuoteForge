@@ -22,6 +22,9 @@ export const DESKTOP_SIDEBAR_ITEMS: AppNavItem[] = [
   { href: "/proposals/new", label: "New Quote" },
   { href: "/proposals", label: "Proposals" },
   { href: "/calendar", label: "Calendar" },
+  { href: "/completed-jobs", label: "Completed Jobs" },
+  { href: "/closed-jobs", label: "Closed Jobs" },
+  { href: "/help", label: "Help & Support" },
   { href: "/settings", label: "Settings" },
 ];
 
@@ -43,7 +46,13 @@ export function isAppNavActive(pathname: string, href: string): boolean {
   }
 
   if (href === "/more") {
-    return pathname === "/more" || pathname.startsWith("/settings");
+    return (
+      pathname === "/more" ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/completed-jobs") ||
+      pathname.startsWith("/closed-jobs") ||
+      pathname.startsWith("/help")
+    );
   }
 
   if (href === "/calendar") {

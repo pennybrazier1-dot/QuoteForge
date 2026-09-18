@@ -4,6 +4,7 @@ import {
   CUSTOMER_DETAIL_SECTIONS,
   customerCurrentWorkMeta,
   customerCurrentWorkTitle,
+  customerHistoryWorkTitle,
   customerDetailSectionDefaultOpen,
   LAST_MINUTE_CANCELLATION_SUPPORTED,
   splitCustomerJobs,
@@ -40,10 +41,12 @@ describe("customer detail hierarchy", () => {
         accepted_at: "2026-08-01T00:00:00.000Z",
         completed_at: "2026-08-20T00:00:00.000Z",
         proposal_id: "p2",
+        title: "Bathroom repair",
       },
     ]);
     expect(split.current.map((job) => job.id)).toEqual(["job-now"]);
     expect(split.history.map((job) => job.id)).toEqual(["job-old"]);
+    expect(customerHistoryWorkTitle(split.history[0]!)).toBe("Bathroom repair");
   });
 
   it("shows the booked job title and confirmed date on current work", () => {

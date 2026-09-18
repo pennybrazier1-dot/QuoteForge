@@ -117,6 +117,18 @@ describe("date workflow states", () => {
     expect(needsScheduleJob(true, "none")).toBe(true);
   });
 
+  it("does not treat a completed job as a booked job", () => {
+    const completed = buildDateWorkflowSnapshot({
+      status: "completed",
+      acceptedAt: "2026-09-01T10:00:00.000Z",
+      bookingConfirmation: "confirmed",
+      plannedStartDate: "2026-09-18",
+      plannedStartTime: "09:00",
+    });
+    expect(completed.isBookedJob).toBe(false);
+    expect(completed.needsScheduleJob).toBe(false);
+  });
+
   it("uses a single short hold-screen explanation", () => {
     const text = [
       HOLD_SCREEN_COPY.title,

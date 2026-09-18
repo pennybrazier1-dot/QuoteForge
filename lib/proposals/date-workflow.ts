@@ -1,4 +1,7 @@
-import { normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  isCompletedJobStatus,
+  normalizeProposalStatus,
+} from "@/lib/proposals/status";
 
 /** Customer still needs to confirm the date. */
 export const DATE_SLOT_PROVISIONAL = "provisional";
@@ -87,15 +90,16 @@ export function buildDateWorkflowSnapshot(
     input.status,
     input.acceptedAt
   );
+  const completed = isCompletedJobStatus(input.status);
 
   return {
     dateState,
     proposalAccepted,
-    isBookedJob: isBookedJob(proposalAccepted, dateState),
-    needsScheduleJob: needsScheduleJob(proposalAccepted, dateState),
-    waitingForDateConfirmation: dateState === "provisional",
+    isBookedJob: !completed && isBookedJob(proposalAccepted, dateState),
+    needsScheduleJob: !completed && needsScheduleJob(proposalAccepted, dateState),
+    waitingForDateConfirmation: !completed && dateState === "provisional",
     waitingForProposalAcceptance:
-      !proposalAccepted && dateState === "confirmed",
+      !completed && !proposalAccepted && dateState === "confirmed",
     plannedStartDate: input.plannedStartDate?.trim() || null,
     plannedStartTime: input.plannedStartTime?.trim() || null,
   };

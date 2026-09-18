@@ -158,6 +158,10 @@ export function customerCurrentWorkTitle(job: CustomerDetailJob): string {
   return job.title?.trim() || customerJobLabel(job.status);
 }
 
+export function customerHistoryWorkTitle(job: CustomerDetailJob): string {
+  return job.title?.trim() || customerJobLabel(job.status);
+}
+
 export function customerCurrentWorkMeta(job: CustomerDetailJob): string {
   const when = [formatCustomerWorkDate(job.plannedStartDate), job.plannedStartTime]
     .filter(Boolean)

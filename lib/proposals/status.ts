@@ -5,6 +5,7 @@ export const LIFECYCLE_PROPOSAL_STATUSES = [
   "needs_attention",
   "booked",
   "completed",
+  "closed",
   "cancelled",
 ] as const;
 
@@ -58,10 +59,11 @@ const VALID_TRANSITIONS: Record<ProposalStatus, ProposalStatus[]> = {
   waiting_for_customer: ["needs_attention", "booked", "declined", "cancelled"],
   needs_attention: ["waiting_for_customer", "booked", "declined", "cancelled"],
   booked: ["completed", "cancelled"],
-  completed: [],
+  completed: ["booked", "closed"],
+  closed: [],
   cancelled: [],
-  invoiced: [],
-  paid: [],
+  invoiced: ["closed"],
+  paid: ["closed"],
   declined: ["cancelled"],
   expired: ["cancelled"],
 };
@@ -73,8 +75,18 @@ export function canCancelProposal(status: string): boolean {
     isProposalStatus(normalized) &&
     normalized !== "cancelled" &&
     normalized !== "completed" &&
+    normalized !== "closed" &&
     normalized !== "invoiced" &&
     normalized !== "paid"
+  );
+}
+
+export function isCompletedJobStatus(status: string): boolean {
+  const normalized = normalizeProposalStatus(status);
+  return (
+    normalized === "completed" ||
+    normalized === "invoiced" ||
+    normalized === "paid"
   );
 }
 
@@ -83,9 +95,8 @@ export function isActiveHomeProposal(status: string): boolean {
 
   return (
     normalized !== "cancelled" &&
-    normalized !== "completed" &&
-    normalized !== "invoiced" &&
-    normalized !== "paid" &&
+    normalized !== "closed" &&
+    !isCompletedJobStatus(normalized) &&
     normalized !== "declined" &&
     normalized !== "expired"
   );
@@ -140,6 +151,8 @@ export function getProposalPageTitle(status: string): string {
       return "Booked Job";
     case "completed":
       return "Completed Job";
+    case "closed":
+      return "Closed Job";
     case "invoiced":
       return "Invoiced Job";
     case "paid":
@@ -162,6 +175,7 @@ export const STATUS_BADGE_STYLES: Record<LifecycleProposalStatus, string> = {
   needs_attention: "bg-orange-500/10 text-orange-300",
   booked: "bg-emerald-500/10 text-emerald-400",
   completed: "bg-emerald-500/10 text-emerald-400",
+  closed: "bg-white/5 text-zinc-400",
   cancelled: "bg-white/5 text-zinc-400",
 };
 
@@ -206,7 +220,11 @@ export function isQuotePhaseStatus(status: string): boolean {
   );
 }
 
-/** Customer declined or the job was cancelled — no further customer action. */
+export function isFullyClosedJobStatus(status: string): boolean {
+  return normalizeProposalStatus(status) === "closed";
+}
+
+/** Customer declined or cancelled — the proposal is no longer available. */
 export function isClosedProposalStatus(status: string): boolean {
   const normalized = normalizeProposalStatus(status);
   return normalized === "cancelled" || normalized === "declined";
@@ -219,6 +237,7 @@ export function isJobPhaseStatus(status: string): boolean {
     normalized === "booked" ||
     normalized === "completed" ||
     normalized === "invoiced" ||
-    normalized === "paid"
+    normalized === "paid" ||
+    normalized === "closed"
   );
 }

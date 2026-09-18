@@ -113,6 +113,26 @@ export function classifyHomeProposal(
     plannedStartTime: proposal.planned_start_time,
   });
   const status = normalizeProposalStatus(proposal.status);
+  if (
+    status === "completed" ||
+    status === "closed" ||
+    status === "invoiced" ||
+    status === "paid" ||
+    status === "cancelled" ||
+    status === "declined"
+  ) {
+    return {
+      proposal,
+      snapshot,
+      slotLabel: formatHomeSlotLabel({
+        dateIso: proposal.planned_start_date,
+        dateText: proposal.planned_start_date_text,
+        timeHm: proposal.planned_start_time,
+      }),
+      bucket: "none",
+      notes: [],
+    };
+  }
   const slotLabel = formatHomeSlotLabel({
     dateIso: proposal.planned_start_date,
     dateText: proposal.planned_start_date_text,

@@ -8,6 +8,8 @@ import {
   AttentionOnly,
   AttentionVisibilityProvider,
 } from "@/components/proposals/attention-visibility";
+import { CompletedJobActions } from "@/components/jobs/completed-job-actions";
+import { CompletedJobPayment } from "@/components/jobs/completed-job-payment";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -40,7 +42,14 @@ import { CONVERSATION_HASH_ID } from "@/lib/proposals/customer-portal/conversati
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
-import { normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  isCompletedJobStatus,
+  normalizeProposalStatus,
+} from "@/lib/proposals/status";
+import {
+  formatCompletedDateLong,
+  JOB_COMPLETED_STATUS_TITLE,
+} from "@/lib/jobs/complete-job";
 import { WORKSPACE_ACTION_STACK_CLASS } from "@/lib/layout/workspace-action-stack";
 import { resolveWorkspaceJobTitle } from "@/lib/proposals/workspace-job-title";
 import {
@@ -87,6 +96,10 @@ export type ProposalWorkspaceData = {
   things_to_confirm_items: unknown;
   ai_optional_extras: unknown;
   payment_terms: string | null;
+  payment_status?: string | null;
+  payment_due_amount?: number | null;
+  closed_at?: string | null;
+  enabled_payment_methods?: import("@/lib/payments/types").PaymentMethod[];
 };
 
 function WorkspaceCardHeading({
@@ -417,6 +430,15 @@ export function ProposalWorkspace({
           </section>
         ) : null}
 
+        {isCompletedJobStatus(proposal.status) ? (
+          <section className="qf-date-state-banner qf-date-state-banner-completed" role="status">
+            <p className="qf-date-state-title">{JOB_COMPLETED_STATUS_TITLE}</p>
+            <p className="qf-date-state-copy">
+              {formatCompletedDateLong(proposal.completed_at)}
+            </p>
+          </section>
+        ) : null}
+
         <div className="qf-workspace-meta">
           <div className="qf-workspace-meta-item">
             <span className="qf-workspace-meta-label">Price</span>
@@ -529,6 +551,22 @@ export function ProposalWorkspace({
             devTestingEnabled={devTestingEnabled}
           />
         </Suspense>
+        {normalizeProposalStatus(proposal.status) === "completed" ? (
+          <>
+            <CompletedJobPayment
+              proposalId={proposal.id}
+              jobStatus={proposal.status}
+              customerName={proposal.customer_name}
+              jobTitle={shortJobTitle || proposal.title}
+              proposalTotal={proposal.total_amount}
+              paymentStatus={proposal.payment_status ?? "not_requested"}
+              paymentDueAmount={proposal.payment_due_amount ?? null}
+              closedAt={proposal.closed_at ?? null}
+              enabledMethods={proposal.enabled_payment_methods ?? []}
+            />
+            <CompletedJobActions proposalId={proposal.id} />
+          </>
+        ) : null}
       </AfterAttentionIdle>
       </div>
 

@@ -39,7 +39,7 @@ export function PublicEnquiryLinkSettings() {
   return (
     <SettingsSection
       title="Customer quote request link"
-      description="Share this private link with customers so they can send you job enquiries. It opens a public form — not part of your trader workspace."
+      description="Share this public link or turn it into a QR code for your van, cards and adverts. It only opens the enquiry form — never your jobs, customers or payment details."
     >
       {loading ? <p className="text-sm text-muted">Preparing your link…</p> : null}
       {error ? (

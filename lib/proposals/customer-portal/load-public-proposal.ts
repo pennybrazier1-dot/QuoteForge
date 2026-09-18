@@ -14,8 +14,14 @@ import type {
 import { isConversationReplyable } from "@/lib/proposals/customer-portal/conversation-access";
 import {
   isClosedProposalStatus,
+  isFullyClosedJobStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
+import {
+  buildCustomerPortalPaymentView,
+  readJobPaymentState,
+} from "@/lib/payments/job-payment";
+import type { CustomerPortalPaymentView } from "@/lib/payments/types";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { canShowFinalAccept } from "@/lib/proposals/acceptance-rules";
@@ -49,6 +55,8 @@ export type PublicProposalViewModel = {
   isAccepted: boolean;
   isDeclined: boolean;
   isClosed: boolean;
+  isJobClosed: boolean;
+  payment: CustomerPortalPaymentView | null;
   /** Trader proposed a provisional date; customer must accept or request another. */
   canRespondToProposedDate: boolean;
   proposedDateLabel: string | null;
@@ -93,6 +101,17 @@ type PortalProposalRow = ProposalPdfSource & {
   booking_confirmation?: string | null;
   planned_start_time?: string | null;
   booking_window?: unknown;
+  payment_status?: string | null;
+  payment_due_amount?: number | null;
+  payment_methods_issued?: unknown;
+  paid_at?: string | null;
+  payment_method?: string | null;
+  closed_at?: string | null;
+  issued_bank_account_name?: string | null;
+  issued_bank_sort_code?: string | null;
+  issued_bank_account_number?: string | null;
+  issued_bank_reference?: string | null;
+  issued_payment_url?: string | null;
 };
 
 function createPortalClient() {
@@ -131,7 +150,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time, booking_window`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time, booking_window, payment_status, payment_due_amount, payment_methods_issued, paid_at, payment_method, closed_at, issued_bank_account_name, issued_bank_sort_code, issued_bank_account_number, issued_bank_reference, issued_payment_url`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -157,9 +176,40 @@ export async function loadPublicProposalByToken(
   const status = normalizeProposalStatus(row.status);
   const canRespond =
     status === "waiting_for_customer" || status === "needs_attention";
-  const isAccepted = status === "booked" || status === "completed";
+  const isAccepted =
+    status === "booked" ||
+    status === "completed" ||
+    status === "invoiced" ||
+    status === "paid" ||
+    status === "closed";
   const isDeclined = status === "declined";
   const isClosed = isClosedProposalStatus(status);
+  const isJobClosed = isFullyClosedJobStatus(status);
+  const paymentState = readJobPaymentState(row);
+  const payment =
+    paymentState.payment_status === "not_requested"
+      ? null
+      : buildCustomerPortalPaymentView({
+          jobTitle: row.title?.trim() || `Proposal ${row.proposal_number}`,
+          jobStatus: status,
+          payment: paymentState,
+          bank:
+            paymentState.payment_status === "requested" &&
+            row.issued_bank_account_name &&
+            row.issued_bank_sort_code &&
+            row.issued_bank_account_number
+              ? {
+                  accountName: row.issued_bank_account_name,
+                  sortCode: row.issued_bank_sort_code,
+                  accountNumber: row.issued_bank_account_number,
+                  reference: row.issued_bank_reference ?? null,
+                }
+              : null,
+          cardUrl:
+            paymentState.payment_status === "requested"
+              ? row.issued_payment_url ?? null
+              : null,
+        });
 
   if (canRespond && !isClosed) {
     const expired = await expireAbandonedTempHold(supabase, {
@@ -243,6 +293,8 @@ export async function loadPublicProposalByToken(
       isAccepted,
       isDeclined,
       isClosed,
+      isJobClosed,
+      payment,
       canRespondToProposedDate,
       proposedDateLabel: canRespondToProposedDate ? plannedStartLabel : null,
       canAcceptProposal,

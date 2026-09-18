@@ -8,6 +8,7 @@ import {
   CUSTOMER_DETAIL_SECTIONS,
   customerCurrentWorkMeta,
   customerCurrentWorkTitle,
+  customerHistoryWorkTitle,
   customerJobLabel,
   customerProposalLabel,
   customerVisitLabel,
@@ -156,12 +157,12 @@ export function CustomerDetailSections({
                   className="qf-customer-detail-item"
                 >
                   <p className="qf-customer-detail-item-title">
-                    {customerJobLabel(job.status)}
+                    {customerHistoryWorkTitle(job)}
                   </p>
                   <p className="qf-customer-detail-item-meta">
                     {job.completed_at
                       ? `Completed ${formatCustomerCreatedAt(job.completed_at)}`
-                      : "Previous job"}
+                      : customerJobLabel(job.status)}
                   </p>
                 </Link>
               </li>
