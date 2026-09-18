@@ -2,6 +2,7 @@ import {
   assembleTransactionalEmail,
   type RenderedTransactionalEmail,
 } from "@/lib/email/transactional-email";
+import { customerMessageSenderCopy } from "@/lib/email/email-branding";
 import {
   buildProposalEmailGreeting,
   formatProposalEmailTime,
@@ -11,6 +12,7 @@ import {
   resolveProposalEmailJobTitle,
 } from "@/lib/email/proposal-email-presentation";
 import { getSiteUrl } from "@/lib/env/site-url";
+import { appendConversationDeepLink } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
 import {
   formatVisitType,
@@ -19,11 +21,13 @@ import {
 } from "@/lib/visits/types";
 
 export function traderConversationUrl(proposalId: string): string {
-  return `${getSiteUrl()}/proposals/${proposalId}#proposal-conversation`;
+  return appendConversationDeepLink(
+    `${getSiteUrl()}/proposals/${proposalId}`
+  );
 }
 
 export function customerConversationUrl(token: string): string {
-  return `${buildCustomerProposalPortalUrl(token)}#proposal-conversation`;
+  return appendConversationDeepLink(buildCustomerProposalPortalUrl(token));
 }
 
 export type TraderActivityEvent =
@@ -213,7 +217,7 @@ function traderActivityCopy(
         heading: "New customer message",
         subject: `New message from ${who}`,
         intro: `${who} has sent you a message.`,
-        preheader: "You have a new customer message.",
+        preheader: "You have a new message in Reanvil.",
       };
   }
 }
@@ -268,6 +272,7 @@ export function buildCustomerReplyEmail(input: {
   portalToken: string;
   logoUrl?: string | null;
   tradeLabel?: string | null;
+  jobTitle?: string | null;
 }): RenderedTransactionalEmail {
   const businessName = resolveProposalEmailBusinessName(input.businessName);
   const greeting = buildProposalEmailGreeting(
@@ -277,9 +282,12 @@ export function buildCustomerReplyEmail(input: {
     input.preview.length > 220
       ? `${input.preview.slice(0, 217).trimEnd()}…`
       : input.preview;
-  const intro = businessName
-    ? `${businessName} has replied to you.`
-    : "You have a new message.";
+  const intro = customerMessageSenderCopy(businessName);
+  const jobTitle = resolveProposalEmailJobTitle({
+    title: input.jobTitle,
+  });
+  const regarding =
+    jobTitle && jobTitle !== "Your proposal" ? jobTitle : null;
   const ctaUrl = customerConversationUrl(input.portalToken);
   return assembleTransactionalEmail({
     subject: businessName
@@ -293,13 +301,12 @@ export function buildCustomerReplyEmail(input: {
       heading: "You have a new message",
       greeting,
       intro,
-      summaryRows: preview ? [{ label: "Message", value: `"${preview}"` }] : [],
+      quotedMessage: preview,
+      regarding,
       ctaLabel: "View message",
       ctaUrl,
       fallbackLabel: "Open secure portal",
-      supportText:
-        "Reply through your secure customer portal. Please do not continue this conversation in email.",
-      preheader: "You have a new message.",
+      preheader: "You have a new message in Reanvil.",
     },
   });
 }

@@ -44,6 +44,7 @@ describe("buildConversationResolutionSummary", () => {
       expect.arrayContaining(["Scope change", "Price review"])
     );
     expect(summary.resolutionFocus).toBe("update");
+    expect(summary.showUpdateProposal).toBe(true);
     expect(summary.mobileHeadline).toBe("Customer requested additional work");
   });
 
@@ -58,6 +59,7 @@ describe("buildConversationResolutionSummary", () => {
     ]);
 
     expect(summary.resolutionFocus).toBe("date");
+    expect(summary.showUpdateProposal).toBe(false);
     expect(summary.mobileHeadline).toBe("Customer requested a date change");
     expect(summary.mobileDescription.length).toBeGreaterThan(0);
   });

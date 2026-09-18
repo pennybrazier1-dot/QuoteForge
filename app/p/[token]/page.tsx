@@ -1,4 +1,5 @@
 import { CustomerProposalPortal } from "@/components/proposals/customer-portal/customer-proposal-portal";
+import { isConversationDeepLink } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import {
   loadPublicProposalByToken,
   recordPublicProposalViewed,
@@ -8,10 +9,13 @@ import { createServiceRoleClient } from "@/lib/supabase/admin";
 
 export default async function PublicProposalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams?: Promise<{ view?: string }>;
 }) {
   const { token } = await params;
+  const query = searchParams ? await searchParams : {};
   const loaded = await loadPublicProposalByToken(token);
 
   if (!loaded.ok) {
@@ -50,5 +54,11 @@ export default async function PublicProposalPage({
     messages = [];
   }
 
-  return <CustomerProposalPortal view={loaded.view} messages={messages} />;
+  return (
+    <CustomerProposalPortal
+      view={loaded.view}
+      messages={messages}
+      openConversation={isConversationDeepLink(query.view)}
+    />
+  );
 }

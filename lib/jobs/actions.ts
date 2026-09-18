@@ -18,13 +18,6 @@ function getString(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
 
-async function revalidateJobViews(proposalId: string) {
-  revalidatePath("/dashboard");
-  revalidatePath("/proposals");
-  revalidatePath(`/proposals/${proposalId}`);
-  revalidatePath("/calendar");
-}
-
 export async function updateJobPrepItemStatus(
   _prev: JobPrepActionState,
   formData: FormData
@@ -56,7 +49,7 @@ export async function updateJobPrepItemStatus(
 
   const { data: item, error: loadError } = await supabase
     .from("job_prep_items")
-    .select("id, job_id")
+    .select("id, job_id, item_key")
     .eq("id", prepItemId)
     .maybeSingle();
 
@@ -95,23 +88,14 @@ export async function updateJobPrepItemStatus(
       .in("status", ["accepted", "preparing"]);
   }
 
-  // When start date is confirmed, move the job toward scheduled.
-  if (nextStatus === "confirmed") {
-    const { data: prepItem } = await supabase
-      .from("job_prep_items")
-      .select("item_key")
-      .eq("id", prepItemId)
-      .maybeSingle();
-
-    if (prepItem?.item_key === "start_date") {
-      await supabase
-        .from("jobs")
-        .update({ status: "scheduled" })
-        .eq("id", job.id)
-        .in("status", ["accepted", "preparing", "scheduled"]);
-    }
+  if (nextStatus === "confirmed" && item.item_key === "start_date") {
+    await supabase
+      .from("jobs")
+      .update({ status: "scheduled" })
+      .eq("id", job.id)
+      .in("status", ["accepted", "preparing", "scheduled"]);
   }
 
-  await revalidateJobViews(proposalId);
+  revalidatePath(`/proposals/${proposalId}`);
   return { ok: true };
 }

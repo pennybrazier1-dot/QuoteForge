@@ -3,6 +3,11 @@ import { Suspense } from "react";
 import { WorkspaceScrollDebug } from "@/components/layout/workspace-scroll-end";
 import { ConversationResolutionPanel } from "@/components/proposals/conversation-resolution-panel";
 import { AttentionConversationSection } from "@/components/proposals/attention-conversation-section";
+import {
+  AfterAttentionIdle,
+  AttentionOnly,
+  AttentionVisibilityProvider,
+} from "@/components/proposals/attention-visibility";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
@@ -23,12 +28,15 @@ import { SectionCard } from "@/components/ui/section-card";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
+import { conversationHasProposalChange } from "@/lib/proposals/change-request/classify-conversation-intent";
 import { buildConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import {
   buildDateWorkflowSnapshot,
   JOB_BOOKED_STATUS_TITLE,
 } from "@/lib/proposals/date-workflow";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
+import { isConversationReplyable } from "@/lib/proposals/customer-portal/conversation-access";
+import { CONVERSATION_HASH_ID } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
@@ -252,11 +260,13 @@ function ProposalWorkspaceRight({
   statusEvents,
   customerMessages,
   showConversation = true,
+  openConversation = false,
 }: {
   proposal: ProposalWorkspaceData;
   statusEvents: ProposalStatusEventRecord[];
   customerMessages: ProposalCustomerMessage[];
   showConversation?: boolean;
+  openConversation?: boolean;
 }) {
   return (
     <div className="qf-proposal-col-right">
@@ -275,22 +285,20 @@ function ProposalWorkspaceRight({
       </SectionCard>
 
       {showConversation ? (
-        <div id="customer-replies">
+        <div id={CONVERSATION_HASH_ID}>
+          <div id="customer-replies">
           <SectionCard className="qf-card-form">
-            <WorkspaceDisclosure title="Conversation">
+            <WorkspaceDisclosure title="Conversation" forceOpen={openConversation}>
               <ProposalConversationPanel
                 proposalId={proposal.id}
                 messages={customerMessages}
-                canReply={
-                  normalizeProposalStatus(proposal.status) ===
-                    "waiting_for_customer" ||
-                  normalizeProposalStatus(proposal.status) ===
-                    "needs_attention" ||
-                  normalizeProposalStatus(proposal.status) === "booked"
-                }
+                canReply={isConversationReplyable(proposal.status)}
+                focusOnMount={openConversation}
+                showReviseLink={conversationHasProposalChange(customerMessages)}
               />
             </WorkspaceDisclosure>
           </SectionCard>
+          </div>
         </div>
       ) : null}
 
@@ -313,6 +321,7 @@ export function ProposalWorkspace({
   calendarProposals,
   customerMessages = [],
   jobPrep = null,
+  openConversation = false,
 }: {
   proposal: ProposalWorkspaceData;
   businessName: string;
@@ -321,6 +330,7 @@ export function ProposalWorkspace({
   calendarProposals: CalendarProposal[];
   customerMessages?: ProposalCustomerMessage[];
   jobPrep?: ProposalJobPrepView | null;
+  openConversation?: boolean;
 }) {
   const structured = mapDbRowToStructuredProposal(proposal);
   const devTestingEnabled = isDevTestingEnabled();
@@ -431,6 +441,7 @@ export function ProposalWorkspace({
         </div>
       </header>
 
+      <AttentionVisibilityProvider>
       <div className={WORKSPACE_ACTION_STACK_CLASS}>
       {isWaitingForCustomerPage(proposal.status) ? (
         <section className="qf-waiting-status" role="status">
@@ -470,6 +481,7 @@ export function ProposalWorkspace({
 
       {/* Attention flow: request + resolve → proposal → conversation → lifecycle */}
       {resolutionSummary ? (
+        <AttentionOnly>
         <SectionCard className="qf-card-form qf-change-request-card">
           <ConversationResolutionPanel
             proposalId={proposal.id}
@@ -477,13 +489,15 @@ export function ProposalWorkspace({
             section="all"
           />
         </SectionCard>
-      ) : (
+        </AttentionOnly>
+      ) : null}
+      <AfterAttentionIdle hasAttention={Boolean(resolutionSummary)}>
         <ProposalWorkspaceActions
           proposalId={proposal.id}
           status={proposal.status}
           actionContext={actionContext}
         />
-      )}
+      </AfterAttentionIdle>
 
       <DevTestingDebugLine />
 
@@ -498,7 +512,7 @@ export function ProposalWorkspace({
         <TestSendSuccessNotice proposalId={proposal.id} />
       </Suspense>
 
-      {!resolutionSummary ? (
+      <AfterAttentionIdle hasAttention={Boolean(resolutionSummary)}>
         <Suspense fallback={null}>
           <ProposalLifecycleActions
             proposalId={proposal.id}
@@ -515,7 +529,7 @@ export function ProposalWorkspace({
             devTestingEnabled={devTestingEnabled}
           />
         </Suspense>
-      ) : null}
+      </AfterAttentionIdle>
       </div>
 
       {jobPrep ? (
@@ -526,6 +540,7 @@ export function ProposalWorkspace({
         </div>
       ) : null}
 
+      <AttentionOnly>
       {resolutionSummary ? (
         <div className="qf-attention-desktop-block">
           <h2 className="qf-resolution-current-title">Current proposal</h2>
@@ -536,10 +551,13 @@ export function ProposalWorkspace({
               statusEvents={statusEvents}
               customerMessages={customerMessages}
               showConversation={false}
+              openConversation={openConversation}
             />
           </div>
         </div>
-      ) : (
+      ) : null}
+      </AttentionOnly>
+      <AfterAttentionIdle hasAttention={Boolean(resolutionSummary)}>
         <div className="qf-workspace-layout">
           <ProposalWorkspaceLeft proposal={proposal} structured={structured} />
           <ProposalWorkspaceRight
@@ -547,19 +565,22 @@ export function ProposalWorkspace({
             statusEvents={statusEvents}
             customerMessages={customerMessages}
             showConversation
+            openConversation={openConversation}
           />
         </div>
-      )}
+      </AfterAttentionIdle>
 
       {resolutionSummary ? (
-        <>
+        <AttentionOnly>
           <AttentionConversationSection
             proposalId={proposal.id}
             messages={customerMessages}
             headingIcon={USER_ICON}
+            openConversation={openConversation}
             hideReplyUntilRequested={
-              resolutionSummary.resolutionFocus === "date_agreed" ||
-              resolutionSummary.resolutionFocus === "date_discussed"
+              !openConversation &&
+              (resolutionSummary.resolutionFocus === "date_agreed" ||
+                resolutionSummary.resolutionFocus === "date_discussed")
             }
           />
 
@@ -593,10 +614,11 @@ export function ProposalWorkspace({
               />
             </Suspense>
           </section>
-        </>
+        </AttentionOnly>
       ) : null}
 
       <WorkspaceScrollDebug context="proposal-detail" />
+      </AttentionVisibilityProvider>
     </div>
     </SendProposalProvider>
   );

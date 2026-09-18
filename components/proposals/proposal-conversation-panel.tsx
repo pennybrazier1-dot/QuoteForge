@@ -8,6 +8,8 @@ import {
   createTraderProposalReply,
   type TraderReplyActionState,
 } from "@/lib/proposals/customer-portal/trader-reply-actions";
+import { conversationHasProposalChange } from "@/lib/proposals/change-request/classify-conversation-intent";
+import { CONVERSATION_LATEST_ID } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
@@ -28,7 +30,8 @@ export function ProposalConversationPanel({
   canReply = true,
   showThread = true,
   showComposer = true,
-  showReviseLink = true,
+  showReviseLink = false,
+  focusOnMount = false,
 }: {
   proposalId: string;
   messages: ProposalCustomerMessage[];
@@ -36,6 +39,7 @@ export function ProposalConversationPanel({
   showThread?: boolean;
   showComposer?: boolean;
   showReviseLink?: boolean;
+  focusOnMount?: boolean;
 }) {
   const [state, action] = useActionState(
     createTraderProposalReply,
@@ -60,6 +64,20 @@ export function ProposalConversationPanel({
     };
   }, []);
 
+  useEffect(() => {
+    if (!focusOnMount) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      document.getElementById(CONVERSATION_LATEST_ID)?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+      textareaRef.current?.focus({ preventScroll: true });
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [focusOnMount]);
+
   return (
     <section
       className="qf-conversation"
@@ -75,7 +93,7 @@ export function ProposalConversationPanel({
         />
       ) : null}
 
-      {showReviseLink && messages.length > 0 ? (
+      {showReviseLink && conversationHasProposalChange(messages) ? (
         <div className="qf-conversation-revise">
           <Link
             href={buildProposalRevisePath(proposalId)}

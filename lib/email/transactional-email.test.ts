@@ -162,7 +162,7 @@ describe("global Reanvil transactional email shell", () => {
     expect(email.html).toContain("Garden makeover");
     expect(email.html).toContain("Could we move the date to Friday?");
     expect(email.html).toContain("Open conversation");
-    expect(email.preheader).toBe("You have a new customer message.");
+    expect(email.preheader).toBe("You have a new message in Reanvil.");
     expect(email.ctaUrl).toContain("/proposals/proposal-1");
   });
 
@@ -176,7 +176,7 @@ describe("global Reanvil transactional email shell", () => {
     expectDarkShell(email.html, { businessName: "Carter &amp; Sons Kitchens" });
     expect(email.subject).toBe("New message from Carter & Sons Kitchens");
     expect(email.heading).toBe("You have a new message");
-    expect(email.html).toContain("has replied to you");
+    expect(email.html).toContain("sent you a message");
     expect(email.html).toContain("View message");
     expect(email.ctaLabel).toBe("View message");
     expect(email.text).toContain("/p/");
@@ -366,6 +366,7 @@ describe("global Reanvil transactional email shell", () => {
     });
     expect(withLogo).toContain('src="https://cdn.example.com/carter-logo.png"');
     expect(withoutLogo).not.toContain("<img");
+    expect(withoutLogo).toContain("REANVIL");
     expect(
       renderCustomerEmail({
         businessName: "Carter & Sons Kitchens",

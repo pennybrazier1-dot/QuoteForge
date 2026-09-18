@@ -22,6 +22,7 @@ export function buildCustomerReplyNotification(input: {
   portalToken: string;
   logoUrl?: string | null;
   tradeLabel?: string | null;
+  jobTitle?: string | null;
 }) {
   const email = buildCustomerReplyEmail(input);
   return {

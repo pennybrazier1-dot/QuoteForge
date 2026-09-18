@@ -103,6 +103,23 @@ describe("new visit workflow", () => {
     );
   });
 
+  it("uses a compact Visit type dropdown instead of three large cards", () => {
+    const form = readFileSync(
+      join(process.cwd(), "components/visits/create-visit-form.tsx"),
+      "utf8"
+    );
+    expect(form).toContain('id="visitType"');
+    expect(form).toContain("form-select");
+    expect(form).toContain("NEW_VISIT_TYPE_OPTIONS.map");
+    expect(form).toContain("getNewVisitTypeOption(visitType).helper");
+    expect(form).toContain("qf-visit-type-helper-panel");
+    expect(form).not.toContain("role=\"radiogroup\"");
+    expect(form).not.toContain("qf-visit-type-option-title");
+    expect(form).not.toContain("measure_up");
+    expect(form).toContain("DEFAULT_NEW_VISIT_TYPE");
+    expect(DEFAULT_NEW_VISIT_TYPE).toBe("initial_assessment");
+  });
+
   it("starts with a name field and no Saved customers selector", () => {
     expect(VISIT_FORM_SHOWS_SAVED_CUSTOMERS_SELECTOR).toBe(false);
     expect(VISIT_NAME_PLACEHOLDER).toBe("Start typing a name...");

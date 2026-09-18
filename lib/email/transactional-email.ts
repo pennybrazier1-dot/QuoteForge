@@ -6,6 +6,7 @@ import {
   buildCustomerEmailIdentityHtml,
   buildEmailHeadingRow,
   buildEmailIntroRow,
+  buildEmailQuotedMessageCardHtml,
   buildEmailSummaryCardHtml,
   buildEmailSupportCardHtml,
   buildTraderEmailFooterHtml,
@@ -31,6 +32,9 @@ export type TransactionalEmailContent = {
   greeting?: string | null;
   intro: string;
   summaryRows?: EmailSummaryRow[];
+  quotedMessage?: string | null;
+  regarding?: string | null;
+  senderLabel?: string | null;
   accentBorder?: boolean;
   supportText?: string | null;
   ctaLabel: string;
@@ -78,6 +82,8 @@ export function buildTransactionalEmailText(input: {
   greeting?: string | null;
   intro: string;
   summaryRows?: EmailSummaryRow[];
+  quotedMessage?: string | null;
+  regarding?: string | null;
   supportText?: string | null;
   ctaLabel: string;
   ctaUrl?: string | null;
@@ -87,6 +93,12 @@ export function buildTransactionalEmailText(input: {
     lines.push(input.greeting.trim(), "");
   }
   lines.push(input.intro.trim());
+  if (input.quotedMessage?.trim()) {
+    lines.push("", input.quotedMessage.trim());
+    if (input.regarding?.trim()) {
+      lines.push(`Regarding: ${input.regarding.trim()}`);
+    }
+  }
   for (const row of input.summaryRows ?? []) {
     if (!row.value.trim()) {
       continue;
@@ -138,10 +150,18 @@ export function renderTransactionalEmail(
   const innerRows = `${identity}
           ${buildEmailHeadingRow(heading)}
           ${buildEmailIntroRow(input.greeting, intro)}
-          ${buildEmailSummaryCardHtml({
-            rows: input.summaryRows ?? [],
-            accentBorder: input.accentBorder,
-          })}
+          ${
+            input.quotedMessage?.trim()
+              ? buildEmailQuotedMessageCardHtml({
+                  message: input.quotedMessage,
+                  regarding: input.regarding,
+                  senderLabel: input.senderLabel,
+                })
+              : buildEmailSummaryCardHtml({
+                  rows: input.summaryRows ?? [],
+                  accentBorder: input.accentBorder,
+                })
+          }
           <tr>
             <td>${buildCustomerEmailCtaHtml({
               portalUrl,
@@ -202,6 +222,8 @@ export function assembleTransactionalEmail(input: {
       greeting: input.content.greeting,
       intro: input.content.intro,
       summaryRows: input.content.summaryRows,
+      quotedMessage: input.content.quotedMessage,
+      regarding: input.content.regarding,
       supportText: input.content.supportText,
       ctaLabel: input.content.ctaLabel,
       ctaUrl: input.content.ctaUrl,

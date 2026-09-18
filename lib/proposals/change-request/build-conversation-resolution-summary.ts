@@ -1,5 +1,9 @@
 import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/analyze-change-request";
 import type { ChangeRequestLabel } from "@/lib/proposals/change-request/analyze-change-request";
+import {
+  classifyConversationIntent,
+  isStructuredCustomerRequest,
+} from "@/lib/proposals/change-request/classify-conversation-intent";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
   sameDateSlot,
@@ -66,6 +70,8 @@ export type ConversationResolutionSummary = {
   canActOnSlot: boolean;
   /** False when the only outstanding request was a now-resolved date. */
   hasActiveAttention: boolean;
+  /** Only true for a real scope / materials / price change. */
+  showUpdateProposal: boolean;
   requestedStartExact: string | null;
   requestedStartTime: string | null;
   requestedSlotLabel: string | null;
@@ -149,7 +155,7 @@ function customerRequestMessages(
     if (isShortConfirmationOnly(message.body)) {
       return false;
     }
-    return message.kind === "change_request" || message.kind === "question";
+    return isStructuredCustomerRequest(message);
   });
 }
 
@@ -166,7 +172,10 @@ export function requestItemTitleFromMessage(body: string): string {
   if (/\bdouble shower\b/.test(lower) || (/\bshower\b/.test(lower) && /\badd/.test(lower))) {
     return /\bdouble\b/.test(lower) ? "Add double shower" : "Add shower";
   }
-  if (isVagueDateWindowOnly(cleaned) || classifyChangeRequestLabels(cleaned).includes("date")) {
+  if (
+    isVagueDateWindowOnly(cleaned) ||
+    classifyConversationIntent(cleaned) === "date_change"
+  ) {
     if (/\bwithin a month\b/i.test(cleaned)) {
       return "Move job timing";
     }
@@ -238,7 +247,7 @@ export function resolveConversationFocus(
   if (labels.includes("date")) {
     return "date";
   }
-  return "update";
+  return "date";
 }
 
 export function buildMobileRequestCopy(input: {
@@ -456,6 +465,7 @@ export function buildConversationResolutionSummary(
     showDateCard ||
     (!dateAlreadyResolved && aggregated.focus === "date") ||
     (dateAlreadyResolved && activeRequestItems.length > 0);
+  const showUpdateProposal = hasWorkRequest && hasActiveAttention;
   const requested = parseRequestedSlot(ordered);
   const showAgreedDate = showDateCard && hasDateAgreement;
   const showDiscussedDate = showDateCard && !hasDateAgreement && hasDiscussedDate;
@@ -497,6 +507,7 @@ export function buildConversationResolutionSummary(
     showDateActions: showDateCard,
     canActOnSlot: Boolean(slot?.dateIso && slot.timeHm),
     hasActiveAttention,
+    showUpdateProposal,
     requestedStartExact: requested.dateIso,
     requestedStartTime: requested.timeHm,
     requestedSlotLabel: requested.label,

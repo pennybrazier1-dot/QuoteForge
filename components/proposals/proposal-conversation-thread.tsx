@@ -2,6 +2,7 @@ import {
   conversationAuthorLabel,
   sortConversationMessages,
 } from "@/lib/proposals/customer-portal/conversation";
+import { CONVERSATION_LATEST_ID } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 
 function formatMessageTime(value: string): string {
@@ -50,12 +51,14 @@ export function ProposalConversationThread({
 
   return (
     <ul className={root}>
-      {ordered.map((message) => {
+      {ordered.map((message, index) => {
         const fromTrader =
           message.direction === "trader" || message.kind === "trader_reply";
+        const isLatest = index === ordered.length - 1;
         return (
           <li
             key={message.id}
+            id={isLatest ? CONVERSATION_LATEST_ID : undefined}
             className={`${itemClass} ${fromTrader ? traderClass : customerClass}`}
           >
             <div

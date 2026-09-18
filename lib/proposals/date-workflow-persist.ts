@@ -11,7 +11,7 @@ import {
 import { plannedStartToDbFields } from "@/lib/proposals/planned-start-date";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import { buildCustomerDateProposedEmail } from "@/lib/email/transactional-events";
-import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/analyze-change-request";
+import { classifyConversationIntent } from "@/lib/proposals/change-request/classify-conversation-intent";
 import { buildScheduleDateLabel } from "@/lib/proposals/schedule/schedule-fields";
 
 export type DateWorkflowProposalRow = {
@@ -43,12 +43,7 @@ export function hasOtherUnresolvedWorkRequests(
     if (message.kind === "accept_note") {
       return false;
     }
-    const labels = classifyChangeRequestLabels(message.body);
-    return (
-      labels.includes("scope") ||
-      labels.includes("materials") ||
-      labels.includes("price")
-    );
+    return classifyConversationIntent(message.body) === "proposal_change";
   });
 }
 

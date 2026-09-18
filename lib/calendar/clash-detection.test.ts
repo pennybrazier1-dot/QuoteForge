@@ -108,14 +108,20 @@ describe("analyzeBookingClashes", () => {
     const analysis = analyzeBookingClashes(
       {
         proposalId: "new-job",
-        startDateIso: "2026-09-15",
+        startDateIso: "2026-11-15",
         duration: "1 day",
         bookingStatus: "confirmed",
       },
-      existingJobs
+      [
+        makeJob({
+          id: "confirmed-job",
+          tone: "confirmed",
+          spanDates: ["2026-11-15", "2026-11-16"],
+        }),
+      ]
     );
 
-    expect(analysis.suggestedStartDate).toBe("2026-09-17");
+    expect(analysis.suggestedStartDate).toBe("2026-11-17");
   });
 
   it("ignores clashes with the same proposal id", () => {
@@ -140,13 +146,13 @@ describe("findNextAvailableStartDate", () => {
         makeJob({
           id: "busy",
           tone: "confirmed",
-          spanDates: ["2026-09-15", "2026-09-16"],
+          spanDates: ["2026-11-15", "2026-11-16"],
         }),
       ],
       1,
-      "2026-09-15"
+      "2026-11-15"
     );
 
-    expect(next).toBe("2026-09-17");
+    expect(next).toBe("2026-11-17");
   });
 });

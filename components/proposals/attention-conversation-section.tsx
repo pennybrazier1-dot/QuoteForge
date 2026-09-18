@@ -3,6 +3,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { SectionCard } from "@/components/ui/section-card";
+import {
+  CONVERSATION_HASH_ID,
+  CONVERSATION_LATEST_ID,
+} from "@/lib/proposals/customer-portal/conversation-deep-link";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 
 const MOBILE_QUERY = "(max-width: 639px)";
@@ -27,14 +31,18 @@ export function AttentionConversationSection({
   messages,
   headingIcon,
   hideReplyUntilRequested = false,
+  openConversation = false,
 }: {
   proposalId: string;
   messages: ProposalCustomerMessage[];
   headingIcon: ReactNode;
   hideReplyUntilRequested?: boolean;
+  openConversation?: boolean;
 }) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null);
-  const [showReply, setShowReply] = useState(!hideReplyUntilRequested);
+  const [showReply, setShowReply] = useState(
+    openConversation || !hideReplyUntilRequested
+  );
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_QUERY);
@@ -64,15 +72,36 @@ export function AttentionConversationSection({
     }
   }, [hideReplyUntilRequested, showReply]);
 
+  useEffect(() => {
+    if (!openConversation) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      const latest = document.getElementById(CONVERSATION_LATEST_ID);
+      const compose = document.getElementById("proposal-conversation-compose");
+      const textarea = document.getElementById("trader-reply");
+      (latest ?? document.getElementById(CONVERSATION_HASH_ID))?.scrollIntoView({
+        behavior: "smooth",
+        block: latest ? "end" : "start",
+      });
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.focus({ preventScroll: true });
+      } else {
+        compose?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [openConversation]);
+
   // Avoid flashing the wrong layout before we know the viewport.
   if (isMobile === null) {
-    return <div id="customer-replies" aria-hidden="true" />;
+    return <div id={CONVERSATION_HASH_ID} aria-hidden="true" />;
   }
 
   if (isMobile) {
     return (
-      <div className="qf-attention-conversation-mobile">
-        <details className="qf-attention-collapse">
+      <div id={CONVERSATION_HASH_ID} className="qf-attention-conversation-mobile">
+        <details className="qf-attention-collapse" open={openConversation}>
           <summary className="qf-attention-collapse-summary">
             Conversation history
           </summary>
@@ -106,7 +135,7 @@ export function AttentionConversationSection({
   }
 
   return (
-    <div id="customer-replies">
+    <div id={CONVERSATION_HASH_ID}>
       <SectionCard className="qf-card-form">
         <CardHeading title="Conversation history" icon={headingIcon} />
         <div className="mt-4">

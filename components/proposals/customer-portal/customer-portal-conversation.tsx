@@ -8,6 +8,10 @@ import {
   askPublicProposalQuestion,
   type CustomerPortalActionState,
 } from "@/lib/proposals/customer-portal/actions";
+import {
+  CONVERSATION_HASH_ID,
+  CONVERSATION_LATEST_ID,
+} from "@/lib/proposals/customer-portal/conversation-deep-link";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import { ProposalConversationThread } from "@/components/proposals/proposal-conversation-thread";
 
@@ -16,13 +20,15 @@ const initialState: CustomerPortalActionState = {};
 export function CustomerPortalConversation({
   token,
   messages,
-  canRespond,
+  canReply,
   businessName,
+  openConversation = false,
 }: {
   token: string;
   messages: ProposalCustomerMessage[];
-  canRespond: boolean;
+  canReply: boolean;
   businessName: string;
+  openConversation?: boolean;
 }) {
   const router = useRouter();
   const [state, action, pending] = useActionState(
@@ -38,17 +44,39 @@ export function CustomerPortalConversation({
     }
   }, [state.ok, router]);
 
+  useEffect(() => {
+    if (!openConversation) {
+      return;
+    }
+
+    const focusLatest = () => {
+      const latest = document.getElementById(CONVERSATION_LATEST_ID);
+      const composer = document.getElementById("continue-message");
+      (latest ?? document.getElementById(CONVERSATION_HASH_ID))?.scrollIntoView({
+        behavior: "smooth",
+        block: latest ? "end" : "start",
+      });
+      if (composer instanceof HTMLTextAreaElement) {
+        composer.focus({ preventScroll: true });
+      }
+    };
+
+    const timer = window.setTimeout(focusLatest, 50);
+    return () => window.clearTimeout(timer);
+  }, [openConversation, messages.length]);
+
   return (
     <section
       className="cj-portal-accordion-card"
       aria-label="Conversation"
-      id="proposal-conversation"
+      id={CONVERSATION_HASH_ID}
     >
       <PortalAccordion
         title="Conversation"
         preview={`View messages between you and ${businessName}`}
         icon={<PortalIconChat />}
         id="proposal-conversation-thread"
+        defaultOpen={openConversation}
       >
         <div className="cj-conversation-wrap">
           <ProposalConversationThread
@@ -59,7 +87,7 @@ export function CustomerPortalConversation({
           />
         </div>
 
-        {canRespond ? (
+        {canReply ? (
           <form ref={formRef} action={action} className="cj-portal-form">
             <input type="hidden" name="token" value={token} />
             <label className="cj-portal-label" htmlFor="continue-message">

@@ -59,7 +59,7 @@ export async function createTraderProposalReply(
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
     .select(
-      "id, workspace_id, status, customer_email, customer_name, customer_access_token"
+      "id, workspace_id, status, customer_email, customer_name, customer_access_token, title, job_summary"
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -104,7 +104,7 @@ export async function createTraderProposalReply(
   if (proposal.customer_access_token && proposal.customer_email) {
     const { data: workspace } = await supabase
       .from("workspaces")
-      .select("business_name, contact_email")
+      .select("business_name, contact_email, trade_type")
       .eq("id", proposal.workspace_id)
       .maybeSingle();
 
@@ -113,6 +113,8 @@ export async function createTraderProposalReply(
       customerName: proposal.customer_name,
       preview: body,
       portalToken: proposal.customer_access_token,
+      tradeLabel: workspace?.trade_type,
+      jobTitle: proposal.title ?? proposal.job_summary,
     });
 
     await notifyConversationParticipant({

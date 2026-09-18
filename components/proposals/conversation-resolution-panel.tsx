@@ -1,15 +1,20 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import {
-  markChangeRequestResolved,
-  type ChangeRequestActionState,
-} from "@/lib/proposals/change-request/actions";
+import { markChangeRequestResolved } from "@/lib/proposals/change-request/actions";
 import {
   buildCalendarActionHref,
   type ConversationResolutionSummary,
 } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
+import {
+  beginResolutionDismiss,
+  completeResolutionDismiss,
+  dispatchResolutionDismissed,
+  dispatchResolutionRestored,
+  emptyOptimisticResolutionState,
+  failResolutionDismiss,
+} from "@/lib/proposals/change-request/optimistic-resolution";
 import {
   acceptCustomerRequestedDate,
   confirmConversationDate,
@@ -19,17 +24,7 @@ import {
 import { focusProposalConversationComposer } from "@/components/proposals/proposal-conversation-panel";
 import { buildProposalRevisePath } from "@/lib/proposals/revision/paths";
 
-const initialState: ChangeRequestActionState = {};
 const dateInitialState: DateWorkflowActionState = {};
-
-function ResolveButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" className="qf-btn-secondary" disabled={pending}>
-      {pending ? "Saving…" : "Mark resolved"}
-    </button>
-  );
-}
 
 function DateActionButton({
   label,
@@ -91,10 +86,8 @@ export function ConversationResolutionPanel({
   /** Prefer "all" so request and resolve actions stay grouped. */
   section?: "summary" | "actions" | "all";
 }) {
-  const [state, resolveAction] = useActionState(
-    markChangeRequestResolved,
-    initialState
-  );
+  const [opt, setOpt] = useState(emptyOptimisticResolutionState);
+  const optRef = useRef(opt);
   const [confirmState, confirmAction] = useActionState(
     confirmConversationDate,
     dateInitialState
@@ -117,6 +110,39 @@ export function ConversationResolutionPanel({
     summary.resolutionFocus === "date_discussed";
   const dateError =
     confirmState.error || holdState.error || acceptRequestedState.error;
+  const showUpdateProposal = summary.showUpdateProposal;
+
+  function persistResolved() {
+    if (optRef.current.pending || optRef.current.dismissed) {
+      return;
+    }
+    const next = beginResolutionDismiss(optRef.current);
+    optRef.current = next;
+    setOpt(next);
+    dispatchResolutionDismissed();
+
+    const formData = new FormData();
+    formData.set("proposalId", proposalId);
+    void markChangeRequestResolved({}, formData).then((result) => {
+      if (result.ok) {
+        const saved = completeResolutionDismiss(optRef.current);
+        optRef.current = saved;
+        setOpt(saved);
+        return;
+      }
+      const failed = failResolutionDismiss(
+        optRef.current,
+        result.error ?? "Could not mark this request resolved."
+      );
+      optRef.current = failed;
+      setOpt(failed);
+      dispatchResolutionRestored();
+    });
+  }
+
+  if (opt.dismissed) {
+    return null;
+  }
 
   return (
     <section
@@ -180,9 +206,9 @@ export function ConversationResolutionPanel({
           </>
         ) : null}
 
-        {(state.error || dateError) && showActions ? (
+        {(opt.error || dateError) && showActions ? (
           <p className="qf-resolution-error" role="alert">
-            {state.error || dateError}
+            {opt.error || dateError}
           </p>
         ) : null}
 
@@ -304,14 +330,16 @@ export function ConversationResolutionPanel({
                   </div>
                 </>
               ) : null}
-              <div className="qf-resolution-action-option">
-                <a href={updateHref} className="qf-btn-secondary">
-                  Update proposal
-                </a>
-                <p className="qf-resolution-action-hint">
-                  For scope, materials, price, or detail changes
-                </p>
-              </div>
+              {showUpdateProposal ? (
+                <div className="qf-resolution-action-option">
+                  <a href={updateHref} className="qf-btn-secondary">
+                    Update proposal
+                  </a>
+                  <p className="qf-resolution-action-hint">
+                    For scope, materials, price, or detail changes
+                  </p>
+                </div>
+              ) : null}
               <div className="qf-resolution-action-option">
                 <button
                   type="button"
@@ -325,10 +353,13 @@ export function ConversationResolutionPanel({
                 </p>
               </div>
               <div className="qf-resolution-action-option">
-                <form action={resolveAction}>
-                  <input type="hidden" name="proposalId" value={proposalId} />
-                  <ResolveButton />
-                </form>
+                <button
+                  type="button"
+                  className="qf-btn-secondary"
+                  onClick={persistResolved}
+                >
+                  Mark resolved
+                </button>
                 <p className="qf-resolution-action-hint">
                   When this request is fully handled
                 </p>
@@ -357,9 +388,9 @@ export function ConversationResolutionPanel({
           </div>
         ) : null}
 
-        {(state.error || dateError) && showActions ? (
+        {(opt.error || dateError) && showActions ? (
           <p className="qf-resolution-error" role="alert">
-            {state.error || dateError}
+            {opt.error || dateError}
           </p>
         ) : null}
 
@@ -448,19 +479,30 @@ export function ConversationResolutionPanel({
               </>
             ) : (
               <>
-                <h2 className="qf-resolution-mobile-next-title">
-                  Update proposal
-                </h2>
-                <div className="qf-resolution-mobile-actions">
-                  <a href={updateHref} className="qf-btn-primary">
+                {showUpdateProposal ? (
+                  <h2 className="qf-resolution-mobile-next-title">
                     Update proposal
-                  </a>
+                  </h2>
+                ) : null}
+                <div className="qf-resolution-mobile-actions">
+                  {showUpdateProposal ? (
+                    <a href={updateHref} className="qf-btn-primary">
+                      Update proposal
+                    </a>
+                  ) : null}
                   <button
                     type="button"
                     className="qf-btn-secondary"
                     onClick={() => focusProposalConversationComposer()}
                   >
                     Reply to customer
+                  </button>
+                  <button
+                    type="button"
+                    className="qf-btn-secondary"
+                    onClick={persistResolved}
+                  >
+                    Mark resolved
                   </button>
                 </div>
               </>

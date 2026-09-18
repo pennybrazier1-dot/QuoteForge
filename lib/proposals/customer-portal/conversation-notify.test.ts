@@ -19,6 +19,10 @@ describe("conversation notifications", () => {
     expect(note.subject).toBe("New message from Bright Bathrooms");
     expect(note.message).toContain("We can do Friday morning.");
     expect(note.ctaUrl).toBe(buildCustomerConversationUrl("abc123token"));
+    expect(note.ctaUrl).toContain("/p/abc123token");
+    expect(note.ctaUrl).toContain("view=conversation");
+    expect(note.ctaUrl).toContain("#proposal-conversation");
+    expect(note.ctaUrl).not.toContain("createCustomerAccessToken");
     expect(note.ctaLabel).toBe("View message");
     expect(note.html).toContain("#08080a");
     expect(note.html).toContain("You have a new message");
@@ -39,6 +43,9 @@ describe("conversation notifications", () => {
 
     expect(note.subject).toBe("Alex requested a change");
     expect(note.ctaUrl).toBe(buildTraderConversationUrl("proposal-1"));
+    expect(note.ctaUrl).toContain("/proposals/proposal-1");
+    expect(note.ctaUrl).toContain("view=conversation");
+    expect(note.ctaUrl).toContain("#proposal-conversation");
     expect(note.message).toContain("Can we change the tiles?");
     expect(note.html).toContain("REANVIL");
     expect(note.html).toContain("#08080a");

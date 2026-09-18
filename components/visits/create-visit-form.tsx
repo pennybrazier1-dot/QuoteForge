@@ -10,6 +10,7 @@ import type { CustomerNameMatchOption } from "@/lib/customers/name-match";
 import { createVisitAction, type VisitActionState } from "@/lib/visits/actions";
 import {
   DEFAULT_NEW_VISIT_TYPE,
+  getNewVisitTypeOption,
   NEW_VISIT_TYPE_OPTIONS,
   VISIT_NAME_PLACEHOLDER,
   applyVisitCustomerSuggestion,
@@ -232,40 +233,26 @@ export function CreateVisitForm({
           <h2 className="qf-card-heading">Visit details</h2>
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <p className="qf-field-label" id="visitTypeLabel">
-                Visit type
+              <Field label="Visit type" id="visitType">
+                <select
+                  id="visitType"
+                  className="form-select"
+                  name="visitType"
+                  value={visitType}
+                  onChange={(event) =>
+                    setVisitType(event.target.value as NewVisitType)
+                  }
+                >
+                  {NEW_VISIT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <p className="qf-visit-type-helper-panel">
+                {getNewVisitTypeOption(visitType).helper}
               </p>
-              <input type="hidden" name="visitType" value={visitType} />
-              <div
-                className="qf-visit-type-options"
-                role="radiogroup"
-                aria-labelledby="visitTypeLabel"
-              >
-                {NEW_VISIT_TYPE_OPTIONS.map((option) => {
-                  const selected = visitType === option.id;
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      className={
-                        selected
-                          ? "qf-visit-type-option is-selected"
-                          : "qf-visit-type-option"
-                      }
-                      onClick={() => setVisitType(option.id)}
-                    >
-                      <span className="qf-visit-type-option-title">
-                        {option.label}
-                      </span>
-                      <span className="qf-visit-type-option-helper">
-                        {option.helper}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
             <div className="sm:col-span-2">
               <Field label="Reason / summary" id="visitEnquirySummary">

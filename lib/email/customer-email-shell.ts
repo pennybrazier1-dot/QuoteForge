@@ -1,4 +1,8 @@
 import { CUSTOMER_EMAIL_COLORS as C } from "@/lib/email/customer-email-tokens";
+import {
+  REANVIL_EMAIL_BRAND_NAME,
+  resolveEmailBrandIdentity,
+} from "@/lib/email/email-branding";
 
 export const CUSTOMER_EMAIL_FONT =
   "-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,Helvetica,sans-serif";
@@ -34,26 +38,47 @@ export function customerEmailTextStyle(color: string, extra = ""): string {
   return `font-family:${CUSTOMER_EMAIL_FONT};color:${color};-webkit-text-fill-color:${color};${extra}`;
 }
 
+export function buildReanvilEmailIdentityHtml(): string {
+  return `<tr>
+  <td align="center" style="padding:4px 8px 26px;">
+    <p style="margin:0;${customerEmailTextStyle(C.text, "font-size:26px;letter-spacing:0.18em;text-transform:uppercase;font-weight:800;line-height:1.2;")}">${REANVIL_EMAIL_BRAND_NAME}</p>
+  </td>
+</tr>`;
+}
+
 export function buildCustomerEmailIdentityHtml(input: {
   businessName: string | null;
   logoUrl: string | null;
   tradeLabel: string | null;
 }): string {
-  const logoBlock = input.logoUrl
-    ? `<img src="${escapeCustomerEmailHtml(input.logoUrl)}" alt="${escapeCustomerEmailHtml(input.businessName || "")}" width="88" style="display:block;margin:0 auto 14px;border:0;max-width:180px;width:auto;height:auto;max-height:80px;" />`
-    : "";
+  const brand = resolveEmailBrandIdentity({
+    logoUrl: input.logoUrl,
+    businessName: input.businessName,
+  });
 
-  const businessBlock = input.businessName
-    ? `<p style="margin:0;${customerEmailTextStyle(C.text, input.logoUrl ? "font-size:15px;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;line-height:1.35;" : "font-size:26px;letter-spacing:0.04em;font-weight:800;line-height:1.2;")}">${escapeCustomerEmailHtml(input.businessName)}</p>`
-    : "";
+  if (brand.mode === "reanvil" || !brand.logoUrl) {
+    const businessBlock = brand.businessName
+      ? `<p style="margin:10px 0 0;${customerEmailTextStyle(C.muted, "font-size:15px;letter-spacing:0.04em;font-weight:700;line-height:1.35;")}">${escapeCustomerEmailHtml(brand.businessName)}</p>`
+      : "";
+    const tradeBlock = input.tradeLabel
+      ? `<p style="margin:6px 0 0;${customerEmailTextStyle(C.muted, "font-size:13px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;line-height:1.4;")}">${escapeCustomerEmailHtml(input.tradeLabel)}</p>`
+      : "";
+    return `<tr>
+  <td align="center" style="padding:4px 8px 26px;">
+    <p style="margin:0;${customerEmailTextStyle(C.text, "font-size:26px;letter-spacing:0.18em;text-transform:uppercase;font-weight:800;line-height:1.2;")}">${REANVIL_EMAIL_BRAND_NAME}</p>
+    ${businessBlock}
+    ${tradeBlock}
+  </td>
+</tr>`;
+  }
 
+  const logoBlock = `<img src="${escapeCustomerEmailHtml(brand.logoUrl)}" alt="${escapeCustomerEmailHtml(brand.businessName || brand.brandName)}" width="88" style="display:block;margin:0 auto 14px;border:0;max-width:180px;width:auto;height:auto;max-height:80px;" />`;
+  const businessBlock = brand.businessName
+    ? `<p style="margin:0;${customerEmailTextStyle(C.text, "font-size:15px;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;line-height:1.35;")}">${escapeCustomerEmailHtml(brand.businessName)}</p>`
+    : "";
   const tradeBlock = input.tradeLabel
     ? `<p style="margin:6px 0 0;${customerEmailTextStyle(C.muted, "font-size:13px;letter-spacing:0.18em;text-transform:uppercase;font-weight:700;line-height:1.4;")}">${escapeCustomerEmailHtml(input.tradeLabel)}</p>`
     : "";
-
-  if (!logoBlock && !businessBlock) {
-    return "";
-  }
 
   return `<tr>
   <td align="center" style="padding:4px 8px 26px;">
@@ -62,6 +87,36 @@ export function buildCustomerEmailIdentityHtml(input: {
     ${tradeBlock}
   </td>
 </tr>`;
+}
+
+export function buildEmailQuotedMessageCardHtml(input: {
+  message: string;
+  regarding?: string | null;
+  senderLabel?: string | null;
+}): string {
+  const message = input.message.trim();
+  if (!message) {
+    return "";
+  }
+  const sender = input.senderLabel?.trim()
+    ? `<p style="margin:0 0 8px;${customerEmailTextStyle(C.muted, "font-size:12px;line-height:1.35;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;")}">${escapeCustomerEmailHtml(input.senderLabel.trim())}</p>`
+    : "";
+  const regarding = input.regarding?.trim()
+    ? `<p style="margin:12px 0 0;${customerEmailTextStyle(C.muted, "font-size:13px;line-height:1.4;")}">Regarding: ${escapeCustomerEmailHtml(input.regarding.trim())}</p>`
+    : "";
+  return `<tr>
+            <td style="padding:0 0 20px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.card}" style="width:100%;background:${C.card};border:1px solid ${C.accent};border-radius:16px;">
+                <tr>
+                  <td style="padding:22px 20px 18px;background:${C.card};border-radius:16px;">
+                    ${sender}
+                    <p class="email-text" style="margin:0;${customerEmailTextStyle(C.text, "font-size:18px;line-height:1.5;font-weight:600;")}">${escapeCustomerEmailHtml(message)}</p>
+                    ${regarding}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`;
 }
 
 export function buildCustomerEmailCtaHtml(input: {
@@ -109,11 +164,7 @@ export function buildTraderEmailFooterHtml(): string {
 }
 
 export function buildTraderEmailIdentityHtml(): string {
-  return `<tr>
-  <td align="center" style="padding:4px 8px 26px;">
-    <p style="margin:0;${customerEmailTextStyle(C.text, "font-size:26px;letter-spacing:0.18em;text-transform:uppercase;font-weight:800;line-height:1.2;")}">REANVIL</p>
-  </td>
-</tr>`;
+  return buildReanvilEmailIdentityHtml();
 }
 
 export function buildEmailFooterHtml(line1: string, line2: string): string {

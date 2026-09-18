@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ProposalWorkspace } from "@/components/proposals/proposal-workspace";
 import { fetchCalendarProposals } from "@/lib/calendar/calendar-queries";
 import { loadJobPrepForProposal } from "@/lib/jobs/load-job-for-proposal";
+import { isConversationDeepLink } from "@/lib/proposals/customer-portal/conversation-deep-link";
 import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/messages";
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
@@ -15,10 +16,12 @@ export const metadata: Metadata = {
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ view?: string }>;
 };
 
-export default async function ProposalPage({ params }: PageProps) {
+export default async function ProposalPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const query = searchParams ? await searchParams : {};
   const supabase = await createClient();
   const {
     data: { user },
@@ -101,6 +104,7 @@ export default async function ProposalPage({ params }: PageProps) {
       calendarProposals={calendarProposals}
       customerMessages={customerMessages}
       jobPrep={jobPrep}
+      openConversation={isConversationDeepLink(query.view)}
     />
   );
 }

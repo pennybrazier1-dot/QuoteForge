@@ -7,6 +7,7 @@ import {
   buildTraderMessageNotification,
   notifyConversationParticipant,
 } from "@/lib/proposals/customer-portal/conversation-notify";
+import { shouldFlagAttentionForCustomerMessage } from "@/lib/proposals/customer-portal/conversation-access";
 import { loadPublicProposalByToken } from "@/lib/proposals/customer-portal/load-public-proposal";
 import { buildCustomerProposalPortalUrl } from "@/lib/proposals/customer-portal/token";
 import { ensureJobForAcceptedProposal } from "@/lib/jobs/create-job-from-proposal";
@@ -256,7 +257,11 @@ async function submitAttentionMessage(
     return { error: loaded.error };
   }
 
-  if (!loaded.view.canRespond || loaded.view.isClosed) {
+  if (kind === "question") {
+    if (!loaded.view.canMessage || loaded.view.isClosed) {
+      return { error: "This conversation is no longer open for replies." };
+    }
+  } else if (!loaded.view.canRespond || loaded.view.isClosed) {
     return { error: "This proposal is no longer open for replies." };
   }
 
@@ -282,33 +287,35 @@ async function submitAttentionMessage(
     return { error: messageError.message || "Could not send your message." };
   }
 
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      status: "needs_attention",
-      attention_reason: attentionReason,
-    })
-    .eq("id", loaded.proposal.id)
-    .in("status", ["waiting_for_customer", "needs_attention"]);
+  if (shouldFlagAttentionForCustomerMessage(fromStatus, message)) {
+    const { error: updateError } = await supabase
+      .from("proposals")
+      .update({
+        status: "needs_attention",
+        attention_reason: attentionReason,
+      })
+      .eq("id", loaded.proposal.id)
+      .in("status", ["waiting_for_customer", "needs_attention"]);
 
-  if (updateError) {
-    return { error: updateError.message || "Could not update this proposal." };
+    if (updateError) {
+      return { error: updateError.message || "Could not update this proposal." };
+    }
+
+    await supabase.from("proposal_status_events").insert({
+      workspace_id: loaded.workspaceId,
+      proposal_id: loaded.proposal.id,
+      event_type: "status_change",
+      from_status: fromStatus,
+      to_status: "needs_attention",
+      note: `${formatAttentionReason(attentionReason)}: ${message}`,
+      metadata: {
+        source: "customer_portal",
+        action: kind,
+        attention_reason: attentionReason,
+      },
+      created_by: null,
+    });
   }
-
-  await supabase.from("proposal_status_events").insert({
-    workspace_id: loaded.workspaceId,
-    proposal_id: loaded.proposal.id,
-    event_type: "status_change",
-    from_status: fromStatus,
-    to_status: "needs_attention",
-    note: `${formatAttentionReason(attentionReason)}: ${message}`,
-    metadata: {
-      source: "customer_portal",
-      action: kind,
-      attention_reason: attentionReason,
-    },
-    created_by: null,
-  });
 
   const traderEmail = loaded.workspace.contact_email?.trim() || null;
   if (traderEmail) {

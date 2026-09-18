@@ -11,6 +11,7 @@ import type {
   ProposalPdfSource,
   WorkspacePdfSource,
 } from "@/lib/proposals/load-proposal-pdf";
+import { isConversationReplyable } from "@/lib/proposals/customer-portal/conversation-access";
 import {
   isClosedProposalStatus,
   normalizeProposalStatus,
@@ -43,6 +44,8 @@ export type PublicProposalViewModel = {
   title: string;
   status: string;
   canRespond: boolean;
+  /** Messaging stays open after accept/book. Separate from proposal actions. */
+  canMessage: boolean;
   isAccepted: boolean;
   isDeclined: boolean;
   isClosed: boolean;
@@ -236,6 +239,7 @@ export async function loadPublicProposalByToken(
       title: row.title?.trim() || `Proposal ${row.proposal_number}`,
       status,
       canRespond: canRespond && !isClosed,
+      canMessage: isConversationReplyable(status),
       isAccepted,
       isDeclined,
       isClosed,

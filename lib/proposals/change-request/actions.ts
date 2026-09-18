@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
@@ -86,8 +85,6 @@ export async function markChangeRequestResolved(
     },
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath("/proposals");
   revalidatePath(`/proposals/${proposalId}`);
-  redirect(`/proposals/${proposalId}`);
+  return { ok: true };
 }

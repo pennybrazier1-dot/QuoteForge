@@ -1327,43 +1327,15 @@ a.qf-card-inset:hover {
   min-height: var(--touch-target-comfortable);
 }
 
-.qf-visit-type-options {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-.qf-visit-type-option {
-  appearance: none;
-  display: grid;
-  gap: 0.3rem;
-  width: 100%;
-  min-height: var(--touch-target-comfortable);
-  padding: 0.95rem 1rem;
+.qf-visit-type-helper-panel {
+  margin: 0.75rem 0 0;
+  padding: 0.85rem 1rem;
   border-radius: var(--radius-card);
-  border: 2px solid var(--card-border-color);
   background: var(--background-card-inset);
-  color: var(--foreground);
-  text-align: left;
-  font: inherit;
-  cursor: pointer;
-}
-
-.qf-visit-type-option.is-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--ring-field-focus);
-}
-
-.qf-visit-type-option-title {
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: var(--foreground);
-}
-
-.qf-visit-type-option-helper {
-  font-size: 0.875rem;
-  line-height: 1.4;
+  border: 1px solid var(--card-border-color);
   color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .qf-card-heading-row {
@@ -6515,6 +6487,10 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-job-prep-item:first-child {
   padding-top: 0;
+}
+
+.qf-job-prep-item-saving .qf-job-prep-more-trigger {
+  opacity: 0.55;
 }
 
 .qf-job-prep-item-main {

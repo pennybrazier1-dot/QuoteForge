@@ -140,7 +140,7 @@ describe("booked-job preparation checklist", () => {
     ).toBe("initial_assessment");
     const form = readRepo("components/visits/create-visit-form.tsx");
     expect(form).toContain("NEW_VISIT_TYPE_OPTIONS.map");
-    expect(form).toContain("setVisitType(option.id)");
+    expect(form).toContain("setVisitType");
     expect(form).toContain("defaultVisitType");
   });
 

@@ -276,9 +276,11 @@ function PortalHero({
 export function CustomerProposalPortal({
   view,
   messages = [],
+  openConversation = false,
 }: {
   view: PublicProposalViewModel;
   messages?: ProposalCustomerMessage[];
+  openConversation?: boolean;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<PortalMode>("idle");
@@ -421,8 +423,9 @@ export function CustomerProposalPortal({
         <CustomerPortalConversation
           token={view.token}
           messages={messages}
-          canRespond={view.canRespondToProposedDate}
+          canReply={view.canMessage}
           businessName={view.businessName}
+          openConversation={openConversation}
         />
         <ProposalBody view={view} />
       </PortalShell>
@@ -444,8 +447,9 @@ export function CustomerProposalPortal({
         <CustomerPortalConversation
           token={view.token}
           messages={messages}
-          canRespond={view.canRespond}
+          canReply={view.canMessage}
           businessName={view.businessName}
+          openConversation={openConversation}
         />
         <ProposalBody view={view} />
       </PortalShell>
@@ -477,8 +481,9 @@ export function CustomerProposalPortal({
         <CustomerPortalConversation
           token={view.token}
           messages={messages}
-          canRespond={view.canRespond}
+          canReply={view.canMessage}
           businessName={view.businessName}
+          openConversation={openConversation}
         />
         <ProposalBody view={view} />
       </PortalShell>
@@ -513,8 +518,9 @@ export function CustomerProposalPortal({
       <CustomerPortalConversation
         token={view.token}
         messages={messages}
-        canRespond={view.canRespond}
+        canReply={view.canMessage}
         businessName={view.businessName}
+        openConversation={openConversation}
       />
 
       <ProposalTimelineCard view={view} />
