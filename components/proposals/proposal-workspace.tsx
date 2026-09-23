@@ -7,6 +7,7 @@ import {
   AfterAttentionIdle,
   AttentionOnly,
   AttentionVisibilityProvider,
+  OptimisticOrServerDateBanner,
 } from "@/components/proposals/attention-visibility";
 import { CompletedJobActions } from "@/components/jobs/completed-job-actions";
 import { CompletedJobPayment } from "@/components/jobs/completed-job-payment";
@@ -27,15 +28,15 @@ import {
   OPTIONAL_EXTRAS_EMPTY_MESSAGE,
 } from "@/components/proposals/structured-proposal-content";
 import { SectionCard } from "@/components/ui/section-card";
-import type { CalendarProposal } from "@/lib/calendar/calendar-data";
+import {
+  buildCalendarJobs,
+  type CalendarProposal,
+} from "@/lib/calendar/calendar-data";
 import { isDevTestingEnabled } from "@/lib/env/dev-testing";
 import type { ProposalJobPrepView } from "@/lib/jobs/load-job-for-proposal";
 import { conversationHasProposalChange } from "@/lib/proposals/change-request/classify-conversation-intent";
 import { buildConversationResolutionSummary } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
-import {
-  buildDateWorkflowSnapshot,
-  JOB_BOOKED_STATUS_TITLE,
-} from "@/lib/proposals/date-workflow";
+import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
 import { isConversationReplyable } from "@/lib/proposals/customer-portal/conversation-access";
 import { CONVERSATION_HASH_ID } from "@/lib/proposals/customer-portal/conversation-deep-link";
@@ -383,6 +384,10 @@ export function ProposalWorkspace({
           persistedDate: proposal.planned_start_date,
           persistedTime: proposal.planned_start_time,
           attentionReason: proposal.attention_reason,
+          statusEvents,
+          calendarJobs: buildCalendarJobs(calendarProposals),
+          proposalId: proposal.id,
+          estimatedDuration: proposal.estimated_duration,
         })
       : null;
   const resolutionSummary = builtResolutionSummary?.hasActiveAttention
@@ -410,6 +415,7 @@ export function ProposalWorkspace({
       }}
     >
       <div className="qf-trader-page qf-proposal-page qf-workspace-page qf-mobile-safe">
+      <AttentionVisibilityProvider>
       <header className="qf-workspace-header">
         <div className="qf-workspace-header-top">
           <p className="qf-workspace-number">{proposal.proposal_number}</p>
@@ -423,12 +429,10 @@ export function ProposalWorkspace({
           <p className="qf-workspace-job-title">{shortJobTitle}</p>
         ) : null}
 
-        {dateWorkflow.isBookedJob && confirmedSlotLabel ? (
-          <section className="qf-date-state-banner qf-date-state-banner-booked" role="status">
-            <p className="qf-date-state-title">{JOB_BOOKED_STATUS_TITLE}</p>
-            <p className="qf-date-state-copy">{confirmedSlotLabel}</p>
-          </section>
-        ) : null}
+        <OptimisticOrServerDateBanner
+          isBookedJob={dateWorkflow.isBookedJob}
+          confirmedSlotLabel={confirmedSlotLabel}
+        />
 
         {isCompletedJobStatus(proposal.status) ? (
           <section className="qf-date-state-banner qf-date-state-banner-completed" role="status">
@@ -463,7 +467,6 @@ export function ProposalWorkspace({
         </div>
       </header>
 
-      <AttentionVisibilityProvider>
       <div className={WORKSPACE_ACTION_STACK_CLASS}>
       {isWaitingForCustomerPage(proposal.status) ? (
         <section className="qf-waiting-status" role="status">

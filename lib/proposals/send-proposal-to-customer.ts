@@ -25,6 +25,7 @@ import {
   resolveProposalEmailSendKind,
   type ProposalEmailSendKind,
 } from "@/lib/proposals/proposal-email-delivery";
+import { logResendFailure } from "@/lib/proposals/resend-proposal-email";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -58,6 +59,7 @@ export async function sendProposalToCustomer(
 ): Promise<SendProposalToCustomerResult> {
   const sendEmail = deps.sendEmail ?? sendProposalEmail;
 
+  try {
   const context = await loadProposalPdfContext(
     supabase,
     input.proposalId,
@@ -237,4 +239,12 @@ export async function sendProposalToCustomer(
     portalUrl,
     attachedPdf: true,
   };
+  } catch (error) {
+    logResendFailure(error, { proposalId: input.proposalId });
+    return {
+      ok: false,
+      error: "Email couldn't be sent. Please try again.",
+      emailSent: false,
+    };
+  }
 }

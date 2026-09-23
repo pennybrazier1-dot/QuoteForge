@@ -125,6 +125,7 @@ export function isClosedForResend(status: string): boolean {
   return (
     normalized === "booked" ||
     normalized === "completed" ||
+    normalized === "closed" ||
     normalized === "declined" ||
     normalized === "cancelled"
   );

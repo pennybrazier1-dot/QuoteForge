@@ -28,6 +28,16 @@ describe("parseFlexibleDateToIso", () => {
     );
     expect(iso).toBe("2026-10-12");
   });
+
+  it("parses the 24th of September without inventing a time", () => {
+    expect(
+      parseFlexibleDateToIso(
+        "24th of September",
+        new Date("2026-09-18T10:00:00.000Z")
+      )
+    ).toBe("2026-09-24");
+    expect(extractSpecificTimeToHm("Can we move it to the 24th of September?")).toBeNull();
+  });
 });
 
 describe("findLatestConfirmedDateAgreement", () => {

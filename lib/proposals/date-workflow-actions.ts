@@ -329,6 +329,7 @@ export async function acceptCustomerRequestedDate(
     metadata: {
       action: "trader_accept_requested_date",
       books_job: true,
+      ask_customer_to_confirm: false,
     },
     attentionReason: null,
   });

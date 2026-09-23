@@ -84,6 +84,18 @@ describe("classifyConversationIntent", () => {
         "I'd like a different date.\nRequested date: 2026-10-13"
       )
     ).toBe("date_change");
+    expect(classifyConversationIntent("Could we do 2:30pm instead?")).toBe(
+      "date_change"
+    );
+    expect(
+      classifyConversationIntent("Can we move it to the 24th of September?")
+    ).toBe("date_change");
+    expect(
+      classifyConversationIntent("Could we do 24 September at 2:30pm?")
+    ).toBe("date_change");
+    expect(
+      classifyConversationIntent("I'm running 20 minutes late")
+    ).toBe("conversation");
   });
 });
 

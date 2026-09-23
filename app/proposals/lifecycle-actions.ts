@@ -27,6 +27,11 @@ import {
   COMPLETED_JOBS_PATH,
   REOPEN_JOB_ERROR,
 } from "@/lib/jobs/complete-job";
+import {
+  logResendFailure,
+  planProposalResend,
+  RESEND_FAILURE_COPY,
+} from "@/lib/proposals/resend-proposal-email";
 import { sendProposalToCustomer } from "@/lib/proposals/send-proposal-to-customer";
 import {
   canTransitionStatus,
@@ -549,55 +554,59 @@ export async function resendToCustomer(
   _prevState: LifecycleActionState,
   formData: FormData
 ): Promise<LifecycleActionState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { error: "You must be signed in." };
-  }
-
   const proposalId = getString(formData, "proposalId");
-  if (!proposalId) {
-    return { error: "Proposal not found." };
-  }
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const { data: proposal, error: loadError } = await supabase
-    .from("proposals")
-    .select("id, status, workspace_id")
-    .eq("id", proposalId)
-    .maybeSingle();
+    if (!user) {
+      return { error: "You must be signed in." };
+    }
 
-  if (loadError || !proposal) {
-    return { error: "Proposal not found." };
-  }
+    if (!proposalId) {
+      return { error: "Proposal not found." };
+    }
 
-  const currentStatus = normalizeProposalStatus(proposal.status);
+    const { data: proposal, error: loadError } = await supabase
+      .from("proposals")
+      .select("id, status, workspace_id")
+      .eq("id", proposalId)
+      .maybeSingle();
 
-  if (
-    currentStatus !== "needs_attention" &&
-    currentStatus !== "waiting_for_customer"
-  ) {
-    return { error: "This proposal cannot be sent to the customer right now." };
-  }
+    if (loadError || !proposal) {
+      return { error: "Proposal not found." };
+    }
 
-  const result = await sendProposalToCustomer(supabase, {
-    proposalId,
-    userId: user.id,
-    userEmail: user.email,
-    kind: currentStatus === "waiting_for_customer" ? "reminder" : "revised",
-  });
+    const currentStatus = normalizeProposalStatus(proposal.status);
+    const plan = planProposalResend(currentStatus);
 
-  if (!result.ok) {
-    return { error: result.error };
-  }
+    if (!plan.allowed || !plan.kind) {
+      return { error: "This proposal cannot be sent to the customer right now." };
+    }
 
-  revalidateAll(proposalId);
+    const result = await sendProposalToCustomer(supabase, {
+      proposalId,
+      userId: user.id,
+      userEmail: user.email,
+      kind: plan.kind,
+    });
 
-  if (currentStatus === "waiting_for_customer") {
+    if (!result.ok) {
+      logResendFailure(result.error, {
+        proposalId,
+        status: currentStatus,
+      });
+      return { error: RESEND_FAILURE_COPY };
+    }
+
+    // Stay on this proposal. Do not revalidate payment/history pages here —
+    // a failure on those screens must not crash Resend.
+    revalidatePath(`/proposals/${proposalId}`);
     return { success: true };
+  } catch (error) {
+    logResendFailure(error, { proposalId });
+    return { error: RESEND_FAILURE_COPY };
   }
-
-  redirect(`/proposals/${proposalId}`);
 }

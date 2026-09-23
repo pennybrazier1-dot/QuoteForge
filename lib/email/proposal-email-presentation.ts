@@ -97,11 +97,23 @@ export function formatProposalEmailDateTime(input: {
 
   if (/^\d{4}-\d{2}-\d{2}/.test(iso)) {
     const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
-    datePart = new Intl.DateTimeFormat("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(new Date(year, month - 1, day));
+    const date = new Date(year, month - 1, day);
+    if (
+      !Number.isNaN(date.getTime()) &&
+      date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+    ) {
+      try {
+        datePart = new Intl.DateTimeFormat("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }).format(date);
+      } catch {
+        datePart = "";
+      }
+    }
   } else if (isUsableEmailValue(input.dateText)) {
     datePart = input.dateText.trim();
   }

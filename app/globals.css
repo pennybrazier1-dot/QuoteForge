@@ -7300,6 +7300,51 @@ button.qf-booking-preview-day-selectable:focus-visible {
   color: var(--foreground);
 }
 
+.qf-resolution-requested {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.qf-resolution-requested-value {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 750;
+  line-height: 1.25;
+  color: var(--foreground);
+}
+
+.qf-resolution-availability {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.qf-resolution-availability-yes {
+  color: #34d399;
+}
+
+.qf-resolution-availability-no {
+  color: #fbbf24;
+}
+
+.qf-resolution-outstanding {
+  margin: 0.55rem 0 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.qf-resolution-outstanding-title {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .qf-resolution-error {
   margin: 0;
   font-size: 0.875rem;
@@ -7555,6 +7600,15 @@ button.qf-booking-preview-day-selectable:focus-visible {
     font-weight: 700;
     line-height: 1.35;
     color: var(--foreground);
+  }
+
+  .qf-resolution-mobile-card .qf-resolution-requested-value {
+    margin-top: 0.55rem;
+    font-size: 1.5rem;
+  }
+
+  .qf-resolution-mobile-card .qf-resolution-availability {
+    margin-top: 0.45rem;
   }
 
   .qf-resolution-mobile-description {

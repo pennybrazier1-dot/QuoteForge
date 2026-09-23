@@ -1,5 +1,11 @@
 export const RESOLUTION_DISMISS_EVENT = "proposal-attention-resolved";
 export const RESOLUTION_RESTORE_EVENT = "proposal-attention-restore";
+export const RESOLUTION_ACCEPTED_EVENT = "proposal-requested-date-accepted";
+
+export type AcceptedRequestedSlotDetail = {
+  label: string;
+  booked: boolean;
+};
 
 export type OptimisticResolutionState = {
   dismissed: boolean;
@@ -73,4 +79,17 @@ export function dispatchResolutionRestored(): void {
     return;
   }
   window.dispatchEvent(new Event(RESOLUTION_RESTORE_EVENT));
+}
+
+export function dispatchResolutionAccepted(
+  detail: AcceptedRequestedSlotDetail
+): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.dispatchEvent(
+    new CustomEvent<AcceptedRequestedSlotDetail>(RESOLUTION_ACCEPTED_EVENT, {
+      detail,
+    })
+  );
 }

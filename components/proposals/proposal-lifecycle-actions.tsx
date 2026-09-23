@@ -16,6 +16,10 @@ import { AuthError } from "@/components/auth/auth-shell";
 import { BookingDialog } from "@/components/proposals/booking-dialog";
 import { DevLifecycleTools } from "@/components/proposals/dev-lifecycle-tools";
 import { buildDateWorkflowSnapshot } from "@/lib/proposals/date-workflow";
+import {
+  RESEND_FAILURE_COPY,
+  RESEND_SUCCESS_COPY,
+} from "@/lib/proposals/resend-proposal-email";
 import type { CalendarProposal } from "@/lib/calendar/calendar-data";
 import {
   isProposalStatus,
@@ -159,10 +163,14 @@ export function ProposalLifecycleActions({
       aria-label="Job lifecycle"
       id="proposal-lifecycle"
     >
-      {error ? <AuthError message={error} /> : null}
+      {error ? (
+        <AuthError
+          message={resendState.error ? RESEND_FAILURE_COPY : error}
+        />
+      ) : null}
       {resendState.success ? (
         <p className="qf-workspace-actions-success" role="status">
-          Proposal resent
+          {RESEND_SUCCESS_COPY}
         </p>
       ) : null}
 

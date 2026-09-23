@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { markChangeRequestResolved } from "@/lib/proposals/change-request/actions";
 import {
@@ -8,8 +8,15 @@ import {
   type ConversationResolutionSummary,
 } from "@/lib/proposals/change-request/build-conversation-resolution-summary";
 import {
+  acceptLabelForRequestedSchedule,
+  promptForRequestedSchedule,
+  scheduleFieldLabel,
+  suggestLabelForRequestedSchedule,
+} from "@/lib/proposals/change-request/requested-schedule";
+import {
   beginResolutionDismiss,
   completeResolutionDismiss,
+  dispatchResolutionAccepted,
   dispatchResolutionDismissed,
   dispatchResolutionRestored,
   emptyOptimisticResolutionState,
@@ -76,6 +83,57 @@ function DateSlotFields({
   );
 }
 
+function AvailabilityLine({
+  availability,
+}: {
+  availability: ConversationResolutionSummary["requestedAvailability"];
+}) {
+  if (availability === "available") {
+    return (
+      <p className="qf-resolution-availability qf-resolution-availability-yes">
+        ✓ Available
+      </p>
+    );
+  }
+  if (availability === "unavailable") {
+    return (
+      <p className="qf-resolution-availability qf-resolution-availability-no">
+        Not available
+      </p>
+    );
+  }
+  return null;
+}
+
+function AcceptRequestedFields({
+  proposalId,
+  summary,
+}: {
+  proposalId: string;
+  summary: ConversationResolutionSummary;
+}) {
+  return (
+    <>
+      <input type="hidden" name="proposalId" value={proposalId} />
+      <input
+        type="hidden"
+        name="plannedStartDateExact"
+        value={summary.requestedStartExact ?? ""}
+      />
+      <input
+        type="hidden"
+        name="plannedStartTime"
+        value={summary.requestedStartTime ?? ""}
+      />
+      <input
+        type="hidden"
+        name="plannedStartDateText"
+        value={summary.requestedSlotLabel ?? ""}
+      />
+    </>
+  );
+}
+
 export function ConversationResolutionPanel({
   proposalId,
   summary,
@@ -88,6 +146,7 @@ export function ConversationResolutionPanel({
 }) {
   const [opt, setOpt] = useState(emptyOptimisticResolutionState);
   const optRef = useRef(opt);
+  const [scheduleAccepted, setScheduleAccepted] = useState(false);
   const [confirmState, confirmAction] = useActionState(
     confirmConversationDate,
     dateInitialState
@@ -111,6 +170,14 @@ export function ConversationResolutionPanel({
   const dateError =
     confirmState.error || holdState.error || acceptRequestedState.error;
   const showUpdateProposal = summary.showUpdateProposal;
+  const showSchedule =
+    summary.hasScheduleRequest &&
+    !scheduleAccepted &&
+    !dateCard;
+  const requestedValue = summary.requestedDisplayValue;
+  const acceptLabel = acceptLabelForRequestedSchedule(summary.requestedKind);
+  const suggestLabel = suggestLabelForRequestedSchedule(summary.requestedKind);
+  const requestPrompt = promptForRequestedSchedule(summary.requestedKind);
 
   function persistResolved() {
     if (optRef.current.pending || optRef.current.dismissed) {
@@ -140,7 +207,44 @@ export function ConversationResolutionPanel({
     });
   }
 
-  if (opt.dismissed) {
+  function onAcceptRequested() {
+    const label = summary.requestedDisplayValue;
+    if (label) {
+      dispatchResolutionAccepted({
+        label,
+        booked: true,
+      });
+    }
+    if (summary.hasJobRequest) {
+      setScheduleAccepted(true);
+      return;
+    }
+    if (optRef.current.pending || optRef.current.dismissed) {
+      return;
+    }
+    const next = beginResolutionDismiss(optRef.current);
+    optRef.current = next;
+    setOpt(next);
+    dispatchResolutionDismissed();
+  }
+
+  useEffect(() => {
+    if (!acceptRequestedState.error) {
+      return;
+    }
+    if (optRef.current.dismissed) {
+      const failed = failResolutionDismiss(
+        optRef.current,
+        acceptRequestedState.error
+      );
+      optRef.current = failed;
+      setOpt(failed);
+      dispatchResolutionRestored();
+    }
+    setScheduleAccepted(false);
+  }, [acceptRequestedState.error]);
+
+  if (opt.dismissed && !summary.hasJobRequest) {
     return null;
   }
 
@@ -154,7 +258,15 @@ export function ConversationResolutionPanel({
         {showSummary ? (
           <>
             <div className="qf-resolution-banner" role="status">
-              <p className="qf-resolution-banner-title">Customer request</p>
+              <p className="qf-resolution-banner-title">
+                {summary.hasJobRequest && summary.hasScheduleRequest
+                  ? "Requested changes"
+                  : showSchedule
+                    ? summary.mobileHeadline
+                    : summary.hasJobRequest
+                      ? "Customer requested a change to the job"
+                      : "Customer request"}
+              </p>
               <p className="qf-resolution-banner-copy">
                 Review what they asked for, then choose how to resolve it. Nothing
                 changes until you confirm in the right tool.
@@ -172,18 +284,57 @@ export function ConversationResolutionPanel({
                   <p className="qf-resolution-copy">{summary.agreedSlotLabel}</p>
                 </div>
               ) : null}
-              <div className="qf-resolution-block">
-                <h3 className="qf-resolution-label">Customer requests</h3>
-                {summary.customerRequestItems.length > 0 ? (
+
+              {showSchedule ? (
+                <div className="qf-resolution-block qf-resolution-requested">
+                  <h3 className="qf-resolution-label">
+                    {scheduleFieldLabel(summary.requestedKind)}
+                  </h3>
+                  {requestedValue ? (
+                    <p className="qf-resolution-requested-value">{requestedValue}</p>
+                  ) : (
+                    <p className="qf-resolution-copy">
+                      The customer asked to change the date or time, but did not
+                      give an exact value.
+                    </p>
+                  )}
+                  <AvailabilityLine availability={summary.requestedAvailability} />
+                  {requestedValue ? (
+                    <p className="qf-resolution-copy">{requestPrompt}</p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {summary.hasJobRequest ? (
+                <div className="qf-resolution-block">
+                  <h3 className="qf-resolution-label">Job details</h3>
                   <ul className="qf-resolution-request-list">
-                    {summary.customerRequestItems.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
+                    {summary.outstandingItems
+                      .filter((item) => item.kind === "job")
+                      .map((item) => (
+                        <li key={item.title}>
+                          {item.detail || "Customer requested a change to the job"}
+                        </li>
+                      ))}
                   </ul>
-                ) : (
-                  <p className="qf-resolution-copy">{summary.customerRequest}</p>
-                )}
-              </div>
+                </div>
+              ) : null}
+
+              {!showSchedule && !summary.hasJobRequest ? (
+                <div className="qf-resolution-block">
+                  <h3 className="qf-resolution-label">Customer requests</h3>
+                  {summary.customerRequestItems.length > 0 ? (
+                    <ul className="qf-resolution-request-list">
+                      {summary.customerRequestItems.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="qf-resolution-copy">{summary.customerRequest}</p>
+                  )}
+                </div>
+              ) : null}
+
               <div className="qf-resolution-block">
                 <h3 className="qf-resolution-label">Original wording</h3>
                 <div className="qf-resolution-copy qf-resolution-quote qf-resolution-wording">
@@ -224,43 +375,35 @@ export function ConversationResolutionPanel({
               You choose the path. Nothing is changed until you confirm.
             </p>
             <div className="qf-resolution-action-grid">
-              {summary.showAcceptRequestedDate ? (
+              {showSchedule && summary.showAcceptRequestedDate ? (
                 <div className="qf-resolution-action-option">
-                  <form action={acceptRequestedAction}>
-                    <input type="hidden" name="proposalId" value={proposalId} />
-                    <input
-                      type="hidden"
-                      name="plannedStartDateExact"
-                      value={summary.requestedStartExact ?? ""}
-                    />
-                    <input
-                      type="hidden"
-                      name="plannedStartTime"
-                      value={summary.requestedStartTime ?? ""}
-                    />
-                    <input
-                      type="hidden"
-                      name="plannedStartDateText"
-                      value={summary.requestedSlotLabel ?? ""}
+                  <form action={acceptRequestedAction} onSubmit={onAcceptRequested}>
+                    <AcceptRequestedFields
+                      proposalId={proposalId}
+                      summary={summary}
                     />
                     <DateActionButton
-                      label="Accept requested date"
+                      label={
+                        summary.requestedAvailability === "available"
+                          ? "Accept"
+                          : acceptLabel
+                      }
                       pendingLabel="Booking…"
                     />
                   </form>
                   <p className="qf-resolution-action-hint">
-                    {summary.requestedSlotLabel
-                      ? `Books ${summary.requestedSlotLabel} because the customer asked for it.`
+                    {requestedValue
+                      ? `Books ${requestedValue} because the customer asked for it.`
                       : "Agree to the customer's requested date and book the job."}
                   </p>
                 </div>
               ) : null}
-              {summary.showAcceptRequestedDate || summary.resolutionFocus === "date" ? (
+              {showSchedule ? (
                 <div className="qf-resolution-action-option">
                   <form action={holdAction}>
                     <input type="hidden" name="proposalId" value={proposalId} />
                     <label className="qf-resolution-action-hint" htmlFor="suggest-date">
-                      Suggest another date/time
+                      {suggestLabel}
                     </label>
                     <input
                       id="suggest-date"
@@ -276,7 +419,7 @@ export function ConversationResolutionPanel({
                       required
                     />
                     <DateActionButton
-                      label="Suggest another date/time"
+                      label={suggestLabel}
                       pendingLabel="Sending…"
                       variant="secondary"
                     />
@@ -333,7 +476,7 @@ export function ConversationResolutionPanel({
               {showUpdateProposal ? (
                 <div className="qf-resolution-action-option">
                   <a href={updateHref} className="qf-btn-secondary">
-                    Update proposal
+                    Edit proposal
                   </a>
                   <p className="qf-resolution-action-hint">
                     For scope, materials, price, or detail changes
@@ -346,10 +489,10 @@ export function ConversationResolutionPanel({
                   className="qf-btn-secondary"
                   onClick={() => focusProposalConversationComposer()}
                 >
-                  Change / Reply
+                  Reply
                 </button>
                 <p className="qf-resolution-action-hint">
-                  Continue the timing discussion
+                  Continue the conversation
                 </p>
               </div>
               <div className="qf-resolution-action-option">
@@ -379,12 +522,52 @@ export function ConversationResolutionPanel({
             }`}
             role="status"
           >
-            <p className="qf-resolution-mobile-headline">
-              {summary.mobileHeadline}
-            </p>
-            <p className="qf-resolution-mobile-description">
-              {summary.mobileDescription}
-            </p>
+            {summary.hasJobRequest && showSchedule ? (
+              <>
+                <p className="qf-resolution-mobile-headline">Requested changes</p>
+                <ol className="qf-resolution-outstanding">
+                  {showSchedule ? (
+                    <li>
+                      <span className="qf-resolution-outstanding-title">
+                        Date/time
+                      </span>
+                      <span className="qf-resolution-requested-value">
+                        {requestedValue || "Date or time change"}
+                      </span>
+                    </li>
+                  ) : null}
+                  <li>
+                    <span className="qf-resolution-outstanding-title">
+                      Job details
+                    </span>
+                    <span>
+                      {summary.outstandingItems.find((item) => item.kind === "job")
+                        ?.detail || "Customer requested a change to the job"}
+                    </span>
+                  </li>
+                </ol>
+              </>
+            ) : (
+              <>
+                <p className="qf-resolution-mobile-headline">
+                  {summary.mobileHeadline}
+                </p>
+                <p
+                  className={
+                    requestedValue && showSchedule
+                      ? "qf-resolution-requested-value"
+                      : "qf-resolution-mobile-description"
+                  }
+                >
+                  {showSchedule
+                    ? requestedValue || summary.mobileDescription
+                    : summary.mobileDescription}
+                </p>
+              </>
+            )}
+            {showSchedule ? (
+              <AvailabilityLine availability={summary.requestedAvailability} />
+            ) : null}
           </div>
         ) : null}
 
@@ -436,31 +619,27 @@ export function ConversationResolutionPanel({
                   Change / Reply
                 </button>
               </div>
-            ) : summary.resolutionFocus === "date" ||
-              summary.showAcceptRequestedDate ? (
+            ) : showSchedule ? (
               <>
-                <h2 className="qf-resolution-mobile-next-title">
-                  Customer requested a different date/time
-                </h2>
-                <p className="qf-resolution-mobile-description">
-                  {summary.requestedSlotLabel || summary.mobileDescription}
-                </p>
+                {requestedValue ? (
+                  <p className="qf-resolution-mobile-description">{requestPrompt}</p>
+                ) : null}
                 <div className="qf-resolution-mobile-actions">
                   {summary.showAcceptRequestedDate ? (
-                    <form action={acceptRequestedAction}>
-                      <input type="hidden" name="proposalId" value={proposalId} />
-                      <input
-                        type="hidden"
-                        name="plannedStartDateExact"
-                        value={summary.requestedStartExact ?? ""}
-                      />
-                      <input
-                        type="hidden"
-                        name="plannedStartTime"
-                        value={summary.requestedStartTime ?? ""}
+                    <form
+                      action={acceptRequestedAction}
+                      onSubmit={onAcceptRequested}
+                    >
+                      <AcceptRequestedFields
+                        proposalId={proposalId}
+                        summary={summary}
                       />
                       <DateActionButton
-                        label="Accept requested date"
+                        label={
+                          summary.requestedAvailability === "available"
+                            ? "Accept"
+                            : acceptLabel
+                        }
                         pendingLabel="Booking…"
                       />
                     </form>
@@ -470,24 +649,42 @@ export function ConversationResolutionPanel({
                     <input type="date" name="plannedStartDateExact" required />
                     <input type="time" name="plannedStartTime" required />
                     <DateActionButton
-                      label="Suggest another date/time"
+                      label={
+                        summary.requestedAvailability === "unavailable"
+                          ? suggestLabel
+                          : "Suggest another"
+                      }
                       pendingLabel="Sending…"
                       variant="secondary"
                     />
                   </form>
+                  {summary.hasJobRequest ? (
+                    <>
+                      <a href={updateHref} className="qf-btn-secondary">
+                        Edit proposal
+                      </a>
+                      <button
+                        type="button"
+                        className="qf-btn-secondary"
+                        onClick={() => focusProposalConversationComposer()}
+                      >
+                        Reply
+                      </button>
+                    </>
+                  ) : null}
                 </div>
               </>
             ) : (
               <>
                 {showUpdateProposal ? (
                   <h2 className="qf-resolution-mobile-next-title">
-                    Update proposal
+                    Customer requested a change to the job
                   </h2>
                 ) : null}
                 <div className="qf-resolution-mobile-actions">
                   {showUpdateProposal ? (
                     <a href={updateHref} className="qf-btn-primary">
-                      Update proposal
+                      Edit proposal
                     </a>
                   ) : null}
                   <button
@@ -495,7 +692,7 @@ export function ConversationResolutionPanel({
                     className="qf-btn-secondary"
                     onClick={() => focusProposalConversationComposer()}
                   >
-                    Reply to customer
+                    Reply
                   </button>
                   <button
                     type="button"

@@ -23,6 +23,11 @@ import {
   getSendDisabledReason,
   type ProposalActionContext,
 } from "@/lib/proposals/proposal-action-eligibility";
+import {
+  RESEND_FAILURE_COPY,
+  RESEND_PENDING_COPY,
+  RESEND_SUCCESS_COPY,
+} from "@/lib/proposals/resend-proposal-email";
 import { isProposalStatus } from "@/lib/proposals/status";
 
 const initialState: UpdateProposalStatusState = {};
@@ -102,7 +107,7 @@ function ResendButton({ disabled }: { disabled: boolean }) {
           {pending ? "…" : "Resend"}
         </span>
         <span className="qf-workspace-action-label-long">
-          {pending ? "Sending…" : "Resend proposal"}
+          {pending ? RESEND_PENDING_COPY : "Resend proposal"}
         </span>
       </span>
     </button>
@@ -174,11 +179,17 @@ export function ProposalWorkspaceActions({
   return (
     <section className="qf-workspace-actions" aria-label="Proposal actions">
       {state.error || resendState.error ? (
-        <AuthError message={state.error || resendState.error || ""} />
+        <AuthError
+          message={
+            resendState.error
+              ? RESEND_FAILURE_COPY
+              : state.error || RESEND_FAILURE_COPY
+          }
+        />
       ) : null}
       {resendState.success ? (
         <p className="qf-workspace-actions-success" role="status">
-          Proposal resent
+          {RESEND_SUCCESS_COPY}
         </p>
       ) : null}
 

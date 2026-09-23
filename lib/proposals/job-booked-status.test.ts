@@ -14,6 +14,9 @@ function readRepo(relativePath: string): string {
 }
 
 const workspaceSource = readRepo("components/proposals/proposal-workspace.tsx");
+const attentionSource = readRepo(
+  "components/proposals/attention-visibility.tsx"
+);
 const nextActionsSource = readRepo(
   "components/proposals/proposal-next-actions.tsx"
 );
@@ -23,7 +26,8 @@ const cssSource = readRepo("app/globals.css");
 describe("trader booked-job status", () => {
   it("uses Job booked as the shared status wording", () => {
     expect(JOB_BOOKED_STATUS_TITLE).toBe("Job booked");
-    expect(workspaceSource).toContain("{JOB_BOOKED_STATUS_TITLE}");
+    expect(attentionSource).toContain("JOB_BOOKED_STATUS_TITLE");
+    expect(workspaceSource).toContain("OptimisticOrServerDateBanner");
     expect(nextActionsSource).toContain("JOB_BOOKED_STATUS_TITLE");
     expect(homeLifecycleSource).toContain("JOB_BOOKED_STATUS_TITLE");
     expect(workspaceSource).not.toContain(">Booked job<");
@@ -53,13 +57,14 @@ describe("trader booked-job status", () => {
 
   it("keeps the action-row gap equal above and below on mobile", () => {
     expect(workspaceSource).toContain(`className={WORKSPACE_ACTION_STACK_CLASS}`);
-    expect(workspaceSource).toContain("qf-date-state-banner-booked");
+    expect(workspaceSource).toContain("OptimisticOrServerDateBanner");
+    expect(attentionSource).toContain("qf-date-state-banner-booked");
     expect(workspaceSource).toContain("<ProposalWorkspaceActions");
     expect(workspaceSource).toContain("<ProposalLifecycleActions");
     const stackStart = workspaceSource.indexOf(
       `className={WORKSPACE_ACTION_STACK_CLASS}`
     );
-    const booked = workspaceSource.indexOf("qf-date-state-banner-booked");
+    const booked = workspaceSource.indexOf("OptimisticOrServerDateBanner");
     const actions = workspaceSource.indexOf("<ProposalWorkspaceActions");
     const lifecycle = workspaceSource.indexOf("<ProposalLifecycleActions");
     const stackEnd = workspaceSource.indexOf(

@@ -45,7 +45,7 @@ describe("buildConversationResolutionSummary", () => {
     );
     expect(summary.resolutionFocus).toBe("update");
     expect(summary.showUpdateProposal).toBe(true);
-    expect(summary.mobileHeadline).toBe("Customer requested additional work");
+    expect(summary.mobileHeadline).toBe("Customer requested a change to the job");
   });
 
   it("uses a date-focused mobile next step for timing-only requests", () => {
@@ -289,6 +289,267 @@ describe("buildConversationResolutionSummary", () => {
     expect(summary.requestedStartExact).toBe("2026-10-13");
     expect(summary.requestedStartTime).toBe("14:00");
     expect(summary.showAcceptRequestedDate).toBe(true);
+    expect(summary.requestedDisplayValue).toBe("13 October 2026 · 2:00pm");
+    expect(summary.mobileHeadline).toBe("Customer requested a date & time change");
+    expect(summary.customerRequestItems).not.toEqual(
+      expect.arrayContaining(["Timing / date change"])
+    );
+  });
+
+  it("displays the exact requested time from a spoken time change", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Could we do 2:30pm instead?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z"),
+      {
+        attentionReason: "customer_requested_date_change",
+        persistedDate: "2026-09-20",
+        persistedTime: "09:00",
+      }
+    );
+
+    expect(summary.requestedKind).toBe("time");
+    expect(summary.requestedDisplayValue).toBe("2:30pm");
+    expect(summary.requestedStartTime).toBe("14:30");
+    expect(summary.mobileHeadline).toBe("Customer requested a time change");
+    expect(summary.customerRequestItems).toContain("2:30pm");
+    expect(summary.customerRequestItems).not.toContain("Timing / date change");
+  });
+
+  it("displays the exact requested date from a spoken date change", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Can we move it to the 24th of September?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.requestedKind).toBe("date");
+    expect(summary.requestedDisplayValue).toBe("24 September 2026");
+    expect(summary.requestedStartExact).toBe("2026-09-24");
+    expect(summary.mobileHeadline).toBe("Customer requested a date change");
+  });
+
+  it("displays date and time together when both were requested", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Could we do 24 September at 2:30pm?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.requestedKind).toBe("date_time");
+    expect(summary.requestedDisplayValue).toBe("24 September 2026 · 2:30pm");
+    expect(summary.mobileHeadline).toBe(
+      "Customer requested a date & time change"
+    );
+  });
+
+  it("marks a free requested slot as available without naming other jobs", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Could we do 24 September at 2:30pm?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z"),
+      {
+        proposalId: "current",
+        calendarJobs: [
+          {
+            id: "other",
+            proposalId: "other",
+            href: "/proposals/other",
+            title: "Secret bathroom",
+            customer: "Hidden customer",
+            startDate: "2026-09-20",
+            endDate: "2026-09-20",
+            spanDates: ["2026-09-20"],
+            dateLabel: "20 Sep",
+            tone: "confirmed",
+          },
+        ],
+      }
+    );
+
+    expect(summary.requestedAvailability).toBe("available");
+    expect(summary.showAcceptRequestedDate).toBe(true);
+    expect(JSON.stringify(summary)).not.toMatch(/Hidden customer|Secret bathroom/);
+  });
+
+  it("marks a conflicting requested slot as unavailable", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Could we do 24 September at 2:30pm?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z"),
+      {
+        proposalId: "current",
+        calendarJobs: [
+          {
+            id: "other",
+            proposalId: "other",
+            href: "/proposals/other",
+            title: "Secret bathroom",
+            customer: "Hidden customer",
+            startDate: "2026-09-24",
+            endDate: "2026-09-24",
+            spanDates: ["2026-09-24"],
+            dateLabel: "24 Sep",
+            tone: "confirmed",
+          },
+        ],
+      }
+    );
+
+    expect(summary.requestedAvailability).toBe("unavailable");
+    expect(summary.showAcceptRequestedDate).toBe(false);
+    expect(JSON.stringify(summary)).not.toMatch(/Hidden customer|Secret bathroom/);
+  });
+
+  it("does not turn running-late conversation into a change request", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "question",
+          body: "I'm running 20 minutes late",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.hasActiveAttention).toBe(false);
+    expect(summary.hasScheduleRequest).toBe(false);
+    expect(summary.requestedDisplayValue).toBeNull();
+    expect(summary.showUpdateProposal).toBe(false);
+  });
+
+  it("shows a job-detail change separately from timing", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Please add two extra sockets.",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.hasJobRequest).toBe(true);
+    expect(summary.hasScheduleRequest).toBe(false);
+    expect(summary.mobileHeadline).toBe("Customer requested a change to the job");
+    expect(summary.outstandingItems).toEqual([
+      expect.objectContaining({
+        kind: "job",
+        title: "Job details",
+      }),
+    ]);
+  });
+
+  it("shows combined job and date requests as separate outstanding items", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Please add two extra sockets.",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+        msg({
+          id: "c2",
+          kind: "change_request",
+          body: "Could we do 24 September at 2:30pm?",
+          created_at: "2026-09-18T10:05:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.hasJobRequest).toBe(true);
+    expect(summary.hasScheduleRequest).toBe(true);
+    expect(summary.mobileHeadline).toBe("Requested changes");
+    expect(summary.outstandingItems).toEqual([
+      {
+        kind: "schedule",
+        title: "Date/time",
+        detail: "24 September 2026 · 2:30pm",
+      },
+      expect.objectContaining({
+        kind: "job",
+        title: "Job details",
+        detail: "Add two extra sockets",
+      }),
+    ]);
+    expect(summary.customerRequest).not.toMatch(/additional work, time\/date change/i);
+  });
+
+  it("prefers structured requested fields over later spoken wording", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "I'd like a different date/time.\nRequested date: 2026-09-24\nRequested time: 14:30\nMaybe the 20th instead if easier.",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z"),
+      { attentionReason: "customer_requested_date_change" }
+    );
+
+    expect(summary.requestedStartExact).toBe("2026-09-24");
+    expect(summary.requestedStartTime).toBe("14:30");
+    expect(summary.requestedDisplayValue).toBe("24 September 2026 · 2:30pm");
+    expect(summary.requestedStartExact).not.toBe("2026-09-20");
+    expect(summary.requestedDisplayValue).not.toMatch(/20 September/);
+  });
+
+  it("never invents a date or time when the request is vague", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "c1",
+          kind: "change_request",
+          body: "Can we move the start date to next month?",
+          created_at: "2026-09-18T10:00:00.000Z",
+        }),
+      ],
+      new Date("2026-09-18T10:00:00.000Z")
+    );
+
+    expect(summary.requestedDisplayValue).toBeNull();
+    expect(summary.requestedStartExact).toBeNull();
+    expect(summary.requestedStartTime).toBeNull();
+    expect(summary.mobileHeadline).toBe("Customer requested a date change");
+    expect(summary.mobileDescription).not.toMatch(/\d{1,2}\s+September/);
   });
 });
 

@@ -1,9 +1,21 @@
+import type { CalendarJob } from "@/lib/calendar/calendar-data";
 import { classifyChangeRequestLabels } from "@/lib/proposals/change-request/analyze-change-request";
 import type { ChangeRequestLabel } from "@/lib/proposals/change-request/analyze-change-request";
 import {
   classifyConversationIntent,
   isStructuredCustomerRequest,
 } from "@/lib/proposals/change-request/classify-conversation-intent";
+import {
+  extractRequestedSchedule,
+  extractStructuredRequestedSlot,
+  extractParsedRequestedSlot,
+  formatRequestedSlotDisplay,
+  headlineForRequestedSchedule,
+  requestedSlotAvailability,
+  type OutstandingRequestItem,
+  type RequestedScheduleAvailability,
+  type RequestedScheduleKind,
+} from "@/lib/proposals/change-request/requested-schedule";
 import type { ProposalCustomerMessage } from "@/lib/proposals/customer-portal/messages";
 import {
   sameDateSlot,
@@ -76,38 +88,13 @@ export type ConversationResolutionSummary = {
   requestedStartTime: string | null;
   requestedSlotLabel: string | null;
   showAcceptRequestedDate: boolean;
+  requestedKind: RequestedScheduleKind | null;
+  requestedDisplayValue: string | null;
+  requestedAvailability: RequestedScheduleAvailability | null;
+  outstandingItems: OutstandingRequestItem[];
+  hasScheduleRequest: boolean;
+  hasJobRequest: boolean;
 };
-
-function parseRequestedSlot(
-  messages: ProposalCustomerMessage[]
-): { dateIso: string | null; timeHm: string | null; label: string | null } {
-  const latest = [...messages]
-    .reverse()
-    .find(
-      (message) =>
-        message.direction !== "trader" &&
-        message.kind !== "trader_reply" &&
-        /requested date:/i.test(message.body)
-    );
-  if (!latest) {
-    return { dateIso: null, timeHm: null, label: null };
-  }
-  const dateMatch = latest.body.match(
-    /requested date:\s*(\d{4}-\d{2}-\d{2})/i
-  );
-  const timeMatch = latest.body.match(
-    /requested time:\s*(\d{1,2}:\d{2})/i
-  );
-  const dateIso = dateMatch?.[1] ?? null;
-  const timeHm = timeMatch?.[1] ?? null;
-  return {
-    dateIso,
-    timeHm,
-    label: dateIso
-      ? formatSlotLabel({ dateIso, timeHm: timeHm ?? undefined })
-      : null,
-  };
-}
 
 function isCustomerMessage(message: ProposalCustomerMessage): boolean {
   return message.direction !== "trader" && message.kind !== "trader_reply";
@@ -162,7 +149,10 @@ function customerRequestMessages(
 /**
  * Turns a customer message into a short request bullet for the trader UI.
  */
-export function requestItemTitleFromMessage(body: string): string {
+export function requestItemTitleFromMessage(
+  body: string,
+  now: Date = new Date()
+): string {
   const cleaned = body.replace(/\s+/g, " ").trim().replace(/[.?!]+$/g, "");
   const lower = cleaned.toLowerCase();
 
@@ -176,6 +166,15 @@ export function requestItemTitleFromMessage(body: string): string {
     isVagueDateWindowOnly(cleaned) ||
     classifyConversationIntent(cleaned) === "date_change"
   ) {
+    const structured = extractStructuredRequestedSlot(body);
+    const parsed = extractParsedRequestedSlot(body, now);
+    const exact = formatRequestedSlotDisplay({
+      dateIso: structured.dateIso ?? parsed.dateIso,
+      timeHm: structured.timeHm ?? parsed.timeHm,
+    });
+    if (exact) {
+      return exact;
+    }
     if (/\bwithin a month\b/i.test(cleaned)) {
       return "Move job timing";
     }
@@ -203,7 +202,13 @@ export function requestItemTitleFromMessage(body: string): string {
 }
 
 export function isDateRequestItemTitle(item: string): boolean {
-  return /timing|date change|move job timing/i.test(item);
+  return (
+    /timing|date change|move job timing|date\s*&\s*time|date\/time/i.test(item) ||
+    /\d{1,2}\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)/i.test(
+      item
+    ) ||
+    /\d{1,2}(?::\d{2})?\s*(am|pm)\b/i.test(item)
+  );
 }
 
 function impactLabelsFromLabels(labels: ChangeRequestLabel[]): string[] {
@@ -255,16 +260,30 @@ export function buildMobileRequestCopy(input: {
   sources: ProposalCustomerMessage[];
   labels: ChangeRequestLabel[];
   focus: ConversationResolutionFocus;
+  requestedKind?: RequestedScheduleKind | null;
+  requestedDisplayValue?: string | null;
+  hasJobRequest?: boolean;
+  hasScheduleRequest?: boolean;
 }): { mobileHeadline: string; mobileDescription: string } {
   const { items, sources, labels, focus } = input;
   const latestBody = sources[sources.length - 1]?.body ?? "";
+  const jobItems = items.filter((item) => !isDateRequestItemTitle(item));
   const description =
+    input.requestedDisplayValue ??
+    jobItems[0] ??
     items[0] ??
     (latestBody ? quoteSnippet(latestBody, 96) : "See the conversation for details.");
 
-  if (focus === "date") {
+  if (input.hasJobRequest && input.hasScheduleRequest) {
     return {
-      mobileHeadline: "Customer requested a date change",
+      mobileHeadline: "Requested changes",
+      mobileDescription: description,
+    };
+  }
+
+  if (focus === "date" || (input.hasScheduleRequest && !input.hasJobRequest)) {
+    return {
+      mobileHeadline: headlineForRequestedSchedule(input.requestedKind ?? null),
       mobileDescription: description,
     };
   }
@@ -280,7 +299,7 @@ export function buildMobileRequestCopy(input: {
   }
   if (wantsExtraWork || labels.includes("scope")) {
     return {
-      mobileHeadline: "Customer requested additional work",
+      mobileHeadline: "Customer requested a change to the job",
       mobileDescription: description,
     };
   }
@@ -297,7 +316,10 @@ export function buildMobileRequestCopy(input: {
   };
 }
 
-function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
+function buildAggregatedRequests(
+  messages: ProposalCustomerMessage[],
+  now: Date = new Date()
+): {
   items: string[];
   wording: string;
   impacts: string[];
@@ -328,7 +350,7 @@ function buildAggregatedRequests(messages: ProposalCustomerMessage[]): {
   const allLabels = new Set<ChangeRequestLabel>();
 
   for (const message of sources) {
-    const title = requestItemTitleFromMessage(message.body);
+    const title = requestItemTitleFromMessage(message.body, now);
     const key = title.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -409,6 +431,15 @@ export type ConversationResolutionOptions = {
   persistedDate?: string | null;
   persistedTime?: string | null;
   attentionReason?: string | null;
+  /** Status-event metadata may already store requested_date / requested_time. */
+  statusEvents?: Array<{
+    metadata?: Record<string, unknown> | null;
+    created_at: string;
+  }>;
+  /** Existing diary jobs for availability only. Never shown in the card. */
+  calendarJobs?: CalendarJob[];
+  proposalId?: string | null;
+  estimatedDuration?: string | null;
 };
 
 /**
@@ -421,7 +452,7 @@ export function buildConversationResolutionSummary(
   options: ConversationResolutionOptions = {}
 ): ConversationResolutionSummary {
   const ordered = orderedMessages(messages);
-  const aggregated = buildAggregatedRequests(ordered);
+  const aggregated = buildAggregatedRequests(ordered, now);
   const agreement = findLatestConfirmedDateAgreement(ordered, now);
   const discussed = findLatestDiscussedDateSlot(ordered, now);
   const slot = agreement ?? discussed;
@@ -450,6 +481,21 @@ export function buildConversationResolutionSummary(
   const dateAlreadyResolved =
     (options.dateState === "confirmed" || options.dateState === "provisional") &&
     (persistedMatchesSlot || !slot?.dateIso);
+  const requested = extractRequestedSchedule({
+    messages: ordered,
+    events: options.statusEvents,
+    now,
+  });
+  const hasDateChangeIntent = aggregated.sources.some(
+    (message) => classifyConversationIntent(message.body) === "date_change"
+  );
+  const hasScheduleRequest =
+    !dateAlreadyResolved &&
+    !hasDateAgreement &&
+    (Boolean(requested.kind) ||
+      hasDateChangeIntent ||
+      options.attentionReason === "customer_requested_date_change" ||
+      (aggregated.focus === "date" && !hasWorkRequest));
   const activeRequestItems = dateAlreadyResolved
     ? aggregated.items.filter((item) => !isDateRequestItemTitle(item))
     : aggregated.items;
@@ -459,14 +505,58 @@ export function buildConversationResolutionSummary(
       )
     : aggregated.impacts;
   const showDateCard =
-    Boolean(slot?.dateIso) && !hasWorkRequest && !dateAlreadyResolved;
+    Boolean(slot?.dateIso) &&
+    !hasWorkRequest &&
+    !dateAlreadyResolved &&
+    !hasScheduleRequest;
   const hasActiveAttention =
     hasWorkRequest ||
     showDateCard ||
-    (!dateAlreadyResolved && aggregated.focus === "date") ||
+    hasScheduleRequest ||
     (dateAlreadyResolved && activeRequestItems.length > 0);
   const showUpdateProposal = hasWorkRequest && hasActiveAttention;
-  const requested = parseRequestedSlot(ordered);
+  const requestedAvailability =
+    requested.kind && !dateAlreadyResolved
+      ? requestedSlotAvailability({
+          dateIso: requested.dateIso ?? (requested.kind === "time" ? options.persistedDate ?? null : null),
+          proposalId: options.proposalId,
+          duration: options.estimatedDuration,
+          existingJobs: options.calendarJobs,
+        })
+      : null;
+  const jobItems = activeRequestItems.filter((item) => !isDateRequestItemTitle(item));
+  const outstandingItems: OutstandingRequestItem[] = [];
+  if (hasScheduleRequest) {
+    outstandingItems.push({
+      kind: "schedule",
+      title: requested.kind === "time" ? "Time" : requested.kind === "date" ? "Date" : "Date/time",
+      detail: requested.displayValue,
+    });
+  }
+  if (hasWorkRequest) {
+    outstandingItems.push({
+      kind: "job",
+      title: "Job details",
+      detail: jobItems[0] ?? null,
+    });
+  }
+  const displayItems =
+    requested.displayValue && hasScheduleRequest
+      ? [
+          requested.displayValue,
+          ...jobItems,
+        ]
+      : activeRequestItems;
+  const mobile = buildMobileRequestCopy({
+    items: displayItems,
+    sources: aggregated.sources,
+    labels: aggregated.labels,
+    focus: aggregated.focus,
+    requestedKind: requested.kind,
+    requestedDisplayValue: requested.displayValue,
+    hasJobRequest: hasWorkRequest,
+    hasScheduleRequest,
+  });
   const showAgreedDate = showDateCard && hasDateAgreement;
   const showDiscussedDate = showDateCard && !hasDateAgreement && hasDiscussedDate;
   const calendarAction = showDateCard
@@ -474,12 +564,19 @@ export function buildConversationResolutionSummary(
       ? "schedule"
       : "hold"
     : null;
+  const acceptDateIso = requested.dateIso ?? (requested.timeHm ? options.persistedDate ?? null : null);
+  const headline =
+    dateAlreadyResolved && !hasWorkRequest
+      ? "Date request resolved."
+      : hasWorkRequest && hasScheduleRequest
+        ? "Customer asked about several changes."
+        : requested.displayValue
+          ? `Customer asked: ${requested.displayValue}.`
+          : aggregated.headline;
 
   return {
-    customerRequest: dateAlreadyResolved && !hasWorkRequest
-      ? "Date request resolved."
-      : aggregated.headline,
-    customerRequestItems: activeRequestItems,
+    customerRequest: headline,
+    customerRequestItems: displayItems,
     originalRequestWording: aggregated.wording,
     possibleImpacts: activeImpacts,
     plannedStartText,
@@ -490,16 +587,20 @@ export function buildConversationResolutionSummary(
       ? "Date agreed"
       : showDiscussedDate
         ? "Date discussed"
-        : aggregated.mobileHeadline,
+        : mobile.mobileHeadline,
     mobileDescription:
       showAgreedDate || showDiscussedDate
-        ? (agreedSlotLabel ?? aggregated.mobileDescription)
-        : aggregated.mobileDescription,
+        ? (agreedSlotLabel ?? mobile.mobileDescription)
+        : mobile.mobileDescription,
     resolutionFocus: showAgreedDate
       ? "date_agreed"
       : showDiscussedDate
         ? "date_discussed"
-        : aggregated.focus,
+        : hasWorkRequest && hasScheduleRequest
+          ? "update"
+          : hasScheduleRequest && !hasWorkRequest
+            ? "date"
+            : aggregated.focus,
     hasDateAgreement,
     hasDiscussedDate,
     agreedSlotLabel,
@@ -508,13 +609,20 @@ export function buildConversationResolutionSummary(
     canActOnSlot: Boolean(slot?.dateIso && slot.timeHm),
     hasActiveAttention,
     showUpdateProposal,
-    requestedStartExact: requested.dateIso,
+    requestedStartExact: acceptDateIso,
     requestedStartTime: requested.timeHm,
-    requestedSlotLabel: requested.label,
+    requestedSlotLabel: requested.displayValue,
     showAcceptRequestedDate:
-      Boolean(requested.dateIso) &&
-      (options.attentionReason === "customer_requested_date_change" ||
-        aggregated.focus === "date"),
+      Boolean(acceptDateIso) &&
+      Boolean(requested.dateIso || requested.timeHm) &&
+      hasScheduleRequest &&
+      requestedAvailability !== "unavailable",
+    requestedKind: requested.kind,
+    requestedDisplayValue: requested.displayValue,
+    requestedAvailability,
+    outstandingItems,
+    hasScheduleRequest,
+    hasJobRequest: hasWorkRequest,
   };
 }
 

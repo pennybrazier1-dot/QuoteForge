@@ -65,6 +65,12 @@ describe("resend waiting enablement", () => {
       }).shown
     ).toBe(false);
     expect(canShowResendWaitingProposal("booked")).toBe(false);
+    expect(
+      getResendWaitingEnablement({
+        status: "completed",
+        customerEmail: "michael@example.com",
+      }).shown
+    ).toBe(false);
   });
 
   it("temporarily disables Resend while a send is in progress", () => {

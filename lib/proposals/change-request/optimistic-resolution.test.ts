@@ -45,4 +45,25 @@ describe("optimistic conversation resolution", () => {
     expect(action).not.toContain("redirect(");
     expect(action).toContain("return { ok: true }");
   });
+
+  it("clears the date Needs Attention card immediately on Accept", () => {
+    const panel = readRepo("components/proposals/conversation-resolution-panel.tsx");
+    expect(panel).toContain("onAcceptRequested");
+    expect(panel).toContain("dispatchResolutionAccepted");
+    expect(panel).toContain("dispatchResolutionDismissed");
+    expect(panel).toContain("beginResolutionDismiss");
+  });
+
+  it("keeps the existing accept-requested-date booking workflow", () => {
+    const action = readRepo("lib/proposals/date-workflow-actions.ts");
+    expect(action).toContain("export async function acceptCustomerRequestedDate");
+    expect(action).toContain("persistProposalDateSlot");
+    expect(action).toContain("promoteBookedJobIfReady");
+    expect(action).toContain("ask_customer_to_confirm: false");
+    expect(action).toContain("redirect(`/proposals/${proposalId}`)");
+    const acceptFn = action.slice(
+      action.indexOf("export async function acceptCustomerRequestedDate")
+    );
+    expect(acceptFn).not.toContain("notifyCustomerProposedDate");
+  });
 });
