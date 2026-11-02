@@ -168,6 +168,7 @@ export function mapEnquiryRowToStoredEnquiry(
     siteVisitSlot: siteVisit?.slot_label ?? null,
     siteVisitStartsAt: siteVisit?.starts_at ?? null,
     linkedProposalDraftId: row.linked_proposal_draft_id,
+    linkedProposalId: row.linked_proposal_id,
     timeline: mapTimelineRows(options.timeline),
   };
 }

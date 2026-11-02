@@ -562,6 +562,176 @@ export async function acceptAiDraftProposal(
   redirectToProposal(proposal.id);
 }
 
+export type CreateProposalFromPreparedQuoteState = {
+  error?: string;
+};
+
+/**
+ * Saves Prepare Quote output as an official ready-to-send proposal,
+ * links the source enquiry (idempotent), and opens the proposal page.
+ */
+export async function createProposalFromPreparedQuote(
+  _prevState: CreateProposalFromPreparedQuoteState,
+  formData: FormData
+): Promise<CreateProposalFromPreparedQuoteState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in to create a proposal." };
+  }
+
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding before saving proposals." };
+  }
+
+  const enquiryId = getString(formData, "enquiryId");
+  if (!enquiryId) {
+    return { error: "Enquiry is required to create this proposal." };
+  }
+
+  const generatedProposal = parseGeneratedProposalJson(
+    String(formData.get("generatedProposal") ?? "")
+  );
+
+  if (!generatedProposal) {
+    return { error: "No quote draft was found. Preview the quote first." };
+  }
+
+  const form = parseProposalForm(formData);
+  const validation = validateProposalForm(form);
+
+  if (!("ok" in validation)) {
+    return validation;
+  }
+
+  const { totalPence } = validation;
+  const structuredFields = mapGeneratedProposalToDbFields(generatedProposal);
+  const optionalExtras = parseOptionalExtrasForStorage(form.optionalExtras);
+  const manualDuration = form.estimatedDuration || null;
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("workspace_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile) {
+    return { error: "Could not find your workspace. Please try again." };
+  }
+
+  const workspaceId = profile.workspace_id;
+
+  const { data: enquiry, error: enquiryError } = await supabase
+    .from("enquiries")
+    .select("id, linked_proposal_id, customer_id")
+    .eq("id", enquiryId)
+    .eq("workspace_id", workspaceId)
+    .is("archived_at", null)
+    .maybeSingle();
+
+  if (enquiryError || !enquiry) {
+    return { error: "Enquiry not found in your workspace." };
+  }
+
+  if (enquiry.linked_proposal_id) {
+    redirectToProposal(enquiry.linked_proposal_id);
+  }
+
+  const { customerId, error: customerError } = await resolveCustomerId(
+    supabase,
+    workspaceId,
+    form,
+    linkedCustomerIdFromForm(formData, enquiry.customer_id)
+  );
+
+  if (customerError) {
+    return { error: customerError };
+  }
+
+  const { data: proposalNumber, error: numberError } = await supabase.rpc(
+    "allocate_proposal_number",
+    { target_workspace_id: workspaceId }
+  );
+
+  if (numberError || !proposalNumber) {
+    return {
+      error: numberError?.message ?? "Could not allocate a proposal number.",
+    };
+  }
+
+  const { data: proposal, error: proposalError } = await supabase
+    .from("proposals")
+    .insert({
+      workspace_id: workspaceId,
+      customer_id: customerId,
+      proposal_number: proposalNumber,
+      status: "ready_to_send",
+      title: `Proposal for ${form.customerName}`,
+      job_address: form.propertyAddress || null,
+      rough_notes: form.jobDescription,
+      optional_extras: optionalExtras,
+      customer_name: form.customerName,
+      customer_email: form.emailAddress || null,
+      customer_phone: form.phoneNumber || null,
+      customer_address: form.propertyAddress || null,
+      subtotal_amount: totalPence,
+      vat_amount: 0,
+      total_amount: totalPence,
+      ...plannedStartDbFields(form),
+      ...structuredFields,
+      estimated_duration: manualDuration ?? structuredFields.estimated_duration,
+      things_to_confirm: buildEstimatedDurationNote(form.estimatedDuration),
+      booking_window: parseBookingWindowFromForm(formData),
+    })
+    .select("id")
+    .single();
+
+  if (proposalError || !proposal) {
+    return {
+      error: proposalError?.message ?? "Could not create the proposal.",
+    };
+  }
+
+  const { error: linkError } = await supabase
+    .from("enquiries")
+    .update({
+      linked_proposal_id: proposal.id,
+      customer_id: customerId ?? enquiry.customer_id,
+      status: "quote_in_preparation",
+      suggested_next_action: "Send the proposal to your customer.",
+    })
+    .eq("id", enquiryId)
+    .eq("workspace_id", workspaceId)
+    .is("linked_proposal_id", null);
+
+  if (linkError) {
+    return {
+      error:
+        "Proposal was created, but could not be linked to the enquiry. Open Proposals to find it.",
+    };
+  }
+
+  await supabase.from("enquiry_timeline_events").insert({
+    workspace_id: workspaceId,
+    enquiry_id: enquiryId,
+    label: "Official proposal created.",
+    event_type: "official_proposal_created",
+    occurred_at: new Date().toISOString(),
+    created_by: user.id,
+  });
+
+  await linkVisitToProposal(supabase, {
+    workspaceId,
+    visitId: getString(formData, "visitId") || null,
+    proposalId: proposal.id,
+  });
+
+  redirectToProposal(proposal.id);
+}
+
 export type DeleteDraftProposalState = {
   error?: string;
 };

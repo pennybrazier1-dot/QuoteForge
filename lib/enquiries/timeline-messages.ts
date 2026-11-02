@@ -64,6 +64,10 @@ export function formatTimelineQuoteDraftSaved(): string {
   return "Draft quote saved.";
 }
 
+export function formatTimelineOfficialProposalCreated(): string {
+  return "Official proposal created.";
+}
+
 export function formatTimelineCustomerMessagePrepared(): string {
   return "Customer message prepared.";
 }

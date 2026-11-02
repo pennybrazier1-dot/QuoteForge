@@ -122,8 +122,8 @@ export function StepPhotos() {
 
       <JourneyHelperBox title="No photos? That's fine">
         <p>
-          John can take a look when he visits. Tap &ldquo;Skip for now&rdquo; below
-          to carry on.
+          {tradesperson.contactName} can take a look when they visit. Tap
+          &ldquo;Skip for now&rdquo; below to carry on.
         </p>
       </JourneyHelperBox>
 

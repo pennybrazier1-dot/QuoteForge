@@ -83,8 +83,10 @@ export async function getPublicIntakeWorkspaceAction(slug: string): Promise<
   | {
       ok: true;
       businessName: string;
+      /** Intentionally empty unless a future opt-in public phone setting is added. */
       phone: string;
       tradeType: string | null;
+      contactName: string;
     }
   | { ok: false; error: string }
 > {
@@ -103,10 +105,21 @@ export async function getPublicIntakeWorkspaceAction(slug: string): Promise<
     return { ok: false, error: "This quote request link is not valid." };
   }
 
+  const businessName =
+    typeof row.business_name === "string" && row.business_name.trim()
+      ? row.business_name.trim()
+      : "Your tradesperson";
+  const contactName =
+    typeof row.contact_name === "string" && row.contact_name.trim()
+      ? row.contact_name.trim()
+      : businessName;
+
   return {
     ok: true,
-    businessName: row.business_name,
-    phone: row.phone ?? "",
-    tradeType: row.trade_type,
+    businessName,
+    // Do not expose personal/business phone on the public form by default.
+    phone: "",
+    tradeType: row.trade_type ?? null,
+    contactName,
   };
 }

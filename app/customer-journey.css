@@ -1,6 +1,11 @@
 /* Customer Journey — Request a Quote (premium dark + orange) */
 
-.cj-root {
+/*
+  Tokens must live on .cj-page (the real shell wrapper).
+  .cj-root is kept for any legacy wrappers.
+*/
+.cj-root,
+.cj-page {
   --cj-bg: #0f0f10;
   --cj-bg-elevated: #161618;
   --cj-bg-card: #131315;
@@ -12,7 +17,8 @@
   --cj-text-secondary: #d4d4d8;
   --cj-text-muted: #71717a;
   --cj-accent: #ff6a1a;
-  --cj-accent-hover: #ff7a2e;
+  /* Shared with globals --accent-hover */
+  --cj-accent-hover: #ff7d36;
   --cj-accent-glow: rgba(255, 106, 26, 0.22);
   --cj-accent-soft: rgba(255, 106, 26, 0.1);
   --cj-accent-softer: rgba(255, 106, 26, 0.06);
@@ -32,7 +38,6 @@
 }
 
 .cj-page {
-  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -1199,12 +1204,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  min-height: 3.125rem;
+  min-height: 3rem;
+  width: 100%;
   padding: 0 1.75rem;
   border: none;
   border-radius: var(--cj-radius-pill);
   background: var(--cj-accent);
-  color: #fff;
+  color: #08080a;
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: -0.01em;

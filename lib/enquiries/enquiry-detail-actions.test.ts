@@ -38,6 +38,7 @@ function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
         ? "2026-07-10T08:30:00.000Z"
         : null,
     linkedProposalDraftId: null,
+    linkedProposalId: null,
     timeline: [],
   };
 }

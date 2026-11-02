@@ -1,7 +1,10 @@
 "use client";
 
 import { useJourney } from "@/lib/customer-journey/journey-provider";
-import { getJourneySteps, WHAT_HAPPENS_NEXT } from "@/lib/customer-journey/constants";
+import {
+  getJourneySteps,
+  getWhatHappensNext,
+} from "@/lib/customer-journey/constants";
 import { getStepIndex } from "@/lib/customer-journey/journey-state";
 import {
   CheckIcon,
@@ -95,7 +98,7 @@ export function JourneySidebar() {
             <h3 className="cj-info-card-title">What happens next?</h3>
           </div>
           <ul className="cj-info-list">
-            {WHAT_HAPPENS_NEXT.map((item) => (
+            {getWhatHappensNext(tradesperson.contactName).map((item) => (
               <li key={item} className="cj-info-list-item">
                 <CheckIcon className="cj-info-list-icon" />
                 <span>{item}</span>
@@ -115,18 +118,30 @@ export function JourneySidebar() {
           </p>
         </JourneyCard>
 
-        <JourneyCard inset className="cj-info-card cj-contact-card">
-          <div className="cj-contact-avatar" aria-hidden="true">
-            {tradesperson.contactName.charAt(0)}
-          </div>
-          <div>
-            <p className="cj-contact-label">Need help? Call directly</p>
-            <p className="cj-contact-name">{tradesperson.contactName}</p>
-            <a href={`tel:${tradesperson.phone}`} className="cj-contact-phone">
-              {tradesperson.phone}
-            </a>
-          </div>
-        </JourneyCard>
+        {tradesperson.phone.trim() ? (
+          <JourneyCard inset className="cj-info-card cj-contact-card">
+            <div className="cj-contact-avatar" aria-hidden="true">
+              {tradesperson.contactName.charAt(0)}
+            </div>
+            <div>
+              <p className="cj-contact-label">Need help? Call directly</p>
+              <p className="cj-contact-name">{tradesperson.contactName}</p>
+              <a href={`tel:${tradesperson.phone}`} className="cj-contact-phone">
+                {tradesperson.phone}
+              </a>
+            </div>
+          </JourneyCard>
+        ) : (
+          <JourneyCard inset className="cj-info-card cj-contact-card">
+            <div className="cj-contact-avatar" aria-hidden="true">
+              {tradesperson.businessName.charAt(0)}
+            </div>
+            <div>
+              <p className="cj-contact-label">Your enquiry goes to</p>
+              <p className="cj-contact-name">{tradesperson.businessName}</p>
+            </div>
+          </JourneyCard>
+        )}
       </div>
     </aside>
   );

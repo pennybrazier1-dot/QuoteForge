@@ -37,7 +37,7 @@ export function StepDetails() {
         <JourneyField
           label="Mobile number"
           htmlFor="cj-mobile"
-          hint="John will call or text about your job — nothing else."
+          hint={`${tradesperson.contactName} will call or text about your job — nothing else.`}
         >
           <JourneyInput
             id="cj-mobile"

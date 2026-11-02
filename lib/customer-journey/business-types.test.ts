@@ -162,6 +162,16 @@ describe("service to question template mapping", () => {
       true
     );
   });
+
+  it("does not duplicate the project description for Something Else", () => {
+    const questions = getTradeQuestions("something_else");
+    expect(
+      questions.some((question) =>
+        question.label.toLowerCase().includes("describe the work")
+      )
+    ).toBe(false);
+    expect(questions.some((question) => question.id === "urgency")).toBe(true);
+  });
 });
 
 describe("common business services catalogue", () => {

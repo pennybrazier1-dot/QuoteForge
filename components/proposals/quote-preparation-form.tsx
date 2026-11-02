@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { useFormStatus } from "react-dom";
+import {
+  createProposalFromPreparedQuote,
+  type CreateProposalFromPreparedQuoteState,
+} from "@/app/proposals/actions";
+import { AuthError } from "@/components/auth/auth-shell";
 import { GeneratedProposalPreview } from "@/components/proposals/generated-proposal-preview";
 import { QuotePreparationReview } from "@/components/proposals/quote-preparation-review";
 import {
@@ -12,6 +18,7 @@ import {
 import { useWorkspaceEnquiry } from "@/lib/enquiries/server/use-workspace-enquiries";
 import { useClientMounted } from "@/lib/hooks/use-client-mounted";
 import { useMediaQuery } from "@/lib/hooks/use-media-query";
+import { parsePriceToPence } from "@/lib/proposals/money";
 import { buildQuotePreparationDraftSafe } from "@/lib/proposals/quote-preparation/build-quote-draft";
 import {
   getLocalProposalDraftByEnquiry,
@@ -19,12 +26,31 @@ import {
 } from "@/lib/proposals/quote-preparation/local-proposal-drafts";
 import { mapQuoteDraftToGeneratedProposal } from "@/lib/proposals/quote-preparation/map-to-generated-proposal";
 import {
+  QUOTE_PREPARATION_CREATE_BUTTON,
+  QUOTE_PREPARATION_CREATE_HINT,
   QUOTE_PREPARATION_LOCAL_SAVE_BUTTON,
   QUOTE_PREPARATION_LOCAL_SAVE_HINT,
   QUOTE_PREPARATION_LOCAL_SAVE_SUCCESS,
   type QuotePreparationDraft,
 } from "@/lib/proposals/quote-preparation/types";
+import { DEFAULT_BOOKING_WINDOW } from "@/lib/proposals/booking-window";
 import type { SiteVisitSession } from "@/lib/site-visit/types";
+
+const initialCreateState: CreateProposalFromPreparedQuoteState = {};
+
+function CreateProposalSubmitButton({ disabled }: { disabled: boolean }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      className="qf-btn-primary qf-touch-target-comfortable"
+      disabled={disabled || pending}
+    >
+      {pending ? "Creating proposal…" : QUOTE_PREPARATION_CREATE_BUTTON}
+    </button>
+  );
+}
 
 export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const mounted = useClientMounted();
@@ -40,6 +66,10 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [createState, createAction] = useActionState(
+    createProposalFromPreparedQuote,
+    initialCreateState
+  );
 
   useEffect(() => {
     if (!mounted || !enquiryId || state !== "ready" || !enquiry) {
@@ -115,6 +145,32 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
     );
   }
 
+  if (enquiry.linkedProposalId) {
+    return (
+      <div className="qf-quote-prep-empty">
+        <h1 className="qf-proposal-title">Proposal already created</h1>
+        <p className="qf-proposal-subtitle">
+          This enquiry already has an official proposal. Open it to review or send
+          it to the customer.
+        </p>
+        <div className="qf-quote-prep-sticky-actions qf-quote-prep-sticky-actions-inline">
+          <Link
+            href={`/proposals/${enquiry.linkedProposalId}`}
+            className="qf-btn-primary qf-touch-target-comfortable"
+          >
+            Open proposal
+          </Link>
+          <Link
+            href={`/enquiries/${enquiryId}`}
+            className="qf-btn-secondary qf-touch-target-comfortable"
+          >
+            Back to enquiry
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   async function handleSaveDraft() {
     if (!draft || draft.enquiryId !== enquiryId) {
       setNotice(
@@ -138,6 +194,9 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   }
 
   const previewProposal = mapQuoteDraftToGeneratedProposal(draft);
+  const hasValidPrice = parsePriceToPence(draft.total) !== null;
+  const bookingWindow = draft.bookingWindow ?? DEFAULT_BOOKING_WINDOW;
+  const previewVisible = isDesktop || showPreview;
 
   return (
     <div className="qf-trader-page qf-quote-prep-page qf-mobile-form-page qf-mobile-safe">
@@ -145,8 +204,8 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
         <h1 className="qf-proposal-title">Prepare Quote</h1>
         <p className="qf-proposal-subtitle">
           Review the organised draft from the enquiry and site visit. Add your
-          own prices when you are ready — nothing is sent until you use a real
-          Reanvil proposal.
+          own prices, preview, then create the official proposal when you are
+          ready.
         </p>
         <p className="qf-quote-prep-local-hint">{QUOTE_PREPARATION_LOCAL_SAVE_HINT}</p>
       </header>
@@ -157,16 +216,18 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
         </p>
       ) : null}
 
+      {createState.error ? <AuthError message={createState.error} /> : null}
+
       <div className="qf-quote-prep-layout">
         <QuotePreparationReview
           draft={draft}
           onDraftChange={handleDraftChange}
         />
-        {isDesktop || showPreview ? (
+        {previewVisible ? (
           <aside className="qf-quote-prep-preview">
             <h2 className="qf-card-heading">Preview</h2>
             <p className="qf-quote-prep-helper">
-              Preview only — this is not a saved Reanvil proposal yet.
+              Preview of what will become your official proposal.
             </p>
             <GeneratedProposalPreview proposal={previewProposal} />
           </aside>
@@ -174,9 +235,84 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
       </div>
 
       <div className="qf-quote-prep-sticky-actions">
+        <form action={createAction} className="qf-quote-prep-create-form">
+          <input type="hidden" name="enquiryId" value={enquiryId} />
+          <input
+            type="hidden"
+            name="customerId"
+            value={draft.customerId ?? ""}
+          />
+          <input
+            type="hidden"
+            name="visitId"
+            value={draft.siteVisitSessionId ?? ""}
+          />
+          <input type="hidden" name="customerName" value={draft.customerName} />
+          <input
+            type="hidden"
+            name="propertyAddress"
+            value={draft.propertyAddress}
+          />
+          <input type="hidden" name="phoneNumber" value={draft.phoneNumber} />
+          <input type="hidden" name="emailAddress" value={draft.emailAddress} />
+          <input
+            type="hidden"
+            name="jobDescription"
+            value={draft.jobDescription || draft.scopeSummary}
+          />
+          <input type="hidden" name="optionalExtras" value="" />
+          <input type="hidden" name="estimatedPrice" value={draft.total} />
+          <input
+            type="hidden"
+            name="estimatedDuration"
+            value={draft.estimatedDuration}
+          />
+          <input
+            type="hidden"
+            name="plannedStartDateText"
+            value={draft.plannedStartDateText}
+          />
+          <input
+            type="hidden"
+            name="plannedStartDateExact"
+            value={draft.plannedStartDateExact}
+          />
+          <input
+            type="hidden"
+            name="bookingWindowKind"
+            value={bookingWindow.kind}
+          />
+          <input
+            type="hidden"
+            name="bookingWindowMonth"
+            value={bookingWindow.month ?? ""}
+          />
+          <input
+            type="hidden"
+            name="bookingWindowStart"
+            value={bookingWindow.startDate ?? ""}
+          />
+          <input
+            type="hidden"
+            name="bookingWindowEnd"
+            value={bookingWindow.endDate ?? ""}
+          />
+          <input
+            type="hidden"
+            name="generatedProposal"
+            value={JSON.stringify(previewProposal)}
+          />
+          <CreateProposalSubmitButton disabled={!hasValidPrice} />
+          <p className="qf-quote-prep-helper">{QUOTE_PREPARATION_CREATE_HINT}</p>
+          {!hasValidPrice ? (
+            <p className="qf-quote-prep-helper" role="status">
+              Add a total price before creating the official proposal.
+            </p>
+          ) : null}
+        </form>
         <button
           type="button"
-          className="qf-btn-primary qf-touch-target-comfortable"
+          className="qf-btn-secondary qf-touch-target-comfortable"
           onClick={() => void handleSaveDraft()}
         >
           {QUOTE_PREPARATION_LOCAL_SAVE_BUTTON}

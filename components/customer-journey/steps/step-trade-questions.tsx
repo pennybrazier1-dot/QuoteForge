@@ -28,7 +28,7 @@ export function StepTradeQuestions() {
         stepNumber={getStepNumber("trade_questions", tradesperson)}
         totalSteps={getTotalSteps(tradesperson)}
         title="Nearly there — just a few taps"
-        description="These help John prepare your quote. Tap to answer."
+        description={`These help ${tradesperson.contactName} prepare your quote. Tap to answer.`}
       />
 
       <JourneyHelperBox title="You're almost done">

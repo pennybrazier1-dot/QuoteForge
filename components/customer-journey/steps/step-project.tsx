@@ -33,8 +33,8 @@ export function StepProject() {
 
       <JourneyHelperBox title="Don't overthink it">
         <p>
-          There are no wrong answers. If John needs more detail, he&apos;ll ask
-          when he calls you.
+          There are no wrong answers. If {tradesperson.contactName} needs more
+          detail, they&apos;ll ask when they contact you.
         </p>
       </JourneyHelperBox>
 

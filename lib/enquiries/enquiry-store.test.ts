@@ -61,6 +61,7 @@ function sampleEnquiry(overrides: Record<string, unknown> = {}) {
     siteVisitSlot: null,
     siteVisitStartsAt: null,
     linkedProposalDraftId: null,
+    linkedProposalId: null,
     timeline: [
       {
         id: "timeline-1",

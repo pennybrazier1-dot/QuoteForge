@@ -11,10 +11,10 @@ export function GeneratedProposalPreview({
     <SectionCard variant="accent">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold">Generated proposal draft</h3>
+          <h3 className="text-lg font-semibold">Proposal preview</h3>
           <p className="mt-1 text-sm text-muted">
-            Review carefully, then accept the draft to save it as your official
-            proposal.
+            Review carefully, then use Create proposal below to save it as your
+            official Reanvil proposal.
           </p>
         </div>
         <span className="rounded-full bg-accent-soft px-3 py-1 text-xs font-medium text-accent">

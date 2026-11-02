@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
@@ -11,7 +10,6 @@ import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-d
 import {
   declineStoredEnquiry,
   deleteStoredEnquiry,
-  markEnquiryReviewing,
 } from "@/lib/enquiries/enquiry-store";
 import {
   formatEnquiryAddress,
@@ -26,18 +24,13 @@ type EnquiryCardProps = {
 type ConfirmAction = "decline" | "delete" | null;
 
 export function EnquiryCard({ enquiry }: EnquiryCardProps) {
-  const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
   const [siteVisitOpen, setSiteVisitOpen] = useState(false);
   const [askQuestionOpen, setAskQuestionOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const isDeclined = enquiry.status === "declined";
-
-  function handleReview() {
-    markEnquiryReviewing(enquiry.id);
-    router.push(`/enquiries/${enquiry.id}`);
-  }
+  const enquiryDetailHref = `/enquiries/${enquiry.id}`;
 
   function handleAskQuestion() {
     setAskQuestionOpen(true);
@@ -116,14 +109,22 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
         ) : null}
 
         <div className="qf-enquiry-actions">
-          <button
-            type="button"
-            className="qf-btn-primary qf-enquiry-action-primary"
-            onClick={handleReview}
-            disabled={isDeclined}
-          >
-            Review Enquiry
-          </button>
+          {isDeclined ? (
+            <button
+              type="button"
+              className="qf-btn-primary qf-enquiry-action-primary"
+              disabled
+            >
+              Review Enquiry
+            </button>
+          ) : (
+            <Link
+              href={enquiryDetailHref}
+              className="qf-btn-primary qf-enquiry-action-primary"
+            >
+              Review Enquiry
+            </Link>
+          )}
           <button
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
@@ -156,7 +157,7 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
           >
             Delete Enquiry
           </button>
-          <Link href={`/enquiries/${enquiry.id}`} className="qf-enquiry-detail-link">
+          <Link href={enquiryDetailHref} className="qf-enquiry-detail-link">
             Open detail
           </Link>
         </div>

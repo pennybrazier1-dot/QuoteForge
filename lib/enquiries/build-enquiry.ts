@@ -107,6 +107,7 @@ export function buildEnquiryFromJourney(
     siteVisitSlot: null,
     siteVisitStartsAt: null,
     linkedProposalDraftId: null,
+    linkedProposalId: null,
     timeline,
   };
 }

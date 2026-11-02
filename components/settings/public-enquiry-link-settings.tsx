@@ -10,20 +10,47 @@ export function PublicEnquiryLinkSettings() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+
     void (async () => {
-      const result = await getOrCreatePublicEnquiryLinkAction();
-      if (!result.ok) {
-        setError(result.error);
+      try {
+        const result = await getOrCreatePublicEnquiryLinkAction();
+        if (cancelled) return;
+
+        if (!result.ok) {
+          setUrl(null);
+          setPath(null);
+          setError(result.error);
+          setLoading(false);
+          return;
+        }
+
+        setUrl(result.data.url);
+        setPath(result.data.path);
+        setError(null);
         setLoading(false);
-        return;
+      } catch {
+        if (cancelled) return;
+        setUrl(null);
+        setPath(null);
+        setError("Could not prepare your public link. Try again.");
+        setLoading(false);
       }
-      setUrl(result.data.url);
-      setPath(result.data.path);
-      setLoading(false);
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [retryKey]);
+
+  function handleRetry() {
+    setLoading(true);
+    setError(null);
+    setRetryKey((current) => current + 1);
+  }
 
   async function handleCopy() {
     if (!url) return;
@@ -43,9 +70,24 @@ export function PublicEnquiryLinkSettings() {
     >
       {loading ? <p className="text-sm text-muted">Preparing your link…</p> : null}
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
+        <div className="qf-stack gap-3">
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+          <button type="button" className="qf-btn-secondary w-fit" onClick={handleRetry}>
+            Try again
+          </button>
+        </div>
+      ) : null}
+      {!loading && !error && !url ? (
+        <div className="qf-stack gap-3">
+          <p className="text-sm text-muted" role="status">
+            Your link is not ready yet.
+          </p>
+          <button type="button" className="qf-btn-secondary w-fit" onClick={handleRetry}>
+            Prepare link
+          </button>
+        </div>
       ) : null}
       {url ? (
         <div className="qf-stack gap-3">

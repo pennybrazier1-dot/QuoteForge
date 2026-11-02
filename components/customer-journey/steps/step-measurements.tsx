@@ -37,7 +37,7 @@ export function StepMeasurements() {
         stepNumber={getStepNumber("measurements", tradesperson)}
         totalSteps={getTotalSteps(tradesperson)}
         title="Do you know any sizes?"
-        description="Totally optional — John can measure on site."
+        description={`Totally optional — ${tradesperson.contactName} can measure on site.`}
       />
 
       <div className="cj-choice-row" role="radiogroup" aria-label="Do you know any sizes?">
@@ -55,11 +55,13 @@ export function StepMeasurements() {
           interactive
           selected={knowsMeasurements === "no"}
           className="cj-choice-card cj-choice-card-wide"
-          ariaLabel="No, John can measure on site"
+          ariaLabel={`No, ${tradesperson.contactName} can measure on site`}
           onClick={declineMeasurementsAndContinue}
         >
           <span className="cj-choice-card-title">No</span>
-          <span className="cj-choice-card-subtitle">John can measure on site</span>
+          <span className="cj-choice-card-subtitle">
+            {tradesperson.contactName} can measure on site
+          </span>
         </JourneyCard>
       </div>
 

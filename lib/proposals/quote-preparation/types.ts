@@ -3,15 +3,20 @@ export const QUOTE_PREPARATION_REVIEW_NOTICE =
 
 /** Calm copy for temporary browser-only drafts (not a Supabase proposal yet). */
 export const QUOTE_PREPARATION_LOCAL_SAVE_HINT =
-  "Saved on this device only. This draft is not yet available on other devices, and it is not a sent quote.";
+  "Save a local draft on this device while you finish pricing, or create an official proposal when you are ready.";
 
 export const QUOTE_PREPARATION_LOCAL_SAVE_BUTTON = "Save local draft";
 
 export const QUOTE_PREPARATION_LOCAL_SAVE_SUCCESS =
   "Saved on this device. Continue preparing this quote — it is not online or sent yet.";
 
+export const QUOTE_PREPARATION_CREATE_BUTTON = "Create proposal";
+
+export const QUOTE_PREPARATION_CREATE_HINT =
+  "Creates an official Reanvil proposal in Proposals. Nothing is emailed to the customer until you Send.";
+
 export const QUOTE_PREPARATION_VAT_HELPER =
-  "Enter VAT yourself for now. These amounts stay on this device until quote saving is connected to your Reanvil proposals.";
+  "Enter VAT yourself for now. Create a proposal when pricing is ready — amounts you enter are saved on the official proposal.";
 
 export type QuoteLineItem = {
   id: string;

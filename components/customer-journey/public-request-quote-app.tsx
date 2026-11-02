@@ -52,10 +52,10 @@ export function PublicRequestQuoteApp({ slug }: PublicRequestQuoteAppProps) {
 
       const tradeType = mapTradeType(result.tradeType);
       setTradesperson({
-        brandName: result.businessName.split(" ")[0] || result.businessName,
+        brandName: "Reanvil",
         businessName: result.businessName,
-        contactName: result.businessName,
-        phone: result.phone || "",
+        contactName: result.contactName,
+        phone: result.phone,
         businessType: "single-trade",
         tradeType,
         services: [],

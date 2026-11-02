@@ -17,10 +17,18 @@ type PageProps = {
   searchParams: Promise<{ view?: string }>;
 };
 
-const VIEWS: Array<{ id: CustomerListView; label: string }> = [
-  { id: "active", label: "Active" },
-  { id: "archived", label: "Archived" },
-  { id: "scheduled", label: "Scheduled for deletion" },
+const VIEWS: Array<{
+  id: CustomerListView;
+  label: string;
+  shortLabel: string;
+}> = [
+  { id: "active", label: "Active", shortLabel: "Active" },
+  { id: "archived", label: "Archived", shortLabel: "Archived" },
+  {
+    id: "scheduled",
+    label: "Scheduled for deletion",
+    shortLabel: "To delete",
+  },
 ];
 
 export default async function CustomersPage({ searchParams }: PageProps) {
@@ -66,8 +74,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                 ? "qf-customer-view-tab is-active"
                 : "qf-customer-view-tab"
             }
+            aria-label={item.label}
           >
-            {item.label}
+            <span className="qf-customer-view-tab-label-short">{item.shortLabel}</span>
+            <span className="qf-customer-view-tab-label-full">{item.label}</span>
           </Link>
         ))}
       </nav>

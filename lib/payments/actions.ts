@@ -28,7 +28,6 @@ import {
 import {
   isPaymentMethod,
   parsePaymentMethods,
-  type PaymentMethod,
   type WorkspacePaymentSettings,
 } from "@/lib/payments/types";
 import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
@@ -516,5 +515,3 @@ export async function closeJobAction(
   revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
   return { success: true };
 }
-
-export type { PaymentMethod };

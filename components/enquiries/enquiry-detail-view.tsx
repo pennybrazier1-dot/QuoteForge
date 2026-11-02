@@ -217,19 +217,30 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
           enquiry.status === "quote_in_preparation" ? (
             <section className="qf-enquiry-site-visit-mode-panel">
               <div className="qf-enquiry-site-visit-mode-copy">
-                <h3 className="qf-enquiry-site-visit-mode-title">Prepare quote</h3>
+                <h3 className="qf-enquiry-site-visit-mode-title">
+                  {enquiry.linkedProposalId ? "Proposal ready" : "Prepare quote"}
+                </h3>
                 <p className="qf-enquiry-site-visit-mode-description">
-                  Turn the completed site visit into a draft quote you can review
-                  and price. For now it saves on this device only — it is not a
-                  sent Reanvil proposal yet.
+                  {enquiry.linkedProposalId
+                    ? "An official proposal is linked to this enquiry. Open it to review or send."
+                    : "Review the site visit draft, add your prices, preview, then create the official proposal. Nothing is emailed until you Send."}
                 </p>
               </div>
-              <Link
-                href={buildQuotePreparationPath(enquiry.id)}
-                className="qf-btn-primary qf-enquiry-site-visit-mode-btn"
-              >
-                Prepare Quote
-              </Link>
+              {enquiry.linkedProposalId ? (
+                <Link
+                  href={`/proposals/${enquiry.linkedProposalId}`}
+                  className="qf-btn-primary qf-enquiry-site-visit-mode-btn"
+                >
+                  Open proposal
+                </Link>
+              ) : (
+                <Link
+                  href={buildQuotePreparationPath(enquiry.id)}
+                  className="qf-btn-primary qf-enquiry-site-visit-mode-btn"
+                >
+                  Prepare Quote
+                </Link>
+              )}
             </section>
           ) : null}
         </section>

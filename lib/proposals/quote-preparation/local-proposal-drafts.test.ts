@@ -126,6 +126,7 @@ describe("local proposal drafts", () => {
           siteVisitSlot: "Thursday 09:30",
           siteVisitStartsAt: null,
           linkedProposalDraftId: null,
+          linkedProposalId: null,
           timeline: [],
         },
       ])

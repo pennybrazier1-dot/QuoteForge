@@ -200,11 +200,17 @@ export function getJourneySteps(tradesperson: TradespersonInfo): JourneyStepConf
   });
 }
 
-export const WHAT_HAPPENS_NEXT = [
-  "John will review your request — usually within one working day",
-  "You'll get a clear quote with no surprise costs",
-  "If a visit is needed, we'll arrange a time that suits you",
-];
+export function getWhatHappensNext(contactName: string): string[] {
+  const who = contactName.trim() || "Your tradesperson";
+  return [
+    `${who} will review your request — usually within one working day`,
+    "You'll get a clear quote with no surprise costs",
+    "If a visit is needed, we'll arrange a time that suits you",
+  ];
+}
+
+/** @deprecated Prefer getWhatHappensNext(contactName) */
+export const WHAT_HAPPENS_NEXT = getWhatHappensNext("Your tradesperson");
 
 export const DEFAULT_MEASUREMENT_FIELDS: MeasurementField[] = [
   { id: "rough_size", label: "Rough size", unit: "m", value: "" },

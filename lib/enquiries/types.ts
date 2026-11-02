@@ -48,6 +48,7 @@ export type StoredEnquiry = {
   siteVisitSlot: string | null;
   siteVisitStartsAt: string | null;
   linkedProposalDraftId: string | null;
+  linkedProposalId: string | null;
   timeline: EnquiryTimelineEvent[];
 };
 

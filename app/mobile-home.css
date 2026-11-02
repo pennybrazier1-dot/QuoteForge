@@ -13,14 +13,15 @@
 
 .qf-app[data-qf-theme="dark"] {
   --qf-page: #08080a;
-  --qf-card: #111114;
+  --qf-card: #1f1f28;
   --qf-text: #f5f5f7;
   --qf-muted: #a1a1aa;
   --qf-border: rgba(255, 255, 255, 0.12);
-  --qf-border-accent: rgba(255, 106, 26, 0.35);
+  --qf-border-accent: rgba(255, 106, 26, 0.34);
   --qf-nav: #08080a;
   --qf-surface: #16161e;
   --qf-accent: #ff6a1a;
+  --qf-accent-hover: #ff7d36;
   --qf-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
   --qf-green: #4ade80;
   --qf-green-soft: rgba(74, 222, 128, 0.16);
@@ -186,22 +187,15 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* Ordinary section icons use brand orange; status colours live on card badges. */
+  color: var(--qf-accent);
 }
 
-.qf-app[data-qf-theme="dark"] .qf-home-section-green .qf-home-section-icon {
-  color: var(--qf-green);
-}
-
-.qf-app[data-qf-theme="dark"] .qf-home-section-orange .qf-home-section-icon {
-  color: #ff6a1a;
-}
-
-.qf-app[data-qf-theme="dark"] .qf-home-section-blue .qf-home-section-icon {
-  color: var(--qf-blue);
-}
-
+.qf-app[data-qf-theme="dark"] .qf-home-section-green .qf-home-section-icon,
+.qf-app[data-qf-theme="dark"] .qf-home-section-orange .qf-home-section-icon,
+.qf-app[data-qf-theme="dark"] .qf-home-section-blue .qf-home-section-icon,
 .qf-app[data-qf-theme="dark"] .qf-home-section-purple .qf-home-section-icon {
-  color: var(--qf-purple);
+  color: var(--qf-accent);
 }
 
 .qf-app[data-qf-theme="dark"] .qf-home-section-title {
@@ -332,7 +326,7 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   border-radius: 1rem;
   border: 1px solid var(--qf-border);
   border-left-width: 4px;
-  background-color: #111114;
+  background-color: var(--qf-card);
   color: #f5f5f7;
   text-decoration: none;
   box-shadow: var(--qf-shadow);
@@ -348,22 +342,22 @@ body:has(.qf-app[data-qf-theme="dark"]) {
 
 .qf-app[data-qf-theme="dark"] .qf-home-card-green {
   border-left-color: var(--qf-green);
-  background: linear-gradient(90deg, var(--qf-green-soft) 0%, #111114 28%);
+  background: linear-gradient(90deg, var(--qf-green-soft) 0%, var(--qf-card) 28%);
 }
 
 .qf-app[data-qf-theme="dark"] .qf-home-card-orange {
   border-left-color: #ff6a1a;
-  background: linear-gradient(90deg, var(--qf-orange-soft) 0%, #111114 28%);
+  background: linear-gradient(90deg, var(--qf-orange-soft) 0%, var(--qf-card) 28%);
 }
 
 .qf-app[data-qf-theme="dark"] .qf-home-card-blue {
   border-left-color: var(--qf-blue);
-  background: linear-gradient(90deg, var(--qf-blue-soft) 0%, #111114 28%);
+  background: linear-gradient(90deg, var(--qf-blue-soft) 0%, var(--qf-card) 28%);
 }
 
 .qf-app[data-qf-theme="dark"] .qf-home-card-purple {
   border-left-color: var(--qf-purple);
-  background: linear-gradient(90deg, var(--qf-purple-soft) 0%, #111114 28%);
+  background: linear-gradient(90deg, var(--qf-purple-soft) 0%, var(--qf-card) 28%);
 }
 
 .qf-app[data-qf-theme="dark"] .qf-home-card-top {
@@ -491,12 +485,13 @@ body:has(.qf-app[data-qf-theme="dark"]) {
 .qf-app[data-qf-theme="dark"] .qf-home-empty {
   padding: 1.25rem 1rem;
   border-radius: 1rem;
-  border: 1px dashed var(--qf-border);
-  background-color: #111114;
+  border: 1px solid var(--qf-border-accent);
+  background-color: var(--qf-card);
   font-size: 0.875rem;
   line-height: 1.45;
   color: #a1a1aa;
   text-align: center;
+  box-shadow: var(--qf-shadow);
 }
 
 /* Workspace placeholder pages (Calendar, More) */
@@ -615,6 +610,8 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   gap: 0.25rem;
   margin-top: calc(-1 * var(--qf-bottom-nav-primary-overhang));
   text-decoration: none;
+  /* Overhang sits above page content — only the icon/label should capture taps. */
+  pointer-events: none;
 }
 
 .qf-app[data-qf-theme="dark"] .qf-bottom-nav-primary-icon {
@@ -627,12 +624,14 @@ body:has(.qf-app[data-qf-theme="dark"]) {
   background-color: #ff6a1a;
   color: #08080a;
   box-shadow: 0 6px 18px rgba(255, 106, 26, 0.4);
+  pointer-events: auto;
 }
 
 .qf-app[data-qf-theme="dark"] .qf-bottom-nav-primary-label {
   font-size: 0.625rem;
   font-weight: 600;
   color: #ff6a1a;
+  pointer-events: auto;
 }
 
 @media (max-width: 1023px) {
@@ -646,7 +645,7 @@ body:has(.qf-app[data-qf-theme="dark"]) {
 .qf-attention-layer .qf-attention-panel,
 .qf-app[data-qf-theme="dark"] .qf-attention-panel {
   border-color: var(--qf-border, rgba(255, 255, 255, 0.12));
-  background: #111114;
+  background: #1f1f28;
 }
 
 .qf-attention-layer .qf-attention-title,

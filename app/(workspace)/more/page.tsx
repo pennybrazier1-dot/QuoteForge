@@ -8,6 +8,11 @@ import {
 
 const MORE_LINKS = [
   {
+    href: "/enquiries",
+    title: "Enquiries",
+    subtitle: "Customer quote requests waiting for you",
+  },
+  {
     href: "/visits",
     title: "Visits",
     subtitle: "Book site assessments before a quote",

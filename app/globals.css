@@ -20,12 +20,12 @@
   --color-muted: #a1a1aa;
   --color-border-subtle: rgba(255, 255, 255, 0.12);
   --color-border-card: rgba(255, 255, 255, 0.26);
-  --color-border-card-accent: rgba(255, 106, 26, 0.5);
+  --color-border-card-accent: rgba(255, 106, 26, 0.4);
   --color-accent: #ff6a1a;
   --color-accent-hover: #ff7d36;
   --color-accent-soft: rgba(255, 106, 26, 0.16);
-  --color-border-field: rgba(255, 160, 110, 0.45);
-  --color-border-field-hover: rgba(255, 170, 120, 0.55);
+  --color-border-field: rgba(255, 106, 26, 0.32);
+  --color-border-field-hover: rgba(255, 106, 26, 0.48);
   --color-background-field: #0c0c12;
   --color-background-field-hover: #101016;
   --font-sans: var(--font-geist-sans);
@@ -41,11 +41,12 @@
   --muted: #a1a1aa;
   --border: rgba(255, 255, 255, 0.12);
   --border-card: rgba(255, 255, 255, 0.26);
-  --border-card-accent: rgba(255, 106, 26, 0.5);
-  --card-border-color: rgba(255, 130, 70, 0.55);
+  --border-card-accent: rgba(255, 106, 26, 0.4);
+  /* Subtle brand border — derived from #FF6A1A, not peach variants */
+  --card-border-color: rgba(255, 106, 26, 0.34);
   --card-shadow:
-    0 0 0 1px rgba(255, 106, 26, 0.24),
-    0 0 24px rgba(255, 106, 26, 0.07),
+    0 0 0 1px rgba(255, 106, 26, 0.2),
+    0 0 24px rgba(255, 106, 26, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 16px 48px rgba(0, 0, 0, 0.5);
   --radius-card: 1rem;
@@ -54,8 +55,8 @@
   --accent-hover: #ff7d36;
   --accent-soft: rgba(255, 106, 26, 0.16);
   --background-card-accent: #221e1a;
-  --border-field: rgba(255, 160, 110, 0.45);
-  --border-field-hover: rgba(255, 170, 120, 0.55);
+  --border-field: rgba(255, 106, 26, 0.32);
+  --border-field-hover: rgba(255, 106, 26, 0.48);
   --background-field: #0c0c12;
   --background-field-hover: #101016;
   --ring-field-focus: rgba(255, 106, 26, 0.42);
@@ -1486,14 +1487,15 @@ a.qf-card-inset:hover {
 }
 
 .qf-btn-secondary {
-  border: 1px solid var(--border-card-accent);
+  border: 1px solid rgba(255, 106, 26, 0.42);
   background: transparent;
   color: var(--foreground);
 }
 
 .qf-btn-secondary:hover {
   border-color: var(--accent);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--accent-soft);
+  color: var(--foreground);
 }
 
 .qf-settings-request-form {
@@ -2834,7 +2836,8 @@ a.qf-card-inset:hover {
   }
 
   .qf-quote-prep-sticky-actions {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: minmax(12rem, 1.4fr) repeat(3, minmax(0, 1fr));
+    align-items: start;
   }
 }
 
@@ -8177,13 +8180,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-visit-status-scheduled,
 .qf-visit-status-confirmed {
-  background: color-mix(in srgb, #ea580c 16%, transparent);
-  color: #9a3412;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .qf-visit-status-completed {
-  background: color-mix(in srgb, #15803d 16%, transparent);
-  color: #166534;
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
 }
 
 .qf-visit-status-cancelled,
@@ -8294,13 +8297,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-proposal-page .qf-visit-status-scheduled,
 .qf-proposal-page .qf-visit-status-confirmed {
-  background: color-mix(in srgb, #ea580c 16%, transparent);
-  color: #9a3412;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .qf-proposal-page .qf-visit-status-completed {
-  background: color-mix(in srgb, #15803d 16%, transparent);
-  color: #166534;
+  background: rgba(74, 222, 128, 0.16);
+  color: #4ade80;
 }
 
 .qf-proposal-page .qf-visit-status-cancelled,
@@ -8439,6 +8442,23 @@ button.qf-booking-preview-day-selectable:focus-visible {
   font: inherit;
   color: inherit;
   cursor: pointer;
+  pointer-events: none;
+}
+
+.qf-bottom-nav-primary-icon,
+.qf-bottom-nav-primary-label {
+  pointer-events: auto;
+}
+
+.qf-quote-prep-create-form {
+  display: grid;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.qf-quote-prep-sticky-actions-inline {
+  position: static;
+  margin-top: 1.25rem;
 }
 
 .qf-new-menu {
@@ -8929,15 +8949,26 @@ button.qf-booking-preview-day-selectable:focus-visible {
 
 .qf-customer-view-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
   margin-top: 1.5rem;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.125rem;
+}
+
+.qf-customer-view-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .qf-customer-view-tab {
   display: inline-flex;
   align-items: center;
-  min-height: 2.5rem;
+  flex: 0 0 auto;
+  min-height: 2.75rem;
   padding: 0.45rem 0.9rem;
   border-radius: 999px;
   border: 1px solid var(--border-subtle);
@@ -8946,10 +8977,29 @@ button.qf-booking-preview-day-selectable:focus-visible {
   font-size: 0.875rem;
   font-weight: 650;
   text-decoration: none;
+  white-space: nowrap;
+}
+
+.qf-customer-view-tab-label-full {
+  display: none;
+}
+
+.qf-customer-view-tab-label-short {
+  display: inline;
+}
+
+@media (min-width: 640px) {
+  .qf-customer-view-tab-label-full {
+    display: inline;
+  }
+
+  .qf-customer-view-tab-label-short {
+    display: none;
+  }
 }
 
 .qf-customer-view-tab.is-active {
-  border-color: var(--border-card-accent);
+  border-color: rgba(255, 106, 26, 0.5);
   background: var(--accent-soft);
   color: var(--accent);
 }

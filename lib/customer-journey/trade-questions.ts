@@ -201,15 +201,8 @@ export const TRADE_QUESTION_TEMPLATES: Record<TradeType, TradeQuestion[]> = {
       ],
     },
   ],
-  something_else: [
-    {
-      id: "other_description",
-      label: "Please describe the work you need",
-      type: "textarea",
-      placeholder: "Tell us as much as you can about your project",
-    },
-    ...baseQuestions,
-  ],
+  // Project description is collected on the Project step — do not ask again here.
+  something_else: [...baseQuestions],
 };
 
 export function getTradeQuestions(trade: TradeType | null): TradeQuestion[] {

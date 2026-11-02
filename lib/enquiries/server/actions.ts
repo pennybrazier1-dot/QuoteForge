@@ -51,10 +51,29 @@ async function ensurePublicEnquirySlug(
     const { error } = await supabase
       .from("workspaces")
       .update({ public_enquiry_slug: slug })
-      .eq("id", workspaceId);
+      .eq("id", workspaceId)
+      .is("public_enquiry_slug", null);
 
     if (!error) {
+      const { data: refreshed } = await supabase
+        .from("workspaces")
+        .select("public_enquiry_slug")
+        .eq("id", workspaceId)
+        .maybeSingle();
+      if (refreshed?.public_enquiry_slug?.trim()) {
+        return refreshed.public_enquiry_slug.trim();
+      }
       return slug;
+    }
+
+    // Another request may have set the slug — prefer the workspace value.
+    const { data: existing } = await supabase
+      .from("workspaces")
+      .select("public_enquiry_slug")
+      .eq("id", workspaceId)
+      .maybeSingle();
+    if (existing?.public_enquiry_slug?.trim()) {
+      return existing.public_enquiry_slug.trim();
     }
   }
 
@@ -913,8 +932,12 @@ export async function getOrCreatePublicEnquiryLinkAction(): Promise<
     );
     const path = buildPublicEnquiryPath(slug);
     return { ok: true, data: { slug, path, url: buildPublicEnquiryUrl(slug) } };
-  } catch {
-    return { ok: false, error: "Could not create public enquiry link." };
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message.trim()
+        ? error.message
+        : "Could not create public enquiry link.";
+    return { ok: false, error: message };
   }
 }
 

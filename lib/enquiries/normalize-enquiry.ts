@@ -263,6 +263,8 @@ export function normalizeEnquiry(value: unknown): StoredEnquiry | null {
       typeof raw.linkedProposalDraftId === "string"
         ? raw.linkedProposalDraftId
         : null,
+    linkedProposalId:
+      typeof raw.linkedProposalId === "string" ? raw.linkedProposalId : null,
     timeline: normalizeTimeline(raw.timeline),
   };
 }

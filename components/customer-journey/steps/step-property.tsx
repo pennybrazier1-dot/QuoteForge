@@ -22,7 +22,7 @@ export function StepProperty() {
         stepNumber={getStepNumber("property", tradesperson)}
         totalSteps={getTotalSteps(tradesperson)}
         title="Where is the job?"
-        description="So John knows where to come if a visit is needed."
+        description={`So ${tradesperson.contactName} knows where to come if a visit is needed.`}
       />
 
       <div className="cj-form-stack">
