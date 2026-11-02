@@ -306,15 +306,6 @@ export function CreateVisitForm({
                 </select>
               </Field>
             </div>
-            <label className="qf-qq-photos-skip sm:col-span-2">
-              <input
-                type="checkbox"
-                name="notifyCustomer"
-                value="1"
-                defaultChecked
-              />
-              Email the customer visit details
-            </label>
           </div>
         </SectionCard>
 
@@ -322,7 +313,11 @@ export function CreateVisitForm({
 
         <SectionCard className="qf-card-form">
           <h2 className="qf-card-heading">Actions</h2>
-          <div className="mt-5 space-y-3">
+          <div className="mt-5 space-y-3 qf-mobile-bottom-actions">
+            <label className="qf-qq-photos-skip">
+              <input type="checkbox" name="notifyCustomer" value="1" />
+              Email the customer visit details
+            </label>
             <SubmitButton />
             <Link href="/visits" className="qf-btn-secondary">
               Cancel

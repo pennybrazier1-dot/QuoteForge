@@ -903,7 +903,7 @@ export function NewProposalForm({
                     </svg>
                   }
                 />
-                <div className="mt-5 space-y-3">
+                <div className="mt-5 space-y-3 qf-mobile-bottom-actions">
                   {generateState.error ? (
                     <AuthError message={generateState.error} />
                   ) : null}

@@ -70,7 +70,7 @@ export function InvoicePrepareRecovery({
           without changing payment status or sending email.
         </p>
         {state.error ? <AuthError message={state.error} /> : null}
-        <form action={action} className="qf-invoice-actions">
+        <form action={action} className="qf-invoice-actions qf-mobile-bottom-actions">
           <input type="hidden" name="proposalId" value={proposalId} />
           <RetryButton />
           <Link

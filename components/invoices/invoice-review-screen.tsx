@@ -212,7 +212,9 @@ export function InvoiceReviewScreen({
       </div>
 
       <header className="qf-card qf-invoice-hero">
-        <p className="qf-invoice-kicker">Invoice ready for review</p>
+        <p className="qf-invoice-kicker">
+          {isApproved ? "Invoice approved" : "Invoice ready for review"}
+        </p>
         <h1 className="qf-invoice-title">{invoice.invoice_number}</h1>
         <p className="qf-invoice-sub">
           Job {proposalNumber}
@@ -532,7 +534,7 @@ export function InvoiceReviewScreen({
         </section>
 
         {isDraft ? (
-          <div className="qf-invoice-actions">
+          <div className="qf-invoice-actions qf-mobile-bottom-actions">
             <PendingButton label="Save Draft" pendingLabel="Saving…" />
             <PendingButton
               label="Approve Invoice"
@@ -558,7 +560,7 @@ export function InvoiceReviewScreen({
             )}
           </div>
         ) : (
-          <div className="qf-invoice-actions">
+          <div className="qf-invoice-actions qf-mobile-bottom-actions">
             <button
               type="button"
               className="qf-btn-secondary"

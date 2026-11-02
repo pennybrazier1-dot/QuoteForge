@@ -9577,13 +9577,13 @@ html.qf-attention-scroll-lock body {
 }
 
 /*
-  Mobile: keep Save / Preview / Approve above the fixed bottom nav.
+  Shared mobile bottom CTAs (Visit, Quick Quote, Invoice, recovery).
   The New (+) control overhangs into the content area (56×56 icon with
-  pointer-events: auto). Without this offset, that icon intercepts taps on
-  full-width invoice controls sitting just above the nav.
+  pointer-events: auto). Sticky clearance above the measured bottom nav
+  keeps primary actions tappable without changing nav appearance.
 */
 @media (max-width: 1023px) {
-  .qf-invoice-actions {
+  .qf-mobile-bottom-actions {
     position: sticky;
     bottom: var(
       --qf-bottom-nav-measured-height,
@@ -9602,7 +9602,7 @@ html.qf-attention-scroll-lock body {
 }
 
 @media (min-width: 1024px) {
-  .qf-invoice-actions {
+  .qf-mobile-bottom-actions {
     position: static;
     bottom: auto;
     z-index: auto;

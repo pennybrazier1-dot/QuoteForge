@@ -343,6 +343,11 @@ describe("new visit workflow", () => {
     expect(form).not.toContain("startQuoteFromVisitAction");
     expect(form).not.toContain("router.push");
     expect(form).not.toContain("router.replace");
+    expect(form).toContain('name="notifyCustomer"');
+    expect(form).not.toMatch(
+      /name="notifyCustomer"[\s\S]{0,80}defaultChecked/
+    );
+    expect(form).toContain("qf-mobile-bottom-actions");
   });
 
   it("keeps desktop Visits available and Quote on the existing route", () => {

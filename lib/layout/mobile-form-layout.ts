@@ -9,6 +9,12 @@ export const MOBILE_FORM_LAYOUT = {
   matchesHomeContentWidth: true,
 } as const;
 
+/**
+ * Shared class for bottom CTAs on trader forms (Visit, Quick Quote, Invoice).
+ * Sticky above the measured bottom nav so the New (+) overhang cannot intercept taps.
+ */
+export const MOBILE_BOTTOM_ACTIONS_CLASS = "qf-mobile-bottom-actions" as const;
+
 export function mobileFormUsesHomeWidth(): boolean {
   return (
     MOBILE_FORM_LAYOUT.extraInlinePadding === "0" &&

@@ -228,13 +228,18 @@ describe("Stage 1 / 1B invoice system wiring", () => {
     expect(ui).toContain("Confirm free / included");
     expect(ui).toContain("disabled={!canApprove}");
     expect(ui).toContain("validateInvoiceDraft");
+    expect(ui).toContain('isApproved ? "Invoice approved"');
+    expect(ui).toContain("Invoice ready for review");
   });
 
   it("keeps mobile invoice actions above the New (+) bottom-nav overhang", () => {
     const css = readRepo("app/globals.css");
-    const actionsIdx = css.indexOf(".qf-invoice-actions {");
-    expect(actionsIdx).toBeGreaterThan(-1);
-    const mobileBlock = css.slice(actionsIdx, actionsIdx + 1200);
+    const sharedIdx = css.indexOf(".qf-mobile-bottom-actions");
+    expect(sharedIdx).toBeGreaterThan(-1);
+    const mobileBlock = css.slice(
+      Math.max(0, sharedIdx - 120),
+      sharedIdx + 900
+    );
     expect(mobileBlock).toContain("@media (max-width: 1023px)");
     expect(mobileBlock).toContain("position: sticky");
     expect(mobileBlock).toContain("--qf-bottom-nav-measured-height");
@@ -243,6 +248,8 @@ describe("Stage 1 / 1B invoice system wiring", () => {
     expect(css).toMatch(
       /\.qf-invoice-page\s*\{[^}]*padding-bottom:\s*0/
     );
+    const ui = readRepo("components/invoices/invoice-review-screen.tsx");
+    expect(ui).toContain("qf-invoice-actions qf-mobile-bottom-actions");
   });
 
   it("does not recycle invoice numbers after a lost concurrent insert", () => {
