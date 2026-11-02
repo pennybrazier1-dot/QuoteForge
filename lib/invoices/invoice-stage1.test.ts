@@ -230,6 +230,21 @@ describe("Stage 1 / 1B invoice system wiring", () => {
     expect(ui).toContain("validateInvoiceDraft");
   });
 
+  it("keeps mobile invoice actions above the New (+) bottom-nav overhang", () => {
+    const css = readRepo("app/globals.css");
+    const actionsIdx = css.indexOf(".qf-invoice-actions {");
+    expect(actionsIdx).toBeGreaterThan(-1);
+    const mobileBlock = css.slice(actionsIdx, actionsIdx + 1200);
+    expect(mobileBlock).toContain("@media (max-width: 1023px)");
+    expect(mobileBlock).toContain("position: sticky");
+    expect(mobileBlock).toContain("--qf-bottom-nav-measured-height");
+    expect(mobileBlock).toContain("--qf-bottom-nav-total-height");
+    expect(mobileBlock).toContain("z-index: 90");
+    expect(css).toMatch(
+      /\.qf-invoice-page\s*\{[^}]*padding-bottom:\s*0/
+    );
+  });
+
   it("does not recycle invoice numbers after a lost concurrent insert", () => {
     const ensure = readRepo("lib/invoices/ensure-draft.ts");
     expect(ensure).toContain("do not recycle");
