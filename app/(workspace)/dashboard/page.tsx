@@ -6,6 +6,11 @@ import {
   buildHomeSectionGroups,
   type HomeProposal,
 } from "@/lib/home/home-data";
+import {
+  findCompletedJobsMissingInvoices,
+  type MissingInvoiceAttentionSource,
+} from "@/lib/invoices/missing-invoice-attention";
+import type { InvoiceDraftAttentionSource } from "@/lib/invoices/types";
 import { createClient } from "@/lib/supabase/server";
 import { listVisits } from "@/lib/visits/queries";
 import type { VisitRecord } from "@/lib/visits/types";
@@ -23,6 +28,8 @@ type PageProps = {
     visitBooked?: string;
     jobCompleted?: string;
     completedCustomer?: string;
+    invoiceFailed?: string;
+    completedProposal?: string;
   }>;
 };
 
@@ -49,16 +56,59 @@ export default async function HomePage({ searchParams }: PageProps) {
     .limit(100);
 
   let visits: VisitRecord[] = [];
+  let invoiceDrafts: InvoiceDraftAttentionSource[] = [];
+  let missingInvoices: MissingInvoiceAttentionSource[] = [];
   if (profile?.workspace_id) {
     visits = await listVisits(supabase, profile.workspace_id, {
       status: "open",
     });
+    const { data: draftRows } = await supabase
+      .from("invoices")
+      .select(
+        "id, proposal_id, invoice_number, status, customer_name, job_title, total_amount, balance_due, currency"
+      )
+      .eq("workspace_id", profile.workspace_id)
+      .eq("status", "draft")
+      .order("created_at", { ascending: false })
+      .limit(50);
+    invoiceDrafts = (draftRows ?? []) as InvoiceDraftAttentionSource[];
+
+    // Workspace-scoped: all invoice proposal ids for this trader's business.
+    const { data: invoiceLinks } = await supabase
+      .from("invoices")
+      .select("proposal_id")
+      .eq("workspace_id", profile.workspace_id)
+      .limit(200);
+    const invoiceProposalIds = (invoiceLinks ?? []).map(
+      (row) => row.proposal_id as string
+    );
+    missingInvoices = findCompletedJobsMissingInvoices(
+      (proposalsData ?? []) as HomeProposal[],
+      invoiceProposalIds
+    );
   }
 
   const proposals = (proposalsData ?? []) as HomeProposal[];
-  const groups = buildHomeSectionGroups(proposals, visits);
-  const attentionItems = buildHomeAttentionItems(proposals);
-  const { visitBooked, jobCompleted, completedCustomer } = await searchParams;
+  const groups = buildHomeSectionGroups(
+    proposals,
+    visits,
+    new Date(),
+    invoiceDrafts,
+    missingInvoices
+  );
+  const attentionItems = buildHomeAttentionItems(
+    proposals,
+    new Date(),
+    invoiceDrafts,
+    missingInvoices
+  );
+  const {
+    visitBooked,
+    jobCompleted,
+    completedCustomer,
+    invoiceFailed,
+    completedProposal,
+  } = await searchParams;
 
   return (
     <HomeScreen
@@ -68,6 +118,8 @@ export default async function HomePage({ searchParams }: PageProps) {
       visitBooked={visitBooked === "1"}
       jobCompleted={jobCompleted === "1"}
       completedCustomer={completedCustomer ?? null}
+      invoiceFailed={invoiceFailed === "1"}
+      completedProposalId={completedProposal ?? null}
     />
   );
 }

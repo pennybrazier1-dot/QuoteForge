@@ -6,6 +6,9 @@ export { isCompletedJobStatus };
 export const JOB_COMPLETED_NOTICE = "Job completed";
 export const JOB_COMPLETED_NOTICE_PARAM = "jobCompleted";
 export const JOB_COMPLETED_CUSTOMER_PARAM = "completedCustomer";
+/** Set when job completed but invoice draft could not be prepared. */
+export const JOB_COMPLETED_INVOICE_FAILED_PARAM = "invoiceFailed";
+export const JOB_COMPLETED_PROPOSAL_PARAM = "completedProposal";
 export const COMPLETE_JOB_ERROR = "Couldn't complete this job. Please try again.";
 export const REOPEN_JOB_ERROR = "Couldn't reopen this job. Please try again.";
 export const COMPLETED_JOBS_PATH = "/completed-jobs";
@@ -36,13 +39,27 @@ export type CompletedJobMonthGroup = {
   jobs: CompletedJobRecord[];
 };
 
-export function afterJobCompletedRedirect(customerName?: string | null): string {
+export function afterJobCompletedRedirect(
+  customerName?: string | null,
+  options?: {
+    invoicePrepared?: boolean;
+    proposalId?: string | null;
+  }
+): string {
   const params = new URLSearchParams({
     [JOB_COMPLETED_NOTICE_PARAM]: "1",
   });
   const name = customerName?.trim();
   if (name) {
     params.set(JOB_COMPLETED_CUSTOMER_PARAM, name);
+  }
+  const invoicePrepared = options?.invoicePrepared !== false;
+  if (!invoicePrepared) {
+    params.set(JOB_COMPLETED_INVOICE_FAILED_PARAM, "1");
+    const proposalId = options?.proposalId?.trim();
+    if (proposalId) {
+      params.set(JOB_COMPLETED_PROPOSAL_PARAM, proposalId);
+    }
   }
   return `${TRADER_HOME_PATH}?${params.toString()}`;
 }

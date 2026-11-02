@@ -8,6 +8,18 @@ import {
   type HomeProposalBucket,
 } from "@/lib/home/home-lifecycle";
 import {
+  INVOICE_READY_ATTENTION_REASON,
+  invoiceAttentionItemId,
+  invoiceReviewHref,
+} from "@/lib/invoices/attention";
+import {
+  INVOICE_NEEDS_PREPARING_REASON,
+  missingInvoiceAttentionItemId,
+  type MissingInvoiceAttentionSource,
+} from "@/lib/invoices/missing-invoice-attention";
+import type { InvoiceDraftAttentionSource } from "@/lib/invoices/types";
+import { formatPenceAsGbp } from "@/lib/proposals/money";
+import {
   isActiveHomeProposal,
   isProposalStatus,
   normalizeProposalStatus,
@@ -214,25 +226,87 @@ export function getTimeGreeting(): string {
 
 export function getHomeNotificationCount(
   proposals: HomeProposal[],
-  reference = new Date()
+  reference = new Date(),
+  invoiceDrafts: InvoiceDraftAttentionSource[] = [],
+  missingInvoices: MissingInvoiceAttentionSource[] = []
 ): number {
-  return getHomeAttentionCount(proposals, reference);
+  return getHomeAttentionCount(
+    proposals,
+    reference,
+    invoiceDrafts,
+    missingInvoices
+  );
+}
+
+function buildInvoiceDraftCards(
+  drafts: InvoiceDraftAttentionSource[]
+): HomeCard[] {
+  return drafts
+    .filter((draft) => draft.status === "draft")
+    .map((draft) => {
+      const amount = formatPenceAsGbp(
+        draft.balance_due > 0 ? draft.balance_due : draft.total_amount
+      );
+      return {
+        id: invoiceAttentionItemId(draft.id),
+        href: invoiceReviewHref(draft.proposal_id),
+        proposalNumber: draft.invoice_number,
+        proposalStatus: "completed",
+        customer: draft.customer_name?.trim() || "Customer",
+        jobTitle: draft.job_title,
+        timeLabel: amount,
+        status: { label: "Review", tone: "orange" },
+        attentionNote: INVOICE_READY_ATTENTION_REASON,
+        detailLines: [INVOICE_READY_ATTENTION_REASON, amount],
+        plannedStartDateText: null,
+        plannedStartDate: null,
+        estimatedDuration: null,
+      } satisfies HomeCard;
+    });
+}
+
+function buildMissingInvoiceCards(
+  missing: MissingInvoiceAttentionSource[]
+): HomeCard[] {
+  return missing.map((row) => ({
+    id: missingInvoiceAttentionItemId(row.proposal_id),
+    href: invoiceReviewHref(row.proposal_id),
+    proposalNumber: row.proposal_number?.trim() || "Invoice",
+    proposalStatus: "completed",
+    customer: row.customer_name?.trim() || "Customer",
+    jobTitle: row.title,
+    timeLabel: "Retry",
+    status: { label: "Prepare", tone: "orange" },
+    attentionNote: INVOICE_NEEDS_PREPARING_REASON,
+    detailLines: [INVOICE_NEEDS_PREPARING_REASON],
+    plannedStartDateText: null,
+    plannedStartDate: null,
+    estimatedDuration: null,
+  })) satisfies HomeCard[];
 }
 
 export function buildHomeSections(
   proposals: HomeProposal[],
   visits: VisitRecord[] = [],
-  reference = new Date()
+  reference = new Date(),
+  invoiceDrafts: InvoiceDraftAttentionSource[] = [],
+  missingInvoices: MissingInvoiceAttentionSource[] = []
 ): HomeSection[] {
-  return buildHomeSectionGroups(proposals, visits, reference).flatMap(
-    (group) => group.sections
-  );
+  return buildHomeSectionGroups(
+    proposals,
+    visits,
+    reference,
+    invoiceDrafts,
+    missingInvoices
+  ).flatMap((group) => group.sections);
 }
 
 export function buildHomeSectionGroups(
   proposals: HomeProposal[],
   visits: VisitRecord[] = [],
-  reference = new Date()
+  reference = new Date(),
+  invoiceDrafts: InvoiceDraftAttentionSource[] = [],
+  missingInvoices: MissingInvoiceAttentionSource[] = []
 ): HomeSectionGroup[] {
   const classified = proposals
     .filter((proposal) =>
@@ -258,9 +332,13 @@ export function buildHomeSectionGroups(
     detailLines: (item) => item.notes,
     limit: 8,
   });
-  const needsAttention = cardsForBucket(classified, "needs_attention", {
-    status: { label: "Respond", tone: "orange" },
-  });
+  const needsAttention = [
+    ...buildMissingInvoiceCards(missingInvoices),
+    ...buildInvoiceDraftCards(invoiceDrafts),
+    ...cardsForBucket(classified, "needs_attention", {
+      status: { label: "Respond", tone: "orange" },
+    }),
+  ];
   const quotesToFinish = cardsForBucket(classified, "quotes_to_finish", {
     status: { label: "Draft", tone: "blue" },
     limit: 8,

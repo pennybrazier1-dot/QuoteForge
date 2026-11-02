@@ -560,6 +560,19 @@ export function ProposalWorkspace({
         </Suspense>
         {normalizeProposalStatus(proposal.status) === "completed" ? (
           <>
+            <section className="qf-workspace-lifecycle" aria-label="Invoice">
+              <div className="qf-workspace-lifecycle-block">
+                <p className="qf-workspace-lifecycle-label">Invoice</p>
+                <div className="qf-workspace-lifecycle-actions">
+                  <a
+                    className="qf-btn-secondary"
+                    href={`/proposals/${proposal.id}/invoice`}
+                  >
+                    Review Invoice
+                  </a>
+                </div>
+              </div>
+            </section>
             <CompletedJobPayment
               proposalId={proposal.id}
               jobStatus={proposal.status}

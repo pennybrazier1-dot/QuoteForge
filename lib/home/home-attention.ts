@@ -3,6 +3,10 @@ import {
   type HomeProposalBucket,
 } from "@/lib/home/home-lifecycle";
 import type { HomeProposal } from "@/lib/home/home-data";
+import { buildInvoiceDraftAttentionItems } from "@/lib/invoices/attention";
+import { buildMissingInvoiceAttentionItems } from "@/lib/invoices/missing-invoice-attention";
+import type { MissingInvoiceAttentionSource } from "@/lib/invoices/missing-invoice-attention";
+import type { InvoiceDraftAttentionSource } from "@/lib/invoices/types";
 import { isActiveHomeProposal, normalizeProposalStatus } from "@/lib/proposals/status";
 
 export const HOME_ATTENTION_TITLE = "Needs your attention";
@@ -25,7 +29,9 @@ export type HomeAttentionKind =
   | "quote_ready_to_send"
   | "job_to_schedule"
   | "failed_send"
-  | "needs_response";
+  | "needs_response"
+  | "invoice_ready_for_review"
+  | "invoice_needs_preparing";
 
 export type HomeAttentionItem = {
   id: string;
@@ -126,9 +132,11 @@ function attentionCopy(
 
 export function buildHomeAttentionItems(
   proposals: HomeAttentionSource[],
-  reference = new Date()
+  reference = new Date(),
+  invoiceDrafts: InvoiceDraftAttentionSource[] = [],
+  missingInvoices: MissingInvoiceAttentionSource[] = []
 ): HomeAttentionItem[] {
-  return proposals
+  const proposalItems = proposals
     .filter((proposal) =>
       isActiveHomeProposal(normalizeProposalStatus(proposal.status))
     )
@@ -150,11 +158,47 @@ export function buildHomeAttentionItems(
       };
     })
     .filter((item): item is HomeAttentionItem => Boolean(item));
+
+  const invoiceItems = buildInvoiceDraftAttentionItems(invoiceDrafts).map(
+    (item) =>
+      ({
+        id: item.id,
+        customer: item.customer,
+        reason: item.reason,
+        typeLabel: item.typeLabel,
+        kind: item.kind,
+        href: item.href,
+        bucket: item.bucket,
+      }) satisfies HomeAttentionItem
+  );
+
+  const missingItems = buildMissingInvoiceAttentionItems(missingInvoices).map(
+    (item) =>
+      ({
+        id: item.id,
+        customer: item.customer,
+        reason: item.reason,
+        typeLabel: item.typeLabel,
+        kind: item.kind,
+        href: item.href,
+        bucket: item.bucket,
+      }) satisfies HomeAttentionItem
+  );
+
+  // Missing invoice recovery first, then drafts, then other attention.
+  return [...missingItems, ...invoiceItems, ...proposalItems];
 }
 
 export function getHomeAttentionCount(
   proposals: HomeAttentionSource[],
-  reference = new Date()
+  reference = new Date(),
+  invoiceDrafts: InvoiceDraftAttentionSource[] = [],
+  missingInvoices: MissingInvoiceAttentionSource[] = []
 ): number {
-  return buildHomeAttentionItems(proposals, reference).length;
+  return buildHomeAttentionItems(
+    proposals,
+    reference,
+    invoiceDrafts,
+    missingInvoices
+  ).length;
 }

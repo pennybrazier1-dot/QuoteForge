@@ -28,6 +28,10 @@ import {
   REOPEN_JOB_ERROR,
 } from "@/lib/jobs/complete-job";
 import {
+  assertInvoiceAllowsReopen,
+  ensureInvoiceDraftForJob,
+} from "@/lib/invoices/ensure-draft";
+import {
   logResendFailure,
   planProposalResend,
   RESEND_FAILURE_COPY,
@@ -458,8 +462,22 @@ export async function markJobComplete(
     completed_at: now,
   });
 
+  // Stage 1: prepare at most one invoice draft. Never emails or requests payment.
+  // Job completion already succeeded — invoice failure must not undo it, but
+  // must not be silent: Home gets a clear warning + persistent Needs Attention.
+  const invoiceResult = await ensureInvoiceDraftForJob(supabase, {
+    proposalId: proposal.id,
+    workspaceId: proposal.workspace_id,
+    userId: user.id,
+  });
+
   revalidateAll(proposalId);
-  redirect(afterJobCompletedRedirect(proposal.customer_name));
+  redirect(
+    afterJobCompletedRedirect(proposal.customer_name, {
+      invoicePrepared: invoiceResult.ok,
+      proposalId: proposal.id,
+    })
+  );
 }
 
 export async function reopenCompletedJob(
@@ -504,6 +522,15 @@ export async function reopenCompletedJob(
     !canTransitionStatus(currentStatus, "booked")
   ) {
     return { error: REOPEN_JOB_ERROR };
+  }
+
+  // Stage 1B: keep draft invoice identity/number on reopen; only block approved.
+  const invoiceGate = await assertInvoiceAllowsReopen(supabase, {
+    proposalId: proposal.id,
+    workspaceId: proposal.workspace_id,
+  });
+  if (!invoiceGate.ok) {
+    return { error: invoiceGate.error };
   }
 
   const { data: updated, error: updateError } = await supabase

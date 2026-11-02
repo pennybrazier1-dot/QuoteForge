@@ -12,6 +12,8 @@ export function HomeScreen({
   visitBooked = false,
   jobCompleted = false,
   completedCustomer = null,
+  invoiceFailed = false,
+  completedProposalId = null,
 }: {
   fullName: string | null;
   attentionItems: HomeAttentionItem[];
@@ -19,12 +21,18 @@ export function HomeScreen({
   visitBooked?: boolean;
   jobCompleted?: boolean;
   completedCustomer?: string | null;
+  invoiceFailed?: boolean;
+  completedProposalId?: string | null;
 }) {
   return (
     <div className="qf-trader-page qf-home">
       {visitBooked ? <HomeVisitBookedNotice /> : null}
       {jobCompleted ? (
-        <HomeJobCompletedNotice customerName={completedCustomer} />
+        <HomeJobCompletedNotice
+          customerName={completedCustomer}
+          invoiceFailed={invoiceFailed}
+          proposalId={completedProposalId}
+        />
       ) : null}
       <HomeGreeting fullName={fullName} attentionItems={attentionItems} />
 

@@ -50,9 +50,10 @@ describe("complete job flow", () => {
     expect(completeFn).toContain("!updated.completed_at");
     expect(completeFn).toContain("COMPLETE_JOB_ERROR");
     expect(completeFn.indexOf("if (")).toBeLessThan(
-      completeFn.indexOf("redirect(afterJobCompletedRedirect")
+      completeFn.indexOf("afterJobCompletedRedirect")
     );
-    expect(completeFn).toContain("afterJobCompletedRedirect(proposal.customer_name)");
+    expect(completeFn).toContain("afterJobCompletedRedirect(proposal.customer_name");
+    expect(completeFn).toContain("invoicePrepared: invoiceResult.ok");
     expect(completeFn).not.toContain("redirect(`/proposals/${proposalId}`)");
   });
 
@@ -84,7 +85,7 @@ describe("complete job flow", () => {
     );
     expect(completeFn).toContain("return {\n      error: COMPLETE_JOB_ERROR,");
     expect(completeFn.indexOf("return {\n      error: COMPLETE_JOB_ERROR")).toBeLessThan(
-      completeFn.indexOf("redirect(afterJobCompletedRedirect")
+      completeFn.indexOf("afterJobCompletedRedirect")
     );
   });
 

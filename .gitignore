@@ -35,6 +35,15 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Stage 1J/1K local-only test helpers (may contain fictional passwords / artifacts)
+scripts/stage1j-seed-fictional-business.mjs
+scripts/stage1j-browser-invoice-test.mjs
+scripts/stage1m-recovery-browser-test.mjs
+scripts/.stage1j-artifacts/
+
+# Quarantined remote link metadata (must never be committed)
+supabase/.temp-remote-quarantine/
+
 # vercel
 .vercel
 
