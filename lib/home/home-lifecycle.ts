@@ -77,6 +77,27 @@ export function isDateOnlyAttentionResolved(
   return !attentionReason || DATE_ONLY_ATTENTION.has(attentionReason);
 }
 
+/** Booked job with a pending customer date/time change — keep calendar, flag home. */
+export function hasPendingBookedDateChange(
+  proposal: HomeLifecycleProposal
+): boolean {
+  const status = normalizeProposalStatus(proposal.status);
+  if (status !== "booked") {
+    return false;
+  }
+  if (proposal.attention_reason !== "customer_requested_date_change") {
+    return false;
+  }
+  const snapshot = buildDateWorkflowSnapshot({
+    status: proposal.status,
+    acceptedAt: proposal.accepted_at,
+    bookingConfirmation: proposal.booking_confirmation,
+    plannedStartDate: proposal.planned_start_date,
+    plannedStartTime: proposal.planned_start_time,
+  });
+  return snapshot.isBookedJob;
+}
+
 export function hasUnresolvedHomeAttention(
   proposal: HomeLifecycleProposal
 ): boolean {
@@ -89,6 +110,9 @@ export function hasUnresolvedHomeAttention(
     plannedStartTime: proposal.planned_start_time,
   });
 
+  if (hasPendingBookedDateChange(proposal)) {
+    return true;
+  }
   if (snapshot.isBookedJob) {
     return false;
   }
@@ -138,6 +162,16 @@ export function classifyHomeProposal(
     dateText: proposal.planned_start_date_text,
     timeHm: proposal.planned_start_time,
   });
+
+  if (hasPendingBookedDateChange(proposal)) {
+    return {
+      proposal,
+      snapshot,
+      slotLabel,
+      bucket: "needs_attention",
+      notes: [formatAttentionReason(proposal.attention_reason)],
+    };
+  }
 
   if (snapshot.isBookedJob) {
     const today = isPlannedStartToday(proposal.planned_start_date, reference);

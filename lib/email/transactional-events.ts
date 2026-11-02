@@ -344,13 +344,20 @@ export function buildCustomerDateProposedEmail(input: {
       greeting,
       intro,
       summaryRows: [
-        ...(previous ? [{ label: "Previous date", value: previous }] : []),
-        { label: "New proposed date", value: input.slotLabel },
+        ...(previous
+          ? [{ label: "Current confirmed booking", value: previous }]
+          : []),
+        { label: "Proposed new date", value: input.slotLabel, symbol: "▣" },
       ],
-      ctaLabel: "Confirm date",
+      supportText: previous
+        ? "Your current booking stays confirmed until you accept this alternative. The suggested date is not reserved until you accept it."
+        : undefined,
+      ctaLabel: "Respond to date",
       ctaUrl: customerConversationUrl(input.portalToken),
       fallbackLabel: "Open secure portal",
-      preheader: "A new date has been proposed.",
+      preheader: previous
+        ? "A new date has been proposed. Your current booking is unchanged."
+        : "A new date has been proposed.",
     },
   });
 }

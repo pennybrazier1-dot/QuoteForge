@@ -51,18 +51,30 @@ export async function markChangeRequestResolved(
   }
 
   const currentStatus = normalizeProposalStatus(proposal.status);
-  if (currentStatus !== "needs_attention") {
+  const bookedPendingDateChange =
+    currentStatus === "booked" &&
+    proposal.attention_reason === "customer_requested_date_change";
+  if (currentStatus !== "needs_attention" && !bookedPendingDateChange) {
     return {
       error: "Only open customer requests can be marked resolved.",
     };
   }
 
+  // Booked jobs keep their status; clear attention only.
+  const nextStatus = bookedPendingDateChange
+    ? "booked"
+    : "waiting_for_customer";
   const { error: updateError } = await supabase
     .from("proposals")
-    .update({
-      status: "waiting_for_customer",
-      attention_reason: null,
-    })
+    .update(
+      bookedPendingDateChange
+        ? { attention_reason: null, pending_date_suggestion: null }
+        : {
+            status: nextStatus,
+            attention_reason: null,
+            pending_date_suggestion: null,
+          }
+    )
     .eq("id", proposalId);
 
   if (updateError) {
@@ -77,7 +89,7 @@ export async function markChangeRequestResolved(
     userId: user.id,
     eventType: "status_change",
     fromStatus: currentStatus,
-    toStatus: "waiting_for_customer",
+    toStatus: nextStatus,
     note: "Change request marked resolved",
     metadata: {
       source: "trader",

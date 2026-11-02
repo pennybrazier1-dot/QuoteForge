@@ -7,6 +7,7 @@ import {
   acceptProposedScheduleDate,
   acceptPublicProposal,
   askPublicProposalQuestion,
+  declinePendingDateSuggestion,
   declinePublicProposal,
   holdPublicAvailabilitySlot,
   requestAnotherScheduleDate,
@@ -477,6 +478,11 @@ export function CustomerProposalPortal({
     declinePublicProposal,
     initialState
   );
+  const [
+    declineSuggestionState,
+    declineSuggestionAction,
+    declineSuggestionPending,
+  ] = useActionState(declinePendingDateSuggestion, initialState);
 
   const successResult =
     acceptState.result ||
@@ -485,6 +491,7 @@ export function CustomerProposalPortal({
     acceptDateState.result ||
     requestDateState.result ||
     requestTimeState.result ||
+    declineSuggestionState.result ||
     declineState.result;
   const error =
     acceptState.error ||
@@ -494,6 +501,7 @@ export function CustomerProposalPortal({
     requestDateState.error ||
     requestTimeState.error ||
     holdState.error ||
+    declineSuggestionState.error ||
     declineState.error ||
     null;
 
@@ -506,6 +514,7 @@ export function CustomerProposalPortal({
       requestDateState.ok ||
       requestTimeState.ok ||
       holdState.ok ||
+      declineSuggestionState.ok ||
       declineState.ok
     ) {
       router.refresh();
@@ -518,6 +527,7 @@ export function CustomerProposalPortal({
     requestDateState.ok,
     requestTimeState.ok,
     holdState.ok,
+    declineSuggestionState.ok,
     declineState.ok,
     router,
   ]);
@@ -552,6 +562,11 @@ export function CustomerProposalPortal({
   }
 
   if (successResult === "accepted" || view.isAccepted) {
+    const showBookedChangeSuccess =
+      successResult === "date_change_requested" ||
+      view.scheduleChangeRequestPending;
+    const keptConfirmedBooking =
+      successResult === "date_suggestion_declined";
     return (
       <PortalShell view={view}>
         <section className="cj-job-card cj-portal-success">
@@ -570,6 +585,11 @@ export function CustomerProposalPortal({
                   view.plannedStartLabel ? ` for ${view.plannedStartLabel}` : ""
                 }.`}
           </p>
+          {keptConfirmedBooking ? (
+            <p className="cj-job-copy" role="status">
+              You kept your current confirmed booking. No changes were made.
+            </p>
+          ) : null}
           <a
             className="cj-btn-secondary cj-portal-pdf"
             href={buildCustomerProposalPdfPath(view.token)}
@@ -577,6 +597,22 @@ export function CustomerProposalPortal({
             Download PDF
           </a>
         </section>
+        {showBookedChangeSuccess ? (
+          <section className="cj-job-card" role="status">
+            <p className="cj-job-eyebrow">Sent</p>
+            <h2 className="cj-job-section-title">
+              {PORTAL_AVAILABILITY_COPY.bookedChangePendingTitle}
+            </h2>
+            <p className="cj-job-copy">
+              {PORTAL_AVAILABILITY_COPY.bookedChangePendingCopy}
+            </p>
+          </section>
+        ) : null}
+        {error && (view.canRequestScheduleChange || mode === "change_date") ? (
+          <p className="cj-portal-error" role="alert">
+            {error}
+          </p>
+        ) : null}
         <PortalPaymentCard payment={view.payment} />
         {view.canRespondToProposedDate &&
         view.proposedDateLabel &&
@@ -592,6 +628,23 @@ export function CustomerProposalPortal({
             onRequestedTimeChange={setRequestedTime}
             acceptDateAction={acceptDateAction}
             acceptDatePending={acceptDatePending}
+            requestDateAction={requestDateAction}
+            requestDatePending={requestDatePending}
+            declineSuggestionAction={declineSuggestionAction}
+            declineSuggestionPending={declineSuggestionPending}
+          />
+        ) : null}
+        {!view.isJobClosed &&
+        view.canRequestScheduleChange &&
+        !view.canRespondToProposedDate ? (
+          <BookedScheduleChangeCard
+            view={view}
+            mode={mode}
+            setMode={setMode}
+            requestedDate={requestedDate}
+            requestedTime={requestedTime}
+            onRequestedDateChange={setRequestedDate}
+            onRequestedTimeChange={setRequestedTime}
             requestDateAction={requestDateAction}
             requestDatePending={requestDatePending}
           />
@@ -692,6 +745,8 @@ export function CustomerProposalPortal({
           acceptDatePending={acceptDatePending}
           requestDateAction={requestDateAction}
           requestDatePending={requestDatePending}
+          declineSuggestionAction={declineSuggestionAction}
+          declineSuggestionPending={declineSuggestionPending}
         />
       ) : null}
 
@@ -1126,6 +1181,110 @@ export function CustomerProposalPortal({
   );
 }
 
+function BookedScheduleChangeCard({
+  view,
+  mode,
+  setMode,
+  requestedDate,
+  requestedTime,
+  onRequestedDateChange,
+  onRequestedTimeChange,
+  requestDateAction,
+  requestDatePending,
+}: {
+  view: PublicProposalViewModel;
+  mode: PortalMode;
+  setMode: (mode: PortalMode) => void;
+  requestedDate: string;
+  requestedTime: string;
+  onRequestedDateChange: (value: string) => void;
+  onRequestedTimeChange: (value: string) => void;
+  requestDateAction: (payload: FormData) => void;
+  requestDatePending: boolean;
+}) {
+  const hasOfferedSlots =
+    view.availabilitySlots.length > 0 || view.moreAvailabilitySlots.length > 0;
+
+  return (
+    <section className="cj-job-card cj-portal-actions" aria-label="Request a booking change">
+      <h2 className="cj-job-section-title">
+        {PORTAL_AVAILABILITY_COPY.bookedChangeTitle}
+      </h2>
+      <p className="cj-job-copy">{PORTAL_AVAILABILITY_COPY.bookedChangeHint}</p>
+      {view.plannedStartLabel ? (
+        <p className="cj-job-copy">
+          Current booking: <strong>{view.plannedStartLabel}</strong>
+        </p>
+      ) : null}
+
+      {mode !== "change_date" ? (
+        <div className="cj-portal-action-row">
+          <button
+            type="button"
+            className="cj-btn-primary"
+            onClick={() => setMode("change_date")}
+          >
+            {PORTAL_AVAILABILITY_COPY.bookedChangeButton}
+          </button>
+        </div>
+      ) : (
+        <form action={requestDateAction} className="cj-portal-form">
+          <input type="hidden" name="token" value={view.token} />
+          <input type="hidden" name="changeFocus" value="date" />
+          <input type="hidden" name="requestedDate" value={requestedDate} />
+          <input type="hidden" name="requestedTime" value={requestedTime} />
+          <p className="cj-job-copy">
+            Pick an offered appointment, or request a date and time that works
+            for you. This is a request — your current booking stays confirmed
+            until {view.businessName} agrees a change.
+          </p>
+          <PortalAvailabilityList
+            slots={view.availabilitySlots}
+            moreSlots={view.moreAvailabilitySlots}
+            name="availableDateBooked"
+            selectedValue={requestedDate}
+            matchBy="startDate"
+            onSelect={(next) => {
+              onRequestedDateChange(next.startDate);
+              onRequestedTimeChange(next.startTime || "");
+            }}
+          />
+          <PortalCustomDateTimeFields
+            hasOfferedSlots={hasOfferedSlots}
+            includeDate
+            includeTime
+            requestedDate={requestedDate}
+            requestedTime={requestedTime}
+            onDateChange={onRequestedDateChange}
+            onTimeChange={onRequestedTimeChange}
+            messageId="request-date-message-booked"
+            messagePlaceholder="e.g. The week after works better."
+          />
+          <div className="cj-portal-form-actions">
+            <button
+              type="submit"
+              className="cj-btn-primary"
+              disabled={requestDatePending}
+            >
+              {requestDatePending
+                ? "Sending…"
+                : PORTAL_AVAILABILITY_COPY.requestDateButton}
+            </button>
+            <button
+              type="button"
+              className="cj-btn-secondary"
+              onClick={() => setMode("idle")}
+              disabled={requestDatePending}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
 function ProposedBookingCard({
   view,
   error,
@@ -1139,6 +1298,8 @@ function ProposedBookingCard({
   acceptDatePending,
   requestDateAction,
   requestDatePending,
+  declineSuggestionAction,
+  declineSuggestionPending,
 }: {
   view: PublicProposalViewModel;
   error: string | null;
@@ -1152,21 +1313,46 @@ function ProposedBookingCard({
   acceptDatePending: boolean;
   requestDateAction: (payload: FormData) => void;
   requestDatePending: boolean;
+  declineSuggestionAction: (payload: FormData) => void;
+  declineSuggestionPending: boolean;
 }) {
   const hasOfferedSlots =
     view.availabilitySlots.length > 0 || view.moreAvailabilitySlots.length > 0;
+  const pendingAlternative = view.hasPendingDateSuggestion;
 
   return (
     <section className="cj-job-card cj-portal-actions">
-      <h2 className="cj-job-section-title">Proposed booking</h2>
-      <p className="cj-job-copy">
-        <strong>{view.proposedDateLabel}</strong>
-      </p>
-      <p className="cj-job-copy">
-        {view.canAcceptProposal
-          ? "New date proposed. Accept the proposal and this date together, or request another date."
-          : "Confirm this date if it works, or request another date."}
-      </p>
+      {pendingAlternative && view.confirmedBookingLabel ? (
+        <>
+          <h2 className="cj-job-section-title">
+            {PORTAL_AVAILABILITY_COPY.confirmedBookingHeading}
+          </h2>
+          <p className="cj-job-copy">
+            <strong>{view.confirmedBookingLabel}</strong>
+          </p>
+          <h2 className="cj-job-section-title">
+            {PORTAL_AVAILABILITY_COPY.proposedAlternativeHeading}
+          </h2>
+          <p className="cj-job-copy">
+            <strong>{view.proposedDateLabel}</strong>
+          </p>
+          <p className="cj-job-copy">
+            {PORTAL_AVAILABILITY_COPY.proposedAlternativeHint}
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="cj-job-section-title">Proposed booking</h2>
+          <p className="cj-job-copy">
+            <strong>{view.proposedDateLabel}</strong>
+          </p>
+          <p className="cj-job-copy">
+            {view.canAcceptProposal
+              ? "New date proposed. Accept the proposal and this date together, or request another date."
+              : "Confirm this date if it works, or request another date."}
+          </p>
+        </>
+      )}
 
       {error ? (
         <p className="cj-portal-error" role="alert">
@@ -1181,19 +1367,36 @@ function ProposedBookingCard({
             <button
               type="submit"
               className="cj-btn-primary"
-              disabled={acceptDatePending}
+              disabled={acceptDatePending || declineSuggestionPending}
             >
               {acceptDatePending
                 ? "Saving…"
                 : view.canAcceptProposal
                   ? "Accept proposal & date"
-                  : "Confirm date"}
+                  : pendingAlternative
+                    ? "Accept new date"
+                    : "Confirm date"}
             </button>
           </form>
+          {pendingAlternative ? (
+            <form action={declineSuggestionAction}>
+              <input type="hidden" name="token" value={view.token} />
+              <button
+                type="submit"
+                className="cj-btn-secondary"
+                disabled={acceptDatePending || declineSuggestionPending}
+              >
+                {declineSuggestionPending
+                  ? "Saving…"
+                  : PORTAL_AVAILABILITY_COPY.keepConfirmedBookingButton}
+              </button>
+            </form>
+          ) : null}
           <button
             type="button"
             className="cj-btn-secondary"
             onClick={() => setMode("change_date")}
+            disabled={acceptDatePending || declineSuggestionPending}
           >
             Request a change
           </button>

@@ -478,7 +478,12 @@ export function buildConversationResolutionSummary(
       time: slot?.timeHm,
     }
   );
+  const pendingDateChangeAttention =
+    options.attentionReason === "customer_requested_date_change";
+  // A confirmed booking with a pending date-change request is not resolved —
+  // the persisted slot is the current booking, not the customer's new ask.
   const dateAlreadyResolved =
+    !pendingDateChangeAttention &&
     (options.dateState === "confirmed" || options.dateState === "provisional") &&
     (persistedMatchesSlot || !slot?.dateIso);
   const requested = extractRequestedSchedule({

@@ -34,13 +34,18 @@ import {
   applyCustomerRequestAnotherDate,
   buildDateWorkflowSnapshot,
   nextStatusAfterDateResolved,
+  parsePendingDateSuggestion,
 } from "@/lib/proposals/date-workflow";
 import {
+  clearPendingDateSuggestion,
   hasOtherUnresolvedWorkRequests,
   promoteBookedJobIfReady,
+  recordPendingDateChangeRequest,
   releaseProposalDateHold,
 } from "@/lib/proposals/date-workflow-persist";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
+import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
+import { buildCustomerScheduleUpdateEmail } from "@/lib/email/transactional-events";
 
 export type CustomerPortalActionState = {
   ok?: boolean;
@@ -48,6 +53,7 @@ export type CustomerPortalActionState = {
   result?:
     | "accepted"
     | "question"
+    | "date_suggestion_declined"
     | "changes"
     | "date_accepted"
     | "date_change_requested"
@@ -345,8 +351,7 @@ async function submitAttentionMessage(
 }
 
 /**
- * Customer accepts a provisional date proposed by the trader.
- * Confirms booking_confirmation only — does not silently rewrite other fields.
+ * Customer accepts a provisional date, or a pending alternative on a booked job.
  */
 export async function acceptProposedScheduleDate(
   _prev: CustomerPortalActionState,
@@ -365,6 +370,10 @@ export async function acceptProposedScheduleDate(
   const supabase = createPortalClient();
   if (!supabase) {
     return { error: "The proposal portal is not configured yet." };
+  }
+
+  if (loaded.view.hasPendingDateSuggestion) {
+    return acceptPendingDateSuggestion(loaded, supabase, token);
   }
 
   const snapshot = buildDateWorkflowSnapshot({
@@ -467,6 +476,250 @@ export async function acceptProposedScheduleDate(
   return { ok: true, result: "date_accepted" };
 }
 
+async function acceptPendingDateSuggestion(
+  loaded: Extract<
+    Awaited<ReturnType<typeof loadPublicProposalByToken>>,
+    { ok: true }
+  >,
+  supabase: NonNullable<ReturnType<typeof createPortalClient>>,
+  token: string
+): Promise<CustomerPortalActionState> {
+  const suggestion = parsePendingDateSuggestion(
+    loaded.proposal.pending_date_suggestion
+  );
+  if (!suggestion) {
+    return { error: "There is no suggested date waiting for your response." };
+  }
+
+  const nowMs = Date.now();
+  const occupied = await loadWorkspaceOccupiedSlots(
+    supabase,
+    loaded.workspaceId,
+    new Date(nowMs)
+  );
+  if (
+    isSlotTakenByOther(
+      {
+        startDate: suggestion.date,
+        endDate: suggestion.date,
+        startTime: suggestion.time,
+      },
+      occupied,
+      loaded.proposal.id,
+      new Date(nowMs)
+    )
+  ) {
+    return {
+      error:
+        "That suggested time is no longer available. Keep your current booking or ask for another date.",
+    };
+  }
+
+  const dateLabel =
+    loaded.view.proposedDateLabel ||
+    formatSlotLabel({
+      dateIso: suggestion.date,
+      dateText: suggestion.text,
+      timeHm: suggestion.time,
+    }) ||
+    suggestion.date;
+  const previousLabel = loaded.view.confirmedBookingLabel;
+  const plannedFields = plannedStartToDbFields({
+    plannedStartDate:
+      suggestion.text ||
+      buildScheduleDateLabel({
+        dateIso: suggestion.date,
+        time: suggestion.time,
+      }),
+    plannedStartDateExact: suggestion.date,
+  });
+  const now = new Date(nowMs).toISOString();
+
+  const { data: updated, error: updateError } = await supabase
+    .from("proposals")
+    .update({
+      ...plannedFields,
+      planned_start_time: suggestion.time,
+      booking_confirmation: "confirmed",
+      pending_date_suggestion: null,
+      attention_reason: null,
+      status: "booked",
+    })
+    .eq("id", loaded.proposal.id)
+    .eq("status", "booked")
+    .eq("booking_confirmation", "confirmed")
+    .not("pending_date_suggestion", "is", null)
+    .select("id")
+    .maybeSingle();
+
+  if (updateError) {
+    return { error: updateError.message || "Could not confirm this date." };
+  }
+  if (!updated) {
+    // Idempotent: already accepted or cleared.
+    return { ok: true, result: "date_accepted" };
+  }
+
+  await supabase.from("proposal_customer_messages").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    kind: "question",
+    direction: "customer",
+    body: previousLabel
+      ? `Yes, ${dateLabel} works for me instead of ${previousLabel}.`
+      : `Yes, ${dateLabel} works for me.`,
+    created_by: null,
+  });
+
+  await supabase.from("proposal_status_events").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    event_type: "status_change",
+    from_status: "booked",
+    to_status: "booked",
+    note: `Customer accepted alternative date: ${dateLabel}`,
+    metadata: {
+      source: "customer_portal",
+      action: "accept_pending_date_suggestion",
+      booking_confirmation: "confirmed",
+      previous_confirmed_label: previousLabel,
+      planned_start_label: dateLabel,
+      released_previous_booking: true,
+    },
+    created_by: null,
+    created_at: now,
+  });
+
+  await promoteBookedJobIfReady(
+    supabase,
+    {
+      ...loaded.proposal,
+      status: "booked",
+      booking_confirmation: "confirmed",
+      planned_start_date: suggestion.date,
+      planned_start_time: suggestion.time,
+      pending_date_suggestion: null,
+    },
+    { acceptedAt: now }
+  );
+
+  const traderEmail = loaded.workspace.contact_email?.trim() || null;
+  if (traderEmail) {
+    const notification = buildTraderMessageNotification({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      proposalNumber: loaded.view.proposalNumber,
+      preview: `Accepted alternative date: ${dateLabel}`,
+      proposalId: loaded.proposal.id,
+      kindLabel: "date confirmation",
+      jobTitle: loaded.view.title,
+    });
+    await notifyConversationParticipant({
+      to: traderEmail,
+      ...notification,
+      replyTo: loaded.proposal.customer_email,
+    });
+  }
+
+  if (loaded.proposal.customer_email?.trim()) {
+    const scheduleEmail = buildCustomerScheduleUpdateEmail({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      scheduleLabel: dateLabel,
+      confirmed: true,
+      portalToken: token,
+    });
+    await notifyConversationParticipant({
+      to: loaded.proposal.customer_email,
+      subject: scheduleEmail.subject,
+      message: scheduleEmail.text,
+      businessName: scheduleEmail.businessName,
+      ctaUrl: scheduleEmail.ctaUrl,
+      ctaLabel: scheduleEmail.ctaLabel,
+      html: scheduleEmail.html,
+      heading: scheduleEmail.heading,
+      preheader: scheduleEmail.preheader,
+      audience: scheduleEmail.audience,
+      replyTo: loaded.workspace.contact_email,
+    });
+  }
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+  revalidatePath("/calendar");
+
+  return { ok: true, result: "date_accepted" };
+}
+
+/** Customer keeps the confirmed booking and declines the builder's alternative. */
+export async function declinePendingDateSuggestion(
+  _prev: CustomerPortalActionState,
+  formData: FormData
+): Promise<CustomerPortalActionState> {
+  const token = getString(formData, "token");
+  const loaded = await loadPublicProposalByToken(token);
+  if (!loaded.ok) {
+    return { error: loaded.error };
+  }
+  if (!loaded.view.hasPendingDateSuggestion) {
+    return { error: "There is no suggested alternative to decline." };
+  }
+
+  const supabase = createPortalClient();
+  if (!supabase) {
+    return { error: "The proposal portal is not configured yet." };
+  }
+
+  const cleared = await clearPendingDateSuggestion(supabase, loaded.proposal, {
+    eventNote: loaded.view.confirmedBookingLabel
+      ? `Customer kept confirmed booking: ${loaded.view.confirmedBookingLabel}`
+      : "Customer declined the suggested alternative and kept the confirmed booking.",
+    metadata: {
+      action: "decline_pending_date_suggestion",
+      declined_label: loaded.view.proposedDateLabel,
+    },
+  });
+  if (cleared.error) {
+    return { error: cleared.error };
+  }
+
+  await supabase.from("proposal_customer_messages").insert({
+    workspace_id: loaded.workspaceId,
+    proposal_id: loaded.proposal.id,
+    kind: "question",
+    direction: "customer",
+    body: loaded.view.confirmedBookingLabel
+      ? `I'll keep my booking on ${loaded.view.confirmedBookingLabel}.`
+      : "I'll keep my current booking.",
+    created_by: null,
+  });
+
+  const traderEmail = loaded.workspace.contact_email?.trim() || null;
+  if (traderEmail) {
+    const notification = buildTraderMessageNotification({
+      businessName: loaded.workspace.business_name,
+      customerName: loaded.view.customerName,
+      proposalNumber: loaded.view.proposalNumber,
+      preview: loaded.view.confirmedBookingLabel
+        ? `Keeping confirmed booking: ${loaded.view.confirmedBookingLabel}`
+        : "Customer kept the confirmed booking.",
+      proposalId: loaded.proposal.id,
+      kindLabel: "booking update",
+      jobTitle: loaded.view.title,
+    });
+    await notifyConversationParticipant({
+      to: traderEmail,
+      ...notification,
+      replyTo: loaded.proposal.customer_email,
+    });
+  }
+
+  await revalidateTraderViews(loaded.proposal.id);
+  revalidatePath(`/p/${token}`);
+
+  return { ok: true, result: "date_suggestion_declined" };
+}
+
 /**
  * Customer asks for a different date after a provisional proposal.
  */
@@ -518,8 +771,17 @@ export async function requestAnotherScheduleDate(
     return { error: loaded.error };
   }
 
-  if (!loaded.view.canRespond || loaded.view.isClosed) {
-    return { error: "This proposal is no longer open for replies." };
+  const keepConfirmedBooking = loaded.view.isAccepted;
+  const canSubmitScheduleRequest =
+    loaded.view.canRespond ||
+    loaded.view.canRequestScheduleChange ||
+    loaded.view.hasPendingDateSuggestion;
+  if (loaded.view.isClosed || !canSubmitScheduleRequest) {
+    return {
+      error: loaded.view.scheduleChangeRequestPending
+        ? "Your previous change request is still with your builder. Please wait for their reply."
+        : "This proposal is no longer open for replies.",
+    };
   }
 
   const supabase = createPortalClient();
@@ -527,7 +789,8 @@ export async function requestAnotherScheduleDate(
     return { error: "The proposal portal is not configured yet." };
   }
 
-  const currentDate = loaded.view.proposedDateLabel;
+  const currentDate =
+    loaded.view.proposedDateLabel || loaded.view.plannedStartLabel;
   const timeFocus = changeFocus === "time";
 
   const { error: messageError } = await supabase
@@ -558,21 +821,42 @@ export async function requestAnotherScheduleDate(
     return { error: messageError.message || "Could not send your message." };
   }
 
-  const release = applyCustomerRequestAnotherDate();
-  const released = await releaseProposalDateHold(supabase, loaded.proposal, {
-    nextStatus: "needs_attention",
-    eventNote: `${formatAttentionReason("customer_requested_date_change")}: ${message}`,
-    attentionReason: release.attentionReason,
-    metadata: {
-      action: timeFocus ? "request_another_time" : "request_another_date",
-      previous_proposed_date: currentDate,
-      requested_date: requestedDate || null,
-      requested_time: requestedTime || null,
-    },
-  });
+  if (loaded.view.hasPendingDateSuggestion) {
+    const cleared = await clearPendingDateSuggestion(supabase, loaded.proposal, {
+      eventNote: "Cleared suggested alternative after customer requested another date",
+      metadata: {
+        action: "clear_suggestion_before_new_request",
+      },
+    });
+    if (cleared.error) {
+      return { error: cleared.error };
+    }
+  }
 
-  if (released.error) {
-    return { error: released.error };
+  const release = applyCustomerRequestAnotherDate({ keepConfirmedBooking });
+  const eventNote = `${formatAttentionReason("customer_requested_date_change")}: ${message}`;
+  const metadata = {
+    action: timeFocus ? "request_another_time" : "request_another_date",
+    previous_proposed_date: currentDate,
+    requested_date: requestedDate || null,
+    requested_time: requestedTime || null,
+  };
+
+  const persisted = keepConfirmedBooking
+    ? await recordPendingDateChangeRequest(supabase, loaded.proposal, {
+        eventNote,
+        attentionReason: release.attentionReason,
+        metadata,
+      })
+    : await releaseProposalDateHold(supabase, loaded.proposal, {
+        nextStatus: "needs_attention",
+        eventNote,
+        attentionReason: release.attentionReason,
+        metadata,
+      });
+
+  if (persisted.error) {
+    return { error: persisted.error };
   }
 
   const traderEmail = loaded.workspace.contact_email?.trim() || null;

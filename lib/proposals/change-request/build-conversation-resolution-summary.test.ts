@@ -296,6 +296,32 @@ describe("buildConversationResolutionSummary", () => {
     );
   });
 
+  it("keeps Accept/Suggest visible when a booked job has a pending date change", () => {
+    const summary = buildConversationResolutionSummary(
+      [
+        msg({
+          id: "d2",
+          kind: "change_request",
+          body: "I'd like a different date instead of Wednesday 11 November · 09:00.\nRequested date: 2026-11-14\nRequested time: 14:00",
+          created_at: "2026-11-02T18:20:00.000Z",
+        }),
+      ],
+      new Date("2026-11-02T18:20:00.000Z"),
+      {
+        attentionReason: "customer_requested_date_change",
+        dateState: "confirmed",
+        persistedDate: "2026-11-11",
+        persistedTime: "09:00",
+        proposalAccepted: true,
+      }
+    );
+
+    expect(summary.hasActiveAttention).toBe(true);
+    expect(summary.showAcceptRequestedDate).toBe(true);
+    expect(summary.requestedStartExact).toBe("2026-11-14");
+    expect(summary.requestedStartTime).toBe("14:00");
+  });
+
   it("displays the exact requested time from a spoken time change", () => {
     const summary = buildConversationResolutionSummary(
       [

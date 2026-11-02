@@ -167,15 +167,76 @@ export function applyCustomerConfirmDate(current: DateSlotState): {
   return { next: "confirmed", changed: true, acceptsProposal: false };
 }
 
-export function applyCustomerRequestAnotherDate(): {
+export function applyCustomerRequestAnotherDate(options?: {
+  /** Keep a confirmed booking while the builder reviews the change. */
+  keepConfirmedBooking?: boolean;
+}): {
   next: DateSlotState;
-  releaseHold: true;
+  releaseHold: boolean;
   attentionReason: "customer_requested_date_change";
 } {
+  if (options?.keepConfirmedBooking) {
+    return {
+      next: "confirmed",
+      releaseHold: false,
+      attentionReason: "customer_requested_date_change",
+    };
+  }
   return {
     next: "none",
     releaseHold: true,
     attentionReason: "customer_requested_date_change",
+  };
+}
+
+/**
+ * Builder Suggest on a booked job with a pending date-change request.
+ * Confirmed booking stays put; alternative is stored separately until accepted.
+ */
+export function applyTraderSuggestAlternativeFromConfirmed(): {
+  next: "confirmed";
+  changed: false;
+  notifyCustomer: true;
+  storesPendingSuggestion: true;
+} {
+  return {
+    next: "confirmed",
+    changed: false,
+    notifyCustomer: true,
+    storesPendingSuggestion: true,
+  };
+}
+
+export type PendingDateSuggestion = {
+  date: string;
+  time: string;
+  text?: string | null;
+  suggested_at: string;
+  suggested_by?: string | null;
+};
+
+export function parsePendingDateSuggestion(
+  value: unknown
+): PendingDateSuggestion | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const row = value as Record<string, unknown>;
+  const date = typeof row.date === "string" ? row.date.trim() : "";
+  const time = typeof row.time === "string" ? row.time.trim() : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
+    return null;
+  }
+  return {
+    date,
+    time,
+    text: typeof row.text === "string" ? row.text : null,
+    suggested_at:
+      typeof row.suggested_at === "string" && row.suggested_at.trim()
+        ? row.suggested_at
+        : new Date(0).toISOString(),
+    suggested_by:
+      typeof row.suggested_by === "string" ? row.suggested_by : null,
   };
 }
 

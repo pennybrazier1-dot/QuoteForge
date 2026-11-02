@@ -135,6 +135,24 @@ describe("homepage lifecycle buckets", () => {
     expect(item.bucket).toBe("waiting_for_customers");
   });
 
+  it("puts a booked job with a pending date change in Needs attention", () => {
+    const item = classifyHomeProposal(
+      proposal({
+        id: "p-booked-change",
+        status: "booked",
+        accepted_at: "2026-08-08T12:00:00.000Z",
+        attention_reason: "customer_requested_date_change",
+        booking_confirmation: "confirmed",
+        planned_start_date: "2026-08-20",
+        planned_start_time: "09:00",
+      }),
+      now
+    );
+    expect(item.bucket).toBe("needs_attention");
+    expect(item.notes[0]).toMatch(/date change/i);
+    expect(item.snapshot.isBookedJob).toBe(true);
+  });
+
   it("puts an accepted proposal without a date in Jobs to schedule", () => {
     const item = classifyHomeProposal(
       proposal({

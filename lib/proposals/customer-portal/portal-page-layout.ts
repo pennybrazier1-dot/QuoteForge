@@ -141,6 +141,18 @@ export const PORTAL_AVAILABILITY_COPY = {
   requestTimeButton: "Request this time",
   showMore: "Show more dates",
   initialLimit: 5,
+  bookedChangeTitle: "Need a different date or time?",
+  bookedChangeHint:
+    "Request a change and we'll check with your builder. Your current booking stays confirmed until a new date or time is agreed.",
+  bookedChangePendingTitle: "Change request sent",
+  bookedChangePendingCopy:
+    "Your change request has been sent to your builder. Your existing booking remains confirmed until a new date or time is agreed.",
+  bookedChangeButton: "Request a change",
+  confirmedBookingHeading: "Current confirmed booking",
+  proposedAlternativeHeading: "Proposed new date",
+  proposedAlternativeHint:
+    "Awaiting your response. This suggestion is not reserved until you accept it.",
+  keepConfirmedBookingButton: "Keep current booking",
 } as const;
 
 /** Local YYYY-MM-DD for native date inputs (tomorrow-safe min = today). */

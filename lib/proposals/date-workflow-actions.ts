@@ -8,6 +8,7 @@ import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/me
 import {
   applyTraderConfirmDate,
   applyTraderProvisionalHold,
+  applyTraderSuggestAlternativeFromConfirmed,
   buildDateWorkflowSnapshot,
   nextStatusAfterDateResolved,
   sameDateSlot,
@@ -17,6 +18,7 @@ import {
   notifyCustomerProposedDate,
   persistProposalDateSlot,
   promoteBookedJobIfReady,
+  recordPendingDateSuggestion,
   type DateWorkflowProposalRow,
 } from "@/lib/proposals/date-workflow-persist";
 import { formatSlotLabel } from "@/lib/proposals/revision/conversation-agreements";
@@ -47,7 +49,7 @@ function revalidateDatePaths(proposalId: string, portalToken?: string | null) {
 }
 
 const DATE_SELECT =
-  "id, status, workspace_id, accepted_at, booking_confirmation, planned_start_date, planned_start_time, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, materials, customer_access_token, proposal_number";
+  "id, status, workspace_id, accepted_at, booking_confirmation, attention_reason, pending_date_suggestion, planned_start_date, planned_start_date_text, planned_start_time, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, materials, customer_access_token, proposal_number";
 
 async function loadTraderProposal(proposalId: string): Promise<
   | { ok: true; userId: string; proposal: DateWorkflowProposalRow }
@@ -207,7 +209,59 @@ export async function holdConversationDate(
     plannedStartTime: loaded.proposal.planned_start_time,
   });
 
-  if (snapshot.dateState === "confirmed") {
+  const pendingBookedDateChange =
+    snapshot.dateState === "confirmed" &&
+    normalizeProposalStatus(loaded.proposal.status) === "booked" &&
+    loaded.proposal.attention_reason === "customer_requested_date_change";
+
+  if (snapshot.dateState === "confirmed" && !pendingBookedDateChange) {
+    revalidateDatePaths(proposalId, loaded.proposal.customer_access_token);
+    redirect(`/proposals/${proposalId}`);
+  }
+
+  const slotLabel = formatSlotLabel({
+    dateIso,
+    dateText,
+    timeHm,
+  });
+  const confirmedBookingLabel = formatSlotLabel({
+    dateIso: loaded.proposal.planned_start_date,
+    dateText: loaded.proposal.planned_start_date_text,
+    timeHm: loaded.proposal.planned_start_time,
+  });
+
+  const supabase = await createClient();
+
+  if (pendingBookedDateChange) {
+    const transition = applyTraderSuggestAlternativeFromConfirmed();
+    const suggestionText =
+      dateText ||
+      buildScheduleDateLabel({
+        dateIso,
+        time: timeHm,
+      });
+    const saved = await recordPendingDateSuggestion(supabase, loaded.proposal, {
+      suggestion: {
+        date: dateIso,
+        time: timeHm,
+        text: suggestionText,
+        suggested_at: new Date().toISOString(),
+        suggested_by: loaded.userId,
+      },
+      userId: loaded.userId,
+      eventNote: `Suggested alternative date (booking kept): ${slotLabel}`,
+      metadata: {
+        previous_confirmed_label: confirmedBookingLabel,
+      },
+    });
+    if (saved.error) {
+      return { error: saved.error };
+    }
+    if (transition.notifyCustomer) {
+      await notifyCustomerProposedDate(supabase, loaded.proposal, slotLabel, {
+        previousDateLabel: confirmedBookingLabel,
+      });
+    }
     revalidateDatePaths(proposalId, loaded.proposal.customer_access_token);
     redirect(`/proposals/${proposalId}`);
   }
@@ -223,7 +277,6 @@ export async function holdConversationDate(
       { date: dateIso, time: timeHm }
     );
 
-  const supabase = await createClient();
   const messages = await loadProposalCustomerMessages(supabase, proposalId);
   const nextStatus = snapshot.proposalAccepted
     ? normalizeProposalStatus(loaded.proposal.status) === "booked"
@@ -236,11 +289,6 @@ export async function holdConversationDate(
         proposalAccepted: false,
         hasOtherUnresolvedRequests: hasOtherUnresolvedWorkRequests(messages),
       });
-  const slotLabel = formatSlotLabel({
-    dateIso,
-    dateText,
-    timeHm,
-  });
 
   if (!alreadySameSlot) {
     const saved = await persistProposalDateSlot(supabase, loaded.proposal, {
@@ -259,6 +307,7 @@ export async function holdConversationDate(
       metadata: {
         action: "trader_provisional_hold",
       },
+      attentionReason: null,
     });
     if (saved.error) {
       return { error: saved.error };
@@ -266,15 +315,7 @@ export async function holdConversationDate(
   }
 
   if (transition.notifyCustomer && !alreadySameSlot) {
-    await notifyCustomerProposedDate(
-      supabase,
-      {
-        ...loaded.proposal,
-        planned_start_date: dateIso,
-        planned_start_time: timeHm,
-      },
-      slotLabel
-    );
+    await notifyCustomerProposedDate(supabase, loaded.proposal, slotLabel);
   }
 
   revalidateDatePaths(proposalId, loaded.proposal.customer_access_token);

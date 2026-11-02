@@ -201,9 +201,9 @@ describe("global Reanvil transactional email shell", () => {
     expectDarkShell(trader.html, { trader: true });
     expect(customer.heading).toBe("New date proposed");
     expect(customer.subject).toBe("Booking update from Carter & Sons Kitchens");
-    expect(customer.html).toContain("Previous date");
-    expect(customer.html).toContain("New proposed date");
-    expect(customer.ctaLabel).toBe("Confirm date");
+    expect(customer.html).toContain("Current confirmed booking");
+    expect(customer.html).toContain("Proposed new date");
+    expect(customer.ctaLabel).toBe("Respond to date");
     expect(trader.subject).toBe("Jessica Walker requested another date");
   });
 

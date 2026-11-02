@@ -376,8 +376,12 @@ export function ProposalWorkspace({
     jobSummary: proposal.job_summary,
     proposalNumber: proposal.proposal_number,
   });
-  const builtResolutionSummary =
-    status === "needs_attention" && hasCustomerMessages
+  const showCustomerRequestPanel =
+    hasCustomerMessages &&
+    (status === "needs_attention" ||
+      (status === "booked" &&
+        proposal.attention_reason === "customer_requested_date_change"));
+  const builtResolutionSummary = showCustomerRequestPanel
       ? buildConversationResolutionSummary(customerMessages, new Date(), {
           proposalAccepted,
           dateState: dateWorkflow.dateState,

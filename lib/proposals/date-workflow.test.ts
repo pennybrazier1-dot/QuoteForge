@@ -4,12 +4,14 @@ import {
   applyCustomerRequestAnotherDate,
   applyTraderConfirmDate,
   applyTraderProvisionalHold,
+  applyTraderSuggestAlternativeFromConfirmed,
   bookingConfirmationAfterAccept,
   buildDateWorkflowSnapshot,
   HOLD_SCREEN_COPY,
   isBookedJob,
   needsScheduleJob,
   nextStatusAfterDateResolved,
+  parsePendingDateSuggestion,
   readDateSlotState,
 } from "@/lib/proposals/date-workflow";
 
@@ -43,6 +45,43 @@ describe("date workflow states", () => {
     expect(result.next).toBe("none");
     expect(result.releaseHold).toBe(true);
     expect(result.attentionReason).toBe("customer_requested_date_change");
+  });
+
+  it("keeps a confirmed booking when requesting a change after booking", () => {
+    const result = applyCustomerRequestAnotherDate({
+      keepConfirmedBooking: true,
+    });
+    expect(result.next).toBe("confirmed");
+    expect(result.releaseHold).toBe(false);
+    expect(result.attentionReason).toBe("customer_requested_date_change");
+  });
+
+  it("lets the trader suggest an alternative without replacing the confirmed booking", () => {
+    const result = applyTraderSuggestAlternativeFromConfirmed();
+    expect(result.next).toBe("confirmed");
+    expect(result.changed).toBe(false);
+    expect(result.storesPendingSuggestion).toBe(true);
+    expect(result.notifyCustomer).toBe(true);
+  });
+
+  it("parses a pending date suggestion payload", () => {
+    expect(
+      parsePendingDateSuggestion({
+        date: "2026-11-13",
+        time: "14:00",
+        text: "Friday 13 November · 14:00",
+        suggested_at: "2026-11-02T18:00:00.000Z",
+      })
+    ).toEqual({
+      date: "2026-11-13",
+      time: "14:00",
+      text: "Friday 13 November · 14:00",
+      suggested_at: "2026-11-02T18:00:00.000Z",
+      suggested_by: null,
+    });
+    expect(parsePendingDateSuggestion({ date: "bad", time: "14:00" })).toBe(
+      null
+    );
   });
 
   it("lets the trader confirm a conversation-agreed date without asking again", () => {

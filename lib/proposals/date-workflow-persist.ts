@@ -7,6 +7,7 @@ import {
   buildDateWorkflowSnapshot,
   isBookedJob,
   type DateSlotState,
+  type PendingDateSuggestion,
 } from "@/lib/proposals/date-workflow";
 import { plannedStartToDbFields } from "@/lib/proposals/planned-start-date";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
@@ -20,7 +21,10 @@ export type DateWorkflowProposalRow = {
   status: string;
   accepted_at?: string | null;
   booking_confirmation?: string | null;
+  attention_reason?: string | null;
+  pending_date_suggestion?: PendingDateSuggestion | null;
   planned_start_date?: string | null;
+  planned_start_date_text?: string | null;
   planned_start_time?: string | null;
   customer_id?: string | null;
   customer_name?: string | null;
@@ -232,10 +236,155 @@ export async function releaseProposalDateHold(
   return {};
 }
 
+/**
+ * Records a post-booking date/time change request without clearing the
+ * confirmed slot. Status stays `booked`; only attention_reason is set.
+ */
+export async function recordPendingDateChangeRequest(
+  supabase: SupabaseClient,
+  proposal: DateWorkflowProposalRow,
+  input: {
+    userId?: string | null;
+    eventNote: string;
+    attentionReason: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("proposals")
+    .update({
+      attention_reason: input.attentionReason,
+    })
+    .eq("id", proposal.id)
+    .eq("status", "booked");
+
+  if (error) {
+    return {
+      error: error.message || "Could not save this booking change request.",
+    };
+  }
+
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: input.userId ?? null,
+    eventType: "status_change",
+    fromStatus: proposal.status,
+    toStatus: proposal.status,
+    note: input.eventNote,
+    metadata: {
+      source: "date_workflow",
+      action: "pending_date_change_request",
+      keeps_confirmed_booking: true,
+      ...input.metadata,
+    },
+  });
+
+  return {};
+}
+
+/**
+ * Stores a builder alternative on a booked job without touching the confirmed
+ * planned_start_* slot. Clears trader Needs Attention (ball is with customer).
+ */
+export async function recordPendingDateSuggestion(
+  supabase: SupabaseClient,
+  proposal: DateWorkflowProposalRow,
+  input: {
+    suggestion: PendingDateSuggestion;
+    userId?: string | null;
+    eventNote: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<{ error?: string }> {
+  const { data, error } = await supabase
+    .from("proposals")
+    .update({
+      pending_date_suggestion: input.suggestion,
+      attention_reason: null,
+    })
+    .eq("id", proposal.id)
+    .eq("status", "booked")
+    .eq("booking_confirmation", "confirmed")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return {
+      error: error.message || "Could not save the suggested alternative.",
+    };
+  }
+  if (!data) {
+    return {
+      error:
+        "Could not suggest an alternative while keeping the confirmed booking.",
+    };
+  }
+
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: input.userId ?? null,
+    eventType: "status_change",
+    fromStatus: proposal.status,
+    toStatus: proposal.status,
+    note: input.eventNote,
+    metadata: {
+      source: "date_workflow",
+      action: "trader_suggest_alternative",
+      keeps_confirmed_booking: true,
+      pending_date_suggestion: input.suggestion,
+      ...input.metadata,
+    },
+  });
+
+  return {};
+}
+
+export async function clearPendingDateSuggestion(
+  supabase: SupabaseClient,
+  proposal: DateWorkflowProposalRow,
+  input: {
+    userId?: string | null;
+    eventNote: string;
+    metadata?: Record<string, unknown>;
+  }
+): Promise<{ error?: string }> {
+  const { error } = await supabase
+    .from("proposals")
+    .update({ pending_date_suggestion: null })
+    .eq("id", proposal.id);
+
+  if (error) {
+    return {
+      error: error.message || "Could not clear the suggested alternative.",
+    };
+  }
+
+  await recordProposalEvent(supabase, {
+    workspaceId: proposal.workspace_id,
+    proposalId: proposal.id,
+    userId: input.userId ?? null,
+    eventType: "status_change",
+    fromStatus: proposal.status,
+    toStatus: proposal.status,
+    note: input.eventNote,
+    metadata: {
+      source: "date_workflow",
+      action: "clear_pending_date_suggestion",
+      keeps_confirmed_booking: true,
+      ...input.metadata,
+    },
+  });
+
+  return {};
+}
+
 export async function notifyCustomerProposedDate(
   supabase: SupabaseClient,
   proposal: DateWorkflowProposalRow,
-  slotLabel: string
+  slotLabel: string,
+  options?: { previousDateLabel?: string | null }
 ): Promise<void> {
   const token = proposal.customer_access_token?.trim();
   const email = proposal.customer_email?.trim();
@@ -254,6 +403,7 @@ export async function notifyCustomerProposedDate(
     customerName: proposal.customer_name,
     slotLabel,
     portalToken: token,
+    previousDateLabel: options?.previousDateLabel,
   });
 
   await notifyConversationParticipant({

@@ -294,8 +294,17 @@ describe("customer portal page layout", () => {
       "utf8"
     );
     expect(loader).toContain("shouldOfferAvailability");
-    expect(loader).toContain("!isAccepted");
+    expect(loader).toContain("canRequestScheduleChange");
     expect(loader).toContain("loadPublicAvailabilityForProposal");
+  });
+
+  it("explains that booked change requests keep the confirmed booking", () => {
+    expect(PORTAL_AVAILABILITY_COPY.bookedChangePendingCopy).toContain(
+      "existing booking remains confirmed"
+    );
+    expect(PORTAL_AVAILABILITY_COPY.bookedChangeHint).toContain(
+      "stays confirmed until a new date or time is agreed"
+    );
   });
 
   it("keeps the customer proposal page responsive", () => {

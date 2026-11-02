@@ -35,7 +35,11 @@ import {
   scheduleModeForDuration,
   splitPublicAvailability,
 } from "@/lib/proposals/customer-availability";
-import { readDateSlotState } from "@/lib/proposals/date-workflow";
+import {
+  parsePendingDateSuggestion,
+  readDateSlotState,
+  type PendingDateSuggestion,
+} from "@/lib/proposals/date-workflow";
 import {
   formatPortalIssuedLabel,
   formatPortalWorkDate,
@@ -57,12 +61,26 @@ export type PublicProposalViewModel = {
   isClosed: boolean;
   isJobClosed: boolean;
   payment: CustomerPortalPaymentView | null;
-  /** Trader proposed a provisional date; customer must accept or request another. */
+  /** Trader proposed a provisional date or a pending alternative on a booked job. */
   canRespondToProposedDate: boolean;
   proposedDateLabel: string | null;
+  /**
+   * True when the proposed date is a pending alternative on top of a confirmed
+   * booking (not a classic provisional hold).
+   */
+  hasPendingDateSuggestion: boolean;
+  /** Confirmed booking label when a pending alternative is waiting. */
+  confirmedBookingLabel: string | null;
   /** Final Accept is only shown when an exact work slot is already set. */
   canAcceptProposal: boolean;
   needsDateChoice: boolean;
+  /**
+   * Booked jobs can still request a date/time change. The confirmed booking
+   * stays in place until the builder accepts or the customer confirms a Suggest.
+   */
+  canRequestScheduleChange: boolean;
+  /** True while a post-booking date/time change request awaits the builder. */
+  scheduleChangeRequestPending: boolean;
   scheduleMode: "range" | "appointment" | null;
   availabilitySlots: PublicAvailabilitySlot[];
   moreAvailabilitySlots: PublicAvailabilitySlot[];
@@ -99,6 +117,8 @@ type PortalProposalRow = ProposalPdfSource & {
   customer_id: string | null;
   job_address: string | null;
   booking_confirmation?: string | null;
+  attention_reason?: string | null;
+  pending_date_suggestion?: PendingDateSuggestion | null;
   planned_start_time?: string | null;
   booking_window?: unknown;
   payment_status?: string | null;
@@ -150,7 +170,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, planned_start_time, booking_window, payment_status, payment_due_amount, payment_methods_issued, paid_at, payment_method, closed_at, issued_bank_account_name, issued_bank_sort_code, issued_bank_account_number, issued_bank_reference, issued_payment_url`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, attention_reason, pending_date_suggestion, planned_start_time, booking_window, payment_status, payment_due_amount, payment_methods_issued, paid_at, payment_method, closed_at, issued_bank_account_name, issued_bank_sort_code, issued_bank_account_number, issued_bank_reference, issued_payment_url`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -160,6 +180,9 @@ export async function loadPublicProposalByToken(
   }
 
   const row = proposal as PortalProposalRow;
+  row.pending_date_suggestion = parsePendingDateSuggestion(
+    (proposal as { pending_date_suggestion?: unknown }).pending_date_suggestion
+  );
 
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
@@ -244,10 +267,32 @@ export async function loadPublicProposalByToken(
           new Date(row.planned_start_date)
         )
       : null);
+  const pendingSuggestion = parsePendingDateSuggestion(
+    row.pending_date_suggestion
+  );
+  const pendingSuggestionLabel = pendingSuggestion
+    ? formatSlotLabel({
+        dateIso: pendingSuggestion.date,
+        dateText: pendingSuggestion.text,
+        timeHm: pendingSuggestion.time,
+      })
+    : null;
+  const hasPendingDateSuggestion =
+    status === "booked" &&
+    dateState === "confirmed" &&
+    Boolean(pendingSuggestion && pendingSuggestionLabel);
+  const canRespondToProvisional =
+    !isClosed && dateState === "provisional" && Boolean(plannedStartLabel);
   const canRespondToProposedDate =
-    !isClosed &&
-    dateState === "provisional" &&
-    Boolean(plannedStartLabel);
+    canRespondToProvisional || hasPendingDateSuggestion;
+  const proposedDateLabel = hasPendingDateSuggestion
+    ? pendingSuggestionLabel
+    : canRespondToProvisional
+      ? plannedStartLabel
+      : null;
+  const confirmedBookingLabel = hasPendingDateSuggestion
+    ? plannedStartLabel
+    : null;
   const canAcceptProposal = canShowFinalAccept({
     canRespond: canRespond && !isClosed,
     plannedStartDate: row.planned_start_date,
@@ -255,9 +300,23 @@ export async function loadPublicProposalByToken(
     estimatedDuration: row.estimated_duration,
   });
   const needsDateChoice = canRespond && !isClosed && !canAcceptProposal;
+  const scheduleChangeRequestPending =
+    status === "booked" &&
+    row.attention_reason === "customer_requested_date_change" &&
+    !hasPendingDateSuggestion;
+  const canRequestScheduleChange =
+    status === "booked" &&
+    !isClosed &&
+    !isJobClosed &&
+    !scheduleChangeRequestPending &&
+    !hasPendingDateSuggestion;
   // Offer real calendar slots whenever the customer can still respond —
-  // including date/time change requests after a provisional date exists.
-  const shouldOfferAvailability = canRespond && !isClosed && !isAccepted;
+  // including date/time change requests after a provisional date exists,
+  // and after a confirmed booking when they ask to reschedule.
+  const shouldOfferAvailability =
+    (canRespond && !isClosed && !isAccepted) ||
+    canRequestScheduleChange ||
+    hasPendingDateSuggestion;
   const scheduleMode = shouldOfferAvailability
     ? scheduleModeForDuration(row.estimated_duration)
     : null;
@@ -299,9 +358,13 @@ export async function loadPublicProposalByToken(
       isJobClosed,
       payment,
       canRespondToProposedDate,
-      proposedDateLabel: canRespondToProposedDate ? plannedStartLabel : null,
+      proposedDateLabel,
+      hasPendingDateSuggestion,
+      confirmedBookingLabel,
       canAcceptProposal,
       needsDateChoice,
+      canRequestScheduleChange,
+      scheduleChangeRequestPending,
       scheduleMode,
       availabilitySlots,
       moreAvailabilitySlots,
