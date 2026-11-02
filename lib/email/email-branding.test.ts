@@ -59,7 +59,9 @@ describe("customer message email copy", () => {
     expect(email.html).toContain("#ff6a1a");
     expect(email.html).not.toMatch(/Your Business/i);
     expect(email.ctaUrl).toContain("view=conversation");
-    expect(email.ctaUrl).toContain("#proposal-conversation");
+    expect(email.ctaUrl).toContain("/p/");
+    expect(email.ctaUrl).not.toContain("#");
+    expect(email.ctaUrl).not.toContain("/proposals/");
 
     const headingHits = email.html.match(/<h1[^>]*>You have a new message<\/h1>/g) ?? [];
     expect(headingHits).toHaveLength(1);

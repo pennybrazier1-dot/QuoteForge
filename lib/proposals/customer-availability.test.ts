@@ -73,7 +73,17 @@ describe("customer-safe availability", () => {
 
     expect(slots.every((slot) => slot.kind === "appointment")).toBe(true);
     expect(slots.some((slot) => slot.startTime === "13:00")).toBe(true);
-    expect(slots[0]?.label).toMatch(/·/);
+    expect(slots[0]?.label).toMatch(/—/);
+    expect(slots[0]?.label).toMatch(/\b(am|pm)\b/i);
+  });
+
+  it("formats appointment times in customer-friendly 12-hour labels", () => {
+    expect(formatAppointmentLabel("2026-11-12", "09:00")).toBe(
+      "Thursday 12 November — 9:00 am"
+    );
+    expect(formatAppointmentLabel("2026-11-12", "13:00")).toBe(
+      "Thursday 12 November — 1:00 pm"
+    );
   });
 
   it("never exposes private calendar names or job titles", () => {

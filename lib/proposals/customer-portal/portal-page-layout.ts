@@ -129,11 +129,27 @@ export const PORTAL_DATE_CHANGE_VISUAL = {
 } as const;
 
 export const PORTAL_AVAILABILITY_COPY = {
-  emptyTitle: "No suitable dates are available in this period.",
+  offeredHeading: "Available appointments",
+  emptyTitle: "No appointments are currently listed.",
+  emptyHint: "You can still request a date and time that works for you.",
   emptyAction: "Request another timeframe",
+  customHeading: "None of these dates work?",
+  customHint:
+    "Choose another date and time, and we'll check with your builder.",
+  customHeadingWhenEmpty: "Request a date and time",
+  requestDateButton: "Request this date",
+  requestTimeButton: "Request this time",
   showMore: "Show more dates",
   initialLimit: 5,
 } as const;
+
+/** Local YYYY-MM-DD for native date inputs (tomorrow-safe min = today). */
+export function portalTodayIsoDate(now: Date = new Date()): string {
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 export function portalDateChangeCardsAreDark(): boolean {
   return !PORTAL_DATE_CHANGE_VISUAL.cardsAreWhite;
@@ -145,9 +161,16 @@ export function portalSlotCardCopy(slot: {
   startTime?: string;
   workingDays?: number;
 }): { title: string; subtitle: string | null } {
-  const [title, afterDot] = slot.label.split(" · ");
-  if (afterDot?.trim()) {
-    return { title: title.trim(), subtitle: afterDot.trim() };
+  const splitOn = slot.label.includes(" — ")
+    ? " — "
+    : slot.label.includes(" · ")
+      ? " · "
+      : null;
+  if (splitOn) {
+    const [title, afterDot] = slot.label.split(splitOn);
+    if (afterDot?.trim()) {
+      return { title: title.trim(), subtitle: afterDot.trim() };
+    }
   }
   if (slot.kind === "range") {
     const days = slot.workingDays;

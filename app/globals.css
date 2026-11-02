@@ -8433,6 +8433,45 @@ button.qf-booking-preview-day-selectable:focus-visible {
   white-space: normal;
 }
 
+/* Portal date/time: keep native Safari/iOS pickers tappable (see customer-journey.css). */
+.cj-portal-input[type="date"],
+.cj-portal-input[type="time"],
+input.cj-portal-field[type="date"],
+input.cj-portal-field[type="time"],
+.cj-portal-date-input,
+.cj-portal-time-input {
+  appearance: auto;
+  -webkit-appearance: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.cj-portal-custom-datetime {
+  display: grid;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-top: 0.35rem;
+  padding: 1rem 0.95rem;
+  box-sizing: border-box;
+  border: 1px solid var(--portal-border, rgba(255, 255, 255, 0.12));
+  border-radius: 1rem;
+  background: var(--background-card-inset, #16161e);
+}
+
+.cj-portal-availability-heading,
+.cj-portal-custom-datetime-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--portal-text, #f5f5f7);
+}
+
 /* Mobile New (+) action sheet */
 .qf-bottom-nav-primary {
   appearance: none;

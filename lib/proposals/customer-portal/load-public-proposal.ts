@@ -255,11 +255,14 @@ export async function loadPublicProposalByToken(
     estimatedDuration: row.estimated_duration,
   });
   const needsDateChoice = canRespond && !isClosed && !canAcceptProposal;
-  const scheduleMode = needsDateChoice
+  // Offer real calendar slots whenever the customer can still respond —
+  // including date/time change requests after a provisional date exists.
+  const shouldOfferAvailability = canRespond && !isClosed && !isAccepted;
+  const scheduleMode = shouldOfferAvailability
     ? scheduleModeForDuration(row.estimated_duration)
     : null;
 
-  const allAvailabilitySlots = needsDateChoice
+  const allAvailabilitySlots = shouldOfferAvailability
     ? await loadPublicAvailabilityForProposal(supabase, {
         workspaceId: row.workspace_id,
         proposalId: row.id,
@@ -303,7 +306,8 @@ export async function loadPublicProposalByToken(
       availabilitySlots,
       moreAvailabilitySlots,
       hasMoreAvailability: splitSlots.hasMore,
-      availabilityEmpty: needsDateChoice && allAvailabilitySlots.length === 0,
+      availabilityEmpty:
+        shouldOfferAvailability && allAvailabilitySlots.length === 0,
       selectedSlotLabel: canAcceptProposal ? plannedStartLabel : null,
       dateOfferSource,
       businessName: resolveCustomerFacingBusinessName(workspaceRow.business_name),

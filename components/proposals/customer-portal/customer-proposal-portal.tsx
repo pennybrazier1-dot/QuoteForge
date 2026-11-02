@@ -41,6 +41,7 @@ import {
   portalPreviewText,
   portalPrimaryActionLabel,
   portalSlotCardCopy,
+  portalTodayIsoDate,
   resolvePortalJobImageUrl,
   shouldShowThingsToConfirm,
 } from "@/lib/proposals/customer-portal/portal-page-layout";
@@ -127,6 +128,7 @@ function PortalAvailabilityList({
     return (
       <div className="cj-portal-availability-empty">
         <p className="cj-job-copy">{PORTAL_AVAILABILITY_COPY.emptyTitle}</p>
+        <p className="cj-portal-muted">{PORTAL_AVAILABILITY_COPY.emptyHint}</p>
         {onRequestTimeframe ? (
           <button
             type="button"
@@ -142,6 +144,9 @@ function PortalAvailabilityList({
 
   return (
     <>
+      <p className="cj-portal-availability-heading">
+        {PORTAL_AVAILABILITY_COPY.offeredHeading}
+      </p>
       <ul className="cj-portal-slot-list">
         {visible.map((slot) => (
             <li key={slot.id}>
@@ -164,6 +169,83 @@ function PortalAvailabilityList({
         </button>
       ) : null}
     </>
+  );
+}
+
+function PortalCustomDateTimeFields({
+  hasOfferedSlots,
+  includeDate,
+  includeTime,
+  requestedDate,
+  requestedTime,
+  onDateChange,
+  onTimeChange,
+  messageId,
+  messagePlaceholder,
+}: {
+  hasOfferedSlots: boolean;
+  includeDate: boolean;
+  includeTime: boolean;
+  requestedDate: string;
+  requestedTime: string;
+  onDateChange: (value: string) => void;
+  onTimeChange: (value: string) => void;
+  messageId: string;
+  messagePlaceholder: string;
+}) {
+  const minDate = portalTodayIsoDate();
+  return (
+    <div className="cj-portal-custom-datetime">
+      <p className="cj-portal-custom-datetime-title">
+        {hasOfferedSlots
+          ? PORTAL_AVAILABILITY_COPY.customHeading
+          : PORTAL_AVAILABILITY_COPY.customHeadingWhenEmpty}
+      </p>
+      <p className="cj-portal-muted">
+        {hasOfferedSlots
+          ? PORTAL_AVAILABILITY_COPY.customHint
+          : PORTAL_AVAILABILITY_COPY.emptyHint}
+      </p>
+      {includeDate ? (
+        <>
+          <label className="cj-portal-label" htmlFor={`${messageId}-date`}>
+            Preferred date
+          </label>
+          <input
+            id={`${messageId}-date`}
+            type="date"
+            min={minDate}
+            value={requestedDate}
+            onChange={(event) => onDateChange(event.target.value)}
+            className="cj-portal-input cj-portal-field cj-portal-date-input"
+          />
+        </>
+      ) : null}
+      {includeTime ? (
+        <>
+          <label className="cj-portal-label" htmlFor={`${messageId}-time`}>
+            Preferred time
+          </label>
+          <input
+            id={`${messageId}-time`}
+            type="time"
+            value={requestedTime}
+            onChange={(event) => onTimeChange(event.target.value)}
+            className="cj-portal-input cj-portal-field cj-portal-time-input"
+          />
+        </>
+      ) : null}
+      <label className="cj-portal-label" htmlFor={messageId}>
+        Anything else we should know? (optional)
+      </label>
+      <textarea
+        id={messageId}
+        name="message"
+        rows={3}
+        className="cj-portal-textarea"
+        placeholder={messagePlaceholder}
+      />
+    </div>
   );
 }
 
@@ -504,6 +586,10 @@ export function CustomerProposalPortal({
             error={error}
             mode={mode}
             setMode={setMode}
+            requestedDate={requestedDate}
+            requestedTime={requestedTime}
+            onRequestedDateChange={setRequestedDate}
+            onRequestedTimeChange={setRequestedTime}
             acceptDateAction={acceptDateAction}
             acceptDatePending={acceptDatePending}
             requestDateAction={requestDateAction}
@@ -598,6 +684,10 @@ export function CustomerProposalPortal({
           error={error}
           mode={mode}
           setMode={setMode}
+          requestedDate={requestedDate}
+          requestedTime={requestedTime}
+          onRequestedDateChange={setRequestedDate}
+          onRequestedTimeChange={setRequestedTime}
           acceptDateAction={acceptDateAction}
           acceptDatePending={acceptDatePending}
           requestDateAction={requestDateAction}
@@ -766,6 +856,17 @@ export function CustomerProposalPortal({
                 }}
                 onRequestTimeframe={() => setMode("change_date")}
               />
+              {view.availabilitySlots.length > 0 ||
+              view.moreAvailabilitySlots.length > 0 ? (
+                <button
+                  type="button"
+                  className="cj-btn-secondary"
+                  onClick={() => setMode("change_date")}
+                  disabled={acceptPending}
+                >
+                  {PORTAL_AVAILABILITY_COPY.customHeading}
+                </button>
+              ) : null}
               <div className="cj-portal-form-actions">
                 <button
                   type="submit"
@@ -805,7 +906,8 @@ export function CustomerProposalPortal({
               <input type="hidden" name="requestedDate" value={requestedDate} />
               <input type="hidden" name="requestedTime" value={requestedTime} />
               <p className="cj-job-copy">
-                Choose another available date, or tell us what would work.
+                Pick an offered appointment, or request a date and time that
+                works for you. This is a request — your builder will confirm.
               </p>
               <PortalAvailabilityList
                 slots={view.availabilitySlots}
@@ -818,25 +920,19 @@ export function CustomerProposalPortal({
                   setRequestedTime(next.startTime || "");
                 }}
               />
-              <label className="cj-portal-label" htmlFor="requested-date">
-                Date that would work
-              </label>
-              <input
-                id="requested-date"
-                type="date"
-                value={requestedDate}
-                onChange={(event) => setRequestedDate(event.target.value)}
-                className="cj-portal-input cj-portal-field"
-              />
-              <label className="cj-portal-label" htmlFor="request-date-message">
-                Anything else we should know? (optional)
-              </label>
-              <textarea
-                id="request-date-message"
-                name="message"
-                rows={3}
-                className="cj-portal-textarea"
-                placeholder="e.g. The week after works better."
+              <PortalCustomDateTimeFields
+                hasOfferedSlots={
+                  view.availabilitySlots.length > 0 ||
+                  view.moreAvailabilitySlots.length > 0
+                }
+                includeDate
+                includeTime
+                requestedDate={requestedDate}
+                requestedTime={requestedTime}
+                onDateChange={setRequestedDate}
+                onTimeChange={setRequestedTime}
+                messageId="request-date-message"
+                messagePlaceholder="e.g. The week after works better."
               />
               <div className="cj-portal-form-actions">
                 <button
@@ -844,7 +940,9 @@ export function CustomerProposalPortal({
                   className="cj-btn-primary"
                   disabled={requestDatePending}
                 >
-                  {requestDatePending ? "Sending…" : "Request this date"}
+                  {requestDatePending
+                    ? "Sending…"
+                    : PORTAL_AVAILABILITY_COPY.requestDateButton}
                 </button>
                 <button
                   type="button"
@@ -864,7 +962,8 @@ export function CustomerProposalPortal({
               <input type="hidden" name="changeFocus" value="time" />
               <input type="hidden" name="requestedTime" value={requestedTime} />
               <p className="cj-job-copy">
-                Choose another available time, or tell us what would work.
+                Pick an offered time, or request a time that works for you. This
+                is a request — your builder will confirm.
               </p>
               <PortalAvailabilityList
                 slots={view.availabilitySlots.filter((slot) => slot.startTime)}
@@ -874,25 +973,19 @@ export function CustomerProposalPortal({
                 matchBy="startTime"
                 onSelect={(next) => setRequestedTime(next.startTime || "")}
               />
-              <label className="cj-portal-label" htmlFor="requested-time">
-                Time that would work
-              </label>
-              <input
-                id="requested-time"
-                type="time"
-                value={requestedTime}
-                onChange={(event) => setRequestedTime(event.target.value)}
-                className="cj-portal-input cj-portal-field"
-              />
-              <label className="cj-portal-label" htmlFor="request-time-message">
-                Anything else we should know? (optional)
-              </label>
-              <textarea
-                id="request-time-message"
-                name="message"
-                rows={3}
-                className="cj-portal-textarea"
-                placeholder="e.g. Mornings are better."
+              <PortalCustomDateTimeFields
+                hasOfferedSlots={
+                  view.availabilitySlots.some((slot) => slot.startTime) ||
+                  view.moreAvailabilitySlots.some((slot) => slot.startTime)
+                }
+                includeDate={false}
+                includeTime
+                requestedDate={requestedDate}
+                requestedTime={requestedTime}
+                onDateChange={setRequestedDate}
+                onTimeChange={setRequestedTime}
+                messageId="request-time-message"
+                messagePlaceholder="e.g. Mornings are better."
               />
               <div className="cj-portal-form-actions">
                 <button
@@ -900,7 +993,9 @@ export function CustomerProposalPortal({
                   className="cj-btn-primary"
                   disabled={requestTimePending}
                 >
-                  {requestTimePending ? "Sending…" : "Request this time"}
+                  {requestTimePending
+                    ? "Sending…"
+                    : PORTAL_AVAILABILITY_COPY.requestTimeButton}
                 </button>
                 <button
                   type="button"
@@ -1036,6 +1131,10 @@ function ProposedBookingCard({
   error,
   mode,
   setMode,
+  requestedDate,
+  requestedTime,
+  onRequestedDateChange,
+  onRequestedTimeChange,
   acceptDateAction,
   acceptDatePending,
   requestDateAction,
@@ -1045,11 +1144,18 @@ function ProposedBookingCard({
   error: string | null;
   mode: PortalMode;
   setMode: (mode: PortalMode) => void;
+  requestedDate: string;
+  requestedTime: string;
+  onRequestedDateChange: (value: string) => void;
+  onRequestedTimeChange: (value: string) => void;
   acceptDateAction: (payload: FormData) => void;
   acceptDatePending: boolean;
   requestDateAction: (payload: FormData) => void;
   requestDatePending: boolean;
 }) {
+  const hasOfferedSlots =
+    view.availabilitySlots.length > 0 || view.moreAvailabilitySlots.length > 0;
+
   return (
     <section className="cj-job-card cj-portal-actions">
       <h2 className="cj-job-section-title">Proposed booking</h2>
@@ -1096,16 +1202,33 @@ function ProposedBookingCard({
         <form action={requestDateAction} className="cj-portal-form">
           <input type="hidden" name="token" value={view.token} />
           <input type="hidden" name="changeFocus" value="date" />
-          <label className="cj-portal-label" htmlFor="request-date-message-proposed">
-            What dates would work better?
-          </label>
-          <textarea
-            id="request-date-message-proposed"
-            name="message"
-            required
-            rows={4}
-            className="cj-portal-textarea"
-            placeholder="e.g. I’d prefer the week after, or mornings only."
+          <input type="hidden" name="requestedDate" value={requestedDate} />
+          <input type="hidden" name="requestedTime" value={requestedTime} />
+          <p className="cj-job-copy">
+            Pick an offered appointment, or request a date and time that works
+            for you. This is a request — your builder will confirm.
+          </p>
+          <PortalAvailabilityList
+            slots={view.availabilitySlots}
+            moreSlots={view.moreAvailabilitySlots}
+            name="availableDateProposed"
+            selectedValue={requestedDate}
+            matchBy="startDate"
+            onSelect={(next) => {
+              onRequestedDateChange(next.startDate);
+              onRequestedTimeChange(next.startTime || "");
+            }}
+          />
+          <PortalCustomDateTimeFields
+            hasOfferedSlots={hasOfferedSlots}
+            includeDate
+            includeTime
+            requestedDate={requestedDate}
+            requestedTime={requestedTime}
+            onDateChange={onRequestedDateChange}
+            onTimeChange={onRequestedTimeChange}
+            messageId="request-date-message-proposed"
+            messagePlaceholder="e.g. I’d prefer the week after, or mornings only."
           />
           <div className="cj-portal-form-actions">
             <button
@@ -1113,7 +1236,9 @@ function ProposedBookingCard({
               className="cj-btn-primary"
               disabled={requestDatePending}
             >
-              {requestDatePending ? "Sending…" : "Send date request"}
+              {requestDatePending
+                ? "Sending…"
+                : PORTAL_AVAILABILITY_COPY.requestDateButton}
             </button>
             <button
               type="button"

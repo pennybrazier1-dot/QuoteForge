@@ -202,6 +202,13 @@ describe("customer portal page layout", () => {
         startTime: "10:30",
       })
     ).toEqual({ title: "Tuesday 22 September", subtitle: "10:30" });
+    expect(
+      portalSlotCardCopy({
+        kind: "appointment",
+        label: "Thursday 12 November — 9:00 am",
+        startTime: "09:00",
+      })
+    ).toEqual({ title: "Thursday 12 November", subtitle: "9:00 am" });
   });
 
   it("keeps the date-request workflow and desktop portal layout unchanged", () => {
@@ -229,14 +236,66 @@ describe("customer portal page layout", () => {
   });
 
   it("uses the empty availability and show-more copy", () => {
-    expect(PORTAL_AVAILABILITY_COPY.emptyTitle).toBe(
-      "No suitable dates are available in this period."
+    expect(PORTAL_AVAILABILITY_COPY.offeredHeading).toBe(
+      "Available appointments"
     );
+    expect(PORTAL_AVAILABILITY_COPY.emptyTitle).toBe(
+      "No appointments are currently listed."
+    );
+    expect(PORTAL_AVAILABILITY_COPY.emptyHint).toBe(
+      "You can still request a date and time that works for you."
+    );
+    expect(PORTAL_AVAILABILITY_COPY.customHeading).toBe(
+      "None of these dates work?"
+    );
+    expect(PORTAL_AVAILABILITY_COPY.customHint).toContain(
+      "check with your builder"
+    );
+    expect(PORTAL_AVAILABILITY_COPY.requestDateButton).toBe("Request this date");
     expect(PORTAL_AVAILABILITY_COPY.emptyAction).toBe(
       "Request another timeframe"
     );
     expect(PORTAL_AVAILABILITY_COPY.showMore).toBe("Show more dates");
     expect(PORTAL_AVAILABILITY_COPY.initialLimit).toBe(5);
+  });
+
+  it("keeps Safari/iOS native date and time pickers tappable", () => {
+    const css = [
+      readFileSync(join(process.cwd(), "app/globals.css"), "utf8"),
+      readFileSync(join(process.cwd(), "app/customer-journey.css"), "utf8"),
+    ].join("\n");
+    const portal = readFileSync(
+      join(
+        process.cwd(),
+        "components/proposals/customer-portal/customer-proposal-portal.tsx"
+      ),
+      "utf8"
+    );
+    expect(css).toContain(
+      '.cj-portal-input:not([type="date"]):not([type="time"])'
+    );
+    expect(css).toMatch(
+      /\.cj-portal-input\[type="date"\][\s\S]*-webkit-appearance:\s*auto/
+    );
+    expect(css).toMatch(
+      /input\.cj-portal-field\[type="time"\][\s\S]*appearance:\s*auto/
+    );
+    expect(css).toContain(".cj-portal-date-input");
+    expect(css).toContain("pointer-events: auto");
+    expect(portal).toContain("PortalCustomDateTimeFields");
+    expect(portal).toContain('type="date"');
+    expect(portal).toContain('type="time"');
+    expect(portal).toContain("min={minDate}");
+  });
+
+  it("loads offered appointments for date-change as well as first choice", () => {
+    const loader = readFileSync(
+      join(process.cwd(), "lib/proposals/customer-portal/load-public-proposal.ts"),
+      "utf8"
+    );
+    expect(loader).toContain("shouldOfferAvailability");
+    expect(loader).toContain("!isAccepted");
+    expect(loader).toContain("loadPublicAvailabilityForProposal");
   });
 
   it("keeps the customer proposal page responsive", () => {

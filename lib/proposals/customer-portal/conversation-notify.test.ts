@@ -21,7 +21,8 @@ describe("conversation notifications", () => {
     expect(note.ctaUrl).toBe(buildCustomerConversationUrl("abc123token"));
     expect(note.ctaUrl).toContain("/p/abc123token");
     expect(note.ctaUrl).toContain("view=conversation");
-    expect(note.ctaUrl).toContain("#proposal-conversation");
+    expect(note.ctaUrl).not.toContain("#");
+    expect(note.ctaUrl).not.toContain("/proposals/");
     expect(note.ctaUrl).not.toContain("createCustomerAccessToken");
     expect(note.ctaLabel).toBe("View message");
     expect(note.html).toContain("#08080a");

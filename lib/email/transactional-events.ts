@@ -27,7 +27,12 @@ export function traderConversationUrl(proposalId: string): string {
 }
 
 export function customerConversationUrl(token: string): string {
-  return appendConversationDeepLink(buildCustomerProposalPortalUrl(token));
+  // Query deep-link is enough to open conversation. Omit #fragment so email
+  // clients cannot truncate or rewrite the portal path at the hash.
+  const deepLinked = appendConversationDeepLink(
+    buildCustomerProposalPortalUrl(token)
+  );
+  return deepLinked.split("#")[0] ?? deepLinked;
 }
 
 export type TraderActivityEvent =

@@ -72,7 +72,9 @@ describe("message email deep links", () => {
     const url = buildCustomerConversationUrl(token);
     expect(url).toContain(`/p/${token}`);
     expect(url).toContain("view=conversation");
-    expect(url).toContain("#proposal-conversation");
+    // Email CTAs omit #fragment so clients cannot truncate the portal path.
+    expect(url).not.toContain("#");
+    expect(url).not.toContain("/proposals/");
     expect(appendConversationDeepLink(`/p/${token}`)).toBe(
       `/p/${token}?view=conversation#proposal-conversation`
     );

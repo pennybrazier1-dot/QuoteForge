@@ -189,15 +189,31 @@ export function formatRangeLabel(startDate: string, endDate: string): string {
   return `${startDay} ${startMonth} – ${endDay} ${month}`;
 }
 
+export function formatPublicTimeLabel(timeHm: string): string {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(timeHm.trim());
+  if (!match) {
+    return timeHm;
+  }
+  const hour = Number(match[1]);
+  const minute = match[2];
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) {
+    return timeHm;
+  }
+  const suffix = hour >= 12 ? "pm" : "am";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return minute === "00" ? `${hour12}:00 ${suffix}` : `${hour12}:${minute} ${suffix}`;
+}
+
 export function formatAppointmentLabel(dateIso: string, timeHm: string): string {
   const date = parseLocalIso(dateIso);
+  const timeLabel = formatPublicTimeLabel(timeHm);
   if (!date) {
-    return `${dateIso} · ${timeHm}`;
+    return `${dateIso} — ${timeLabel}`;
   }
   const weekday = new Intl.DateTimeFormat("en-GB", { weekday: "long" }).format(date);
   const day = date.getDate();
   const month = new Intl.DateTimeFormat("en-GB", { month: "long" }).format(date);
-  return `${weekday} ${day} ${month} · ${timeHm}`;
+  return `${weekday} ${day} ${month} — ${timeLabel}`;
 }
 
 export function publicSlotHasPrivateData(slot: PublicAvailabilitySlot): boolean {
