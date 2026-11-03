@@ -1,17 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useActionState, useEffect, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { AuthError } from "@/components/auth/auth-shell";
+import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
 import { SectionCard } from "@/components/ui/section-card";
+import { buildSiteVisitModePath } from "@/lib/enquiries/site-visit-mode-link";
 import {
+  cancelVisitAction,
   completeVisitAction,
+  rescheduleVisitAction,
   startQuoteFromVisitAction,
   updateVisitNotesAction,
   type VisitActionState,
 } from "@/lib/visits/actions";
+import { buildCustomerVisitConfirmationUrl } from "@/lib/visits/customer-confirmation/token";
 import {
+  canCancelVisit,
+  canRescheduleVisit,
+} from "@/lib/visits/lifecycle";
+import {
+  VISIT_TIME_OPTIONS,
   formatVisitAddress,
   formatVisitDateLabel,
   formatVisitDuration,
@@ -19,11 +30,14 @@ import {
   formatVisitTimeLabel,
   formatVisitType,
   type VisitRecord,
+  type VisitStatus,
 } from "@/lib/visits/types";
 
 const notesInitialState: VisitActionState = {};
 const quoteInitialState: VisitActionState = {};
 const completeInitialState: VisitActionState = {};
+const rescheduleInitialState: VisitActionState = {};
+const cancelInitialState: VisitActionState = {};
 
 function SaveNotesButton() {
   const { pending } = useFormStatus();
@@ -60,6 +74,19 @@ function CompleteVisitButton({ disabled }: { disabled?: boolean }) {
   );
 }
 
+function RescheduleButton({ disabled }: { disabled?: boolean }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      className="qf-btn-primary"
+      disabled={disabled || pending}
+    >
+      {pending ? "Saving new time…" : "Save new date and time"}
+    </button>
+  );
+}
+
 function DetailField({
   label,
   id,
@@ -92,6 +119,7 @@ export function VisitDetailView({
   visit: VisitRecord;
   linkedProposal?: { id: string; proposal_number: string | null } | null;
 }) {
+  const router = useRouter();
   const [notesState, notesAction] = useActionState(
     updateVisitNotesAction,
     notesInitialState
@@ -104,18 +132,47 @@ export function VisitDetailView({
     completeVisitAction,
     completeInitialState
   );
+  const [rescheduleState, rescheduleAction] = useActionState(
+    rescheduleVisitAction,
+    rescheduleInitialState
+  );
+  const [cancelState, cancelAction] = useActionState(
+    cancelVisitAction,
+    cancelInitialState
+  );
   const [notes, setNotes] = useState(visit.notes);
+  const [rescheduleDate, setRescheduleDate] = useState(visit.visit_date);
+  const [rescheduleTime, setRescheduleTime] = useState(visit.visit_time ?? "");
+  const [cancelOpen, setCancelOpen] = useState(false);
+
+  useEffect(() => {
+    if (rescheduleState.ok || cancelState.ok || completeState.ok) {
+      router.refresh();
+    }
+  }, [rescheduleState.ok, cancelState.ok, completeState.ok, router]);
+
+  const displayStatus: VisitStatus = cancelState.ok
+    ? "cancelled"
+    : completeState.ok
+      ? "completed"
+      : visit.status;
 
   const address = formatVisitAddress(visit);
-  const timeLabel = formatVisitTimeLabel(visit.visit_time);
+  const timeLabel = formatVisitTimeLabel(
+    rescheduleState.ok ? rescheduleTime || null : visit.visit_time
+  );
+  const displayDate = rescheduleState.ok ? rescheduleDate : visit.visit_date;
   const visitWhen = [
-    formatVisitDateLabel(visit.visit_date),
+    formatVisitDateLabel(displayDate),
     timeLabel,
     formatVisitDuration(visit.duration_minutes),
   ]
     .filter(Boolean)
     .join(" · ");
-  const isCompleted = visit.status === "completed" || completeState.ok;
+  const isCompleted = displayStatus === "completed";
+  const isCancelled = displayStatus === "cancelled";
+  const allowReschedule = canRescheduleVisit(displayStatus);
+  const allowCancel = canCancelVisit(displayStatus);
   const canCreateQuote = Boolean(
     notes.trim() || visit.enquiry_summary.trim()
   );
@@ -142,10 +199,8 @@ export function VisitDetailView({
             <h1 className="qf-proposal-title mt-1">{visit.customer_name}</h1>
             <p className="qf-proposal-subtitle">{visitWhen}</p>
           </div>
-          <span
-            className={`qf-visit-status qf-visit-status-${isCompleted ? "completed" : visit.status}`}
-          >
-            {formatVisitStatus(isCompleted ? "completed" : visit.status)}
+          <span className={`qf-visit-status qf-visit-status-${displayStatus}`}>
+            {formatVisitStatus(displayStatus)}
           </span>
         </div>
       </header>
@@ -183,6 +238,86 @@ export function VisitDetailView({
             </div>
           </div>
         </SectionCard>
+
+        {visit.customer_access_token ? (
+          <SectionCard className="qf-card-form">
+            <h2 className="qf-card-heading">Customer confirmation</h2>
+            <p className="qf-body-text mt-2 text-muted">
+              Secure link that works on any device. It shows visit date, time
+              and address only — not your private notes.
+            </p>
+            <p className="qf-body-text mt-3 break-all">
+              {buildCustomerVisitConfirmationUrl(visit.customer_access_token)}
+            </p>
+            {visit.enquiry_id && !isCancelled ? (
+              <div className="mt-4">
+                <Link
+                  href={buildSiteVisitModePath(visit.enquiry_id, visit.id)}
+                  className="qf-btn-secondary"
+                >
+                  Open Site Visit Mode
+                </Link>
+              </div>
+            ) : null}
+          </SectionCard>
+        ) : null}
+
+        {allowReschedule ? (
+          <SectionCard className="qf-card-form">
+            <h2 className="qf-card-heading">Reschedule visit</h2>
+            <p className="qf-body-text mt-2 text-muted">
+              Change the appointment time on this visit. The same confirmation
+              link stays valid for the customer.
+            </p>
+            <form action={rescheduleAction} className="mt-5 space-y-4">
+              <input type="hidden" name="visitId" value={visit.id} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="rescheduleDate" className="qf-field-label">
+                    New date
+                  </label>
+                  <input
+                    id="rescheduleDate"
+                    name="visitDate"
+                    type="date"
+                    className="form-input mt-2"
+                    value={rescheduleDate}
+                    onChange={(event) => setRescheduleDate(event.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="rescheduleTime" className="qf-field-label">
+                    New time
+                  </label>
+                  <select
+                    id="rescheduleTime"
+                    name="visitTime"
+                    className="form-input mt-2"
+                    value={rescheduleTime}
+                    onChange={(event) => setRescheduleTime(event.target.value)}
+                  >
+                    <option value="">Time TBC</option>
+                    {VISIT_TIME_OPTIONS.map((time) => (
+                      <option key={time} value={time}>
+                        {formatVisitTimeLabel(time)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {rescheduleState.error ? (
+                <AuthError message={rescheduleState.error} />
+              ) : null}
+              {rescheduleState.ok && rescheduleState.notice ? (
+                <p className="qf-body-text text-muted" role="status">
+                  {rescheduleState.notice}
+                </p>
+              ) : null}
+              <RescheduleButton />
+            </form>
+          </SectionCard>
+        ) : null}
 
         <SectionCard className="qf-card-form qf-qq-prep-card">
           <div className="qf-qq-prep-head">
@@ -239,7 +374,7 @@ export function VisitDetailView({
             {quoteState.error ? (
               <AuthError message={quoteState.error} />
             ) : null}
-            <CreateQuoteButton disabled={!canCreateQuote} />
+            <CreateQuoteButton disabled={!canCreateQuote || isCancelled} />
           </form>
           {visit.customer_id ? (
             <div className="mt-3">
@@ -282,27 +417,89 @@ export function VisitDetailView({
           </SectionCard>
         ) : null}
 
-        <SectionCard className="qf-card-form">
-          <h2 className="qf-card-heading">Complete visit</h2>
-          <p className="qf-body-text mt-2 text-muted">
-            Mark this visit as done when you have finished on site.
-          </p>
-          {isCompleted ? (
-            <p className="qf-body-text mt-4" role="status">
-              This visit is marked complete.
+        {!isCancelled ? (
+          <SectionCard className="qf-card-form">
+            <h2 className="qf-card-heading">Complete visit</h2>
+            <p className="qf-body-text mt-2 text-muted">
+              Mark this visit as done when you have finished on site.
             </p>
-          ) : (
-            <form action={completeAction} className="mt-5 space-y-3">
-              <input type="hidden" name="visitId" value={visit.id} />
-              <input type="hidden" name="notes" value={notes} />
-              {completeState.error ? (
-                <AuthError message={completeState.error} />
+            {isCompleted ? (
+              <p className="qf-body-text mt-4" role="status">
+                This visit is marked complete.
+              </p>
+            ) : (
+              <form action={completeAction} className="mt-5 space-y-3">
+                <input type="hidden" name="visitId" value={visit.id} />
+                <input type="hidden" name="notes" value={notes} />
+                {completeState.error ? (
+                  <AuthError message={completeState.error} />
+                ) : null}
+                <CompleteVisitButton />
+              </form>
+            )}
+          </SectionCard>
+        ) : null}
+
+        <SectionCard className="qf-card-form">
+          <h2 className="qf-card-heading">Cancel visit</h2>
+          {isCancelled ? (
+            <p className="qf-body-text mt-2" role="status">
+              This visit is cancelled. Capture notes and photos are kept. The
+              customer confirmation link still opens and shows cancelled.
+            </p>
+          ) : allowCancel ? (
+            <>
+              <p className="qf-body-text mt-2 text-muted">
+                Cancels this appointment without deleting notes or photos. The
+                customer is not emailed automatically.
+              </p>
+              {cancelState.error ? (
+                <div className="mt-4">
+                  <AuthError message={cancelState.error} />
+                </div>
               ) : null}
-              <CompleteVisitButton />
-            </form>
+              {cancelState.ok && cancelState.notice ? (
+                <p className="qf-body-text mt-3 text-muted" role="status">
+                  {cancelState.notice}
+                </p>
+              ) : null}
+              <div className="mt-5">
+                <button
+                  type="button"
+                  className="qf-btn-secondary"
+                  onClick={() => setCancelOpen(true)}
+                >
+                  Cancel visit
+                </button>
+              </div>
+              <form id="cancel-visit-form" action={cancelAction} className="hidden">
+                <input type="hidden" name="visitId" value={visit.id} />
+                <input type="hidden" name="confirmCancel" value="1" />
+              </form>
+            </>
+          ) : (
+            <p className="qf-body-text mt-2 text-muted">
+              This visit can no longer be cancelled.
+            </p>
           )}
         </SectionCard>
       </div>
+
+      <ProposalConfirmDialog
+        open={cancelOpen}
+        title="Cancel this visit?"
+        description="The appointment will be cancelled. Notes and photos stay saved. The customer will not be emailed automatically."
+        confirmLabel="Cancel visit"
+        destructive
+        onClose={() => setCancelOpen(false)}
+        onConfirm={() => {
+          const form = document.getElementById(
+            "cancel-visit-form"
+          ) as HTMLFormElement | null;
+          form?.requestSubmit();
+          setCancelOpen(false);
+        }}
+      />
     </div>
   );
 }

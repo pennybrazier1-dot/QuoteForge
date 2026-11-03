@@ -16,7 +16,10 @@ type SiteVisitPatch = Partial<
   Pick<SiteVisitSession, "notes" | "measurements" | "checklist" | "voiceNotes">
 >;
 
-export function useWorkspaceSiteVisit(enquiryId: string): {
+export function useWorkspaceSiteVisit(
+  enquiryId: string,
+  visitId?: string | null
+): {
   session: (SiteVisitSession & { id: string }) | null;
   siteVisitId: string | null;
   state: LoadState;
@@ -53,7 +56,7 @@ export function useWorkspaceSiteVisit(enquiryId: string): {
 
     let cancelled = false;
 
-    void ensureSiteVisitAction(enquiryId).then((result) => {
+    void ensureSiteVisitAction(enquiryId, visitId).then((result) => {
       if (cancelled) {
         return;
       }
@@ -75,11 +78,11 @@ export function useWorkspaceSiteVisit(enquiryId: string): {
     return () => {
       cancelled = true;
     };
-  }, [mounted, enquiryId, reloadToken]);
+  }, [mounted, enquiryId, visitId, reloadToken]);
 
   const save = useCallback(
     async (patch: SiteVisitPatch) => {
-      const result = await saveSiteVisitAction(enquiryId, patch);
+      const result = await saveSiteVisitAction(enquiryId, patch, visitId);
       if (!result.ok) {
         return { ok: false as const, error: result.error };
       }
@@ -88,17 +91,17 @@ export function useWorkspaceSiteVisit(enquiryId: string): {
       setSiteVisitId(result.data.id);
       return { ok: true as const, data: result.data };
     },
-    [enquiryId]
+    [enquiryId, visitId]
   );
 
   const complete = useCallback(async () => {
-    const result = await completeSiteVisitAction(enquiryId);
+    const result = await completeSiteVisitAction(enquiryId, visitId);
     if (!result.ok) {
       return { ok: false as const, error: result.error };
     }
 
     return { ok: true as const, data: result.data };
-  }, [enquiryId]);
+  }, [enquiryId, visitId]);
 
   return { session, siteVisitId, state, error, refresh, save, complete };
 }

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
-import { BookSiteVisitDialog } from "@/components/enquiries/book-site-visit-dialog";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
 import { EnquiryStatusBadge } from "@/components/enquiries/enquiry-status-badge";
 import { ProposalConfirmDialog } from "@/components/proposals/proposal-confirm-dialog";
+import { buildBookVisitFromEnquiryHref } from "@/lib/enquiries/book-visit-handoff";
 import {
   declineStoredEnquiry,
   deleteStoredEnquiry,
@@ -25,12 +25,12 @@ type ConfirmAction = "decline" | "delete" | null;
 
 export function EnquiryCard({ enquiry }: EnquiryCardProps) {
   const [notice, setNotice] = useState<string | null>(null);
-  const [siteVisitOpen, setSiteVisitOpen] = useState(false);
   const [askQuestionOpen, setAskQuestionOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [pendingAction, setPendingAction] = useState(false);
   const isDeclined = enquiry.status === "declined";
   const enquiryDetailHref = `/enquiries/${enquiry.id}`;
+  const bookVisitHref = buildBookVisitFromEnquiryHref(enquiry.id);
 
   function handleAskQuestion() {
     setAskQuestionOpen(true);
@@ -125,14 +125,22 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
               Review Enquiry
             </Link>
           )}
-          <button
-            type="button"
-            className="qf-btn-secondary qf-enquiry-action"
-            onClick={() => setSiteVisitOpen(true)}
-            disabled={isDeclined}
-          >
-            Book Site Visit
-          </button>
+          {isDeclined ? (
+            <button
+              type="button"
+              className="qf-btn-secondary qf-enquiry-action"
+              disabled
+            >
+              Book Site Visit
+            </button>
+          ) : (
+            <Link
+              href={bookVisitHref}
+              className="qf-btn-secondary qf-enquiry-action"
+            >
+              Book Site Visit
+            </Link>
+          )}
           <button
             type="button"
             className="qf-btn-secondary qf-enquiry-action"
@@ -163,13 +171,6 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
         </div>
       </article>
 
-      <BookSiteVisitDialog
-        enquiry={enquiry}
-        open={siteVisitOpen}
-        onClose={() => setSiteVisitOpen(false)}
-        onBooked={setNotice}
-      />
-
       <AskQuestionDialog
         enquiry={enquiry}
         open={askQuestionOpen}
@@ -178,35 +179,18 @@ export function EnquiryCard({ enquiry }: EnquiryCardProps) {
       />
 
       <ProposalConfirmDialog
-        open={confirmAction === "decline"}
-        title="Decline this enquiry?"
-        description={
-          <>
-            This will mark <strong>{enquiry.customerName}</strong> as{" "}
-            <strong>Declined</strong>. You can still view the enquiry in your
-            list, but it will move out of New enquiries.
-          </>
+        open={confirmAction !== null}
+        title={
+          confirmAction === "decline" ? "Decline this enquiry?" : "Delete enquiry?"
         }
-        confirmLabel="Decline enquiry"
-        pending={pendingAction}
-        destructive
-        onClose={() => setConfirmAction(null)}
-        onConfirm={() => void handleConfirmAction()}
-      />
-
-      <ProposalConfirmDialog
-        open={confirmAction === "delete"}
-        title="Delete this enquiry?"
         description={
-          <>
-            This removes <strong>{enquiry.customerName}</strong> from this
-            browser, including any saved photo previews. This cannot be undone.
-          </>
+          confirmAction === "decline"
+            ? "The customer will stay in your list as declined."
+            : "This removes the enquiry from your list. This cannot be undone."
         }
-        confirmLabel="Delete enquiry"
+        confirmLabel={confirmAction === "decline" ? "Decline" : "Delete"}
         pending={pendingAction}
-        pendingLabel="Deleting…"
-        destructive
+        destructive={confirmAction === "delete"}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void handleConfirmAction()}
       />

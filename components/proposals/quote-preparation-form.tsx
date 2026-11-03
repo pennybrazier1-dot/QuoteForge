@@ -52,7 +52,13 @@ function CreateProposalSubmitButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
+export function QuotePreparationForm({
+  enquiryId,
+  visitId = null,
+}: {
+  enquiryId: string;
+  visitId?: string | null;
+}) {
   const mounted = useClientMounted();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const preparationStartedFor = useRef<string | null>(null);
@@ -60,6 +66,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const [siteVisit, setSiteVisit] = useState<
     (SiteVisitSession & { id: string }) | null | undefined
   >(undefined);
+  const [captureLoadError, setCaptureLoadError] = useState<string | null>(null);
   const [editedDraft, setEditedDraft] = useState<{
     enquiryId: string;
     draft: QuotePreparationDraft;
@@ -70,20 +77,48 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
     createProposalFromPreparedQuote,
     initialCreateState
   );
+  const selectedVisitId = visitId?.trim() || null;
+  const captureLoadKey = `${enquiryId}::${selectedVisitId ?? ""}`;
+  const [loadedCaptureKey, setLoadedCaptureKey] = useState<string | null>(null);
+
+  // Reset capture state when the enquiry/visit selection changes (render-time sync).
+  if (
+    loadedCaptureKey !== null &&
+    loadedCaptureKey !== captureLoadKey &&
+    siteVisit !== undefined
+  ) {
+    setSiteVisit(undefined);
+    setCaptureLoadError(null);
+    setLoadedCaptureKey(null);
+  }
 
   useEffect(() => {
     if (!mounted || !enquiryId || state !== "ready" || !enquiry) {
       return;
     }
 
-    void getSiteVisitForEnquiryAction(enquiryId).then((result) => {
-      if (result.ok) {
-        setSiteVisit(result.data);
-      } else {
+    let cancelled = false;
+    void getSiteVisitForEnquiryAction(enquiryId, selectedVisitId).then(
+      (result) => {
+        if (cancelled) {
+          return;
+        }
+        if (result.ok) {
+          setSiteVisit(result.data);
+          setCaptureLoadError(null);
+          setLoadedCaptureKey(captureLoadKey);
+          return;
+        }
         setSiteVisit(null);
+        setCaptureLoadError(result.error);
+        setLoadedCaptureKey(captureLoadKey);
       }
-    });
-  }, [mounted, enquiryId, state, enquiry]);
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mounted, enquiryId, selectedVisitId, state, enquiry, captureLoadKey]);
 
   useEffect(() => {
     if (!mounted || preparationStartedFor.current === enquiryId || state !== "ready") {
@@ -101,9 +136,13 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
   const baseDraft =
     enquiry && siteVisit !== undefined
       ? (() => {
-          const existing = getLocalProposalDraftByEnquiry(enquiryId);
-          if (existing?.draft?.enquiryId === enquiryId) {
-            return existing.draft;
+          // Visit-scoped handoff must not reuse an enquiry-level local draft
+          // that may contain another visit's notes/photos.
+          if (!selectedVisitId) {
+            const existing = getLocalProposalDraftByEnquiry(enquiryId);
+            if (existing?.draft?.enquiryId === enquiryId) {
+              return existing.draft;
+            }
           }
 
           return buildQuotePreparationDraftSafe(enquiry, siteVisit);
@@ -117,11 +156,13 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
     return <p className="qf-quote-prep-loading">Loading quote preparation…</p>;
   }
 
-  if (state === "error") {
+  if (state === "error" || captureLoadError) {
     return (
       <div className="qf-quote-prep-empty">
         <h1 className="qf-proposal-title">Could not load enquiry</h1>
-        <p className="qf-proposal-subtitle">{error ?? "Something went wrong."}</p>
+        <p className="qf-proposal-subtitle">
+          {captureLoadError ?? error ?? "Something went wrong."}
+        </p>
         <button type="button" className="qf-btn-secondary" onClick={() => void refresh()}>
           Try again
         </button>
@@ -144,6 +185,9 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
       </div>
     );
   }
+
+  const missingSelectedCapture =
+    Boolean(selectedVisitId) && siteVisit === null;
 
   if (enquiry.linkedProposalId) {
     return (
@@ -216,6 +260,14 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
         </p>
       ) : null}
 
+      {missingSelectedCapture ? (
+        <p className="qf-quote-prep-notice-banner" role="status">
+          This visit has no saved capture yet. Notes, measurements, and photos
+          from other visits were not loaded. Open Site Visit Mode for this visit
+          first, or continue with the enquiry details only.
+        </p>
+      ) : null}
+
       {createState.error ? <AuthError message={createState.error} /> : null}
 
       <div className="qf-quote-prep-layout">
@@ -245,7 +297,7 @@ export function QuotePreparationForm({ enquiryId }: { enquiryId: string }) {
           <input
             type="hidden"
             name="visitId"
-            value={draft.siteVisitSessionId ?? ""}
+            value={selectedVisitId ?? siteVisit?.visitId ?? ""}
           />
           <input type="hidden" name="customerName" value={draft.customerName} />
           <input

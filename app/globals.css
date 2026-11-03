@@ -2372,6 +2372,53 @@ a.qf-card-inset:hover {
   margin-top: 0.875rem;
 }
 
+.qf-enquiry-visits-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qf-enquiry-visits-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.875rem 0;
+  border-top: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.qf-enquiry-visits-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.qf-enquiry-visits-item-title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.qf-enquiry-visits-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .qf-enquiry-visits-item {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+
+  .qf-enquiry-visits-item-copy {
+    min-width: 0;
+    flex: 1;
+  }
+}
+
 .qf-enquiry-site-visit-mode-panel {
   display: flex;
   flex-direction: column;

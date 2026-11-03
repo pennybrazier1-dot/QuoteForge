@@ -38,6 +38,15 @@ export function buildProposalInitialValuesFromVisit(
   };
 }
 
-export function buildCreateQuoteFromVisitHref(visitId: string): string {
-  return `/proposals/new?visitId=${encodeURIComponent(visitId)}`;
+export function buildCreateQuoteFromVisitHref(
+  visitId: string,
+  enquiryId?: string | null
+): string {
+  const params = new URLSearchParams();
+  params.set("visitId", visitId);
+  const trimmedEnquiryId = enquiryId?.trim();
+  if (trimmedEnquiryId) {
+    params.set("enquiryId", trimmedEnquiryId);
+  }
+  return `/proposals/new?${params.toString()}`;
 }

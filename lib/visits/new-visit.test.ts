@@ -221,6 +221,10 @@ describe("new visit workflow", () => {
         status: "scheduled",
         notes: "",
         linked_proposal_id: null,
+        customer_access_token: null,
+        starts_at: null,
+        slot_label: null,
+        source_site_visit_id: null,
         created_at: "2026-09-17T12:00:00.000Z",
         updated_at: "2026-09-17T12:00:00.000Z",
       },
@@ -306,6 +310,9 @@ describe("new visit workflow", () => {
     expect(buildCreateQuoteFromVisitHref("visit-1")).toBe(
       "/proposals/new?visitId=visit-1"
     );
+    expect(buildCreateQuoteFromVisitHref("visit-1", "enq-9")).toBe(
+      "/proposals/new?visitId=visit-1&enquiryId=enq-9"
+    );
     const detail = readFileSync(
       join(process.cwd(), "components/visits/visit-detail-view.tsx"),
       "utf8"
@@ -316,9 +323,8 @@ describe("new visit workflow", () => {
       join(process.cwd(), "lib/visits/actions.ts"),
       "utf8"
     );
-    expect(action).toContain(
-      "redirect(`/proposals/new?visitId=${encodeURIComponent(visitId)}`)"
-    );
+    expect(action).toContain('quoteParams.set("visitId", visitId)');
+    expect(action).toContain("redirect(`/proposals/new?${quoteParams.toString()}`)");
     const home = readFileSync(
       join(process.cwd(), "components/home/home-screen.tsx"),
       "utf8"

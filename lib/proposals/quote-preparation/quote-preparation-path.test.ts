@@ -7,4 +7,19 @@ describe("quote preparation path", () => {
       "/proposals/new?enquiryId=enquiry-1"
     );
   });
+
+  it("includes visitId when preparing from a specific appointment", () => {
+    expect(buildQuotePreparationPath("enquiry-1", "visit-9")).toBe(
+      "/proposals/new?enquiryId=enquiry-1&visitId=visit-9"
+    );
+  });
+
+  it("ignores blank visitId", () => {
+    expect(buildQuotePreparationPath("enquiry-1", "  ")).toBe(
+      "/proposals/new?enquiryId=enquiry-1"
+    );
+    expect(buildQuotePreparationPath("enquiry-1", null)).toBe(
+      "/proposals/new?enquiryId=enquiry-1"
+    );
+  });
 });

@@ -47,6 +47,9 @@ function sampleEnquiry(status: StoredEnquiry["status"]): StoredEnquiry {
 describe("site visit mode link", () => {
   it("builds the site visit mode path", () => {
     expect(buildSiteVisitModePath("enquiry-1")).toBe("/site-visit/enquiry-1");
+    expect(buildSiteVisitModePath("enquiry-1", "visit-9")).toBe(
+      "/site-visit/enquiry-1?visitId=visit-9"
+    );
   });
 
   it("shows the site visit mode link after booking or completion", () => {

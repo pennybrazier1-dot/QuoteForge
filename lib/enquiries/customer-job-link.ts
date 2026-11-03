@@ -1,6 +1,10 @@
 import { getSiteUrl } from "@/lib/env/site-url";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
 
+/**
+ * Legacy localStorage demo path. Trader-facing confirmation now uses
+ * /v/{customer_access_token} via getEnquiryVisitConfirmationAction.
+ */
 export function buildCustomerJobPath(enquiryId: string): string {
   return `/customer/job/${encodeURIComponent(enquiryId)}`;
 }

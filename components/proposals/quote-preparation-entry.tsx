@@ -10,6 +10,17 @@ export function shouldUseQuotePreparation(enquiryId?: string): boolean {
   return Boolean(enquiryId?.trim());
 }
 
+/**
+ * When a booking visit is linked to an enquiry, Prepare Quote loads that
+ * visit's capture. Calendar-only visits without an enquiry keep Quick Quote.
+ */
+export function shouldUseVisitCaptureQuotePreparation(options: {
+  enquiryId?: string | null;
+  visitId?: string | null;
+}): boolean {
+  return Boolean(options.enquiryId?.trim() && options.visitId?.trim());
+}
+
 export function QuotePreparationEntry({
   enquiryId,
   visitId,
@@ -21,18 +32,35 @@ export function QuotePreparationEntry({
   visitInitialValues?: ProposalFormValues;
   customers?: CustomerNameMatchOption[];
 }) {
-  if (visitId?.trim()) {
+  const trimmedEnquiryId = enquiryId?.trim() || "";
+  const trimmedVisitId = visitId?.trim() || "";
+
+  if (
+    shouldUseVisitCaptureQuotePreparation({
+      enquiryId: trimmedEnquiryId,
+      visitId: trimmedVisitId,
+    })
+  ) {
+    return (
+      <QuotePreparationForm
+        enquiryId={trimmedEnquiryId}
+        visitId={trimmedVisitId}
+      />
+    );
+  }
+
+  if (trimmedVisitId) {
     return (
       <NewProposalForm
-        visitId={visitId.trim()}
+        visitId={trimmedVisitId}
         initialValues={visitInitialValues}
         customers={customers}
       />
     );
   }
 
-  if (shouldUseQuotePreparation(enquiryId)) {
-    return <QuotePreparationForm enquiryId={enquiryId!.trim()} />;
+  if (shouldUseQuotePreparation(trimmedEnquiryId)) {
+    return <QuotePreparationForm enquiryId={trimmedEnquiryId} />;
   }
 
   return <NewProposalForm customers={customers} />;

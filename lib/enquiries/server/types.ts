@@ -56,6 +56,7 @@ export type SiteVisitRow = {
   id: string;
   workspace_id: string;
   enquiry_id: string;
+  visit_id?: string | null;
   slot_label: string | null;
   starts_at: string | null;
   date_iso: string | null;
@@ -179,6 +180,9 @@ export function mapSiteVisitRowToSession(
 ): SiteVisitSession {
   return {
     enquiryId: row.enquiry_id,
+    visitId: row.visit_id ?? null,
+    slotLabel: row.slot_label,
+    startsAt: row.starts_at,
     startedAt: row.started_at ?? row.created_at,
     completedAt: row.completed_at,
     voiceNotes: asArray<SiteVisitVoiceNote>(row.voice_notes),

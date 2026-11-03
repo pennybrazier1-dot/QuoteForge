@@ -7,7 +7,6 @@ import {
   formatTimelineEnquiryReviewed,
   formatTimelineQuoteDraftSaved,
   formatTimelineQuotePreparationStarted,
-  formatTimelineSiteVisitBooked,
   formatTimelineSiteVisitCompleted,
 } from "@/lib/enquiries/timeline-messages";
 import type { StoredEnquiry } from "@/lib/enquiries/types";
@@ -35,6 +34,12 @@ import {
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
 import type { SiteVisitSession } from "@/lib/site-visit/types";
 import { createDefaultSiteVisitSession } from "@/lib/site-visit/site-visit-mode-data";
+import { loadPrimarySiteVisitForEnquiry } from "@/lib/enquiries/server/load-enquiry-site-visit";
+import {
+  findActiveVisitForEnquiry,
+  linkCaptureSessionToVisit,
+  listVisitsForEnquiry,
+} from "@/lib/visits/link-capture-session";
 
 
 async function ensurePublicEnquirySlug(
@@ -102,29 +107,24 @@ async function loadEnquiryBundle(
     return null;
   }
 
-  const [{ data: timeline }, { data: media }, { data: siteVisit }] =
-    await Promise.all([
-      supabase
-        .from("enquiry_timeline_events")
-        .select("*")
-        .eq("enquiry_id", enquiryId)
-        .order("occurred_at", { ascending: true }),
-      supabase
-        .from("enquiry_media")
-        .select("*")
-        .eq("enquiry_id", enquiryId)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("site_visits")
-        .select("*")
-        .eq("enquiry_id", enquiryId)
-        .maybeSingle(),
-    ]);
+  const [{ data: timeline }, { data: media }, siteVisit] = await Promise.all([
+    supabase
+      .from("enquiry_timeline_events")
+      .select("*")
+      .eq("enquiry_id", enquiryId)
+      .order("occurred_at", { ascending: true }),
+    supabase
+      .from("enquiry_media")
+      .select("*")
+      .eq("enquiry_id", enquiryId)
+      .order("sort_order", { ascending: true }),
+    loadPrimarySiteVisitForEnquiry(supabase, workspaceId, enquiryId),
+  ]);
 
   return mapEnquiryRowToStoredEnquiry(row as EnquiryRow, {
     timeline: (timeline ?? []) as EnquiryTimelineRow[],
     photos: (media ?? []) as EnquiryMediaRow[],
-    siteVisit: (siteVisit as SiteVisitRow | null) ?? null,
+    siteVisit,
     workspace: {
       businessName: workspace.business_name,
       phone: workspace.phone,
@@ -156,7 +156,7 @@ export async function listWorkspaceEnquiries(): Promise<
 
   const enquiries = await Promise.all(
     (rows as EnquiryRow[]).map(async (row) => {
-      const [{ data: timeline }, { data: media }, { data: siteVisit }] =
+      const [{ data: timeline }, { data: media }, siteVisit] =
         await Promise.all([
           supabase
             .from("enquiry_timeline_events")
@@ -168,17 +168,13 @@ export async function listWorkspaceEnquiries(): Promise<
             .select("*")
             .eq("enquiry_id", row.id)
             .order("sort_order", { ascending: true }),
-          supabase
-            .from("site_visits")
-            .select("*")
-            .eq("enquiry_id", row.id)
-            .maybeSingle(),
+          loadPrimarySiteVisitForEnquiry(supabase, workspaceId, row.id),
         ]);
 
       return mapEnquiryRowToStoredEnquiry(row, {
         timeline: (timeline ?? []) as EnquiryTimelineRow[],
         photos: (media ?? []) as EnquiryMediaRow[],
-        siteVisit: (siteVisit as SiteVisitRow | null) ?? null,
+        siteVisit,
         workspace: {
           businessName: workspace.business_name,
           phone: workspace.phone,
@@ -363,80 +359,60 @@ export async function deleteEnquiryAction(
   return { ok: true, data: true };
 }
 
+/**
+ * @deprecated Milestone 2 — booking writes go through createVisitAction /visits/new.
+ * Kept as a hard stop so the old enquiry-card dialog cannot create parallel site_visits bookings.
+ */
 export async function bookSiteVisitAction(
   enquiryId: string,
-  booking: SiteVisitBookingInput
+  _booking: SiteVisitBookingInput
 ): Promise<EnquiryActionResult<StoredEnquiry>> {
-  const context = await requireWorkspaceContext();
-  if (!context.ok) {
-    return { ok: false, error: context.error };
-  }
-
-  const { supabase, workspaceId, workspace, user } = context;
-  const existing = await loadEnquiryBundle(
-    supabase,
-    workspaceId,
-    enquiryId,
-    workspace
-  );
-  if (!existing) {
-    return { ok: false, error: "Enquiry not found." };
-  }
-
-  const { data: visit, error: visitError } = await supabase
-    .from("site_visits")
-    .upsert(
-      {
-        workspace_id: workspaceId,
-        enquiry_id: enquiryId,
-        slot_label: booking.slotLabel,
-        starts_at: booking.startsAt,
-        date_iso: booking.dateIso,
-      },
-      { onConflict: "enquiry_id" }
-    )
-    .select("*")
-    .single();
-
-  if (visitError || !visit) {
-    return { ok: false, error: "Could not book the site visit." };
-  }
-
-  const { error } = await supabase
-    .from("enquiries")
-    .update({
-      status: "site_visit_booked",
-      suggested_next_action: "Open Site Visit Mode when you arrive on site.",
-    })
-    .eq("id", enquiryId)
-    .eq("workspace_id", workspaceId);
-
-  if (error) {
-    return { ok: false, error: "Could not update enquiry status." };
-  }
-
-  await appendTimeline(
-    supabase,
-    workspaceId,
-    enquiryId,
-    formatTimelineSiteVisitBooked(booking.confirmationLine),
-    "site_visit_booked",
-    user.id
-  );
-
-  const refreshed = await loadEnquiryBundle(
-    supabase,
-    workspaceId,
-    enquiryId,
-    workspace
-  );
-  return refreshed
-    ? { ok: true, data: refreshed }
-    : { ok: false, error: "Enquiry not found." };
+  void enquiryId;
+  void _booking;
+  return {
+    ok: false,
+    error:
+      "Site visits are booked from Visits now. Open Book visit on the enquiry to continue.",
+  };
 }
 
+async function loadSiteVisitSessionById(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  workspaceId: string,
+  siteVisitId: string
+): Promise<(SiteVisitSession & { id: string }) | null> {
+  const { data: row } = await supabase
+    .from("site_visits")
+    .select("*")
+    .eq("id", siteVisitId)
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+
+  if (!row) {
+    return null;
+  }
+
+  const { data: media } = await supabase
+    .from("enquiry_media")
+    .select("*")
+    .eq("site_visit_id", row.id);
+
+  return {
+    ...mapSiteVisitRowToSession(
+      row as SiteVisitRow,
+      (media ?? []) as EnquiryMediaRow[]
+    ),
+    id: row.id,
+  };
+}
+
+/**
+ * Ensure / open the capture session for a booking visit (preferred) or enquiry.
+ * Pass visitId so Site Visit Mode uses that appointment's own notes/photos.
+ */
 export async function ensureSiteVisitAction(
-  enquiryId: string
+  enquiryId: string,
+  visitId?: string | null
 ): Promise<EnquiryActionResult<SiteVisitSession & { id: string }>> {
   const context = await requireWorkspaceContext();
   if (!context.ok) {
@@ -454,30 +430,101 @@ export async function ensureSiteVisitAction(
     return { ok: false, error: "Enquiry not found." };
   }
 
-  const { data: existing } = await supabase
-    .from("site_visits")
-    .select("*")
-    .eq("enquiry_id", enquiryId)
-    .maybeSingle();
+  let targetVisit: {
+    id: string;
+    slot_label: string | null;
+    starts_at: string | null;
+    visit_date: string;
+  } | null = null;
 
-  if (existing) {
-    if (!existing.started_at) {
+  if (visitId) {
+    const { data: visitRow } = await supabase
+      .from("visits")
+      .select("id, slot_label, starts_at, visit_date, enquiry_id")
+      .eq("id", visitId)
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+
+    if (!visitRow || visitRow.enquiry_id !== enquiryId) {
+      return {
+        ok: false,
+        error: "Visit not found for this enquiry.",
+      };
+    }
+
+    targetVisit = {
+      id: visitRow.id,
+      slot_label: (visitRow.slot_label as string | null) ?? null,
+      starts_at: (visitRow.starts_at as string | null) ?? null,
+      visit_date: String(visitRow.visit_date ?? ""),
+    };
+  } else {
+    targetVisit = await findActiveVisitForEnquiry(
+      supabase,
+      workspaceId,
+      enquiryId
+    );
+  }
+
+  if (targetVisit) {
+    const linked = await linkCaptureSessionToVisit(supabase, {
+      workspaceId,
+      visitId: targetVisit.id,
+      enquiryId,
+      slotLabel: targetVisit.slot_label,
+      startsAt: targetVisit.starts_at,
+      visitDate: targetVisit.visit_date,
+    });
+    if (!linked.ok) {
+      return { ok: false, error: linked.error };
+    }
+
+    await supabase
+      .from("site_visits")
+      .update({
+        started_at: new Date().toISOString(),
+      })
+      .eq("id", linked.siteVisitId)
+      .eq("workspace_id", workspaceId)
+      .is("started_at", null);
+
+    const session = await loadSiteVisitSessionById(
+      supabase,
+      workspaceId,
+      linked.siteVisitId
+    );
+    if (!session) {
+      return { ok: false, error: "Could not start site visit." };
+    }
+    return { ok: true, data: session };
+  }
+
+  // Compatibility: historical enquiry with no visits booking yet.
+  // Prefer an existing unlinked capture — do not invent a public.visits booking.
+  const existingHistorical = await loadPrimarySiteVisitForEnquiry(
+    supabase,
+    workspaceId,
+    enquiryId
+  );
+
+  if (existingHistorical) {
+    if (!existingHistorical.started_at) {
       await supabase
         .from("site_visits")
         .update({ started_at: new Date().toISOString() })
-        .eq("id", existing.id);
+        .eq("id", existingHistorical.id)
+        .eq("workspace_id", workspaceId);
     }
 
-    const { data: media } = await supabase
-      .from("enquiry_media")
-      .select("*")
-      .eq("site_visit_id", existing.id);
-
-    const session = mapSiteVisitRowToSession(
-      existing as SiteVisitRow,
-      (media ?? []) as EnquiryMediaRow[]
+    const session = await loadSiteVisitSessionById(
+      supabase,
+      workspaceId,
+      existingHistorical.id
     );
-    return { ok: true, data: { ...session, id: existing.id } };
+    if (!session) {
+      return { ok: false, error: "Could not start site visit." };
+    }
+    return { ok: true, data: session };
   }
 
   const defaults = createDefaultSiteVisitSession(enquiryId);
@@ -486,6 +533,7 @@ export async function ensureSiteVisitAction(
     .insert({
       workspace_id: workspaceId,
       enquiry_id: enquiryId,
+      visit_id: null,
       started_at: defaults.startedAt,
       notes: defaults.notes,
       measurements: defaults.measurements,
@@ -501,6 +549,9 @@ export async function ensureSiteVisitAction(
     return { ok: false, error: "Could not start site visit." };
   }
 
+  // Unlinked captures are inventoried by migration/audit SQL (server-only table).
+  // Do not write site_visits_historical_review from authenticated client sessions.
+
   return {
     ok: true,
     data: { ...mapSiteVisitRowToSession(created as SiteVisitRow), id: created.id },
@@ -514,9 +565,10 @@ export async function saveSiteVisitAction(
       SiteVisitSession,
       "notes" | "measurements" | "checklist" | "voiceNotes"
     >
-  >
+  >,
+  visitId?: string | null
 ): Promise<EnquiryActionResult<SiteVisitSession & { id: string }>> {
-  const ensured = await ensureSiteVisitAction(enquiryId);
+  const ensured = await ensureSiteVisitAction(enquiryId, visitId);
   if (!ensured.ok) {
     return ensured;
   }
@@ -562,9 +614,10 @@ export async function saveSiteVisitAction(
 }
 
 export async function completeSiteVisitAction(
-  enquiryId: string
+  enquiryId: string,
+  visitId?: string | null
 ): Promise<EnquiryActionResult<StoredEnquiry>> {
-  const ensured = await ensureSiteVisitAction(enquiryId);
+  const ensured = await ensureSiteVisitAction(enquiryId, visitId);
   if (!ensured.ok) {
     return { ok: false, error: ensured.error };
   }
@@ -582,6 +635,30 @@ export async function completeSiteVisitAction(
     .update({ completed_at: completedAt })
     .eq("id", ensured.data.id)
     .eq("workspace_id", workspaceId);
+
+  if (visitId) {
+    await supabase
+      .from("visits")
+      .update({ status: "completed" })
+      .eq("id", visitId)
+      .eq("workspace_id", workspaceId)
+      .eq("enquiry_id", enquiryId)
+      .in("status", ["scheduled", "confirmed"]);
+  } else {
+    const linkedVisit = await findActiveVisitForEnquiry(
+      supabase,
+      workspaceId,
+      enquiryId
+    );
+    if (linkedVisit) {
+      await supabase
+        .from("visits")
+        .update({ status: "completed" })
+        .eq("id", linkedVisit.id)
+        .eq("workspace_id", workspaceId)
+        .in("status", ["scheduled", "confirmed"]);
+    }
+  }
 
   await supabase
     .from("enquiries")
@@ -686,23 +763,81 @@ export async function markQuoteInPreparationAction(
 }
 
 export async function getSiteVisitForEnquiryAction(
-  enquiryId: string
+  enquiryId: string,
+  visitId?: string | null
 ): Promise<EnquiryActionResult<(SiteVisitSession & { id: string }) | null>> {
   const context = await requireWorkspaceContext();
   if (!context.ok) {
     return { ok: false, error: context.error };
   }
 
-  const { data, error } = await context.supabase
-    .from("site_visits")
-    .select("*")
-    .eq("enquiry_id", enquiryId)
-    .eq("workspace_id", context.workspaceId)
-    .maybeSingle();
+  if (visitId) {
+    // Ownership + association: visit must belong to this workspace and enquiry.
+    const { data: visitRow, error: visitError } = await context.supabase
+      .from("visits")
+      .select("id, enquiry_id")
+      .eq("id", visitId)
+      .eq("workspace_id", context.workspaceId)
+      .maybeSingle();
 
-  if (error) {
-    return { ok: false, error: "Could not load site visit." };
+    if (visitError) {
+      return { ok: false, error: "Could not load visit." };
+    }
+    if (!visitRow) {
+      return { ok: false, error: "Visit not found in this workspace." };
+    }
+    if (visitRow.enquiry_id && visitRow.enquiry_id !== enquiryId) {
+      return {
+        ok: false,
+        error: "That visit does not belong to this enquiry.",
+      };
+    }
+    if (!visitRow.enquiry_id) {
+      return {
+        ok: false,
+        error: "That visit is not linked to an enquiry.",
+      };
+    }
+
+    const { data, error } = await context.supabase
+      .from("site_visits")
+      .select("*")
+      .eq("workspace_id", context.workspaceId)
+      .eq("enquiry_id", enquiryId)
+      .eq("visit_id", visitId)
+      .maybeSingle();
+
+    if (error) {
+      return { ok: false, error: "Could not load site visit." };
+    }
+    // Missing capture for this visit → empty (do not fall back to another visit).
+    if (!data) {
+      return { ok: true, data: null };
+    }
+
+    const { data: media } = await context.supabase
+      .from("enquiry_media")
+      .select("*")
+      .eq("workspace_id", context.workspaceId)
+      .eq("site_visit_id", data.id);
+
+    return {
+      ok: true,
+      data: {
+        ...mapSiteVisitRowToSession(
+          data as SiteVisitRow,
+          (media ?? []) as EnquiryMediaRow[]
+        ),
+        id: data.id,
+      },
+    };
   }
+
+  const data = await loadPrimarySiteVisitForEnquiry(
+    context.supabase,
+    context.workspaceId,
+    enquiryId
+  );
 
   if (!data) {
     return { ok: true, data: null };
@@ -711,6 +846,7 @@ export async function getSiteVisitForEnquiryAction(
   const { data: media } = await context.supabase
     .from("enquiry_media")
     .select("*")
+    .eq("workspace_id", context.workspaceId)
     .eq("site_visit_id", data.id);
 
   return {
@@ -723,6 +859,44 @@ export async function getSiteVisitForEnquiryAction(
       id: data.id,
     },
   };
+}
+
+export async function listEnquiryVisitsAction(
+  enquiryId: string
+): Promise<
+  EnquiryActionResult<
+    Array<{
+      id: string;
+      visit_type: string;
+      visit_date: string;
+      visit_time: string | null;
+      status: string;
+      slot_label: string | null;
+    }>
+  >
+> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { ok: false, error: context.error };
+  }
+
+  const { data: enquiry } = await context.supabase
+    .from("enquiries")
+    .select("id")
+    .eq("id", enquiryId)
+    .eq("workspace_id", context.workspaceId)
+    .maybeSingle();
+
+  if (!enquiry) {
+    return { ok: false, error: "Enquiry not found." };
+  }
+
+  const visits = await listVisitsForEnquiry(
+    context.supabase,
+    context.workspaceId,
+    enquiryId
+  );
+  return { ok: true, data: visits };
 }
 
 export async function listSiteVisitCalendarJobsAction(): Promise<
@@ -745,12 +919,14 @@ export async function listSiteVisitCalendarJobsAction(): Promise<
     return { ok: false, error: context.error };
   }
 
+  // Only orphan capture rows (no visits booking link) — linked rows appear via visits feed.
   const { data, error } = await context.supabase
     .from("site_visits")
     .select(
-      "id, enquiry_id, slot_label, starts_at, date_iso, enquiries(customer_name, address_line_1, town, postcode)"
+      "id, enquiry_id, slot_label, starts_at, date_iso, visit_id, enquiries(customer_name, address_line_1, town, postcode)"
     )
     .eq("workspace_id", context.workspaceId)
+    .is("visit_id", null)
     .not("starts_at", "is", null);
 
   if (error) {

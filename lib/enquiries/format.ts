@@ -32,10 +32,12 @@ export function formatEnquiryReceivedDate(iso: string): string {
 export function formatEnquiryTimelineDate(iso: string): string {
   const date = new Date(iso);
 
-  return date.toLocaleString("en-GB", {
+  // Fixed Europe/London zone so server/client strings match (avoids hydration skew).
+  return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
-  });
+    timeZone: "Europe/London",
+  }).format(date);
 }

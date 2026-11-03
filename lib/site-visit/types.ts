@@ -26,6 +26,10 @@ export type SiteVisitVoiceNote = {
 
 export type SiteVisitSession = {
   enquiryId: string;
+  /** Booking visit this capture belongs to (when linked). */
+  visitId?: string | null;
+  slotLabel?: string | null;
+  startsAt?: string | null;
   startedAt: string;
   completedAt: string | null;
   voiceNotes: SiteVisitVoiceNote[];

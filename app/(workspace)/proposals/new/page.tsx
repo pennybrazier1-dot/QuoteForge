@@ -28,16 +28,44 @@ export default async function NewProposalPage({
     context.workspaceId
   );
 
-  if (visitId?.trim()) {
+  const trimmedVisitId = visitId?.trim() || "";
+  const trimmedEnquiryId = enquiryId?.trim() || "";
+
+  if (trimmedVisitId) {
     const visit = await getVisit(
       context.supabase,
       context.workspaceId,
-      visitId.trim()
+      trimmedVisitId
     );
     if (!visit) {
       redirect("/proposals/new");
     }
 
+    const visitEnquiryId = visit.enquiry_id?.trim() || "";
+
+    // Reject mismatched enquiryId query vs the visit's linked enquiry.
+    if (
+      trimmedEnquiryId &&
+      visitEnquiryId &&
+      trimmedEnquiryId !== visitEnquiryId
+    ) {
+      redirect(
+        `/proposals/new?enquiryId=${encodeURIComponent(visitEnquiryId)}&visitId=${encodeURIComponent(visit.id)}`
+      );
+    }
+
+    // Linked booking → Prepare Quote with that visit's capture only.
+    if (visitEnquiryId) {
+      return (
+        <QuotePreparationEntry
+          enquiryId={visitEnquiryId}
+          visitId={visit.id}
+          customers={customers}
+        />
+      );
+    }
+
+    // Calendar-only visit (no enquiry): keep Quick Quote from visit notes.
     return (
       <QuotePreparationEntry
         visitId={visit.id}
@@ -48,6 +76,6 @@ export default async function NewProposalPage({
   }
 
   return (
-    <QuotePreparationEntry enquiryId={enquiryId} customers={customers} />
+    <QuotePreparationEntry enquiryId={trimmedEnquiryId || undefined} customers={customers} />
   );
 }

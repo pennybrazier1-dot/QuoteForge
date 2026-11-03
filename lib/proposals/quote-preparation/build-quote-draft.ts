@@ -27,22 +27,36 @@ function createSuggestedMaterial(description: string): QuoteMaterialItem {
   };
 }
 
-function formatSiteVisitDate(enquiry: StoredEnquiry): string {
-  if (enquiry.siteVisitStartsAt) {
-    const date = new Date(enquiry.siteVisitStartsAt);
-    if (!Number.isNaN(date.getTime())) {
-      return new Intl.DateTimeFormat("en-GB", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    }
+function formatStartsAtLabel(iso: string | null | undefined): string | null {
+  if (!iso) {
+    return null;
   }
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
 
-  return enquiry.siteVisitSlot?.trim() || "Date to be confirmed";
+/** Prefer the selected visit capture's appointment time over enquiry-level fields. */
+function formatSiteVisitDate(
+  enquiry: StoredEnquiry,
+  session: SiteVisitSession | null
+): string {
+  return (
+    formatStartsAtLabel(session?.startsAt) ||
+    session?.slotLabel?.trim() ||
+    formatStartsAtLabel(enquiry.siteVisitStartsAt) ||
+    enquiry.siteVisitSlot?.trim() ||
+    "Date to be confirmed"
+  );
 }
 
 function formatMeasurements(
@@ -169,7 +183,7 @@ function buildJobDescription(
           .map((answer) => `${answer.question}: ${answer.answer}`)
           .join("\n")}`
       : "",
-    `Site visit date: ${formatSiteVisitDate(enquiry)}`,
+    `Site visit date: ${formatSiteVisitDate(enquiry, session)}`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -247,7 +261,7 @@ export function buildQuotePreparationDraft(
     photoCount: Array.isArray(session?.photos)
       ? session.photos.length
       : enquiry.photoCount ?? 0,
-    siteVisitDate: formatSiteVisitDate(enquiry),
+    siteVisitDate: formatSiteVisitDate(enquiry, session),
   };
 }
 

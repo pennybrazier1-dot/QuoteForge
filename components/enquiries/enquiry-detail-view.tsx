@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AskQuestionDialog } from "@/components/enquiries/ask-question-dialog";
 import { CustomerJobLinkPanel } from "@/components/enquiries/customer-job-link-panel";
+import { EnquiryVisitsPanel } from "@/components/enquiries/enquiry-visits-panel";
 import { SiteVisitModeLinkPanel } from "@/components/enquiries/site-visit-mode-link-panel";
 import { buildQuotePreparationPath } from "@/lib/proposals/quote-preparation/quote-preparation-path";
 import { EnquiryPhotoGallery } from "@/components/enquiries/enquiry-photo-gallery";
@@ -252,6 +253,7 @@ export function EnquiryDetailView({ enquiryId }: { enquiryId: string }) {
         ) : null}
 
         <div className="qf-enquiry-detail-grid">
+          <EnquiryVisitsPanel enquiryId={enquiry.id} />
           <section className="qf-card qf-enquiry-detail-card">
             <h2 className="qf-enquiry-detail-section-title">Customer details</h2>
             <dl className="qf-enquiry-detail-list">

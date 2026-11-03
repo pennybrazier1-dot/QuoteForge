@@ -1,6 +1,6 @@
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
 import { buildVisitBookingEmail } from "@/lib/email/transactional-events";
-import { getSiteUrl } from "@/lib/env/site-url";
+import { buildCustomerVisitConfirmationUrl } from "@/lib/visits/customer-confirmation/token";
 import { type VisitRecord } from "@/lib/visits/types";
 
 export async function notifyCustomerOfVisit(input: {
@@ -15,14 +15,25 @@ export async function notifyCustomerOfVisit(input: {
     return;
   }
 
+  const token = input.visit.customer_access_token?.trim();
+  if (!token) {
+    console.warn(
+      "[visit-notify] skipped: visit has no customer_access_token"
+    );
+    return;
+  }
+
+  const ctaUrl = buildCustomerVisitConfirmationUrl(token);
+
   const email = buildVisitBookingEmail({
     visit: input.visit,
     businessName: input.businessName,
     logoUrl: input.logoUrl,
     tradeLabel: input.tradeLabel,
-    ctaUrl: `${getSiteUrl()}/`,
+    ctaUrl,
   });
 
+  // Real sends are blocked in local/dev by outboundEmailBlockReason / missing Resend.
   const result = await sendNotificationEmail({
     to,
     subject: email.subject,

@@ -58,8 +58,15 @@ const ACTION_CARDS: Array<{
   },
 ];
 
-export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
+export function SiteVisitModeView({
+  enquiryId,
+  visitId = null,
+}: {
+  enquiryId: string;
+  visitId?: string | null;
+}) {
   const router = useRouter();
+  // useSyncExternalStore: SSR + first client paint stay on the loading shell.
   const mounted = useClientMounted();
   const {
     enquiry,
@@ -74,7 +81,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
     error: visitError,
     save,
     complete,
-  } = useWorkspaceSiteVisit(enquiryId);
+  } = useWorkspaceSiteVisit(enquiryId, visitId);
   const photoInputId = useId();
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [activeAction, setActiveAction] = useState<SiteVisitActionId | null>(null);
@@ -90,6 +97,10 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
   const [localPhotos, setLocalPhotos] = useState<SiteVisitCapturedPhoto[]>([]);
   const [draftSessionId, setDraftSessionId] = useState<string | null>(null);
 
+  const visitCompleted = enquiry?.status === "site_visit_completed";
+  const address = enquiry ? formatEnquiryAddress(enquiry) : "";
+
+  // Adjust draft fields when the loaded capture changes (React render-time sync).
   if (session && draftSessionId !== session.id) {
     setDraftSessionId(session.id);
     setLocalNotes(session.notes);
@@ -99,12 +110,12 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
     setLocalPhotos(session.photos);
   }
 
-  const visitCompleted = enquiry?.status === "site_visit_completed";
-  const address = enquiry ? formatEnquiryAddress(enquiry) : "";
-
   useEffect(() => {
-    const startedAt = session?.startedAt;
+    if (!mounted) {
+      return;
+    }
 
+    const startedAt = session?.startedAt;
     if (!startedAt) {
       return;
     }
@@ -117,7 +128,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
     queueMicrotask(updateElapsed);
 
     return () => window.clearInterval(intervalId);
-  }, [session?.startedAt]);
+  }, [mounted, session?.startedAt]);
 
   if (!mounted || enquiryState === "loading" || visitState === "loading") {
     return <p className="qf-site-visit-loading">Loading site visit…</p>;
@@ -318,7 +329,7 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
             </>
           ) : (
             <Link
-              href={buildQuotePreparationPath(enquiryId)}
+              href={buildQuotePreparationPath(enquiryId, visitId)}
               className="qf-btn-primary qf-site-visit-finish-btn"
             >
               Prepare Quote
@@ -544,7 +555,10 @@ export function SiteVisitModeView({ enquiryId }: { enquiryId: string }) {
           </button>
         ) : null}
         {visitCompleted ? (
-          <Link href={buildQuotePreparationPath(enquiryId)} className="qf-btn-primary qf-site-visit-prepare-quote">
+          <Link
+            href={buildQuotePreparationPath(enquiryId, visitId)}
+            className="qf-btn-primary qf-site-visit-prepare-quote"
+          >
             Prepare Quote
           </Link>
         ) : null}

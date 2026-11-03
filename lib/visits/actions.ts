@@ -3,6 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireWorkspaceContext } from "@/lib/enquiries/server/workspace-context";
+import { createCustomerAccessToken } from "@/lib/proposals/customer-portal/create-customer-access-token";
+import {
+  buildVisitSlotLabel,
+  resolveVisitStartsAt,
+} from "@/lib/visits/customer-confirmation/starts-at";
+import {
+  CUSTOMER_NOT_AUTO_NOTIFIED_NOTICE,
+  cancelBlockedReason,
+  rescheduleBlockedReason,
+} from "@/lib/visits/lifecycle";
+import { linkCaptureSessionToVisit } from "@/lib/visits/link-capture-session";
 import { notifyCustomerOfVisit } from "@/lib/visits/notify";
 import { getVisit } from "@/lib/visits/queries";
 import {
@@ -19,6 +30,7 @@ import {
 export type VisitActionState = {
   error?: string;
   ok?: boolean;
+  notice?: string;
 };
 
 export type OrganiseVisitNotesState = {
@@ -50,7 +62,8 @@ function revalidateVisitPaths(
   visitId?: string,
   customerId?: string | null,
   enquiryId?: string | null,
-  proposalId?: string | null
+  proposalId?: string | null,
+  confirmationToken?: string | null
 ) {
   revalidatePath("/visits");
   revalidatePath("/calendar");
@@ -67,6 +80,10 @@ function revalidateVisitPaths(
   }
   if (proposalId) {
     revalidatePath(`/proposals/${proposalId}`);
+  }
+  const token = confirmationToken?.trim();
+  if (token) {
+    revalidatePath(`/v/${token}`);
   }
 }
 
@@ -152,37 +169,105 @@ export async function createVisitAction(
     }
   }
 
-  const { data: created, error } = await context.supabase
-    .from("visits")
-    .insert({
-      workspace_id: context.workspaceId,
-      customer_id: resolvedCustomerId,
-      enquiry_id: resolvedEnquiryId || null,
-      linked_proposal_id: resolvedProposalId || null,
-      customer_name: customerName,
-      contact_phone: contactPhone,
-      contact_email: contactEmail,
-      address_line_1: addressLine1,
-      address_line_2: addressLine2,
-      town,
-      county,
-      postcode,
-      enquiry_summary: enquirySummary,
-      visit_type: visitType as VisitType,
-      visit_date: visitDate,
-      visit_time: visitTime || null,
-      duration_minutes: durationMinutes,
-      status: "scheduled",
-      notes: "",
-    })
-    .select("id")
-    .single();
+  const startsAtResolved = resolveVisitStartsAt(visitDate, visitTime || null);
+  if (!startsAtResolved.ok) {
+    return { error: startsAtResolved.error };
+  }
+  const startsAt = startsAtResolved.startsAt;
+  const slotLabel = buildVisitSlotLabel(visitDate, visitTime || null);
+
+  let created: { id: string } | null = null;
+  let error: { message?: string } | null = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const token = createCustomerAccessToken();
+    const insertResult = await context.supabase
+      .from("visits")
+      .insert({
+        workspace_id: context.workspaceId,
+        customer_id: resolvedCustomerId,
+        enquiry_id: resolvedEnquiryId || null,
+        linked_proposal_id: resolvedProposalId || null,
+        customer_name: customerName,
+        contact_phone: contactPhone,
+        contact_email: contactEmail,
+        address_line_1: addressLine1,
+        address_line_2: addressLine2,
+        town,
+        county,
+        postcode,
+        enquiry_summary: enquirySummary,
+        visit_type: visitType as VisitType,
+        visit_date: visitDate,
+        visit_time: visitTime || null,
+        duration_minutes: durationMinutes,
+        status: "scheduled",
+        notes: "",
+        customer_access_token: token,
+        starts_at: startsAt,
+        slot_label: slotLabel,
+      })
+      .select("id")
+      .single();
+
+    if (!insertResult.error && insertResult.data) {
+      created = insertResult.data;
+      error = null;
+      break;
+    }
+
+    error = insertResult.error;
+    const message = insertResult.error?.message?.toLowerCase() ?? "";
+    const isTokenCollision =
+      message.includes("customer_access_token") ||
+      message.includes("visits_customer_access_token");
+    const isActiveInitialCollision =
+      message.includes("visits_one_active_initial_per_enquiry") ||
+      (message.includes("enquiry_id") && visitType === "initial_assessment");
+
+    if (isActiveInitialCollision) {
+      return {
+        error:
+          "An active initial visit is already booked for this enquiry. Open the existing visit or cancel it before booking another.",
+      };
+    }
+
+    if (!isTokenCollision) {
+      break;
+    }
+  }
 
   if (error || !created) {
     return { error: error?.message || "Could not create this visit." };
   }
 
   if (resolvedEnquiryId) {
+    // Capture must succeed before the booking is treated as complete.
+    const linked = await linkCaptureSessionToVisit(context.supabase, {
+      workspaceId: context.workspaceId,
+      visitId: created.id,
+      enquiryId: resolvedEnquiryId,
+      slotLabel,
+      startsAt,
+      visitDate,
+    });
+
+    if (!linked.ok) {
+      // Roll back this empty booking only — never touch other visits/captures.
+      await context.supabase
+        .from("visits")
+        .delete()
+        .eq("id", created.id)
+        .eq("workspace_id", context.workspaceId)
+        .is("source_site_visit_id", null);
+
+      return {
+        error:
+          linked.error ||
+          "Could not create a separate capture session for this visit. The visit was not booked.",
+      };
+    }
+
     const timeLabel = visitTime || "time TBC";
     const confirmationLine = `${visitDate} at ${timeLabel}`;
 
@@ -191,7 +276,7 @@ export async function createVisitAction(
       .update({
         status: "site_visit_booked",
         suggested_next_action:
-          "Open the visit to add notes after you attend, then Create Quote.",
+          "Open Site Visit Mode when you arrive on site, then create a quote.",
       })
       .eq("id", resolvedEnquiryId)
       .eq("workspace_id", context.workspaceId)
@@ -271,7 +356,12 @@ export async function startQuoteFromVisitAction(
   }
 
   revalidateVisitPaths(visitId, existing.customer_id, existing.enquiry_id);
-  redirect(`/proposals/new?visitId=${encodeURIComponent(visitId)}`);
+  const quoteParams = new URLSearchParams();
+  quoteParams.set("visitId", visitId);
+  if (existing.enquiry_id) {
+    quoteParams.set("enquiryId", existing.enquiry_id);
+  }
+  redirect(`/proposals/new?${quoteParams.toString()}`);
 }
 
 export async function completeVisitAction(
@@ -294,6 +384,13 @@ export async function completeVisitAction(
     return { error: "Visit not found." };
   }
 
+  if (existing.status === "cancelled" || existing.status === "no_show") {
+    return { error: "Cancelled or no-show visits cannot be completed." };
+  }
+  if (existing.status === "completed") {
+    return { ok: true };
+  }
+
   const patch: { status: VisitStatus; notes?: string } = {
     status: "completed",
   };
@@ -311,8 +408,177 @@ export async function completeVisitAction(
     return { error: error.message || "Could not complete this visit." };
   }
 
-  revalidateVisitPaths(visitId, existing.customer_id, existing.enquiry_id);
+  revalidateVisitPaths(
+    visitId,
+    existing.customer_id,
+    existing.enquiry_id,
+    existing.linked_proposal_id,
+    existing.customer_access_token
+  );
   return { ok: true };
+}
+
+export async function rescheduleVisitAction(
+  _prev: VisitActionState,
+  formData: FormData
+): Promise<VisitActionState> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { error: context.error };
+  }
+
+  const visitId = getString(formData, "visitId");
+  const visitDate = getString(formData, "visitDate");
+  const visitTime = getString(formData, "visitTime");
+  if (!visitId) {
+    return { error: "Visit not found." };
+  }
+  if (!isIsoDate(visitDate)) {
+    return { error: "Choose a visit date." };
+  }
+  if (visitTime && !isTime(visitTime)) {
+    return { error: "Choose a valid start time." };
+  }
+
+  const existing = await getVisit(context.supabase, context.workspaceId, visitId);
+  if (!existing) {
+    return { error: "Visit not found." };
+  }
+
+  const blocked = rescheduleBlockedReason(existing.status);
+  if (blocked) {
+    return { error: blocked };
+  }
+
+  const startsAtResolved = resolveVisitStartsAt(visitDate, visitTime || null);
+  if (!startsAtResolved.ok) {
+    return { error: startsAtResolved.error };
+  }
+  const startsAt = startsAtResolved.startsAt;
+  const slotLabel = buildVisitSlotLabel(visitDate, visitTime || null);
+  const previousToken = existing.customer_access_token;
+
+  const { data: updated, error } = await context.supabase
+    .from("visits")
+    .update({
+      visit_date: visitDate,
+      visit_time: visitTime || null,
+      starts_at: startsAt,
+      slot_label: slotLabel,
+    })
+    .eq("id", visitId)
+    .eq("workspace_id", context.workspaceId)
+    .select("id, customer_access_token")
+    .single();
+
+  if (error || !updated) {
+    return { error: error?.message || "Could not reschedule this visit." };
+  }
+
+  // Keep linked capture schedule fields in sync — never touch notes/photos.
+  if (existing.source_site_visit_id) {
+    await context.supabase
+      .from("site_visits")
+      .update({
+        date_iso: visitDate,
+        starts_at: startsAt,
+        slot_label: slotLabel,
+      })
+      .eq("id", existing.source_site_visit_id)
+      .eq("workspace_id", context.workspaceId)
+      .eq("visit_id", visitId);
+  } else if (existing.enquiry_id) {
+    await context.supabase
+      .from("site_visits")
+      .update({
+        date_iso: visitDate,
+        starts_at: startsAt,
+        slot_label: slotLabel,
+      })
+      .eq("enquiry_id", existing.enquiry_id)
+      .eq("workspace_id", context.workspaceId)
+      .eq("visit_id", visitId);
+  }
+
+  // Token must remain stable for the customer confirmation URL.
+  if (
+    previousToken &&
+    updated.customer_access_token &&
+    updated.customer_access_token !== previousToken
+  ) {
+    await context.supabase
+      .from("visits")
+      .update({ customer_access_token: previousToken })
+      .eq("id", visitId)
+      .eq("workspace_id", context.workspaceId);
+  }
+
+  revalidateVisitPaths(
+    visitId,
+    existing.customer_id,
+    existing.enquiry_id,
+    existing.linked_proposal_id,
+    previousToken
+  );
+
+  return {
+    ok: true,
+    notice: CUSTOMER_NOT_AUTO_NOTIFIED_NOTICE,
+  };
+}
+
+export async function cancelVisitAction(
+  _prev: VisitActionState,
+  formData: FormData
+): Promise<VisitActionState> {
+  const context = await requireWorkspaceContext();
+  if (!context.ok) {
+    return { error: context.error };
+  }
+
+  const visitId = getString(formData, "visitId");
+  const confirmed = getString(formData, "confirmCancel") === "1";
+  if (!visitId) {
+    return { error: "Visit not found." };
+  }
+  if (!confirmed) {
+    return { error: "Confirm cancellation before continuing." };
+  }
+
+  const existing = await getVisit(context.supabase, context.workspaceId, visitId);
+  if (!existing) {
+    return { error: "Visit not found." };
+  }
+
+  const blocked = cancelBlockedReason(existing.status);
+  if (blocked) {
+    return { error: blocked };
+  }
+
+  const { error } = await context.supabase
+    .from("visits")
+    .update({ status: "cancelled" satisfies VisitStatus })
+    .eq("id", visitId)
+    .eq("workspace_id", context.workspaceId);
+
+  if (error) {
+    return { error: error.message || "Could not cancel this visit." };
+  }
+
+  // Capture rows stay; photos/notes untouched. Confirmation token stays valid.
+
+  revalidateVisitPaths(
+    visitId,
+    existing.customer_id,
+    existing.enquiry_id,
+    existing.linked_proposal_id,
+    existing.customer_access_token
+  );
+
+  return {
+    ok: true,
+    notice: CUSTOMER_NOT_AUTO_NOTIFIED_NOTICE,
+  };
 }
 
 export async function updateVisitNotesAction(
@@ -421,6 +687,18 @@ export async function updateVisitStatusAction(
     return { error: "Visit not found." };
   }
 
+  // Do not silently reopen cancelled / completed / no-show visits via generic status updates.
+  if (
+    (existing.status === "cancelled" ||
+      existing.status === "completed" ||
+      existing.status === "no_show") &&
+    status !== existing.status
+  ) {
+    return {
+      error: `Cannot change a ${existing.status} visit with a generic status update.`,
+    };
+  }
+
   const { error } = await context.supabase
     .from("visits")
     .update({ status: status as VisitStatus })
@@ -431,7 +709,13 @@ export async function updateVisitStatusAction(
     return { error: error.message || "Could not update status." };
   }
 
-  revalidateVisitPaths(visitId, existing.customer_id);
+  revalidateVisitPaths(
+    visitId,
+    existing.customer_id,
+    existing.enquiry_id,
+    existing.linked_proposal_id,
+    existing.customer_access_token
+  );
   return { ok: true };
 }
 

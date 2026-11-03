@@ -38,12 +38,16 @@ export type VisitRecord = {
   status: VisitStatus;
   notes: string;
   linked_proposal_id: string | null;
+  customer_access_token: string | null;
+  starts_at: string | null;
+  slot_label: string | null;
+  source_site_visit_id: string | null;
   created_at: string;
   updated_at: string;
 };
 
 export const VISIT_SELECT =
-  "id, workspace_id, customer_id, enquiry_id, customer_name, contact_phone, contact_email, address_line_1, address_line_2, town, county, postcode, enquiry_summary, visit_type, visit_date, visit_time, duration_minutes, status, notes, linked_proposal_id, created_at, updated_at";
+  "id, workspace_id, customer_id, enquiry_id, customer_name, contact_phone, contact_email, address_line_1, address_line_2, town, county, postcode, enquiry_summary, visit_type, visit_date, visit_time, duration_minutes, status, notes, linked_proposal_id, customer_access_token, starts_at, slot_label, source_site_visit_id, created_at, updated_at";
 
 export function isVisitType(value: string): value is VisitType {
   return (VISIT_TYPES as readonly string[]).includes(value);

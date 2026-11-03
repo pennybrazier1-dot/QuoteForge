@@ -28,6 +28,10 @@ function sampleVisit(overrides: Partial<VisitRecord> = {}): VisitRecord {
     status: "scheduled",
     notes: "Width 3200mm, side gate access",
     linked_proposal_id: null,
+    customer_access_token: null,
+    starts_at: null,
+    slot_label: null,
+    source_site_visit_id: null,
     created_at: "2026-08-08T10:00:00.000Z",
     updated_at: "2026-08-08T10:00:00.000Z",
     ...overrides,
@@ -55,6 +59,12 @@ describe("visit quote handoff", () => {
   it("builds create-quote path with visit id", () => {
     expect(buildCreateQuoteFromVisitHref("visit-1")).toBe(
       "/proposals/new?visitId=visit-1"
+    );
+  });
+
+  it("includes enquiryId when creating a quote from a linked visit", () => {
+    expect(buildCreateQuoteFromVisitHref("visit-1", "enq-1")).toBe(
+      "/proposals/new?visitId=visit-1&enquiryId=enq-1"
     );
   });
 });
