@@ -121,6 +121,12 @@ function attentionCopy(
         typeLabel: "Date change",
         kind: "customer_date_change",
       };
+    case "revision_ready_to_send":
+      return {
+        reason: "Revised proposal ready to send",
+        typeLabel: "Revision",
+        kind: "needs_response",
+      };
     default:
       return {
         reason: "Needs your response",

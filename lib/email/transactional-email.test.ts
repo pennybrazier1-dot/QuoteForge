@@ -232,7 +232,12 @@ describe("global Reanvil transactional email shell", () => {
       "utf8"
     );
     expect(actions).toContain("sendCustomerBookingConfirmation");
-    expect(actions).toContain("buildBookingConfirmationEmail");
+    expect(actions).toContain("deliverBookingConfirmationEmail");
+    const notify = readFileSync(
+      join(process.cwd(), "lib/proposals/booking-confirmation-notify.ts"),
+      "utf8"
+    );
+    expect(notify).toContain("buildBookingConfirmationEmail");
   });
 
   it("uses the dark shell for customer decline notification content", () => {
@@ -479,12 +484,12 @@ describe("global Reanvil transactional email shell", () => {
     });
     expect(notificationA).toBe(notificationB);
     expect(notificationA).toContain("#08080a");
-    const actions = readFileSync(
-      join(process.cwd(), "lib/proposals/customer-portal/actions.ts"),
+    const notify = readFileSync(
+      join(process.cwd(), "lib/proposals/booking-confirmation-notify.ts"),
       "utf8"
     );
-    expect(actions).toContain("html: email.html");
-    expect(actions).toContain("buildBookingConfirmationEmail");
+    expect(notify).toContain("html: email.html");
+    expect(notify).toContain("buildBookingConfirmationEmail");
   });
 
   it("does not change recipients or trigger conditions in senders", () => {

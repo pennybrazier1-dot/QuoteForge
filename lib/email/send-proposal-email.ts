@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { outboundEmailBlockReason } from "@/lib/email/outbound-guard";
 import { buildProposalEmailHtml } from "@/lib/email/proposal-email-html";
 import { PROPOSAL_EMAIL_CTA_LABEL } from "@/lib/email/proposal-email-tokens";
 
@@ -22,6 +23,8 @@ export type SendProposalEmailInput = {
   proposedDateLabel?: string | null;
   durationLabel?: string | null;
   scopeSummary?: string | null;
+  /** Stable provider idempotency key when the transport supports it. */
+  idempotencyKey?: string | null;
 };
 
 export type SendProposalEmailResult =
@@ -71,6 +74,11 @@ export function buildHtmlEmail(input: SendProposalEmailInput): string {
 export async function sendProposalEmail(
   input: SendProposalEmailInput
 ): Promise<SendProposalEmailResult> {
+  const blocked = outboundEmailBlockReason();
+  if (blocked) {
+    return { ok: false, error: blocked };
+  }
+
   const resend = getResendClient();
 
   if (!resend) {
@@ -90,6 +98,7 @@ export async function sendProposalEmail(
   }
 
   try {
+    const idempotencyKey = input.idempotencyKey?.trim() || undefined;
     const { data, error } = await resend.emails.send({
       from,
       to: [input.to],
@@ -103,6 +112,9 @@ export async function sendProposalEmail(
           content: input.pdfBuffer,
         },
       ],
+      ...(idempotencyKey
+        ? { headers: { "Idempotency-Key": idempotencyKey } }
+        : {}),
     });
 
     if (error) {

@@ -25,6 +25,7 @@ import type { CustomerPortalPaymentView } from "@/lib/payments/types";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { canShowFinalAccept } from "@/lib/proposals/acceptance-rules";
+import { isCustomerAcceptanceBlockedByRevision } from "@/lib/proposals/revision/unsent-revision";
 import {
   expireAbandonedTempHold,
   loadPublicAvailabilityForProposal,
@@ -108,6 +109,12 @@ export type PublicProposalViewModel = {
   plannedTimeLabel: string | null;
   issuedLabel: string | null;
   jobImageUrl: string | null;
+  /** Live content revision shown on this page — must be posted back on accept. */
+  contentRevision: number;
+  /** True when the customer is viewing an issued revised quote (revision > 0). */
+  isRevisedQuote: boolean;
+  /** True when accept is blocked because a revision is unsent or not issued. */
+  revisionBlocksAccept: boolean;
 };
 
 type PortalProposalRow = ProposalPdfSource & {
@@ -118,6 +125,10 @@ type PortalProposalRow = ProposalPdfSource & {
   job_address: string | null;
   booking_confirmation?: string | null;
   attention_reason?: string | null;
+  unsent_revision_at?: string | null;
+  content_revision?: number | null;
+  issued_content_revision?: number | null;
+  accepted_content_revision?: number | null;
   pending_date_suggestion?: PendingDateSuggestion | null;
   planned_start_time?: string | null;
   booking_window?: unknown;
@@ -170,7 +181,7 @@ export async function loadPublicProposalByToken(
   const { data: proposal, error: proposalError } = await supabase
     .from("proposals")
     .select(
-      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, attention_reason, pending_date_suggestion, planned_start_time, booking_window, payment_status, payment_due_amount, payment_methods_issued, paid_at, payment_method, closed_at, issued_bank_account_name, issued_bank_sort_code, issued_bank_account_number, issued_bank_reference, issued_payment_url`
+      `${PROPOSAL_PDF_SELECT}, workspace_id, title, accepted_at, job_address, booking_confirmation, attention_reason, unsent_revision_at, content_revision, issued_content_revision, accepted_content_revision, pending_date_suggestion, planned_start_time, booking_window, payment_status, payment_due_amount, payment_methods_issued, paid_at, payment_method, closed_at, issued_bank_account_name, issued_bank_sort_code, issued_bank_account_number, issued_bank_reference, issued_payment_url, booking_confirm_status`
     )
     .eq("customer_access_token", trimmed)
     .maybeSingle();
@@ -293,13 +304,17 @@ export async function loadPublicProposalByToken(
   const confirmedBookingLabel = hasPendingDateSuggestion
     ? plannedStartLabel
     : null;
-  const canAcceptProposal = canShowFinalAccept({
-    canRespond: canRespond && !isClosed,
-    plannedStartDate: row.planned_start_date,
-    plannedStartTime: row.planned_start_time,
-    estimatedDuration: row.estimated_duration,
-  });
-  const needsDateChoice = canRespond && !isClosed && !canAcceptProposal;
+  const revisionBlocksAccept = isCustomerAcceptanceBlockedByRevision(row);
+  const canAcceptProposal =
+    !revisionBlocksAccept &&
+    canShowFinalAccept({
+      canRespond: canRespond && !isClosed,
+      plannedStartDate: row.planned_start_date,
+      plannedStartTime: row.planned_start_time,
+      estimatedDuration: row.estimated_duration,
+    });
+  const needsDateChoice =
+    canRespond && !isClosed && !revisionBlocksAccept && !canAcceptProposal;
   const scheduleChangeRequestPending =
     status === "booked" &&
     row.attention_reason === "customer_requested_date_change" &&
@@ -399,6 +414,9 @@ export async function loadPublicProposalByToken(
       plannedTimeLabel: formatPortalWorkTime(row.planned_start_time),
       issuedLabel: formatPortalIssuedLabel(row.created_at),
       jobImageUrl: null,
+      contentRevision: Number(row.content_revision ?? 0),
+      isRevisedQuote: Number(row.content_revision ?? 0) > 0,
+      revisionBlocksAccept,
     },
   };
 }

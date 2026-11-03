@@ -5,6 +5,7 @@ import {
   isSlotTakenByOther,
   isTemporaryHoldExpired,
   occupiesAvailability,
+  overlapsWorkSlot,
   TEMP_HOLD_MS,
   type OccupiedWorkSlot,
 } from "@/lib/proposals/slot-hold";
@@ -73,6 +74,28 @@ describe("temporary slot holds", () => {
     expect(hold.accepted).toBe(false);
     expect(hold.dateState).toBe("provisional");
     expect(new Date(holdExpiresAt(now)).getTime()).toBe(now.getTime() + TEMP_HOLD_MS);
+  });
+
+  it("documents that same-day different start times are not hourly overlaps", () => {
+    // Model limitation: no end-time storage — only start-time equality conflicts.
+    expect(
+      overlapsWorkSlot(
+        { startDate: "2026-10-13", startTime: "09:00" },
+        { startDate: "2026-10-13", startTime: "10:00" }
+      )
+    ).toBe(false);
+    expect(
+      overlapsWorkSlot(
+        { startDate: "2026-10-13", startTime: "09:00" },
+        { startDate: "2026-10-13", startTime: "09:00" }
+      )
+    ).toBe(true);
+    expect(
+      overlapsWorkSlot(
+        { startDate: "2026-10-13", startTime: "09:00" },
+        { startDate: "2026-10-13", startTime: "" }
+      )
+    ).toBe(true);
   });
 
   it("keeps a trader hold occupied after the temp-hold window", () => {

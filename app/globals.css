@@ -6460,6 +6460,13 @@ button.qf-booking-preview-day-selectable:focus-visible {
   color: var(--muted);
 }
 
+.qf-job-prep-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
 .qf-job-prep-header {
   display: flex;
   align-items: flex-start;
@@ -9670,4 +9677,38 @@ html.qf-attention-scroll-lock body {
     grid-template-columns: 1fr 8rem;
     align-items: start;
   }
+}
+
+/* Stage 2I — revised quote markers on the customer portal */
+.cj-portal-revised-badge {
+  margin: 0.55rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #1e3a5f;
+}
+
+.cj-portal-revised-notice {
+  margin: 0.45rem 0 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-left: 3px solid #1e3a5f;
+  background: linear-gradient(180deg, #eef4fb 0%, #f7fafc 100%);
+  color: #1e293b;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.qf-issue-attempt-banner {
+  margin: 0.75rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid #b45309;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.qf-issue-attempt-banner strong {
+  display: block;
+  margin-bottom: 0.25rem;
 }

@@ -35,6 +35,10 @@ export type DateWorkflowProposalRow = {
   materials?: unknown;
   customer_access_token?: string | null;
   proposal_number?: string | null;
+  unsent_revision_at?: string | null;
+  content_revision?: number | null;
+  issued_content_revision?: number | null;
+  total_amount?: number | null;
 };
 
 export function hasOtherUnresolvedWorkRequests(
@@ -143,7 +147,7 @@ export async function persistProposalDateSlot(
     metadata?: Record<string, unknown>;
     attentionReason?: string | null;
   }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; slotConflict?: boolean }> {
   const plannedFields = plannedStartToDbFields({
     plannedStartDate:
       input.dateText ||
@@ -154,20 +158,52 @@ export async function persistProposalDateSlot(
     plannedStartDateExact: input.dateIso,
   });
 
-  const { error } = await supabase
-    .from("proposals")
-    .update({
-      status: input.nextStatus,
-      booking_confirmation:
-        input.nextDateState === "none" ? null : input.nextDateState,
-      planned_start_time: input.timeHm,
-      attention_reason: input.attentionReason ?? null,
-      ...plannedFields,
-    })
-    .eq("id", proposal.id);
-
-  if (error) {
-    return { error: error.message || "Could not save this date." };
+  if (input.nextDateState === "none") {
+    const { error } = await supabase
+      .from("proposals")
+      .update({
+        status: input.nextStatus,
+        booking_confirmation: null,
+        planned_start_time: null,
+        attention_reason: input.attentionReason ?? null,
+        ...plannedFields,
+        planned_start_date: null,
+        planned_start_date_text: null,
+      })
+      .eq("id", proposal.id);
+    if (error) {
+      return { error: error.message || "Could not save this date." };
+    }
+  } else {
+    // Stage 2L: shared locked writer — conflict check + persist together.
+    const { data, error } = await supabase.rpc("write_proposal_schedule_slot", {
+      p_proposal_id: proposal.id,
+      p_planned_start_date: input.dateIso,
+      p_planned_start_time: input.timeHm,
+      p_planned_start_date_text: plannedFields.planned_start_date_text,
+      p_booking_confirmation: input.nextDateState,
+      p_next_status: input.nextStatus,
+      p_attention_reason: input.attentionReason ?? null,
+      p_estimated_duration: null,
+      p_require_available: true,
+      p_clear_pending_date_suggestion: false,
+    });
+    if (error) {
+      return { error: error.message || "Could not save this date." };
+    }
+    const result = (data ?? {}) as {
+      ok?: boolean;
+      error?: string;
+      slot_conflict?: boolean;
+    };
+    if (!result.ok) {
+      return {
+        error:
+          result.error ||
+          "That appointment was just taken. Please choose another time.",
+        slotConflict: Boolean(result.slot_conflict),
+      };
+    }
   }
 
   await recordProposalEvent(supabase, {

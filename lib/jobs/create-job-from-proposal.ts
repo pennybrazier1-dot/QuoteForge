@@ -115,6 +115,12 @@ export async function ensureJobForAcceptedProposal(
   }
 
   if (existing) {
+    await ensureMissingPrepItems(
+      supabase,
+      proposal,
+      existing.id,
+      existing.accepted_at || acceptedAt
+    );
     const customerId = await linkAcceptedWorkCustomer(
       supabase,
       proposal,
@@ -155,6 +161,12 @@ export async function ensureJobForAcceptedProposal(
         .eq("proposal_id", proposal.id)
         .maybeSingle();
       if (raced) {
+        await ensureMissingPrepItems(
+          supabase,
+          proposal,
+          raced.id,
+          raced.accepted_at || acceptedAt
+        );
         const customerId = await linkAcceptedWorkCustomer(
           supabase,
           proposal,
@@ -216,6 +228,38 @@ export async function ensureJobForAcceptedProposal(
       accepted_at: created.accepted_at,
     },
   };
+}
+
+/**
+ * If job creation succeeded but prep insert failed earlier, retries must
+ * finish the missing prep rows without creating a second job.
+ */
+async function ensureMissingPrepItems(
+  supabase: SupabaseClient,
+  proposal: ProposalJobSeed,
+  jobId: string,
+  acceptedAt: string
+): Promise<void> {
+  const { data: existingPrep } = await supabase
+    .from("job_prep_items")
+    .select("item_key")
+    .eq("job_id", jobId);
+
+  const present = new Set(
+    (existingPrep ?? []).map((row) => String(row.item_key))
+  );
+  const missing = buildDefaultPrepItemRows(
+    proposal.workspace_id,
+    jobId,
+    proposal,
+    acceptedAt
+  ).filter((row) => !present.has(row.item_key));
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  await supabase.from("job_prep_items").insert(missing);
 }
 
 async function linkAcceptedWorkCustomer(

@@ -134,31 +134,38 @@ export async function confirmSchedule(
     fallbackText: plannedStartDateText,
   });
 
-  const updatePayload: Record<string, unknown> = {
-    estimated_duration: estimatedDuration,
-    booking_confirmation: effectiveBookingConfirmation,
-    things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
-    planned_start_time: plannedStartTime,
-    ...plannedFields,
-  };
+  if (!plannedFields.planned_start_date) {
+    return { error: "Choose a start date for the calendar." };
+  }
 
-  updatePayload.status = "booked";
-
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update(updatePayload)
-    .eq("id", proposalId);
-
-  if (updateError) {
+  const { writeProposalScheduleSlot } = await import(
+    "@/lib/proposals/schedule/write-schedule-slot"
+  );
+  const written = await writeProposalScheduleSlot(supabase, {
+    proposalId,
+    plannedStartDate: plannedFields.planned_start_date,
+    plannedStartTime,
+    plannedStartDateText: plannedFields.planned_start_date_text,
+    bookingConfirmation: effectiveBookingConfirmation,
+    nextStatus: "booked",
+    estimatedDuration,
+    requireAvailable: true,
+  });
+  if (!written.ok) {
     return {
-      error: updateError.message ?? "Could not save this schedule.",
+      error: written.error ?? "Could not save this schedule.",
     };
   }
 
-  const toStatus =
-    typeof updatePayload.status === "string"
-      ? normalizeProposalStatus(updatePayload.status)
-      : currentStatus;
+  await supabase
+    .from("proposals")
+    .update({
+      things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+      estimated_duration: estimatedDuration,
+    })
+    .eq("id", proposalId);
+
+  const toStatus = "booked" as const;
 
   const eventNote = `Job schedule saved: ${scheduleLabel} (${effectiveBookingConfirmation})`;
 

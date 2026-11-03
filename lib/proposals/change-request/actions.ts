@@ -42,7 +42,7 @@ export async function markChangeRequestResolved(
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, workspace_id, attention_reason")
+    .select("id, status, workspace_id, attention_reason, unsent_revision_at")
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -57,6 +57,20 @@ export async function markChangeRequestResolved(
   if (currentStatus !== "needs_attention" && !bookedPendingDateChange) {
     return {
       error: "Only open customer requests can be marked resolved.",
+    };
+  }
+
+  if (proposal.unsent_revision_at) {
+    return {
+      error:
+        "A revised quote is saved but not issued. Issue the revision before marking this resolved.",
+    };
+  }
+
+  if (proposal.attention_reason === "revision_ready_to_send") {
+    return {
+      error:
+        "A revised quote is waiting to be issued. Issue it before marking this resolved.",
     };
   }
 

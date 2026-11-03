@@ -2,6 +2,7 @@ export const ATTENTION_REASONS = [
   "customer_question",
   "customer_requested_changes",
   "customer_requested_date_change",
+  "revision_ready_to_send",
 ] as const;
 
 export type AttentionReason = (typeof ATTENTION_REASONS)[number];
@@ -18,6 +19,8 @@ export function formatAttentionReason(reason: string | null | undefined): string
       return "Customer requested changes";
     case "customer_requested_date_change":
       return "Customer requested a date change";
+    case "revision_ready_to_send":
+      return "Revised proposal ready to send";
     default:
       return "Needs your response";
   }

@@ -51,7 +51,7 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
     supabase
       .from("proposals")
       .select(
-        "id, proposal_number, status, title, job_address, rough_notes, customer_id, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at, updated_at, sent_at, accepted_at, booked_at, completed_at, attention_reason, booking_confirmation, job_summary, scope_of_work, materials, labour_description, estimated_duration, planned_start_date_text, planned_start_date, planned_start_time, things_to_confirm_items, ai_optional_extras, payment_terms, payment_status, payment_due_amount, payment_methods_issued, paid_at, closed_at"
+        "id, proposal_number, status, title, job_address, rough_notes, customer_id, customer_name, customer_email, customer_phone, customer_address, total_amount, created_at, updated_at, sent_at, accepted_at, booked_at, completed_at, attention_reason, booking_confirmation, job_summary, scope_of_work, materials, labour_description, estimated_duration, planned_start_date_text, planned_start_date, planned_start_time, things_to_confirm_items, ai_optional_extras, payment_terms, payment_status, payment_due_amount, payment_methods_issued, paid_at, closed_at, content_revision, unsent_revision_at, issued_content_revision, accepted_content_revision, accepted_total_amount, issue_attempt_at, issue_attempt_provider, issue_attempt_message_id, booking_confirm_status, booking_confirm_attempt_at, booking_confirm_attempt_message_id"
       )
       .eq("id", id)
       .maybeSingle(),

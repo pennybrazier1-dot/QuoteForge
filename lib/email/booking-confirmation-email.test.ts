@@ -149,13 +149,18 @@ describe("booking confirmation email", () => {
     expect(html).toContain('name="color-scheme" content="dark"');
     expect(html).toContain("max-width:600px");
     const sendSource = readFileSync(
-      join(process.cwd(), "lib/proposals/customer-portal/actions.ts"),
+      join(process.cwd(), "lib/proposals/booking-confirmation-notify.ts"),
       "utf8"
     );
     expect(sendSource).toContain("buildBookingConfirmationEmail");
     expect(sendSource).toContain("loadWorkspaceEmailLogoUrl");
     expect(sendSource).toContain("html: email.html");
     expect(sendSource).not.toContain("Booking confirmed –");
+    const actions = readFileSync(
+      join(process.cwd(), "lib/proposals/customer-portal/actions.ts"),
+      "utf8"
+    );
+    expect(actions).toContain("deliverBookingConfirmationEmail");
   });
 
   it("does not change booking or proposal lifecycle logic when only rendering", () => {
@@ -176,7 +181,11 @@ describe("booking confirmation email", () => {
     );
     expect(actions).toContain("ensureJobForAcceptedProposal");
     expect(actions).toContain("promoteBookedJobIfReady");
-    expect(actions).toContain("buildCustomerProposalPortalUrl(loaded.view.token)");
+    const notify = readFileSync(
+      join(process.cwd(), "lib/proposals/booking-confirmation-notify.ts"),
+      "utf8"
+    );
+    expect(notify).toContain("buildCustomerProposalPortalUrl(input.token)");
   });
 
   it("writes a local HTML preview for visual review", () => {

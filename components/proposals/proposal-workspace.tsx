@@ -12,6 +12,8 @@ import {
 import { CompletedJobActions } from "@/components/jobs/completed-job-actions";
 import { CompletedJobPayment } from "@/components/jobs/completed-job-payment";
 import { JobPreparationPanel } from "@/components/proposals/job-preparation-panel";
+import { BookingConfirmationRecovery } from "@/components/proposals/booking-confirmation-recovery";
+import { JobPreparationRecovery } from "@/components/proposals/job-preparation-recovery";
 import { ProposalConversationPanel } from "@/components/proposals/proposal-conversation-panel";
 import { ProposalLifecycleActions } from "@/components/proposals/proposal-lifecycle-actions";
 import { ProposalStatusBadge } from "@/components/proposals/proposal-status-badge";
@@ -81,6 +83,16 @@ export type ProposalWorkspaceData = {
   created_at: string;
   updated_at: string | null;
   attention_reason: string | null;
+  content_revision?: number | null;
+  unsent_revision_at?: string | null;
+  issued_content_revision?: number | null;
+  issue_attempt_at?: string | null;
+  issue_attempt_message_id?: string | null;
+  accepted_content_revision?: number | null;
+  accepted_total_amount?: number | null;
+  booking_confirm_status?: string | null;
+  booking_confirm_attempt_at?: string | null;
+  booking_confirm_attempt_message_id?: string | null;
   booking_confirmation: string | null;
   sent_at: string | null;
   accepted_at: string | null;
@@ -556,6 +568,15 @@ export function ProposalWorkspace({
             sentAt={proposal.sent_at}
             calendarProposals={calendarProposals}
             devTestingEnabled={devTestingEnabled}
+            contentRevision={Number(proposal.content_revision ?? 0)}
+            unsentRevisionAt={proposal.unsent_revision_at ?? null}
+            issuedContentRevision={
+              proposal.issued_content_revision == null
+                ? null
+                : Number(proposal.issued_content_revision)
+            }
+            issueAttemptAt={proposal.issue_attempt_at ?? null}
+            issueAttemptMessageId={proposal.issue_attempt_message_id ?? null}
           />
         </Suspense>
         {normalizeProposalStatus(proposal.status) === "completed" ? (
@@ -590,10 +611,49 @@ export function ProposalWorkspace({
       </AfterAttentionIdle>
       </div>
 
+      {status === "booked" &&
+      (proposal.booking_confirm_status === "needed" ||
+        proposal.booking_confirm_status === "failed" ||
+        proposal.booking_confirm_status === "unknown") ? (
+        <SectionCard className="qf-card-form qf-job-prep-card">
+          <BookingConfirmationRecovery
+            proposalId={proposal.id}
+            status={
+              proposal.booking_confirm_status as
+                | "needed"
+                | "failed"
+                | "unknown"
+            }
+            hasProviderMessageId={Boolean(
+              proposal.booking_confirm_attempt_message_id
+            )}
+            attemptAt={proposal.booking_confirm_attempt_at ?? null}
+          />
+        </SectionCard>
+      ) : null}
+
       {jobPrep ? (
         <div id="job-preparation">
           <SectionCard className="qf-card-form qf-job-prep-card">
             <JobPreparationPanel view={jobPrep} />
+          </SectionCard>
+        </div>
+      ) : status === "booked" && proposal.accepted_at ? (
+        <div id="job-preparation">
+          <SectionCard className="qf-card-form qf-job-prep-card">
+            <JobPreparationRecovery
+              proposalId={proposal.id}
+              expectedContentRevision={Number(
+                proposal.accepted_content_revision ??
+                  proposal.content_revision ??
+                  0
+              )}
+              acceptedTotalLabel={
+                proposal.accepted_total_amount != null
+                  ? formatPenceAsGbp(Number(proposal.accepted_total_amount))
+                  : formatPenceAsGbp(proposal.total_amount)
+              }
+            />
           </SectionCard>
         </div>
       ) : null}
@@ -648,7 +708,9 @@ export function ProposalWorkspace({
           >
             <h2 className="qf-resolution-final-title">Proposal actions</h2>
             <p className="qf-resolution-final-copy">
-              Send an updated proposal or use other controls when you are ready.
+              {proposal.unsent_revision_at
+                ? "A revised quote is saved. Issue it explicitly when you are ready — Save and Issue are different steps."
+                : "Use proposal controls when you are ready. Saving a revision does not send it."}
             </p>
             <ProposalWorkspaceActions
               proposalId={proposal.id}
@@ -669,6 +731,15 @@ export function ProposalWorkspace({
                 sentAt={proposal.sent_at}
                 calendarProposals={calendarProposals}
                 devTestingEnabled={devTestingEnabled}
+                contentRevision={Number(proposal.content_revision ?? 0)}
+                unsentRevisionAt={proposal.unsent_revision_at ?? null}
+                issuedContentRevision={
+                  proposal.issued_content_revision == null
+                    ? null
+                    : Number(proposal.issued_content_revision)
+                }
+                issueAttemptAt={proposal.issue_attempt_at ?? null}
+                issueAttemptMessageId={proposal.issue_attempt_message_id ?? null}
               />
             </Suspense>
           </section>

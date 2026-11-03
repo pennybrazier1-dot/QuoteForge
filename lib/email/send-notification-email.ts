@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { outboundEmailBlockReason } from "@/lib/email/outbound-guard";
 import {
   assembleTransactionalEmail,
   renderTransactionalEmail,
@@ -83,6 +84,11 @@ function buildNotificationText(input: SendNotificationEmailInput): string {
 export async function sendNotificationEmail(
   input: SendNotificationEmailInput
 ): Promise<SendNotificationEmailResult> {
+  const blocked = outboundEmailBlockReason();
+  if (blocked) {
+    return { ok: false, error: blocked };
+  }
+
   const resend = getResendClient();
   if (!resend) {
     return {

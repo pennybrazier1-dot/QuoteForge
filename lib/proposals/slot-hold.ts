@@ -104,6 +104,14 @@ export function isSlotTakenByOther(
   );
 }
 
+/**
+ * Current scheduling model (not hourly intervals):
+ * - Occupancy is by shared calendar day(s) from planned_start_date + estimated_duration days.
+ * - When both sides have a start time, conflict only if those start times are equal.
+ * - When either start time is missing, any shared day conflicts.
+ * The app does not store end times or capacity>1, so 09:00–11:00 vs 10:00–12:00
+ * is NOT treated as an overlap under this model.
+ */
 export function overlapsWorkSlot(
   left: Pick<OccupiedWorkSlot, "startDate" | "endDate" | "startTime">,
   right: Pick<OccupiedWorkSlot, "startDate" | "endDate" | "startTime">

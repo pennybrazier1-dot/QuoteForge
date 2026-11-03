@@ -27,6 +27,11 @@ import {
   normalizePlannedStartTime,
 } from "@/lib/proposals/schedule/schedule-fields";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
+import {
+  hasUnsentRevision,
+  isCustomerAcceptanceBlockedByRevision,
+} from "@/lib/proposals/revision/unsent-revision";
+import { acceptProposalAtRevision } from "@/lib/proposals/revision/accept-at-revision";
 
 export type DateWorkflowActionState = {
   error?: string;
@@ -49,7 +54,7 @@ function revalidateDatePaths(proposalId: string, portalToken?: string | null) {
 }
 
 const DATE_SELECT =
-  "id, status, workspace_id, accepted_at, booking_confirmation, attention_reason, pending_date_suggestion, planned_start_date, planned_start_date_text, planned_start_time, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, materials, customer_access_token, proposal_number";
+  "id, status, workspace_id, accepted_at, booking_confirmation, attention_reason, pending_date_suggestion, planned_start_date, planned_start_date_text, planned_start_time, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, materials, customer_access_token, proposal_number, unsent_revision_at, content_revision, issued_content_revision, total_amount";
 
 async function loadTraderProposal(proposalId: string): Promise<
   | { ok: true; userId: string; proposal: DateWorkflowProposalRow }
@@ -354,40 +359,83 @@ export async function acceptCustomerRequestedDate(
     timeHm: startTime,
   });
 
-  const saved = await persistProposalDateSlot(supabase, loaded.proposal, {
-    dateIso,
-    timeHm: startTime,
-    dateText:
-      dateText ||
-      buildScheduleDateLabel({
-        dateIso,
-        time: startTime,
-      }),
-    nextDateState: "confirmed",
-    nextStatus: "booked",
-    userId: loaded.userId,
-    eventNote: `Accepted customer's requested date: ${slotLabel}`,
-    metadata: {
-      action: "trader_accept_requested_date",
-      books_job: true,
-      ask_customer_to_confirm: false,
-    },
-    attentionReason: null,
-  });
-  if (saved.error) {
-    return { error: saved.error };
-  }
+  const status = normalizeProposalStatus(loaded.proposal.status);
+  const needsFirstAccept =
+    !loaded.proposal.accepted_at &&
+    (status === "waiting_for_customer" || status === "needs_attention");
 
-  await supabase
-    .from("proposals")
-    .update({
-      status: "booked",
-      accepted_at: loaded.proposal.accepted_at || acceptedAt,
-      booked_at: acceptedAt,
-      booking_confirmation: "confirmed",
-      attention_reason: null,
-    })
-    .eq("id", proposalId);
+  const dateLabel =
+    dateText ||
+    buildScheduleDateLabel({
+      dateIso,
+      time: startTime,
+    });
+
+  if (needsFirstAccept) {
+    if (hasUnsentRevision(loaded.proposal)) {
+      return {
+        error:
+          "A revised quote is saved but not issued yet. Issue it before booking.",
+      };
+    }
+    if (isCustomerAcceptanceBlockedByRevision(loaded.proposal)) {
+      return {
+        error:
+          "This revised quote is not ready to book. Issue the current revision first.",
+      };
+    }
+    // Stage 2K: acceptance + slot reservation must succeed together.
+    const accepted = await acceptProposalAtRevision(supabase, {
+      proposalId,
+      expectedContentRevision: Number(loaded.proposal.content_revision ?? 0),
+      acceptedAt,
+      bookingConfirmation: "confirmed",
+      source: "trader_booking",
+      requireWorkspaceOwner: true,
+      plannedStartDate: dateIso,
+      plannedStartTime: startTime,
+      plannedStartDateText: dateLabel,
+      requireSlot: true,
+    });
+    if (!accepted.ok) {
+      return {
+        error: accepted.slotConflict
+          ? accepted.error ||
+            "That appointment was just taken. Please choose another time."
+          : accepted.error ?? "Could not accept this proposal.",
+      };
+    }
+  } else {
+    const saved = await persistProposalDateSlot(supabase, loaded.proposal, {
+      dateIso,
+      timeHm: startTime,
+      dateText: dateLabel,
+      nextDateState: "confirmed",
+      nextStatus: "booked",
+      userId: loaded.userId,
+      eventNote: `Accepted customer's requested date: ${slotLabel}`,
+      metadata: {
+        action: "trader_accept_requested_date",
+        books_job: true,
+        ask_customer_to_confirm: false,
+      },
+      attentionReason: null,
+    });
+    if (saved.error) {
+      return { error: saved.error };
+    }
+
+    await supabase
+      .from("proposals")
+      .update({
+        status: "booked",
+        accepted_at: loaded.proposal.accepted_at || acceptedAt,
+        booked_at: acceptedAt,
+        booking_confirmation: "confirmed",
+        attention_reason: null,
+      })
+      .eq("id", proposalId);
+  }
 
   await promoteBookedJobIfReady(
     supabase,

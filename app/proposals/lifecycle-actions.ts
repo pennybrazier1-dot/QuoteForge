@@ -42,6 +42,14 @@ import {
   isProposalStatus,
   normalizeProposalStatus,
 } from "@/lib/proposals/status";
+import {
+  hasUnsentRevision,
+  isCustomerAcceptanceBlockedByRevision,
+} from "@/lib/proposals/revision/unsent-revision";
+import {
+  acceptProposalAtRevision,
+  precheckAcceptAtRevision,
+} from "@/lib/proposals/revision/accept-at-revision";
 
 export type LifecycleActionState = {
   error?: string;
@@ -60,6 +68,119 @@ function revalidateAll(proposalId: string) {
   revalidatePath("/customers");
   revalidatePath("/closed-jobs");
   revalidatePath(`/proposals/${proposalId}`);
+}
+
+/**
+ * Finish job setup after acceptance already succeeded but job/prep failed.
+ * Does not re-accept. Safe under concurrent retries (ensureJob is idempotent).
+ */
+export async function recoverAcceptedJobPreparation(
+  _prevState: LifecycleActionState,
+  formData: FormData
+): Promise<LifecycleActionState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "You must be signed in." };
+  }
+  if (!(await userHasProfile(user.id))) {
+    return { error: "Please complete onboarding first." };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+  if (!proposalId) {
+    return { error: "Proposal not found." };
+  }
+
+  const expectedContentRevision = Number.parseInt(
+    getString(formData, "expectedContentRevision"),
+    10
+  );
+
+  const { data: proposal, error: loadError } = await supabase
+    .from("proposals")
+    .select(
+      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, planned_start_time, booking_confirmation, materials, content_revision, accepted_content_revision, accepted_total_amount, accepted_at"
+    )
+    .eq("id", proposalId)
+    .maybeSingle();
+
+  if (loadError || !proposal) {
+    return { error: "Proposal not found." };
+  }
+
+  const fromStatus = normalizeProposalStatus(proposal.status);
+  if (fromStatus !== "booked") {
+    return {
+      error:
+        "This proposal is not accepted yet. Acceptance must succeed before job setup can be finished.",
+    };
+  }
+
+  const expected = Number.isFinite(expectedContentRevision)
+    ? expectedContentRevision
+    : Number(proposal.accepted_content_revision ?? proposal.content_revision ?? 0);
+
+  if (
+    Number(proposal.accepted_content_revision ?? NaN) !== expected &&
+    Number(proposal.content_revision ?? NaN) !== expected
+  ) {
+    return {
+      error: "Revision mismatch. Refresh the page and try finishing setup again.",
+    };
+  }
+
+  const acceptedAt = proposal.accepted_at || new Date().toISOString();
+  const dateState = readDateSlotState(
+    proposal.booking_confirmation,
+    proposal.planned_start_date
+  );
+  const bookingConfirmation = bookingConfirmationAfterAccept(dateState);
+
+  const jobResult = await ensureJobForAcceptedProposal(
+    supabase,
+    {
+      id: proposal.id,
+      workspace_id: proposal.workspace_id,
+      customer_id: proposal.customer_id,
+      customer_name: proposal.customer_name,
+      customer_email: proposal.customer_email,
+      customer_phone: proposal.customer_phone,
+      customer_address: proposal.customer_address,
+      job_address: proposal.job_address,
+      planned_start_date: proposal.planned_start_date,
+      booking_confirmation: bookingConfirmation,
+      accepted_at: acceptedAt,
+      status: "booked",
+      materials: proposal.materials,
+    },
+    { acceptedAt }
+  );
+
+  if (!jobResult.ok) {
+    return {
+      error:
+        jobResult.error ??
+        "Could not finish job preparation. Please try again.",
+    };
+  }
+
+  await promoteBookedJobIfReady(
+    supabase,
+    {
+      ...proposal,
+      status: "booked",
+      accepted_at: acceptedAt,
+      booking_confirmation: bookingConfirmation,
+    },
+    { acceptedAt, userId: user.id }
+  );
+
+  revalidateAll(proposalId);
+  return { success: true };
 }
 
 /**
@@ -87,10 +208,20 @@ export async function markProposalAccepted(
     return { error: "Proposal not found." };
   }
 
+  const expectedContentRevision = Number.parseInt(
+    getString(formData, "expectedContentRevision") ||
+      String(
+        // Default to live revision when the form omits the field (legacy callers).
+        // Still verified server-side against the loaded row.
+        ""
+      ),
+    10
+  );
+
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
     .select(
-      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, planned_start_time, booking_confirmation, materials"
+      "id, status, workspace_id, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, planned_start_time, booking_confirmation, materials, unsent_revision_at, content_revision, issued_content_revision, total_amount, accepted_content_revision, accepted_at"
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -100,45 +231,68 @@ export async function markProposalAccepted(
   }
 
   const fromStatus = normalizeProposalStatus(proposal.status);
+  const liveRevision = Number(proposal.content_revision ?? 0);
+  const expected = Number.isFinite(expectedContentRevision)
+    ? expectedContentRevision
+    : liveRevision;
+
+  const recoveringAccepted =
+    fromStatus === "booked" &&
+    Number(proposal.accepted_content_revision ?? NaN) === expected;
+
   if (
     !isProposalStatus(fromStatus) ||
-    (fromStatus !== "waiting_for_customer" && fromStatus !== "needs_attention")
+    (!recoveringAccepted &&
+      fromStatus !== "waiting_for_customer" &&
+      fromStatus !== "needs_attention")
   ) {
     return { error: "This proposal is not awaiting acceptance." };
   }
 
-  const acceptedAt = new Date().toISOString();
+  if (!recoveringAccepted) {
+    if (isCustomerAcceptanceBlockedByRevision(proposal)) {
+      return {
+        error: hasUnsentRevision(proposal)
+          ? "A revised quote is saved but not issued yet. Issue it before recording acceptance."
+          : "This revised quote is not ready to accept. Issue the current revision first.",
+      };
+    }
+
+    const precheck = precheckAcceptAtRevision({
+      expectedContentRevision: expected,
+      unsent_revision_at: proposal.unsent_revision_at,
+      content_revision: proposal.content_revision,
+      issued_content_revision: proposal.issued_content_revision,
+      total_amount: proposal.total_amount,
+    });
+    if (!precheck.ok) {
+      return { error: precheck.error };
+    }
+  }
+
+  const acceptedAt = proposal.accepted_at || new Date().toISOString();
   const dateState = readDateSlotState(
     proposal.booking_confirmation,
     proposal.planned_start_date
   );
   const bookingConfirmation = bookingConfirmationAfterAccept(dateState);
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      status: "booked",
-      booking_confirmation: bookingConfirmation,
-      accepted_at: acceptedAt,
-      booked_at: acceptedAt,
-      attention_reason: null,
-    })
-    .eq("id", proposalId);
 
-  if (updateError) {
-    return { error: updateError.message ?? "Could not record acceptance." };
+  if (!recoveringAccepted) {
+    const accepted = await acceptProposalAtRevision(supabase, {
+      proposalId,
+      expectedContentRevision: expected,
+      acceptedAt,
+      bookingConfirmation,
+      source: "trader_acceptance",
+      requireWorkspaceOwner: true,
+    });
+
+    if (!accepted.ok) {
+      return { error: accepted.error ?? "Could not record acceptance." };
+    }
   }
 
-  await recordProposalEvent(supabase, {
-    workspaceId: proposal.workspace_id,
-    proposalId: proposal.id,
-    userId: user.id,
-    eventType: "status_change",
-    fromStatus,
-    toStatus: "booked",
-    note: "Trader recorded customer acceptance — job preparation started",
-    metadata: { source: "trader_acceptance" },
-  });
-
+  // Always ensure job — including recovery after accept-then-job failure.
   const jobResult = await ensureJobForAcceptedProposal(
     supabase,
     {
@@ -161,7 +315,9 @@ export async function markProposalAccepted(
 
   if (!jobResult.ok) {
     return {
-      error: jobResult.error ?? "Acceptance was recorded, but job preparation could not start.",
+      error:
+        jobResult.error ??
+        "Acceptance was recorded, but job preparation could not start.",
     };
   }
 
@@ -224,7 +380,7 @@ export async function confirmBooking(
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
     .select(
-      "id, status, workspace_id, booking_confirmation, accepted_at, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, materials"
+      "id, status, workspace_id, booking_confirmation, accepted_at, customer_id, customer_name, customer_email, customer_phone, customer_address, job_address, planned_start_date, planned_start_time, materials, unsent_revision_at, content_revision, issued_content_revision, total_amount, accepted_content_revision"
     )
     .eq("id", proposalId)
     .maybeSingle();
@@ -249,6 +405,22 @@ export async function confirmBooking(
       error:
         "Only quotes awaiting acceptance, needing attention, or provisional bookings can update dates here.",
     };
+  }
+
+  // First-accept booking path must not bypass revision / issue guards.
+  if (isAwaitingAcceptance || (isNeedsAttention && !proposal.accepted_at)) {
+    if (hasUnsentRevision(proposal)) {
+      return {
+        error:
+          "A revised quote is saved but not issued yet. Issue it before booking.",
+      };
+    }
+    if (isCustomerAcceptanceBlockedByRevision(proposal)) {
+      return {
+        error:
+          "This revised quote is not ready to book. Issue the current revision first.",
+      };
+    }
   }
 
   const plannedFields = plannedStartToDbFields({
@@ -295,53 +467,128 @@ export async function confirmBooking(
     redirect(`/proposals/${proposalId}`);
   }
 
-  const updatePayload: Record<string, unknown> = {
-    status: "booked",
-    booking_confirmation: bookingConfirmation,
-    estimated_duration: estimatedDuration || null,
-    things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
-    attention_reason: null,
-    ...plannedFields,
-  };
-
   if (isAwaitingAcceptance) {
-    updatePayload.accepted_at = now;
-    updatePayload.booked_at = now;
+    const expected = Number(proposal.content_revision ?? 0);
+    // Stage 2K: bind acceptance + diary slot in one RPC so a conflict cannot
+    // leave a falsely confirmed booking without a reserved appointment.
+    const accepted = await acceptProposalAtRevision(supabase, {
+      proposalId,
+      expectedContentRevision: expected,
+      acceptedAt: now,
+      bookingConfirmation,
+      source: "trader_booking",
+      requireWorkspaceOwner: true,
+      plannedStartDate: plannedFields.planned_start_date ?? null,
+      // confirmBooking form carries date (+ optional existing time on the row).
+      plannedStartTime: proposal.planned_start_time ?? null,
+      plannedStartDateText: plannedFields.planned_start_date_text ?? null,
+      requireSlot: Boolean(plannedFields.planned_start_date),
+    });
+    if (!accepted.ok) {
+      return {
+        error: accepted.slotConflict
+          ? accepted.error ||
+            "That appointment was just taken. Please choose another time."
+          : accepted.error ?? "Could not accept this booking.",
+      };
+    }
+
+    // Duration / notes only — dates already written by accept RPC when provided.
+    const { error: scheduleError } = await supabase
+      .from("proposals")
+      .update({
+        booking_confirmation: bookingConfirmation,
+        estimated_duration: estimatedDuration || null,
+        things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+      })
+      .eq("id", proposalId)
+      .eq("status", "booked");
+
+    if (scheduleError) {
+      return {
+        error:
+          scheduleError.message ??
+          "Acceptance was recorded, but the schedule notes could not be saved.",
+      };
+    }
+
+    if (!accepted.alreadyAccepted) {
+      await recordProposalEvent(supabase, {
+        workspaceId: proposal.workspace_id,
+        proposalId: proposal.id,
+        userId: user.id,
+        eventType: "status_change",
+        fromStatus: currentStatus,
+        toStatus: "booked",
+        note:
+          bookingConfirmation === "confirmed"
+            ? "Quote accepted — booking confirmed on calendar"
+            : "Quote accepted — provisional booking on calendar",
+        metadata: {
+          booking_confirmation: bookingConfirmation,
+          source: "trader_booking",
+          content_revision: expected,
+          ...plannedFields,
+          estimated_duration: estimatedDuration || null,
+        },
+      });
+    }
+  } else {
+    if (!plannedFields.planned_start_date) {
+      return { error: "Choose a start date for the calendar." };
+    }
+    if (
+      bookingConfirmation !== "confirmed" &&
+      bookingConfirmation !== "provisional"
+    ) {
+      return { error: "Choose a booking status." };
+    }
+    const { writeProposalScheduleSlot } = await import(
+      "@/lib/proposals/schedule/write-schedule-slot"
+    );
+    const written = await writeProposalScheduleSlot(supabase, {
+      proposalId,
+      plannedStartDate: plannedFields.planned_start_date,
+      plannedStartTime: proposal.planned_start_time,
+      plannedStartDateText: plannedFields.planned_start_date_text,
+      bookingConfirmation,
+      nextStatus: "booked",
+      attentionReason: null,
+      estimatedDuration: estimatedDuration || null,
+      requireAvailable: true,
+    });
+    if (!written.ok) {
+      return {
+        error: written.error ?? "Could not confirm this booking.",
+      };
+    }
+
+    await supabase
+      .from("proposals")
+      .update({
+        estimated_duration: estimatedDuration || null,
+        things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+      })
+      .eq("id", proposalId);
+
+    await recordProposalEvent(supabase, {
+      workspaceId: proposal.workspace_id,
+      proposalId: proposal.id,
+      userId: user.id,
+      eventType: "status_change",
+      fromStatus: currentStatus,
+      toStatus: "booked",
+      note:
+        bookingConfirmation === "confirmed"
+          ? "Booking confirmed"
+          : "Booking details updated",
+      metadata: {
+        booking_confirmation: bookingConfirmation,
+        ...plannedFields,
+        estimated_duration: estimatedDuration || null,
+      },
+    });
   }
-
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update(updatePayload)
-    .eq("id", proposalId);
-
-  if (updateError) {
-    return {
-      error: updateError.message ?? "Could not confirm this booking.",
-    };
-  }
-
-  const eventNote = isAwaitingAcceptance
-    ? bookingConfirmation === "confirmed"
-      ? "Quote accepted — booking confirmed on calendar"
-      : "Quote accepted — provisional booking on calendar"
-    : bookingConfirmation === "confirmed"
-      ? "Booking confirmed"
-      : "Booking details updated";
-
-  await recordProposalEvent(supabase, {
-    workspaceId: proposal.workspace_id,
-    proposalId: proposal.id,
-    userId: user.id,
-    eventType: "status_change",
-    fromStatus: currentStatus,
-    toStatus: "booked",
-    note: eventNote,
-    metadata: {
-      booking_confirmation: bookingConfirmation,
-      ...plannedFields,
-      estimated_duration: estimatedDuration || null,
-    },
-  });
 
   const jobResult = await ensureJobForAcceptedProposal(supabase, {
     id: proposal.id,
@@ -598,7 +845,7 @@ export async function resendToCustomer(
 
     const { data: proposal, error: loadError } = await supabase
       .from("proposals")
-      .select("id, status, workspace_id")
+      .select("id, status, workspace_id, unsent_revision_at, content_revision")
       .eq("id", proposalId)
       .maybeSingle();
 
@@ -606,11 +853,25 @@ export async function resendToCustomer(
       return { error: "Proposal not found." };
     }
 
+    if (proposal.unsent_revision_at) {
+      return {
+        error:
+          "A revised quote is saved but not issued. Use Issue revised proposal instead of a generic resend.",
+      };
+    }
+
     const currentStatus = normalizeProposalStatus(proposal.status);
     const plan = planProposalResend(currentStatus);
 
     if (!plan.allowed || !plan.kind) {
       return { error: "This proposal cannot be sent to the customer right now." };
+    }
+
+    if (plan.kind === "revised") {
+      return {
+        error:
+          "Save a revised quote first, then use Issue revised proposal. Sending an unchanged quote as revised is blocked.",
+      };
     }
 
     const result = await sendProposalToCustomer(supabase, {

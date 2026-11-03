@@ -57,9 +57,12 @@ describe("pending date suggestion keeps confirmed booking", () => {
     );
     expect(actions).toContain("acceptPendingDateSuggestion");
     expect(actions).toContain("accept_pending_date_suggestion");
-    expect(actions).toContain('pending_date_suggestion: null');
-    expect(actions).toContain('.not("pending_date_suggestion", "is", null)');
+    expect(actions).toContain("clearPendingDateSuggestion: true");
+    expect(actions).toContain("writeProposalScheduleSlot");
     expect(actions).toContain("released_previous_booking: true");
+    expect(actions).toContain(
+      "Conflict/refusal leaves the original confirmed booking untouched"
+    );
   });
 
   it("I — accept rechecks occupancy before confirming", () => {
@@ -70,15 +73,16 @@ describe("pending date suggestion keeps confirmed booking", () => {
     expect(actions).toContain("loadWorkspaceOccupiedSlots");
     expect(actions).toContain("isSlotTakenByOther");
     expect(actions).toContain("That suggested time is no longer available");
+    expect(actions).toContain("requireAvailable: true");
   });
 
-  it("J — duplicate accept is idempotent when suggestion already cleared", () => {
+  it("J — accept uses locked writer so conflict refuses without moving dates", () => {
     const actions = readFileSync(
       join(process.cwd(), "lib/proposals/customer-portal/actions.ts"),
       "utf8"
     );
-    expect(actions).toContain("// Idempotent: already accepted or cleared.");
-    expect(actions).toContain('result: "date_accepted"');
+    expect(actions).toContain("written.slotConflict");
+    expect(actions).toContain("Keep your current booking");
   });
 
   it("K — portal distinguishes current confirmed vs proposed alternative", () => {

@@ -277,6 +277,7 @@ function PortalShell({
     | "proposalNumber"
     | "issuedLabel"
     | "token"
+    | "isRevisedQuote"
   >;
   showHero?: boolean;
 }) {
@@ -389,7 +390,12 @@ function PortalHero({
 }: {
   view: Pick<
     PublicProposalViewModel,
-    "businessName" | "businessLogoUrl" | "proposalNumber" | "issuedLabel" | "token"
+    | "businessName"
+    | "businessLogoUrl"
+    | "proposalNumber"
+    | "issuedLabel"
+    | "token"
+    | "isRevisedQuote"
   >;
 }) {
   const brand = buildPortalBrandPresentation({
@@ -424,6 +430,9 @@ function PortalHero({
         <p className="cj-portal-ref-number">#{view.proposalNumber}</p>
         {view.issuedLabel ? (
           <p className="cj-portal-ref-issued">Issued: {view.issuedLabel}</p>
+        ) : null}
+        {view.isRevisedQuote ? (
+          <p className="cj-portal-revised-badge">Updated quote</p>
         ) : null}
         <a
           className="cj-portal-pdf-quiet"
@@ -764,9 +773,13 @@ export function CustomerProposalPortal({
         <section className="cj-portal-respond">
           <h2 className="cj-portal-respond-title">Ready to respond?</h2>
           <p className="cj-portal-respond-copy">
-            {view.canAcceptProposal
-              ? "Choose one of the options below to let us know how you'd like to proceed."
-              : "Choose an available date before you can accept this proposal."}
+            {view.revisionBlocksAccept
+              ? "An updated quote is being prepared. You can send a message, but acceptance is paused until the new quote is ready."
+              : view.canAcceptProposal
+                ? view.isRevisedQuote
+                  ? "This is the updated quote. Choose an option below once you are happy with the new total."
+                  : "Choose one of the options below to let us know how you'd like to proceed."
+                : "Choose an available date before you can accept this proposal."}
           </p>
 
           {error ? (
@@ -848,8 +861,14 @@ export function CustomerProposalPortal({
           {mode === "accept" && view.canAcceptProposal ? (
             <form action={acceptAction} className="cj-portal-form">
               <input type="hidden" name="token" value={view.token} />
+              <input
+                type="hidden"
+                name="expectedContentRevision"
+                value={String(view.contentRevision)}
+              />
               <p className="cj-job-copy">
                 You’re happy to go ahead at <strong>{view.priceLabel}</strong>
+                {view.isRevisedQuote ? " (updated quote)" : ""}
                 {view.selectedSlotLabel ? (
                   <>
                     {" "}
@@ -891,6 +910,11 @@ export function CustomerProposalPortal({
           {mode === "accept" && !view.canAcceptProposal ? (
             <form action={acceptAction} className="cj-portal-form">
               <input type="hidden" name="token" value={view.token} />
+              <input
+                type="hidden"
+                name="expectedContentRevision"
+                value={String(view.contentRevision)}
+              />
               <p className="cj-job-copy">
                 {view.scheduleMode === "range"
                   ? "Choose a date range that fits the work."
@@ -1474,6 +1498,12 @@ function JobSummaryCard({ view }: { view: PublicProposalViewModel }) {
         ) : null}
         <div>
           <h2 className="cj-portal-summary-title">{view.title}</h2>
+          {view.isRevisedQuote ? (
+            <p className="cj-portal-revised-notice">
+              This is an updated quote. Please review the new total and details
+              before accepting.
+            </p>
+          ) : null}
           <p className="cj-portal-summary-copy">{view.projectSummary}</p>
           {view.priceLabel ? (
             <p className="cj-portal-summary-price">{view.priceLabel}</p>

@@ -46,7 +46,9 @@ async function loadManagedProposal(proposalId: string) {
 
   const { data: proposal, error: loadError } = await supabase
     .from("proposals")
-    .select("id, status, proposal_number, workspace_id")
+    .select(
+      "id, status, proposal_number, workspace_id, booking_confirmation, planned_start_time"
+    )
     .eq("id", proposalId)
     .maybeSingle();
 
@@ -182,19 +184,54 @@ export async function rearrangeProposal(
     plannedStartDateExact: plannedStartDateExact ?? "",
   });
 
-  const { error: updateError } = await supabase
-    .from("proposals")
-    .update({
-      estimated_duration: estimatedDuration || null,
-      things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
-      ...plannedFields,
-    })
-    .eq("id", proposal.id);
+  const bookingConfirmation =
+    proposal.booking_confirmation === "provisional"
+      ? "provisional"
+      : proposal.booking_confirmation === "confirmed"
+        ? "confirmed"
+        : null;
 
-  if (updateError) {
-    return {
-      error: updateError.message ?? "Could not update the schedule.",
-    };
+  if (plannedFields.planned_start_date && bookingConfirmation) {
+    const { writeProposalScheduleSlot } = await import(
+      "@/lib/proposals/schedule/write-schedule-slot"
+    );
+    const written = await writeProposalScheduleSlot(supabase, {
+      proposalId: proposal.id,
+      plannedStartDate: plannedFields.planned_start_date,
+      plannedStartTime: proposal.planned_start_time ?? null,
+      plannedStartDateText: plannedFields.planned_start_date_text,
+      bookingConfirmation,
+      nextStatus: proposal.status,
+      estimatedDuration: estimatedDuration || null,
+      requireAvailable: true,
+    });
+    if (!written.ok) {
+      return {
+        error: written.error ?? "Could not update the schedule.",
+      };
+    }
+    await supabase
+      .from("proposals")
+      .update({
+        estimated_duration: estimatedDuration || null,
+        things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+      })
+      .eq("id", proposal.id);
+  } else {
+    const { error: updateError } = await supabase
+      .from("proposals")
+      .update({
+        estimated_duration: estimatedDuration || null,
+        things_to_confirm: buildEstimatedDurationNote(estimatedDuration),
+        ...plannedFields,
+      })
+      .eq("id", proposal.id);
+
+    if (updateError) {
+      return {
+        error: updateError.message ?? "Could not update the schedule.",
+      };
+    }
   }
 
   const changes: string[] = [];

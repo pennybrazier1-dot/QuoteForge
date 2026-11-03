@@ -54,6 +54,13 @@ export async function sendProposalToCustomer(
     subject?: string | null;
     message?: string | null;
     kind?: ProposalEmailSendKind;
+    /**
+     * When true, send the provider email/PDF only. Caller is responsible for
+     * proposal status / revision issue transitions after provider acceptance.
+     */
+    deferLifecycleUpdate?: boolean;
+    /** Bound to the claimed revision send when issuing revised proposals. */
+    idempotencyKey?: string | null;
   },
   deps: SendProposalToCustomerDeps = {}
 ): Promise<SendProposalToCustomerResult> {
@@ -167,11 +174,22 @@ export async function sendProposalToCustomer(
     proposedDateLabel: fields.proposedDateLabel,
     durationLabel: fields.durationLabel,
     scopeSummary: fields.scopeSummary,
+    idempotencyKey: input.idempotencyKey,
   });
 
   const delivery = completeProposalEmailDelivery(providerResult);
   if (!delivery.sent) {
     return { ok: false, error: delivery.error, emailSent: false };
+  }
+
+  if (input.deferLifecycleUpdate) {
+    return {
+      ok: true,
+      messageId: delivery.messageId,
+      recipient,
+      portalUrl,
+      attachedPdf: true,
+    };
   }
 
   const { data: profile } = await supabase
