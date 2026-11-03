@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createCustomerAccessToken } from "@/lib/proposals/customer-portal/token";
+import { createCustomerAccessToken } from "@/lib/proposals/customer-portal/create-customer-access-token";
 
 /**
  * Ensure a proposal has a customer portal access token.

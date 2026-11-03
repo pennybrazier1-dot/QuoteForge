@@ -13,7 +13,7 @@ import {
   buildCustomerConversationUrl,
   buildTraderConversationUrl,
 } from "@/lib/proposals/customer-portal/conversation-notify";
-import { createCustomerAccessToken } from "@/lib/proposals/customer-portal/token";
+import { createCustomerAccessToken } from "@/lib/proposals/customer-portal/create-customer-access-token";
 
 function readRepo(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
