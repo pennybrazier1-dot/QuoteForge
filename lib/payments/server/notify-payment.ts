@@ -31,6 +31,8 @@ export type PaymentNotifySource = {
   payment_due_amount: number | null;
   payment_methods_issued: unknown;
   payment_requested_at: string | null;
+  /** Durable current payment-request notification identity (not a timestamp). */
+  payment_request_event_id: string | null;
   paid_at: string | null;
   closed_at: string | null;
 };
@@ -48,8 +50,8 @@ export type PaymentReceivedNotifyOptions = {
 
 export type PaymentRequestedNotifyOptions = {
   /**
-   * Stable client request id. Preferred over payment_requested_at so retries
-   * of the same request do not create a second outbound row.
+   * Durable payment-request event id. Must match proposals.payment_request_event_id
+   * for the authorised request. Never fall back to payment_requested_at.
    */
   requestEventId?: string | null;
 };
@@ -69,7 +71,7 @@ export type NotifyPaymentResult =
   | { ok: false; error: string };
 
 const PROPOSAL_PAYMENT_SELECT =
-  "id, workspace_id, customer_name, customer_email, title, payment_status, payment_due_amount, payment_methods_issued, payment_requested_at, paid_at, closed_at";
+  "id, workspace_id, customer_name, customer_email, title, payment_status, payment_due_amount, payment_methods_issued, payment_requested_at, payment_request_event_id, paid_at, closed_at";
 
 function issuedMethods(value: unknown): PaymentMethod[] {
   if (!Array.isArray(value)) return [];
@@ -226,15 +228,17 @@ export async function deliverPaymentNotification(
         reason: "Payment request has no amount.",
       };
     }
+    // Prefer explicit option (caller just persisted), else durable proposal column.
+    // Never use payment_requested_at — it is display/audit only and changes on retry.
     const requestEventId =
       options?.requestEventId?.trim() ||
-      proposal.payment_requested_at?.trim() ||
+      proposal.payment_request_event_id?.trim() ||
       "";
     if (!requestEventId) {
       return {
         ok: true,
         skipped: "not_notifiable",
-        reason: "Payment request has no stable event id.",
+        reason: "Payment request has no durable event id.",
       };
     }
     eventVersion = requestEventId;
@@ -442,46 +446,35 @@ export async function recoverMissingPaymentNotifications(
   let recovered = 0;
   let attempted = 0;
 
+  // Reconcile missing outbound for the CURRENT durable request identity only.
+  // Includes partially_paid instalment requests. Does not invent event ids.
   const { data: requestedRows } = await supabase
     .from("proposals")
     .select(PROPOSAL_PAYMENT_SELECT)
     .eq("workspace_id", workspaceId)
-    .eq("payment_status", "requested")
+    .in("payment_status", ["requested", "partially_paid"])
     .is("closed_at", null)
-    .not("payment_requested_at", "is", null)
+    .not("payment_request_event_id", "is", null)
     .order("payment_requested_at", { ascending: false })
     .limit(40);
 
   for (const row of (requestedRows ?? []) as PaymentNotifySource[]) {
-    const key = paymentRequestedKey(
-      row.id,
-      String(row.payment_requested_at).trim()
-    );
+    const eventId = String(row.payment_request_event_id || "").trim();
+    if (!eventId) continue;
+    const key = paymentRequestedKey(row.id, eventId);
     const existing = await findOutboundByIdempotencyKey(
       supabase,
       workspaceId,
       key
     );
     if (existing) continue;
-    // Also skip if any recent request outbound already exists for this proposal
-    // (client request-id keys differ from payment_requested_at).
-    const { data: anyRequest } = await supabase
-      .from("outbound_messages")
-      .select("id")
-      .eq("workspace_id", workspaceId)
-      .eq("source_id", row.id)
-      .eq("event_kind", "payment_requested")
-      .gte("created_at", String(row.payment_requested_at))
-      .limit(1)
-      .maybeSingle();
-    if (anyRequest) continue;
 
     attempted += 1;
     const result = await deliverPaymentNotification(
       supabase,
       row,
       "payment_requested",
-      { requestEventId: String(row.payment_requested_at).trim() }
+      { requestEventId: eventId }
     );
     if (result.ok && !result.skipped) {
       recovered += 1;

@@ -8,6 +8,8 @@ import {
   safeNotifyPaymentReceived,
   safeNotifyPaymentRequested,
 } from "@/lib/payments/server/notify-payment";
+import { findOutboundByIdempotencyKey } from "@/lib/outbound/handoff";
+import { paymentRequestedKey } from "@/lib/outbound/keys";
 import { loadProposalInvoicePresence } from "@/lib/invoices/current-invoice";
 import { parseRecordInvoicePaymentRpcResult } from "@/lib/payments/invoice-payment-ledger";
 import {
@@ -176,7 +178,7 @@ export async function requestJobPaymentAction(
   const { data: proposal, error: loadError } = await auth.supabase
     .from("proposals")
     .select(
-      "id, status, workspace_id, title, customer_name, customer_email, total_amount, payment_status, closed_at, customer_access_token"
+      "id, status, workspace_id, title, customer_name, customer_email, total_amount, payment_status, payment_request_event_id, payment_requested_at, payment_due_amount, payment_methods_issued, closed_at, customer_access_token"
     )
     .eq("id", proposalId)
     .eq("workspace_id", auth.workspaceId)
@@ -277,33 +279,148 @@ export async function requestJobPaymentAction(
     return { error: "Add a card payment link in Settings first." };
   }
 
-  const eventId = requestEventId.trim() || randomUUID();
+  // Client may propose a requestEventId (double-submit / timeout retry).
+  // Server validates format; invalid/missing → server UUID. Never use timestamps
+  // as notification identity.
+  //
+  // Atomic compare-and-swap (Part 2W):
+  // - First claim: UPDATE … WHERE payment_request_event_id IS NULL
+  // - Same pending / never-enqueued: do not overwrite financial fields; reuse id
+  // - Genuine new request after outbound exists: UPDATE … WHERE event_id = previous
+  // Losing concurrent writers re-read durable state and must not overwrite the winner.
+  const proposedEventId = requestEventId.trim();
+  const validatedProposed =
+    /^[A-Za-z0-9._:-]{8,128}$/.test(proposedEventId)
+      ? proposedEventId
+      : "";
+  const pendingEventId = String(proposal.payment_request_event_id || "").trim();
+  let pendingOutbound = null as Awaited<
+    ReturnType<typeof findOutboundByIdempotencyKey>
+  >;
+  if (pendingEventId) {
+    pendingOutbound = await findOutboundByIdempotencyKey(
+      auth.supabase,
+      auth.workspaceId,
+      paymentRequestedKey(proposal.id, pendingEventId)
+    );
+  }
+
   const now = new Date().toISOString();
-  // Keep Partially paid when money has already been recorded; only the first
-  // request (nothing paid yet) uses Awaiting payment / requested.
   const nextPaymentStatus =
     amountPaidOnInvoice > 0 ? "partially_paid" : "requested";
 
-  const { data: updated, error: updateError } = await auth.supabase
-    .from("proposals")
-    .update({
-      payment_status: nextPaymentStatus,
-      payment_requested_at: now,
-      payment_due_amount: amountPence,
-      payment_methods_issued: selected,
-      issued_bank_account_name: bank?.accountName ?? null,
-      issued_bank_sort_code: bank?.sortCode ?? null,
-      issued_bank_account_number: bank?.accountNumber ?? null,
-      issued_bank_reference: bank?.reference ?? null,
-      issued_payment_url: cardUrl,
-    })
-    .eq("id", proposalId)
-    .eq("workspace_id", auth.workspaceId)
-    .is("closed_at", null)
-    .neq("payment_status", "paid")
-    .neq("payment_status", "waived")
-    .select("id, payment_status, payment_requested_at")
-    .maybeSingle();
+  const requestWrite = {
+    payment_status: nextPaymentStatus,
+    payment_requested_at: now,
+    payment_due_amount: amountPence,
+    payment_methods_issued: selected,
+    issued_bank_account_name: bank?.accountName ?? null,
+    issued_bank_sort_code: bank?.sortCode ?? null,
+    issued_bank_account_number: bank?.accountNumber ?? null,
+    issued_bank_reference: bank?.reference ?? null,
+    issued_payment_url: cardUrl,
+  };
+
+  type UpdatedRequest = {
+    id: string;
+    payment_status: string | null;
+    payment_requested_at: string | null;
+    payment_request_event_id: string | null;
+    payment_due_amount?: number | null;
+  };
+
+  let updated: UpdatedRequest | null = null;
+  let updateError: { message?: string } | null = null;
+  let wroteNewRequest = false;
+  let eventId = "";
+
+  if (pendingEventId && !pendingOutbound) {
+    // Never-enqueued pending identity: reuse it. Same-ID / loser retries must not
+    // change amount, timestamp, methods, or status under that identity.
+    eventId = pendingEventId;
+    updated = {
+      id: proposal.id,
+      payment_status: String(proposal.payment_status || nextPaymentStatus),
+      payment_requested_at: proposal.payment_requested_at
+        ? String(proposal.payment_requested_at)
+        : null,
+      payment_request_event_id: pendingEventId,
+      payment_due_amount:
+        proposal.payment_due_amount == null
+          ? null
+          : Math.round(Number(proposal.payment_due_amount)),
+    };
+  } else if (!pendingEventId) {
+    // First claim — only one concurrent writer may win the NULL slot.
+    eventId = validatedProposed || randomUUID();
+    const claim = await auth.supabase
+      .from("proposals")
+      .update({
+        ...requestWrite,
+        payment_request_event_id: eventId,
+      })
+      .eq("id", proposalId)
+      .eq("workspace_id", auth.workspaceId)
+      .is("closed_at", null)
+      .is("payment_request_event_id", null)
+      .neq("payment_status", "paid")
+      .neq("payment_status", "waived")
+      .select(
+        "id, payment_status, payment_requested_at, payment_request_event_id, payment_due_amount"
+      )
+      .maybeSingle();
+    updateError = claim.error;
+    updated = (claim.data as UpdatedRequest | null) ?? null;
+    wroteNewRequest = Boolean(updated);
+
+    if (!updateError && !updated) {
+      // Lost the NULL race — re-read winner; never overwrite.
+      const { data: winner } = await auth.supabase
+        .from("proposals")
+        .select(
+          "id, payment_status, payment_requested_at, payment_request_event_id, payment_due_amount"
+        )
+        .eq("id", proposalId)
+        .eq("workspace_id", auth.workspaceId)
+        .maybeSingle();
+      const winnerId = String(winner?.payment_request_event_id || "").trim();
+      if (!winner || !winnerId) {
+        return {
+          error: "Couldn't send this payment request. Please try again.",
+        };
+      }
+      eventId = winnerId;
+      updated = winner as UpdatedRequest;
+    }
+  } else {
+    // Prior event already has outbound — genuine new authorised request.
+    eventId = validatedProposed || randomUUID();
+    const replace = await auth.supabase
+      .from("proposals")
+      .update({
+        ...requestWrite,
+        payment_request_event_id: eventId,
+      })
+      .eq("id", proposalId)
+      .eq("workspace_id", auth.workspaceId)
+      .eq("payment_request_event_id", pendingEventId)
+      .is("closed_at", null)
+      .neq("payment_status", "paid")
+      .neq("payment_status", "waived")
+      .select(
+        "id, payment_status, payment_requested_at, payment_request_event_id, payment_due_amount"
+      )
+      .maybeSingle();
+    updateError = replace.error;
+    updated = (replace.data as UpdatedRequest | null) ?? null;
+    wroteNewRequest = Boolean(updated);
+
+    if (!updateError && !updated) {
+      return {
+        error: "Couldn't send this payment request. Please try again.",
+      };
+    }
+  }
 
   if (
     updateError ||
@@ -314,18 +431,24 @@ export async function requestJobPaymentAction(
     return { error: "Couldn't send this payment request. Please try again." };
   }
 
-  await recordProposalEvent(auth.supabase, {
-    workspaceId: proposal.workspace_id,
-    proposalId: proposal.id,
-    userId: auth.user.id,
-    eventType: "status_change",
-    fromStatus: normalizeProposalStatus(proposal.status),
-    toStatus: normalizeProposalStatus(proposal.status),
-    note:
-      balanceDue != null && amountPence < balanceDue
-        ? `${paymentRequestTimelineNote(selected)} — ${(amountPence / 100).toFixed(2)} of ${(balanceDue / 100).toFixed(2)} outstanding`
-        : paymentRequestTimelineNote(selected),
-  });
+  if (wroteNewRequest) {
+    const noteAmount =
+      updated.payment_due_amount == null
+        ? amountPence
+        : Math.round(Number(updated.payment_due_amount));
+    await recordProposalEvent(auth.supabase, {
+      workspaceId: proposal.workspace_id,
+      proposalId: proposal.id,
+      userId: auth.user.id,
+      eventType: "status_change",
+      fromStatus: normalizeProposalStatus(proposal.status),
+      toStatus: normalizeProposalStatus(proposal.status),
+      note:
+        balanceDue != null && noteAmount < balanceDue
+          ? `${paymentRequestTimelineNote(selected)} — ${(noteAmount / 100).toFixed(2)} of ${(balanceDue / 100).toFixed(2)} outstanding`
+          : paymentRequestTimelineNote(selected),
+    });
+  }
 
   const tokenResult = await ensureProposalCustomerAccessToken(
     auth.supabase,
@@ -338,8 +461,10 @@ export async function requestJobPaymentAction(
   if (!proposal.customer_email?.trim()) {
     warning = "Payment request saved. This customer has no email address.";
   } else {
+    const persistedEventId =
+      String(updated.payment_request_event_id || "").trim() || eventId;
     const notify = await safeNotifyPaymentRequested(auth.supabase, proposal.id, {
-      requestEventId: eventId,
+      requestEventId: persistedEventId,
     });
     if (!notify.ok) {
       warning =

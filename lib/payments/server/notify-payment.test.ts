@@ -143,3 +143,70 @@ describe("Thin Payment Requested — durable wiring (source inspection)", () => 
     expect(notify).toContain("paymentReceivedKey(proposal.id, eventVersion)");
   });
 });
+
+describe("Payment-request durable identity (Part 2U-bis)", () => {
+  it("persists payment_request_event_id before notify and recover uses the same key", () => {
+    const actions = readRepo("lib/payments/actions.ts");
+    const request = actions.slice(
+      actions.indexOf("export async function requestJobPaymentAction"),
+      actions.indexOf("export async function recordInvoicePaymentAction")
+    );
+    expect(request).toContain("payment_request_event_id: eventId");
+    expect(request).toContain("persistedEventId");
+    expect(request).toContain("updated.payment_request_event_id");
+    expect(request).toContain("findOutboundByIdempotencyKey");
+    expect(request).toContain("pendingEventId");
+    expect(request).toContain("pendingOutbound");
+    expect(request).toContain('.is("payment_request_event_id", null)');
+    expect(request).toContain("Lost the NULL race");
+    expect(request).toContain("wroteNewRequest");
+    // Pending never-enqueued identity is reused without financial overwrite.
+    expect(request).toContain("eventId = pendingEventId");
+    expect(request).toMatch(/\[A-Za-z0-9\._:-\]\{8,128\}/);
+    expect(request).toContain("safeNotifyPaymentRequested");
+
+    const notify = readRepo("lib/payments/server/notify-payment.ts");
+    expect(notify).toContain("payment_request_event_id");
+    expect(notify).toContain("proposal.payment_request_event_id");
+    expect(notify).not.toContain(
+      "options?.requestEventId?.trim() ||\n      proposal.payment_requested_at"
+    );
+
+    const recover = notify.slice(
+      notify.indexOf("export async function recoverMissingPaymentNotifications")
+    );
+    expect(recover).toContain('["requested", "partially_paid"]');
+    expect(recover).toContain("paymentRequestedKey(row.id, eventId)");
+    expect(recover).not.toContain("String(row.payment_requested_at)");
+
+    const migration = readRepo(
+      "supabase/migrations/20261109030000_payment_request_event_id.sql"
+    );
+    expect(migration).toContain("add column if not exists payment_request_event_id");
+    expect(migration).toContain("proposals_payment_request_event_id_len");
+  });
+
+  it("keeps same-request and new-request key contracts distinct", () => {
+    const a = paymentRequestedKey("prop-1", "req-uuid-same");
+    const b = paymentRequestedKey("prop-1", "req-uuid-same");
+    const c = paymentRequestedKey("prop-1", "req-uuid-new");
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+  });
+});
+
+describe("Payment-request atomic CAS (Part 2W)", () => {
+  it("claims NULL event id with compare-and-swap and does not overwrite pending", () => {
+    const actions = readRepo("lib/payments/actions.ts");
+    const request = actions.slice(
+      actions.indexOf("export async function requestJobPaymentAction"),
+      actions.indexOf("export async function recordInvoicePaymentAction")
+    );
+    expect(request).toContain('.is("payment_request_event_id", null)');
+    expect(request).toContain('.eq("payment_request_event_id", pendingEventId)');
+    expect(request).toContain("Lost the NULL race");
+    expect(request).toContain("eventId = pendingEventId");
+    expect(request).toContain("wroteNewRequest");
+    expect(request).toContain("validatedProposed");
+  });
+});
