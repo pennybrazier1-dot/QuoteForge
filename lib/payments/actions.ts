@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
-import { sendNotificationEmail } from "@/lib/email/send-notification-email";
-import { buildPaymentRequestedEmail } from "@/lib/payments/email";
 import { ensurePaidInvoiceAndJob } from "@/lib/payments/ensure-paid-lifecycle";
-import { safeNotifyPaymentReceived } from "@/lib/payments/server/notify-payment";
+import {
+  safeNotifyPaymentReceived,
+  safeNotifyPaymentRequested,
+} from "@/lib/payments/server/notify-payment";
+import { loadProposalInvoicePresence } from "@/lib/invoices/current-invoice";
 import { parseRecordInvoicePaymentRpcResult } from "@/lib/payments/invoice-payment-ledger";
 import {
   buildIssuedBankSnapshot,
@@ -35,9 +37,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
-import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
-import { loadWorkspaceEmailLogoUrl } from "@/lib/proposals/pdf/customer-branding";
 import { COMPLETED_JOBS_PATH } from "@/lib/jobs/complete-job";
 
 export type PaymentActionState = {
@@ -167,6 +167,12 @@ export async function requestJobPaymentAction(
     return { error: "Job not found." };
   }
 
+  // Stable client event id for this request attempt — retries reuse it so
+  // outbound notifications do not duplicate.
+  const requestEventId =
+    getString(formData, "requestEventId") ||
+    getString(formData, "idempotencyKey");
+
   const { data: proposal, error: loadError } = await auth.supabase
     .from("proposals")
     .select(
@@ -180,13 +186,49 @@ export async function requestJobPaymentAction(
     return { error: "Job not found." };
   }
 
+  const presence = await loadProposalInvoicePresence(
+    auth.supabase,
+    proposalId,
+    auth.workspaceId
+  );
+  if (presence.cancelledPendingReplacement) {
+    return {
+      error:
+        "Previous invoice is void. Approve a current invoice before requesting payment.",
+    };
+  }
+  if (presence.current?.status === "draft") {
+    return { error: "Approve the invoice before requesting payment." };
+  }
+
+  const invoice =
+    presence.current?.status === "approved" ? presence.current : null;
+  const balanceDue = invoice
+    ? Math.max(0, Math.round(Number(invoice.balance_due ?? 0)))
+    : null;
+  const amountPaidOnInvoice = invoice
+    ? Math.max(0, Math.round(Number(invoice.amount_paid ?? 0)))
+    : 0;
+  const hasApprovedInvoice = Boolean(invoice);
+
   if (
     !canRequestPayment({
       jobStatus: proposal.status,
       paymentStatus: proposal.payment_status,
       closedAt: proposal.closed_at,
+      balanceDuePence: balanceDue,
+      hasApprovedInvoice,
     })
   ) {
+    if (proposal.closed_at) {
+      return { error: "This job is closed. Payment cannot be requested." };
+    }
+    if (proposal.payment_status === "paid") {
+      return { error: "This invoice is already paid in full." };
+    }
+    if (hasApprovedInvoice && (balanceDue ?? 0) <= 0) {
+      return { error: "There is no outstanding balance to request." };
+    }
     return { error: "Payment can only be requested on a completed job." };
   }
 
@@ -208,12 +250,22 @@ export async function requestJobPaymentAction(
     };
   }
 
-  const amountPounds = Number(getString(formData, "amountPounds"));
-  const amountPence = Number.isFinite(amountPounds)
-    ? Math.round(amountPounds * 100)
-    : defaultPaymentDueAmount(proposal.total_amount);
+  // Authoritative outstanding balance when an approved invoice exists.
+  // Browser amount is capped / defaulted — never trusted above balance_due.
+  const amountPoundsRaw = getString(formData, "amountPounds");
+  const parsedAmount = poundsInputToPence(amountPoundsRaw);
+  const defaultAmount =
+    balanceDue != null
+      ? balanceDue
+      : defaultPaymentDueAmount(proposal.total_amount);
+  const amountPence = parsedAmount ?? defaultAmount;
   if (amountPence <= 0) {
-    return { error: "Enter the amount due." };
+    return { error: "Enter the amount to request." };
+  }
+  if (balanceDue != null && amountPence > balanceDue) {
+    return {
+      error: `Request cannot be more than the outstanding balance (${(balanceDue / 100).toFixed(2)}).`,
+    };
   }
 
   const bank = buildIssuedBankSnapshot(settings, selected);
@@ -225,11 +277,17 @@ export async function requestJobPaymentAction(
     return { error: "Add a card payment link in Settings first." };
   }
 
+  const eventId = requestEventId.trim() || randomUUID();
   const now = new Date().toISOString();
+  // Keep Partially paid when money has already been recorded; only the first
+  // request (nothing paid yet) uses Awaiting payment / requested.
+  const nextPaymentStatus =
+    amountPaidOnInvoice > 0 ? "partially_paid" : "requested";
+
   const { data: updated, error: updateError } = await auth.supabase
     .from("proposals")
     .update({
-      payment_status: "requested",
+      payment_status: nextPaymentStatus,
       payment_requested_at: now,
       payment_due_amount: amountPence,
       payment_methods_issued: selected,
@@ -241,10 +299,18 @@ export async function requestJobPaymentAction(
     })
     .eq("id", proposalId)
     .eq("workspace_id", auth.workspaceId)
-    .select("id, payment_status")
+    .is("closed_at", null)
+    .neq("payment_status", "paid")
+    .neq("payment_status", "waived")
+    .select("id, payment_status, payment_requested_at")
     .maybeSingle();
 
-  if (updateError || updated?.payment_status !== "requested") {
+  if (
+    updateError ||
+    !updated ||
+    (updated.payment_status !== "requested" &&
+      updated.payment_status !== "partially_paid")
+  ) {
     return { error: "Couldn't send this payment request. Please try again." };
   }
 
@@ -255,45 +321,44 @@ export async function requestJobPaymentAction(
     eventType: "status_change",
     fromStatus: normalizeProposalStatus(proposal.status),
     toStatus: normalizeProposalStatus(proposal.status),
-    note: paymentRequestTimelineNote(selected),
+    note:
+      balanceDue != null && amountPence < balanceDue
+        ? `${paymentRequestTimelineNote(selected)} — ${(amountPence / 100).toFixed(2)} of ${(balanceDue / 100).toFixed(2)} outstanding`
+        : paymentRequestTimelineNote(selected),
   });
 
   const tokenResult = await ensureProposalCustomerAccessToken(
     auth.supabase,
     proposal.id
   );
+
+  // Financial save already succeeded — notify is durable and non-fatal.
+  // Queued/failed delivery must not be reported as "email sent".
   let warning: string | undefined;
-  if (proposal.customer_email && tokenResult.ok) {
-    const { data: workspace } = await auth.supabase
-      .from("workspaces")
-      .select("business_name, trade_type")
-      .eq("id", auth.workspaceId)
-      .maybeSingle();
-    const email = buildPaymentRequestedEmail({
-      businessName: workspace?.business_name ?? "Reanvil",
-      customerName: proposal.customer_name,
-      jobTitle: proposal.title?.trim() || "your job",
-      amountLabel: formatPenceAsGbp(amountPence),
-      methods: selected,
-      portalToken: tokenResult.token,
-      logoUrl: loadWorkspaceEmailLogoUrl({}),
-      tradeLabel: workspace?.trade_type,
-    });
-    const sent = await sendNotificationEmail({
-      to: proposal.customer_email,
-      subject: email.subject,
-      message: email.text,
-      businessName: email.businessName,
-      html: email.html,
-      content: undefined,
-      ctaUrl: email.ctaUrl,
-      ctaLabel: email.ctaLabel,
-    });
-    if (!sent.ok) {
-      warning = "Payment request saved. The email could not be sent.";
-    }
-  } else if (!proposal.customer_email) {
+  if (!proposal.customer_email?.trim()) {
     warning = "Payment request saved. This customer has no email address.";
+  } else {
+    const notify = await safeNotifyPaymentRequested(auth.supabase, proposal.id, {
+      requestEventId: eventId,
+    });
+    if (!notify.ok) {
+      warning =
+        "Payment request saved. The email could not be sent — you can retry from this proposal.";
+    } else if (notify.skipped === "no_recipient") {
+      warning = "Payment request saved. This customer has no email address.";
+    } else if (notify.skipped === "already_terminal") {
+      // Retry of the same request — financial state unchanged, no duplicate mail.
+      warning = undefined;
+    } else if (
+      !notify.skipped &&
+      notify.delivery &&
+      !notify.delivery.ok &&
+      !notify.delivery.providerAccepted
+    ) {
+      warning = notify.delivery.unknownOutcome
+        ? "Payment request saved. The email outcome is unsettled — review before retrying."
+        : "Payment request saved. The email could not be sent — you can retry from this proposal.";
+    }
   }
 
   revalidatePaymentPaths(proposal.id, tokenResult.ok ? tokenResult.token : null);

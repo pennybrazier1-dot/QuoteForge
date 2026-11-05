@@ -70,6 +70,9 @@ export function CompletedJobPayment({
 }) {
   const router = useRouter();
   const [requestOpen, setRequestOpen] = useState(false);
+  const [requestEventId, setRequestEventId] = useState(() =>
+    crypto.randomUUID()
+  );
   const [paidOpen, setPaidOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [requestState, requestAction] = useActionState(
@@ -143,7 +146,10 @@ export function CompletedJobPayment({
             <button
               type="button"
               className="qf-btn-primary"
-              onClick={() => setRequestOpen(true)}
+              onClick={() => {
+                setRequestEventId(crypto.randomUUID());
+                setRequestOpen(true);
+              }}
             >
               Request payment
             </button>
@@ -198,6 +204,7 @@ export function CompletedJobPayment({
               {jobTitle}.
             </p>
             <input type="hidden" name="proposalId" value={proposalId} />
+            <input type="hidden" name="requestEventId" value={requestEventId} />
             <label className="qf-completed-jobs-search">
               <span className="qf-field-label">Amount due</span>
               <input

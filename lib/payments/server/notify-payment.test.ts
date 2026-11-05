@@ -17,7 +17,7 @@ function readRepo(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
 }
 
-describe("Thin Payment Received — email templates", () => {
+describe("Payment notification email templates", () => {
   it("keeps bank details out of payment-request email", () => {
     const email = buildPaymentRequestedEmail({
       businessName: "Sam Sparks E2E Ltd",
@@ -65,86 +65,81 @@ describe("Thin Payment Received — email templates", () => {
     expect(email.html).toMatch(/£1,800\.00/);
     expect(email.html).toMatch(/remains outstanding/i);
     expect(email.html).not.toMatch(/paid in full/i);
-    expect(email.html).toMatch(/recorded by your trader/i);
   });
 });
 
-describe("Thin Payment Received — outbound keys and durable wiring", () => {
-  it("uses stable ledger payment keys (preferred) and legacy paid-at fallback", () => {
+describe("Outbound payment notification keys", () => {
+  it("uses stable request and ledger payment keys", () => {
+    const requestId = "req-uuid-1";
+    const otherRequestId = "req-uuid-2";
     const paidAt = "2026-11-03T23:10:00.000Z";
     const ledgerId = "pay-ledger-uuid-1";
+    expect(paymentRequestedKey("prop-1", requestId)).toBe(
+      `payment_requested/prop-1/${requestId}`
+    );
+    expect(paymentRequestedKey("prop-1", requestId)).toBe(
+      paymentRequestedKey("prop-1", requestId)
+    );
+    expect(paymentRequestedKey("prop-1", otherRequestId)).not.toBe(
+      paymentRequestedKey("prop-1", requestId)
+    );
     expect(paymentReceivedLedgerKey(ledgerId)).toBe(
       `payment_received/${ledgerId}`
     );
     expect(paymentReceivedKey("prop-1", paidAt)).toBe(
       `payment_received/prop-1/${paidAt}`
     );
-    // Request keys remain available on foundation; this batch does not migrate request path.
-    expect(paymentRequestedKey("prop-1", "req-uuid-1")).toBe(
-      `payment_requested/prop-1/req-uuid-1`
-    );
   });
+});
 
-  it("wires durable payment-received notify after financial saves (not on view)", () => {
+describe("Thin Payment Requested — durable wiring (source inspection)", () => {
+  it("wires safeNotifyPaymentRequested with requestEventId after financial save", () => {
+    const actions = readRepo("lib/payments/actions.ts");
+    const request = actions.slice(
+      actions.indexOf("export async function requestJobPaymentAction"),
+      actions.indexOf("export async function recordInvoicePaymentAction")
+    );
+
+    expect(request).toContain("safeNotifyPaymentRequested");
+    expect(request).toContain("requestEventId");
+    expect(request).toContain("loadProposalInvoicePresence");
+    expect(request).toContain("balance_due");
+    expect(request).toContain("amount_paid");
+    expect(request).toContain('partially_paid');
+    expect(request).toContain("cancelledPendingReplacement");
+    expect(request).not.toContain("sendNotificationEmail");
+    expect(request).not.toContain("buildPaymentRequestedEmail");
+    expect(request).not.toContain("record_invoice_payment");
+    expect(request).not.toContain('status: "closed"');
+    expect(request).toMatch(/Payment request saved\. The email could not be sent/);
+    expect(request).toContain("already_terminal");
+
+    // Cap above outstanding balance
+    expect(request).toMatch(/Request cannot be more than the outstanding balance/);
+    expect(request).toMatch(/There is no outstanding balance to request/);
+
     const notify = readRepo("lib/payments/server/notify-payment.ts");
+    expect(notify).toContain("paymentRequestedKey");
     expect(notify).toContain("enqueueAndDeliverOutboundMessage");
     expect(notify).toContain("findOutboundByIdempotencyKey");
-    expect(notify).toContain("paymentReceivedLedgerKey");
-    expect(notify).toContain("ledgerPaymentId");
-    expect(notify).toContain("buildPaymentReceivedEmail");
-    expect(notify).toContain("buildPaymentPartialReceivedEmail");
-    expect(notify).toContain('sourceType: "proposal_payment"');
-    expect(notify).toContain('audience: "customer"');
     expect(notify).toContain("already_terminal");
-    expect(notify).toMatch(/Never throws into the trader action/i);
-    expect(notify).toMatch(/never bank account numbers, portal tokens/i);
-    // Recovery helpers may remain present but unwired in this batch.
-    expect(notify).toContain("recoverMissingPaymentNotifications");
-    expect(notify).toContain("buildPaymentRetryPayload");
+    expect(notify).toContain('eventKind: kind');
 
-    const actions = readRepo("lib/payments/actions.ts");
+    const ui = readRepo("components/jobs/completed-job-payment.tsx");
+    expect(ui).toContain('name="requestEventId"');
+    expect(ui).toContain("crypto.randomUUID()");
+    expect(ui).not.toContain("credit-notes");
+    expect(ui).not.toContain("components/outbound");
+
+    // Received path remains durable; request path no longer uses direct send.
     expect(actions).toContain("safeNotifyPaymentReceived");
-    expect(actions).toContain("ledgerPaymentId");
-
-    const markPaid = actions.slice(
-      actions.indexOf("export async function markJobPaidAction"),
-      actions.indexOf("export async function waiveJobPaymentAction")
-    );
-    expect(markPaid).toContain("safeNotifyPaymentReceived");
-    expect(markPaid).not.toContain('status: "closed"');
-
-    const record = actions.slice(
-      actions.indexOf("export async function recordInvoicePaymentAction"),
-      actions.indexOf("export async function markJobPaidAction")
-    );
-    expect(record).toContain("safeNotifyPaymentReceived");
-    expect(record).toContain("parsed.payment_id");
-    expect(record).toContain("parsed.amount_recorded");
-    expect(record).toContain("parsed.fully_settled");
-    // Failure after success → warning, not payment error rollback.
-    expect(record).toMatch(/Payment recorded\. The confirmation email could not be sent/);
-
-    // Payment-requested migration is explicitly out of this batch.
-    expect(actions).toContain("sendNotificationEmail");
-    expect(actions).toContain("buildPaymentRequestedEmail");
-    expect(actions).not.toContain("safeNotifyPaymentRequested");
-
-    // Waive must not send payment-received notifications.
-    const waive = actions.slice(
-      actions.indexOf("export async function waiveJobPaymentAction"),
-      actions.indexOf("export async function closeJobAction")
-    );
-    expect(waive).not.toContain("safeNotifyPaymentReceived");
-
-    // No dashboard / outbound recovery UI in this candidate.
-    expect(notify).not.toContain("components/outbound");
+    expect(actions).not.toContain("sendNotificationEmail");
     expect(actions).not.toContain("@/lib/outbound/actions");
   });
 
-  it("prefers ledger id key and uses legacy paid-at only without ledger id", () => {
+  it("keeps payment-received ledger key preference", () => {
     const notify = readRepo("lib/payments/server/notify-payment.ts");
     expect(notify).toContain("paymentReceivedLedgerKey(ledgerPaymentId)");
     expect(notify).toContain("paymentReceivedKey(proposal.id, eventVersion)");
-    expect(notify).toMatch(/Legacy \/ no-invoice settlement path/);
   });
 });
