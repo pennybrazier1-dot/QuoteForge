@@ -195,6 +195,33 @@ export function drawLogoPlaceholder(flow: PdfFlow, x: number, y: number, size: n
   flow.doc.text("HERE", x, y + size / 2 + 1, { width: size, align: "center" });
 }
 
+
+/**
+ * Draw a real logo image when bytes are available.
+ * Returns true when an image was drawn. Does not draw a placeholder.
+ */
+export function drawLogoImage(
+  flow: PdfFlow,
+  x: number,
+  y: number,
+  size: number,
+  logoBytes: Buffer | null | undefined
+): boolean {
+  if (!logoBytes || logoBytes.length === 0) {
+    return false;
+  }
+  try {
+    flow.doc.image(logoBytes, x, y, {
+      fit: [size, size],
+      align: "center",
+      valign: "center",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function drawQrPlaceholder(flow: PdfFlow, x: number, y: number, size: number) {
   flow.doc
     .rect(x, y, size, size)

@@ -21,6 +21,12 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import { createClient } from "@/lib/supabase/server";
 
+import {
+  buildInvoiceBusinessSnapshotColumns,
+  captureInvoiceLogoSnapshot,
+  loadWorkspaceBranding,
+} from "@/lib/invoices/business-snapshot";
+
 export type InvoiceActionState = {
   error?: string;
   success?: boolean;
@@ -285,11 +291,33 @@ export async function approveInvoiceAction(
     return { error: validation.errors[0] ?? "Resolve pricing issues before approving." };
   }
 
+  const branding = await loadWorkspaceBranding(
+    auth.supabase,
+    auth.workspaceId
+  );
+  if (!branding) {
+    return { error: "Could not load your business details to freeze on this invoice." };
+  }
+  const logoCapture = await captureInvoiceLogoSnapshot(
+    auth.supabase,
+    auth.workspaceId,
+    invoiceId
+  );
+  if (!logoCapture.ok) {
+    return { error: logoCapture.error };
+  }
+
   const now = new Date().toISOString();
+  const snapshot = buildInvoiceBusinessSnapshotColumns({
+    workspace: branding,
+    logoPath: logoCapture.path,
+    capturedAtIso: now,
+  });
   const { data: updated, error } = await auth.supabase
     .from("invoices")
     .update({
       ...payload,
+      ...snapshot,
       status: "approved",
       approved_at: now,
       approved_by: auth.user.id,

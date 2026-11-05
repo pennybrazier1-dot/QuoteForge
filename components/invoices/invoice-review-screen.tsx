@@ -549,6 +549,14 @@ export function InvoiceReviewScreen({
             >
               Preview Invoice
             </button>
+            <a
+              className="qf-btn-secondary"
+              href={`/proposals/${invoice.proposal_id}/invoice/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Preview PDF
+            </a>
             {!canApprove ? (
               <p className="qf-invoice-line-warn" role="status">
                 Resolve pricing and tax checks before approving.
@@ -568,6 +576,14 @@ export function InvoiceReviewScreen({
             >
               Preview Invoice
             </button>
+            <a
+              className="qf-btn-secondary"
+              href={`/proposals/${invoice.proposal_id}/invoice/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Preview PDF
+            </a>
           </div>
         )}
       </form>
@@ -584,6 +600,9 @@ export function InvoiceReviewScreen({
             <h2 className="qf-mgmt-dialog-title">Invoice preview</h2>
             <p className="qf-invoice-muted">
               Preview only — nothing is emailed from this screen.
+            </p>
+            <p className="qf-invoice-muted">
+              Opening the PDF does not send an email.
             </p>
             <div className="qf-invoice-preview-body">
               <p>

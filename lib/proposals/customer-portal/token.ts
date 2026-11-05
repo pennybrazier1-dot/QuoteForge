@@ -20,3 +20,12 @@ export function buildCustomerProposalPdfPath(token: string): string {
 export function buildCustomerProposalPdfUrl(token: string): string {
   return `${getSiteUrl()}${buildCustomerProposalPdfPath(token)}`;
 }
+
+export function buildCustomerInvoicePdfPath(token: string): string {
+  return `${buildCustomerProposalPortalPath(token)}/invoice/pdf`;
+}
+
+export function buildCustomerInvoicePdfUrl(token: string): string {
+  return `${getSiteUrl()}${buildCustomerInvoicePdfPath(token)}`;
+}
+
