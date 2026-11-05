@@ -101,11 +101,12 @@ describe("Stage 9B invoice payment recording", () => {
   });
 
   /**
-   * Thin Lifecycle restores Part 2J deferred action/ensure-paid wiring asserts.
-   * Payment-notification (`safeNotifyPaymentReceived`) remains deferred to the
-   * payment-notify batch. Thin B2 outbound recovery-UI obligation is separate.
+   * Thin Payment Received Notification (9L.4 Part 2O): restore positive
+   * `safeNotifyPaymentReceived` wiring after ledger settlement.
+   * Still must not close the job. Thin B2 outbound recovery-UI blind-resend
+   * obligation remains deferred separately.
    */
-  it("wires mark-paid through ledger RPC without closing the job", () => {
+  it("wires mark-paid through ledger RPC with notify without closing the job", () => {
     const actions = readRepo("lib/payments/actions.ts");
     const markPaid = actions.slice(
       actions.indexOf("export async function markJobPaidAction"),
@@ -114,12 +115,19 @@ describe("Stage 9B invoice payment recording", () => {
     expect(markPaid).toContain("ensurePaidInvoiceAndJob");
     expect(markPaid).toContain("paymentMethodsIssued");
     expect(markPaid).toContain('payment_status === "paid"');
-    expect(markPaid).not.toContain("safeNotifyPaymentReceived");
+    expect(markPaid).toContain("safeNotifyPaymentReceived");
+    expect(markPaid).toContain("ledgerPaymentId");
     expect(markPaid).not.toContain('status: "closed"');
     expect(markPaid).not.toContain("applyFullPaymentToInvoice");
     expect(actions).toContain("export async function closeJobAction");
     expect(actions).toContain("export async function recordInvoicePaymentAction");
     expect(actions).toContain("record_invoice_payment");
+    const record = actions.slice(
+      actions.indexOf("export async function recordInvoicePaymentAction"),
+      actions.indexOf("export async function markJobPaidAction")
+    );
+    expect(record).toContain("safeNotifyPaymentReceived");
+    expect(record).toContain("parsed.payment_id");
   });
 
   it("ledger RPC sets job paid without closing the job", () => {

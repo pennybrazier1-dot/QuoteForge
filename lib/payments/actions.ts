@@ -6,6 +6,7 @@ import { userHasProfile } from "@/lib/onboarding/status";
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
 import { buildPaymentRequestedEmail } from "@/lib/payments/email";
 import { ensurePaidInvoiceAndJob } from "@/lib/payments/ensure-paid-lifecycle";
+import { safeNotifyPaymentReceived } from "@/lib/payments/server/notify-payment";
 import { parseRecordInvoicePaymentRpcResult } from "@/lib/payments/invoice-payment-ledger";
 import {
   buildIssuedBankSnapshot,
@@ -430,13 +431,38 @@ export async function recordInvoicePaymentAction(
     });
   }
 
-  // Thin Lifecycle: no outbound payment notification in this batch.
+  // Payment already saved — confirmation email is durable and non-fatal.
+  let warning: string | undefined = parsed.already_recorded
+    ? "This payment was already recorded."
+    : undefined;
+  if (parsed.payment_id) {
+    const notify = await safeNotifyPaymentReceived(auth.supabase, proposal.id, {
+      ledgerPaymentId: parsed.payment_id,
+      amountRecordedPence: parsed.amount_recorded ?? amountPence,
+      outstandingPence: parsed.balance_due ?? 0,
+      fullySettled: Boolean(parsed.fully_settled),
+    });
+    if (!notify.ok) {
+      warning =
+        "Payment recorded. The confirmation email could not be sent — you can retry from this proposal.";
+    } else if (
+      !notify.skipped &&
+      notify.delivery &&
+      !notify.delivery.ok &&
+      !notify.delivery.providerAccepted
+    ) {
+      warning = notify.delivery.unknownOutcome
+        ? "Payment recorded. The confirmation email outcome is unsettled — review before retrying."
+        : "Payment recorded. The confirmation email could not be sent — you can retry from this proposal.";
+    } else if (notify.skipped === "already_terminal" && parsed.already_recorded) {
+      warning = "This payment was already recorded.";
+    }
+  }
+
   revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
   return {
     success: true,
-    warning: parsed.already_recorded
-      ? "This payment was already recorded."
-      : undefined,
+    warning,
   };
 }
 
@@ -464,6 +490,7 @@ export async function markJobPaidAction(
   }
 
   // Idempotent heal when already paid — never invent a second ledger row.
+  // Notify remains durable + keyed (terminal deliveries skip; failed ones retry).
   if (proposal.payment_status === "paid" && !proposal.closed_at) {
     const heal = await ensurePaidInvoiceAndJob({
       supabase: auth.supabase,
@@ -471,8 +498,30 @@ export async function markJobPaidAction(
       proposalId: proposal.id,
       paymentMethodsIssued: proposal.payment_methods_issued,
     });
+    const notify = await safeNotifyPaymentReceived(auth.supabase, proposal.id, {
+      ledgerPaymentId: heal.paymentId,
+      amountRecordedPence: heal.amountRecordedPence,
+      outstandingPence: heal.outstandingPence ?? 0,
+      fullySettled: true,
+    });
+    let warning = heal.warning;
+    if (!notify.ok) {
+      const emailWarn =
+        "Payment is already recorded. The confirmation email could not be sent — you can retry from this proposal.";
+      warning = warning ? `${warning} ${emailWarn}` : emailWarn;
+    } else if (
+      !notify.skipped &&
+      notify.delivery &&
+      !notify.delivery.ok &&
+      !notify.delivery.providerAccepted
+    ) {
+      const emailWarn = notify.delivery.unknownOutcome
+        ? "Payment is already recorded. The confirmation email outcome is unsettled — review before retrying."
+        : "Payment is already recorded. The confirmation email could not be sent — you can retry from this proposal.";
+      warning = warning ? `${warning} ${emailWarn}` : emailWarn;
+    }
     revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
-    return { success: true, warning: heal.warning };
+    return { success: true, warning };
   }
 
   if (
@@ -489,7 +538,6 @@ export async function markJobPaidAction(
   }
 
   // Ledger RPC records remaining balance; updates proposal + job. Paid ≠ Closed.
-  // Thin Lifecycle: no outbound notification / email in this batch.
   const lifecycle = await ensurePaidInvoiceAndJob({
     supabase: auth.supabase,
     workspaceId: auth.workspaceId,
@@ -512,6 +560,9 @@ export async function markJobPaidAction(
     }
   }
 
+  let warning = lifecycle.warning;
+
+  // Timeline once per new settlement; skip pure heals / idempotent replays.
   if (lifecycle.paymentRecorded || !lifecycle.invoiceAlreadySettled) {
     await recordProposalEvent(auth.supabase, {
       workspaceId: proposal.workspace_id,
@@ -524,8 +575,31 @@ export async function markJobPaidAction(
     });
   }
 
+  // Payment already saved — confirmation email is durable and non-fatal.
+  const notify = await safeNotifyPaymentReceived(auth.supabase, proposal.id, {
+    ledgerPaymentId: lifecycle.paymentId,
+    amountRecordedPence: lifecycle.amountRecordedPence,
+    outstandingPence: lifecycle.outstandingPence ?? 0,
+    fullySettled: true,
+  });
+  if (!notify.ok) {
+    warning = warning
+      ? `${warning} Confirmation email could not be sent — you can retry from this proposal.`
+      : "Marked as paid. The confirmation email could not be sent — you can retry from this proposal.";
+  } else if (
+    !notify.skipped &&
+    notify.delivery &&
+    !notify.delivery.ok &&
+    !notify.delivery.providerAccepted
+  ) {
+    const emailWarn = notify.delivery.unknownOutcome
+      ? "The confirmation email outcome is unsettled — review before retrying."
+      : "The confirmation email could not be sent — you can retry from this proposal.";
+    warning = warning ? `${warning} ${emailWarn}` : `Marked as paid. ${emailWarn}`;
+  }
+
   revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
-  return { success: true, warning: lifecycle.warning };
+  return { success: true, warning };
 }
 
 export async function waiveJobPaymentAction(
