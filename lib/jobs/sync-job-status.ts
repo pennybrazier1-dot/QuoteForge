@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { JobStatus } from "@/lib/jobs/status";
 
+export type SyncJobStatusResult = { ok: true } | { ok: false; error: string };
+
 export async function syncJobStatusForProposal(
   supabase: SupabaseClient,
   proposalId: string,
@@ -9,7 +11,7 @@ export async function syncJobStatusForProposal(
     started_at?: string | null;
     completed_at?: string | null;
   }
-): Promise<void> {
+): Promise<SyncJobStatusResult> {
   const payload: Record<string, unknown> = { status };
   if (timestamps?.started_at !== undefined) {
     payload.started_at = timestamps.started_at;
@@ -18,5 +20,13 @@ export async function syncJobStatusForProposal(
     payload.completed_at = timestamps.completed_at;
   }
 
-  await supabase.from("jobs").update(payload).eq("proposal_id", proposalId);
+  const { error } = await supabase
+    .from("jobs")
+    .update(payload)
+    .eq("proposal_id", proposalId);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }

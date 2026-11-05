@@ -47,6 +47,19 @@ export type InvoiceRecord = {
   status: InvoiceStatus;
   currency: string;
   business_name: string | null;
+  /** Frozen at approve (9I.3a / Thin B2). Null with null business_snapshot_at = legacy. */
+  issued_address_line_1: string | null;
+  issued_address_line_2: string | null;
+  issued_town: string | null;
+  issued_county: string | null;
+  issued_postcode: string | null;
+  issued_phone: string | null;
+  issued_email: string | null;
+  issued_vat_number: string | null;
+  issued_website: string | null;
+  issued_company_number: string | null;
+  issued_logo_path: string | null;
+  business_snapshot_at: string | null;
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
@@ -61,6 +74,8 @@ export type InvoiceRecord = {
   vat_amount: number;
   total_amount: number;
   amount_paid: number;
+  /** Pre-ledger paid snapshot (MATH Thin B3). */
+  opening_amount_paid: number;
   balance_due: number;
   agreed_total_amount: number;
   source_vat_amount: number;

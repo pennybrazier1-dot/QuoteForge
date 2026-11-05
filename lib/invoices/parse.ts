@@ -128,6 +128,37 @@ export function parseInvoiceRow(row: Record<string, unknown>): InvoiceRecord {
     currency: String(row.currency ?? "GBP"),
     business_name:
       typeof row.business_name === "string" ? row.business_name : null,
+    issued_address_line_1:
+      typeof row.issued_address_line_1 === "string"
+        ? row.issued_address_line_1
+        : null,
+    issued_address_line_2:
+      typeof row.issued_address_line_2 === "string"
+        ? row.issued_address_line_2
+        : null,
+    issued_town: typeof row.issued_town === "string" ? row.issued_town : null,
+    issued_county:
+      typeof row.issued_county === "string" ? row.issued_county : null,
+    issued_postcode:
+      typeof row.issued_postcode === "string" ? row.issued_postcode : null,
+    issued_phone:
+      typeof row.issued_phone === "string" ? row.issued_phone : null,
+    issued_email:
+      typeof row.issued_email === "string" ? row.issued_email : null,
+    issued_vat_number:
+      typeof row.issued_vat_number === "string" ? row.issued_vat_number : null,
+    issued_website:
+      typeof row.issued_website === "string" ? row.issued_website : null,
+    issued_company_number:
+      typeof row.issued_company_number === "string"
+        ? row.issued_company_number
+        : null,
+    issued_logo_path:
+      typeof row.issued_logo_path === "string" ? row.issued_logo_path : null,
+    business_snapshot_at:
+      typeof row.business_snapshot_at === "string"
+        ? row.business_snapshot_at
+        : null,
     customer_name:
       typeof row.customer_name === "string" ? row.customer_name : null,
     customer_email:
@@ -147,6 +178,7 @@ export function parseInvoiceRow(row: Record<string, unknown>): InvoiceRecord {
     vat_amount: Number(row.vat_amount ?? 0),
     total_amount: Number(row.total_amount ?? 0),
     amount_paid: Number(row.amount_paid ?? 0),
+    opening_amount_paid: Number(row.opening_amount_paid ?? 0),
     balance_due: Number(row.balance_due ?? 0),
     agreed_total_amount: Number(
       row.agreed_total_amount ?? row.total_amount ?? 0

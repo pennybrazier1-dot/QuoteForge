@@ -1,6 +1,7 @@
 export const PAYMENT_STATUSES = [
   "not_requested",
   "requested",
+  "partially_paid",
   "paid",
   "waived",
 ] as const;

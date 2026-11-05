@@ -81,6 +81,18 @@ describe("Stage 9B invoice payment recording", () => {
     expect(migration).not.toMatch(
       /new\.balance_due is distinct from old\.balance_due/
     );
+    expect(readRepo("lib/payments/actions.ts")).toContain(
+      "ensurePaidInvoiceAndJob"
+    );
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).toContain(
+      "record_invoice_payment"
+    );
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).toContain(
+      "markRemainingPaymentKey"
+    );
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).not.toContain(
+      "applyFullPaymentToInvoice"
+    );
     expect(
       readRepo(
         "supabase/migrations/20261109020000_invoice_payment_writer_cutover.sql"
@@ -89,16 +101,27 @@ describe("Stage 9B invoice payment recording", () => {
   });
 
   /**
-   * MATH Thin B3 (9L.4 Part 2J): assert ledger RPC job-paid semantics only.
-   *
-   * Deferred — restore in the payment-lifecycle / actions cutover batch
-   * (ensure-paid-lifecycle + markJobPaidAction RPC wiring; not waiver/CN/refund):
-   * - lib/payments/actions.ts markJobPaidAction uses ensurePaidInvoiceAndJob
-   * - mark-paid path uses paymentMethodsIssued / payment_status === "paid"
-   * - safeNotifyPaymentReceived without closing the job
-   * - mark-paid must not call applyFullPaymentToInvoice directly
-   * - closeJobAction remains a separate export
+   * Thin Lifecycle restores Part 2J deferred action/ensure-paid wiring asserts.
+   * Payment-notification (`safeNotifyPaymentReceived`) remains deferred to the
+   * payment-notify batch. Thin B2 outbound recovery-UI obligation is separate.
    */
+  it("wires mark-paid through ledger RPC without closing the job", () => {
+    const actions = readRepo("lib/payments/actions.ts");
+    const markPaid = actions.slice(
+      actions.indexOf("export async function markJobPaidAction"),
+      actions.indexOf("export async function waiveJobPaymentAction")
+    );
+    expect(markPaid).toContain("ensurePaidInvoiceAndJob");
+    expect(markPaid).toContain("paymentMethodsIssued");
+    expect(markPaid).toContain('payment_status === "paid"');
+    expect(markPaid).not.toContain("safeNotifyPaymentReceived");
+    expect(markPaid).not.toContain('status: "closed"');
+    expect(markPaid).not.toContain("applyFullPaymentToInvoice");
+    expect(actions).toContain("export async function closeJobAction");
+    expect(actions).toContain("export async function recordInvoicePaymentAction");
+    expect(actions).toContain("record_invoice_payment");
+  });
+
   it("ledger RPC sets job paid without closing the job", () => {
     const cutover = readRepo(
       "supabase/migrations/20261109020000_invoice_payment_writer_cutover.sql"

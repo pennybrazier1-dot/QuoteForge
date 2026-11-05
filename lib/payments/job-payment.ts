@@ -15,6 +15,7 @@ import {
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   not_requested: "Not requested",
   requested: "Awaiting payment",
+  partially_paid: "Partially paid",
   paid: "Paid",
   waived: "No payment required",
 };
@@ -73,24 +74,73 @@ export function canRequestPayment(input: {
   jobStatus: string;
   paymentStatus?: string | null;
   closedAt?: string | null;
+  balanceDuePence?: number | null;
+  hasApprovedInvoice?: boolean;
 }): boolean {
-  return (
-    isCompletedJobStatus(input.jobStatus) &&
-    !input.closedAt &&
-    readPaymentStatus(input.paymentStatus) === "not_requested"
-  );
+  if (!isCompletedJobStatus(input.jobStatus) || input.closedAt) {
+    return false;
+  }
+  const payment = readPaymentStatus(input.paymentStatus);
+  if (payment === "paid" || payment === "waived") {
+    return false;
+  }
+  if (input.hasApprovedInvoice) {
+    return Math.max(0, Math.round(Number(input.balanceDuePence ?? 0))) > 0;
+  }
+  return payment === "not_requested";
 }
 
 export function canMarkPaymentPaid(input: {
   jobStatus: string;
   paymentStatus?: string | null;
   closedAt?: string | null;
+  balanceDuePence?: number | null;
+  hasApprovedInvoice?: boolean;
 }): boolean {
+  const payment = readPaymentStatus(input.paymentStatus);
+  if (
+    !isCompletedJobStatus(input.jobStatus) ||
+    input.closedAt ||
+    (payment !== "requested" && payment !== "partially_paid")
+  ) {
+    return false;
+  }
+  if (input.hasApprovedInvoice) {
+    return Math.max(0, Math.round(Number(input.balanceDuePence ?? 0))) > 0;
+  }
+  return true;
+}
+
+/** Record a deposit/instalment against an approved invoice with outstanding balance. */
+export function canRecordInvoicePayment(input: {
+  jobStatus: string;
+  paymentStatus?: string | null;
+  closedAt?: string | null;
+  balanceDuePence?: number | null;
+  hasApprovedInvoice?: boolean;
+}): boolean {
+  const payment = readPaymentStatus(input.paymentStatus);
+  const balance = Math.max(0, Math.round(Number(input.balanceDuePence ?? 0)));
   return (
+    Boolean(input.hasApprovedInvoice) &&
     isCompletedJobStatus(input.jobStatus) &&
     !input.closedAt &&
-    readPaymentStatus(input.paymentStatus) === "requested"
+    payment !== "waived" &&
+    payment !== "paid" &&
+    balance > 0
   );
+}
+
+export function poundsInputToPence(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed || !/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    return null;
+  }
+  const pounds = Number(trimmed);
+  if (!Number.isFinite(pounds) || pounds <= 0) {
+    return null;
+  }
+  return Math.round(pounds * 100);
 }
 
 export function canWaivePayment(input: {
@@ -194,6 +244,7 @@ export function buildCustomerPortalPaymentView(input: {
     Boolean(input.payment.closed_at);
   const requestedOrPaid =
     input.payment.payment_status === "requested" ||
+    input.payment.payment_status === "partially_paid" ||
     input.payment.payment_status === "paid" ||
     input.payment.payment_status === "waived";
   const methods = input.payment.payment_methods_issued;

@@ -4,15 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { userHasProfile } from "@/lib/onboarding/status";
 import { sendNotificationEmail } from "@/lib/email/send-notification-email";
-import {
-  buildPaymentReceivedEmail,
-  buildPaymentRequestedEmail,
-} from "@/lib/payments/email";
+import { buildPaymentRequestedEmail } from "@/lib/payments/email";
+import { ensurePaidInvoiceAndJob } from "@/lib/payments/ensure-paid-lifecycle";
+import { parseRecordInvoicePaymentRpcResult } from "@/lib/payments/invoice-payment-ledger";
 import {
   buildIssuedBankSnapshot,
   buildIssuedPaymentUrl,
   canCloseJob,
   canMarkPaymentPaid,
+  canRecordInvoicePayment,
   canRequestPayment,
   canWaivePayment,
   closedTimelineNote,
@@ -20,6 +20,7 @@ import {
   enabledPaymentMethods,
   paidTimelineNote,
   paymentRequestTimelineNote,
+  poundsInputToPence,
 } from "@/lib/payments/job-payment";
 import {
   emptyPaymentSettings,
@@ -27,9 +28,10 @@ import {
 } from "@/lib/payments/settings";
 import {
   isPaymentMethod,
-  parsePaymentMethods,
+  type PaymentMethod,
   type WorkspacePaymentSettings,
 } from "@/lib/payments/types";
+import { randomUUID } from "node:crypto";
 import { ensureProposalCustomerAccessToken } from "@/lib/proposals/customer-portal/ensure-token";
 import { recordProposalEvent } from "@/lib/proposals/record-proposal-event";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
@@ -297,6 +299,147 @@ export async function requestJobPaymentAction(
   return { success: true, warning };
 }
 
+export async function recordInvoicePaymentAction(
+  _prev: PaymentActionState,
+  formData: FormData
+): Promise<PaymentActionState> {
+  const auth = await requireTrader();
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+  const invoiceId = getString(formData, "invoiceId");
+  const amountPence = poundsInputToPence(getString(formData, "amountPounds"));
+  const methodRaw = getString(formData, "method");
+  const paidOn = getString(formData, "paidOn");
+  const reference = getString(formData, "reference");
+  const note = getString(formData, "note");
+  const idempotencyKey =
+    getString(formData, "idempotencyKey") ||
+    `manual/${invoiceId}/${randomUUID()}`;
+
+  if (!proposalId || !invoiceId) {
+    return { error: "Invoice not found." };
+  }
+  if (amountPence == null) {
+    return { error: "Enter a valid payment amount." };
+  }
+  if (!isPaymentMethod(methodRaw)) {
+    return { error: "Choose a payment method." };
+  }
+  const method: PaymentMethod = methodRaw;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn)) {
+    return { error: "Enter the date the payment was received." };
+  }
+
+  const { data: proposal } = await auth.supabase
+    .from("proposals")
+    .select(
+      "id, status, workspace_id, payment_status, closed_at, customer_access_token"
+    )
+    .eq("id", proposalId)
+    .eq("workspace_id", auth.workspaceId)
+    .maybeSingle();
+
+  if (!proposal) {
+    return { error: "Job not found." };
+  }
+
+  const { data: invoice } = await auth.supabase
+    .from("invoices")
+    .select("id, status, balance_due, proposal_id")
+    .eq("id", invoiceId)
+    .eq("workspace_id", auth.workspaceId)
+    .eq("proposal_id", proposalId)
+    .eq("status", "approved")
+    .maybeSingle();
+
+  if (!invoice) {
+    const byId = await auth.supabase
+      .from("invoices")
+      .select("status")
+      .eq("id", invoiceId)
+      .eq("workspace_id", auth.workspaceId)
+      .eq("proposal_id", proposalId)
+      .maybeSingle();
+    if (byId.data?.status === "void") {
+      return { error: "A void invoice cannot accept payment." };
+    }
+    return { error: "Only an approved invoice can record payment." };
+  }
+
+  const balanceDue = Math.max(0, Math.round(Number(invoice.balance_due ?? 0)));
+  const canRecord = canRecordInvoicePayment({
+    jobStatus: proposal.status,
+    paymentStatus: proposal.payment_status,
+    closedAt: proposal.closed_at,
+    balanceDuePence: balanceDue,
+    hasApprovedInvoice: true,
+  });
+
+  if (canRecord && amountPence > balanceDue) {
+    return {
+      error: `Payment cannot be more than the outstanding balance (${(balanceDue / 100).toFixed(2)}).`,
+    };
+  }
+
+  const { data: rpcData, error: rpcError } = await auth.supabase.rpc(
+    "record_invoice_payment",
+    {
+      p_invoice_id: invoice.id,
+      p_amount_pence: amountPence,
+      p_method: method,
+      p_paid_on: paidOn,
+      p_reference: reference || null,
+      p_note: note || null,
+      p_idempotency_key: idempotencyKey,
+    }
+  );
+
+  if (rpcError) {
+    const message = rpcError.message ?? "";
+    if (/exceed balance|already fully paid/i.test(message)) {
+      if (!canRecord) {
+        return { error: "This invoice cannot accept another payment." };
+      }
+      return {
+        error:
+          "That payment could not be recorded because it would exceed the outstanding balance.",
+      };
+    }
+    return { error: "Couldn't record this payment. Please try again." };
+  }
+
+  const parsed = parseRecordInvoicePaymentRpcResult(rpcData);
+  if (!parsed) {
+    return { error: "Couldn't record this payment. Please try again." };
+  }
+
+  if (!parsed.already_recorded) {
+    await recordProposalEvent(auth.supabase, {
+      workspaceId: proposal.workspace_id,
+      proposalId: proposal.id,
+      userId: auth.user.id,
+      eventType: "status_change",
+      fromStatus: normalizeProposalStatus(proposal.status),
+      toStatus: normalizeProposalStatus(proposal.status),
+      note: parsed.fully_settled
+        ? paidTimelineNote()
+        : `Payment recorded (${(amountPence / 100).toFixed(2)})`,
+    });
+  }
+
+  // Thin Lifecycle: no outbound payment notification in this batch.
+  revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
+  return {
+    success: true,
+    warning: parsed.already_recorded
+      ? "This payment was already recorded."
+      : undefined,
+  };
+}
+
 export async function markJobPaidAction(
   _prev: PaymentActionState,
   formData: FormData
@@ -320,6 +463,18 @@ export async function markJobPaidAction(
     return { error: "Job not found." };
   }
 
+  // Idempotent heal when already paid — never invent a second ledger row.
+  if (proposal.payment_status === "paid" && !proposal.closed_at) {
+    const heal = await ensurePaidInvoiceAndJob({
+      supabase: auth.supabase,
+      workspaceId: auth.workspaceId,
+      proposalId: proposal.id,
+      paymentMethodsIssued: proposal.payment_methods_issued,
+    });
+    revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
+    return { success: true, warning: heal.warning };
+  }
+
   if (
     !canMarkPaymentPaid({
       jobStatus: proposal.status,
@@ -327,75 +482,50 @@ export async function markJobPaidAction(
       closedAt: proposal.closed_at,
     })
   ) {
-    return { error: "Only a requested payment can be marked as paid." };
+    return {
+      error:
+        "Only a requested or partially paid balance can be marked as paid.",
+    };
   }
 
-  const now = new Date().toISOString();
-  const methods = parsePaymentMethods(proposal.payment_methods_issued);
-  const { data: updated, error } = await auth.supabase
-    .from("proposals")
-    .update({
-      payment_status: "paid",
-      paid_at: now,
-      payment_method: methods[0] ?? "other",
-      payment_provider: null,
-      payment_provider_reference: null,
-    })
-    .eq("id", proposalId)
-    .eq("workspace_id", auth.workspaceId)
-    .select("id, payment_status, paid_at")
-    .maybeSingle();
-
-  if (error || updated?.payment_status !== "paid" || !updated.paid_at) {
-    return { error: "Couldn't mark this payment as paid. Please try again." };
-  }
-
-  await recordProposalEvent(auth.supabase, {
-    workspaceId: proposal.workspace_id,
+  // Ledger RPC records remaining balance; updates proposal + job. Paid ≠ Closed.
+  // Thin Lifecycle: no outbound notification / email in this batch.
+  const lifecycle = await ensurePaidInvoiceAndJob({
+    supabase: auth.supabase,
+    workspaceId: auth.workspaceId,
     proposalId: proposal.id,
-    userId: auth.user.id,
-    eventType: "status_change",
-    fromStatus: normalizeProposalStatus(proposal.status),
-    toStatus: normalizeProposalStatus(proposal.status),
-    note: paidTimelineNote(),
+    paymentMethodsIssued: proposal.payment_methods_issued,
   });
 
-  const tokenResult = await ensureProposalCustomerAccessToken(
-    auth.supabase,
-    proposal.id
-  );
-  let warning: string | undefined;
-  if (proposal.customer_email && tokenResult.ok) {
-    const { data: workspace } = await auth.supabase
-      .from("workspaces")
-      .select("business_name, trade_type")
-      .eq("id", auth.workspaceId)
+  if (lifecycle.error) {
+    return { error: lifecycle.error };
+  }
+  if (!lifecycle.invoiceSettled && lifecycle.invoiceAlreadySettled === false) {
+    const { data: after } = await auth.supabase
+      .from("proposals")
+      .select("payment_status, paid_at, customer_access_token")
+      .eq("id", proposal.id)
+      .eq("workspace_id", auth.workspaceId)
       .maybeSingle();
-    const email = buildPaymentReceivedEmail({
-      businessName: workspace?.business_name ?? "Reanvil",
-      customerName: proposal.customer_name,
-      jobTitle: proposal.title?.trim() || "your job",
-      amountLabel: formatPenceAsGbp(proposal.payment_due_amount ?? 0),
-      portalToken: tokenResult.token,
-      logoUrl: loadWorkspaceEmailLogoUrl({}),
-      tradeLabel: workspace?.trade_type,
-    });
-    const sent = await sendNotificationEmail({
-      to: proposal.customer_email,
-      subject: email.subject,
-      message: email.text,
-      businessName: email.businessName,
-      html: email.html,
-      ctaUrl: email.ctaUrl,
-      ctaLabel: email.ctaLabel,
-    });
-    if (!sent.ok) {
-      warning = "Marked as paid. The confirmation email could not be sent.";
+    if (after?.payment_status !== "paid") {
+      return { error: "Couldn't mark this payment as paid. Please try again." };
     }
   }
 
-  revalidatePaymentPaths(proposal.id, tokenResult.ok ? tokenResult.token : null);
-  return { success: true, warning };
+  if (lifecycle.paymentRecorded || !lifecycle.invoiceAlreadySettled) {
+    await recordProposalEvent(auth.supabase, {
+      workspaceId: proposal.workspace_id,
+      proposalId: proposal.id,
+      userId: auth.user.id,
+      eventType: "status_change",
+      fromStatus: normalizeProposalStatus(proposal.status),
+      toStatus: normalizeProposalStatus(proposal.status),
+      note: paidTimelineNote(),
+    });
+  }
+
+  revalidatePaymentPaths(proposal.id, proposal.customer_access_token);
+  return { success: true, warning: lifecycle.warning };
 }
 
 export async function waiveJobPaymentAction(
