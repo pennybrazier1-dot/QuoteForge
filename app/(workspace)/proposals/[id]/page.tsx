@@ -19,6 +19,7 @@ import { loadProposalCustomerMessages } from "@/lib/proposals/customer-portal/me
 import type { ProposalStatusEventRecord } from "@/lib/proposals/proposal-status-events";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
 import { enabledPaymentMethods } from "@/lib/payments/job-payment";
+import { loadInvoicePaymentPanel } from "@/lib/payments/load-invoice-payment-panel";
 import { emptyPaymentSettings } from "@/lib/payments/settings";
 import type { WorkspacePaymentSettings } from "@/lib/payments/types";
 import { createClient } from "@/lib/supabase/server";
@@ -178,6 +179,14 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
         .maybeSingle()
     : { data: null };
 
+  const paymentPanel = profile?.workspace_id
+    ? await loadInvoicePaymentPanel(supabase, {
+        workspaceId: profile.workspace_id,
+        proposalId: proposal.id,
+        proposalTotalPence: Number(proposal.total_amount ?? 0),
+      })
+    : null;
+
   const enabledMethods = enabledPaymentMethods(
     (paymentSettings as Pick<
       WorkspacePaymentSettings,
@@ -219,6 +228,7 @@ export default async function ProposalPage({ params, searchParams }: PageProps) 
           ...proposal,
           linked_customer_email: linkedCustomerEmail,
           enabled_payment_methods: enabledMethods,
+          payment_panel: paymentPanel ?? undefined,
         }}
         businessName={resolveCustomerFacingBusinessName(
           workspace?.business_name

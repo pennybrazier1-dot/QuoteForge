@@ -113,6 +113,7 @@ export type ProposalWorkspaceData = {
   payment_due_amount?: number | null;
   closed_at?: string | null;
   enabled_payment_methods?: import("@/lib/payments/types").PaymentMethod[];
+  payment_panel?: import("@/lib/payments/load-invoice-payment-panel").InvoicePaymentPanelData;
 };
 
 function WorkspaceCardHeading({
@@ -604,6 +605,7 @@ export function ProposalWorkspace({
               paymentDueAmount={proposal.payment_due_amount ?? null}
               closedAt={proposal.closed_at ?? null}
               enabledMethods={proposal.enabled_payment_methods ?? []}
+              paymentPanel={proposal.payment_panel ?? null}
             />
             <CompletedJobActions proposalId={proposal.id} />
           </>
