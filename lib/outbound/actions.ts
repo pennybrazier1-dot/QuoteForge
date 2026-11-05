@@ -15,6 +15,8 @@ import {
 import {
   buildPaymentRetryPayload,
   deliverPaymentNotification,
+  isLatestLedgerPaymentForMissingReconcile,
+  normalizeNonNegativePence,
 } from "@/lib/payments/server/notify-payment";
 import { deliverOutboundMessage } from "@/lib/outbound/deliver";
 import {
@@ -144,7 +146,7 @@ async function buildPaymentReceivedRetryOptions(
     };
   }
 
-  const amountRecordedPence = Math.max(
+  const ledgerAmountPence = Math.max(
     0,
     Math.round(Number(payment.amount_pence ?? 0))
   );
@@ -159,6 +161,7 @@ async function buildPaymentReceivedRetryOptions(
   } else if (metaFullySettled === false) {
     fullySettled = false;
   } else if (metaStatus === "paid") {
+    // Legacy incomplete rows only — never infer from live proposal status.
     fullySettled = true;
   } else if (metaStatus === "partially_paid") {
     fullySettled = false;
@@ -170,22 +173,52 @@ async function buildPaymentReceivedRetryOptions(
     };
   }
 
+  // Prefer immutable amount snapshot when present; must match append-only ledger.
+  const metaAmount = normalizeNonNegativePence(meta.amount_recorded_pence);
+  if (metaAmount !== null && metaAmount !== ledgerAmountPence) {
+    return {
+      ok: false,
+      error:
+        "Cannot safely rebuild this payment email — stored amount does not match the ledger payment.",
+    };
+  }
+  const amountRecordedPence =
+    metaAmount !== null ? metaAmount : ledgerAmountPence;
+  if (amountRecordedPence <= 0) {
+    return {
+      ok: false,
+      error: "Original payment record has no valid amount.",
+    };
+  }
+
   // Partial emails need the outstanding balance from send-time. We never recompute
   // from current invoice state (that can drift). Without a stored outstanding,
   // refuse rather than invent £0.00 remaining.
   let outstandingPence = 0;
   if (!fullySettled) {
-    const storedOutstanding = meta.outstanding_pence;
-    if (
-      typeof storedOutstanding === "number" &&
-      Number.isFinite(storedOutstanding)
-    ) {
-      outstandingPence = Math.max(0, Math.round(storedOutstanding));
-    } else {
+    const storedOutstanding = normalizeNonNegativePence(meta.outstanding_pence);
+    if (storedOutstanding === null) {
       return {
         ok: false,
         error:
           "Cannot safely rebuild this partial-payment email — original outstanding balance was not stored. Confirm provider status without resending if needed.",
+      };
+    }
+    if (storedOutstanding <= 0) {
+      return {
+        ok: false,
+        error:
+          "Cannot safely rebuild this partial-payment email — stored outstanding balance is inconsistent.",
+      };
+    }
+    outstandingPence = storedOutstanding;
+  } else {
+    const storedOutstanding = normalizeNonNegativePence(meta.outstanding_pence);
+    if (storedOutstanding !== null && storedOutstanding !== 0) {
+      return {
+        ok: false,
+        error:
+          "Cannot safely rebuild this payment email — fully-settled metadata retains a positive outstanding balance.",
       };
     }
   }
@@ -507,6 +540,9 @@ export async function reconcileMissingPaymentOutboundForProposalAction(
     }
   }
 
+  // Fail closed for historical instalments: only the latest ledger payment may
+  // use today's invoice balance as event-time outstanding. Older missing rows
+  // lack a trustworthy snapshot and must not be reconstructed.
   const { data: payments } = await auth.supabase
     .from("invoice_payments")
     .select("id, amount_pence, recorded_at")
@@ -514,7 +550,11 @@ export async function reconcileMissingPaymentOutboundForProposalAction(
     .eq("proposal_id", proposalId)
     .eq("is_legacy_marker", false)
     .order("recorded_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(40);
+
+  const latestPaymentId =
+    payments && payments.length > 0 ? String(payments[0].id) : "";
 
   const { data: invoice } = await auth.supabase
     .from("invoices")
@@ -535,6 +575,13 @@ export async function reconcileMissingPaymentOutboundForProposalAction(
       key
     );
     if (existing) continue;
+
+    if (
+      !isLatestLedgerPaymentForMissingReconcile(paymentId, latestPaymentId)
+    ) {
+      // Skip older missing instalments — do not invent historical outstanding.
+      continue;
+    }
 
     attempted += 1;
     const result = await deliverPaymentNotification(

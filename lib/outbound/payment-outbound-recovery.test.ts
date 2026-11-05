@@ -10,6 +10,12 @@ import {
   paymentRequestedKey,
 } from "@/lib/outbound/keys";
 import { canRetryOutbound } from "@/lib/outbound/status-labels";
+import { buildPaymentPartialReceivedEmail } from "@/lib/payments/email";
+import {
+  buildPaymentReceivedOutboundMetadata,
+  resolvePaymentReceivedSettlementForRetry,
+} from "@/lib/payments/server/notify-payment";
+import { formatPenceAsGbp } from "@/lib/proposals/money";
 
 function readRepo(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
@@ -82,5 +88,94 @@ describe("Payment-only recovery wiring (Part 2Z)", () => {
     expect(
       paymentRequestedKey("prop", "evt-12345678").startsWith("payment_requested/")
     ).toBe(true);
+  });
+});
+
+
+describe("Part 3C — retry content integrity after subsequent payment", () => {
+  it("first £200 notification still shows £800 outstanding after a later £300 payment", () => {
+    const invoiceTotal = 100_000;
+    const firstPayment = 20_000;
+    const firstOutstanding = invoiceTotal - firstPayment; // 80_000
+    const secondPayment = 30_000;
+    const laterOutstanding = firstOutstanding - secondPayment; // 50_000 (live)
+
+    const meta = buildPaymentReceivedOutboundMetadata({
+      paymentStatus: "partially_paid",
+      amountLabel: formatPenceAsGbp(firstPayment),
+      methods: ["bank_transfer"],
+      ledgerPaymentId: "ledger-first-200",
+      fullySettled: false,
+      outstandingPence: firstOutstanding,
+      amountRecordedPence: firstPayment,
+    });
+    expect(meta.ok).toBe(true);
+    if (!meta.ok) return;
+
+    // Simulate live invoice after second payment — must not affect retry options.
+    expect(laterOutstanding).toBe(50_000);
+
+    const settlement = resolvePaymentReceivedSettlementForRetry({
+      ledgerPaymentId: "ledger-first-200",
+      amountRecordedPence: meta.metadata.amount_recorded_pence,
+      outstandingPence: meta.metadata.outstanding_pence,
+      fullySettled: meta.metadata.fully_settled,
+    });
+    expect(settlement.ok).toBe(true);
+    if (!settlement.ok) return;
+    expect(settlement.fullySettled).toBe(false);
+    expect(settlement.amountRecordedPence).toBe(20_000);
+    expect(settlement.outstandingPence).toBe(80_000);
+
+    const email = buildPaymentPartialReceivedEmail({
+      businessName: "Sam Sparks",
+      customerName: "Morgan",
+      jobTitle: "Socket installation",
+      amountLabel: formatPenceAsGbp(settlement.amountRecordedPence),
+      outstandingLabel: formatPenceAsGbp(settlement.outstandingPence),
+      portalToken: "token-integrity-1",
+    });
+    expect(email.html).toMatch(/£200\.00/);
+    expect(email.html).toMatch(/£800\.00/);
+    expect(email.html).not.toMatch(/£500\.00/);
+    expect(email.html).not.toMatch(/paid in full/i);
+  });
+});
+
+describe("Part 3C — partial metadata and missing-event safety", () => {
+  it("keeps incomplete historical partials refused and does not rebuild from live balance", () => {
+    const actions = readRepo("lib/outbound/actions.ts");
+    expect(actions).toContain("original outstanding balance was not stored");
+    expect(actions).toContain("normalizeNonNegativePence(meta.outstanding_pence)");
+    expect(actions).toContain("amount_recorded_pence");
+    expect(actions).toContain("stored amount does not match the ledger payment");
+    // Must not assign current balance_due into older missing instalments.
+    expect(actions).toContain("isLatestLedgerPaymentForMissingReconcile");
+    expect(actions).toContain(
+      "Skip older missing instalments — do not invent historical outstanding"
+    );
+  });
+
+  it("documents that missing-event reconcile is fail-closed for older instalments", () => {
+    const notify = readRepo("lib/payments/server/notify-payment.ts");
+    expect(notify).toContain("isLatestLedgerPaymentForMissingReconcile");
+    expect(notify).toContain(
+      "Older instalment without event-time outstanding snapshot"
+    );
+    // Still uses balance_due only after latest-payment gate.
+    const recover = notify.slice(
+      notify.indexOf("export async function recoverMissingPaymentNotifications")
+    );
+    expect(recover).toContain("isLatestLedgerPaymentForMissingReconcile");
+    expect(recover).toContain("balance_due");
+  });
+
+  it("preserves outbound retry eligibility contracts", () => {
+    expect(canRetryOutbound("needed")).toBe(true);
+    expect(canRetryOutbound("failed")).toBe(true);
+    expect(canRetryOutbound("sending")).toBe(false);
+    expect(canRetryOutbound("unknown")).toBe(false);
+    expect(canRetryOutbound("provider_accepted")).toBe(false);
+    expect(canRetryOutbound("simulated")).toBe(false);
   });
 });

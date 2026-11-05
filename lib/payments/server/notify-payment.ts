@@ -82,6 +82,156 @@ function amountLabel(pence: number | null | undefined): string {
   return formatPenceAsGbp(Math.max(0, Number(pence ?? 0)));
 }
 
+/** Finite non-negative integer pence, or null if invalid. */
+export function normalizeNonNegativePence(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const n = Math.round(value);
+  if (n < 0) return null;
+  return n;
+}
+
+export type PaymentReceivedImmutableMetadata = {
+  payment_status: string | null;
+  amount_label: string;
+  methods: PaymentMethod[];
+  /** Ledger payment id (historical field name retained). */
+  event_at: string;
+  fully_settled: boolean;
+  outstanding_pence: number;
+  amount_recorded_pence: number;
+};
+
+/**
+ * Build immutable payment-received outbound metadata from event-time notify options.
+ * Never substitutes live proposal/invoice balances.
+ */
+export function buildPaymentReceivedOutboundMetadata(input: {
+  paymentStatus: string | null;
+  amountLabel: string;
+  methods: PaymentMethod[];
+  ledgerPaymentId: string;
+  fullySettled: boolean;
+  outstandingPence: unknown;
+  amountRecordedPence: unknown;
+}):
+  | { ok: true; metadata: PaymentReceivedImmutableMetadata }
+  | { ok: false; error: string } {
+  const outstandingPence = normalizeNonNegativePence(input.outstandingPence);
+  const amountRecordedPence = normalizeNonNegativePence(
+    input.amountRecordedPence
+  );
+  if (outstandingPence === null) {
+    return {
+      ok: false,
+      error:
+        "Payment notification is missing a valid outstanding balance (pence).",
+    };
+  }
+  if (amountRecordedPence === null || amountRecordedPence <= 0) {
+    return {
+      ok: false,
+      error: "Payment notification is missing a valid recorded amount (pence).",
+    };
+  }
+  if (input.fullySettled && outstandingPence !== 0) {
+    return {
+      ok: false,
+      error:
+        "Fully-settled payment notification cannot retain a positive outstanding balance.",
+    };
+  }
+  if (!input.fullySettled && outstandingPence === 0) {
+    return {
+      ok: false,
+      error:
+        "Partial payment notification must retain a positive outstanding balance.",
+    };
+  }
+
+  return {
+    ok: true,
+    metadata: {
+      payment_status: input.paymentStatus,
+      amount_label: input.amountLabel,
+      methods: input.methods,
+      event_at: input.ledgerPaymentId,
+      fully_settled: input.fullySettled,
+      outstanding_pence: outstandingPence,
+      amount_recorded_pence: amountRecordedPence,
+    },
+  };
+}
+
+/**
+ * Settlement for payment-received rebuild must come from immutable options.
+ * Never upgrade a historical partial to paid-in-full from live proposal status.
+ */
+export function resolvePaymentReceivedSettlementForRetry(
+  options?: PaymentReceivedNotifyOptions | null
+):
+  | {
+      ok: true;
+      fullySettled: boolean;
+      amountRecordedPence: number;
+      outstandingPence: number;
+    }
+  | { ok: false; error: string } {
+  if (!options || options.fullySettled === undefined) {
+    return {
+      ok: false,
+      error:
+        "Cannot safely rebuild this payment email — settlement context was not provided.",
+    };
+  }
+  const amountRecordedPence = normalizeNonNegativePence(
+    options.amountRecordedPence
+  );
+  if (amountRecordedPence === null || amountRecordedPence <= 0) {
+    return {
+      ok: false,
+      error:
+        "Cannot safely rebuild this payment email — original payment amount was not provided.",
+    };
+  }
+  const fullySettled = Boolean(options.fullySettled);
+  if (fullySettled) {
+    return {
+      ok: true,
+      fullySettled: true,
+      amountRecordedPence,
+      outstandingPence: 0,
+    };
+  }
+  const outstandingPence = normalizeNonNegativePence(options.outstandingPence);
+  if (outstandingPence === null || outstandingPence <= 0) {
+    return {
+      ok: false,
+      error:
+        "Cannot safely rebuild this partial-payment email — original outstanding balance was not provided.",
+    };
+  }
+  return {
+    ok: true,
+    fullySettled: false,
+    amountRecordedPence,
+    outstandingPence,
+  };
+}
+
+/**
+ * Missing payment-received outbound may only use today's invoice balance when
+ * reconstructing the chronologically latest ledger payment for that proposal.
+ * Older missing instalments must not be filled from current balances.
+ */
+export function isLatestLedgerPaymentForMissingReconcile(
+  paymentId: string,
+  latestPaymentId: string | null | undefined
+): boolean {
+  const payment = String(paymentId || "").trim();
+  const latest = String(latestPaymentId || "").trim();
+  return Boolean(payment && latest && payment === latest);
+}
+
 /**
  * Best-effort customer notify after a payment request is saved.
  * Never throws into the trader action — financial save already succeeded.
@@ -384,6 +534,39 @@ export async function deliverPaymentNotification(
             tradeLabel: workspace?.trade_type,
           });
 
+  let metadata: Record<string, unknown> = {
+    // Display-only — never bank account numbers, portal tokens, or internal keys.
+    payment_status: proposal.payment_status,
+    amount_label: kind === "payment_requested" ? dueLabel : recordedLabel,
+    methods,
+    event_at: eventVersion,
+  };
+
+  if (kind === "payment_received") {
+    const ledgerPaymentId = options?.ledgerPaymentId?.trim() || "";
+    if (!ledgerPaymentId) {
+      // Legacy paid_at identity — do not invent immutable pence metadata.
+      metadata = {
+        ...metadata,
+        fully_settled: emailFullySettled,
+      };
+    } else {
+      const built = buildPaymentReceivedOutboundMetadata({
+        paymentStatus: proposal.payment_status,
+        amountLabel: recordedLabel,
+        methods,
+        ledgerPaymentId,
+        fullySettled: emailFullySettled,
+        outstandingPence: options?.outstandingPence,
+        amountRecordedPence: options?.amountRecordedPence,
+      });
+      if (!built.ok) {
+        return { ok: false, error: built.error };
+      }
+      metadata = built.metadata;
+    }
+  }
+
   const delivery = await enqueueAndDeliverOutboundMessage(
     supabase,
     {
@@ -396,16 +579,7 @@ export async function deliverPaymentNotification(
       idempotencyKey,
       subject: email.subject,
       proposalId: proposal.id,
-      metadata: {
-        // Display-only — never bank account numbers, portal tokens, or internal keys.
-        payment_status: proposal.payment_status,
-        amount_label:
-          kind === "payment_requested" ? dueLabel : recordedLabel,
-        methods,
-        event_at: eventVersion,
-        fully_settled:
-          kind === "payment_received" ? emailFullySettled : undefined,
-      },
+      metadata,
     },
     {
       to: recipient,
@@ -481,7 +655,9 @@ export async function recoverMissingPaymentNotifications(
     }
   }
 
-  // Ledger-based received recovery: find paid invoices with ledger rows missing outbound.
+  // Ledger-based received recovery: only the latest payment per proposal may use
+  // today's invoice balance as event-time outstanding. Older missing instalments
+  // are skipped (fail closed) — never invent historical balances.
   const { data: recentPayments } = await supabase
     .from("invoice_payments")
     .select("id, proposal_id, amount_pence, recorded_at")
@@ -490,8 +666,13 @@ export async function recoverMissingPaymentNotifications(
     .order("recorded_at", { ascending: false })
     .limit(40);
 
+  const latestPaymentIdByProposal = new Map<string, string>();
+
   for (const payment of recentPayments ?? []) {
     const paymentId = String(payment.id);
+    const proposalId = String(payment.proposal_id || "");
+    if (!proposalId) continue;
+
     const key = paymentReceivedLedgerKey(paymentId);
     const existing = await findOutboundByIdempotencyKey(
       supabase,
@@ -500,10 +681,30 @@ export async function recoverMissingPaymentNotifications(
     );
     if (existing) continue;
 
+    let latestId = latestPaymentIdByProposal.get(proposalId);
+    if (!latestId) {
+      const { data: latestRows } = await supabase
+        .from("invoice_payments")
+        .select("id")
+        .eq("workspace_id", workspaceId)
+        .eq("proposal_id", proposalId)
+        .eq("is_legacy_marker", false)
+        .order("recorded_at", { ascending: false })
+        .order("id", { ascending: false })
+        .limit(1);
+      latestId = latestRows?.[0]?.id ? String(latestRows[0].id) : "";
+      latestPaymentIdByProposal.set(proposalId, latestId);
+    }
+
+    if (!isLatestLedgerPaymentForMissingReconcile(paymentId, latestId)) {
+      // Older instalment without event-time outstanding snapshot — do not enqueue.
+      continue;
+    }
+
     const { data: proposal } = await supabase
       .from("proposals")
       .select(PROPOSAL_PAYMENT_SELECT)
-      .eq("id", payment.proposal_id)
+      .eq("id", proposalId)
       .eq("workspace_id", workspaceId)
       .maybeSingle();
     if (!proposal || (proposal as PaymentNotifySource).closed_at) continue;
@@ -511,7 +712,7 @@ export async function recoverMissingPaymentNotifications(
     const { data: invoice } = await supabase
       .from("invoices")
       .select("balance_due")
-      .eq("proposal_id", payment.proposal_id)
+      .eq("proposal_id", proposalId)
       .eq("workspace_id", workspaceId)
       .eq("status", "approved")
       .maybeSingle();
@@ -611,46 +812,62 @@ export async function buildPaymentRetryPayload(
   const jobTitle = source.title?.trim() || "your job";
   const dueLabel = amountLabel(source.payment_due_amount);
   const logoUrl = loadWorkspaceEmailLogoUrl({});
-  const recordedLabel = amountLabel(
-    options?.amountRecordedPence ?? source.payment_due_amount
-  );
-  const outstandingLabel = amountLabel(options?.outstandingPence ?? 0);
-  const fullySettled =
-    options?.fullySettled === true || source.payment_status === "paid";
 
-  const email =
-    kind === "payment_requested"
-      ? buildPaymentRequestedEmail({
-          businessName,
-          customerName: source.customer_name,
-          jobTitle,
-          amountLabel: dueLabel,
-          methods: issuedMethods(source.payment_methods_issued),
-          portalToken: tokenResult.token,
-          logoUrl,
-          tradeLabel: workspace?.trade_type,
-        })
-      : fullySettled
-        ? buildPaymentReceivedEmail({
-            businessName,
-            customerName: source.customer_name,
-            jobTitle,
-            amountLabel: recordedLabel,
-            portalToken: tokenResult.token,
-            logoUrl,
-            tradeLabel: workspace?.trade_type,
-            fullyPaid: true,
-          })
-        : buildPaymentPartialReceivedEmail({
-            businessName,
-            customerName: source.customer_name,
-            jobTitle,
-            amountLabel: recordedLabel,
-            outstandingLabel,
-            portalToken: tokenResult.token,
-            logoUrl,
-            tradeLabel: workspace?.trade_type,
-          });
+  if (kind === "payment_requested") {
+    const email = buildPaymentRequestedEmail({
+      businessName,
+      customerName: source.customer_name,
+      jobTitle,
+      amountLabel: dueLabel,
+      methods: issuedMethods(source.payment_methods_issued),
+      portalToken: tokenResult.token,
+      logoUrl,
+      tradeLabel: workspace?.trade_type,
+    });
+    return {
+      ok: true,
+      to,
+      subject: email.subject,
+      message: email.text,
+      html: email.html,
+      businessName: email.businessName,
+      heading: email.heading,
+      preheader: email.preheader,
+      ctaUrl: email.ctaUrl,
+      ctaLabel: email.ctaLabel,
+      audience: "customer",
+    };
+  }
+
+  // payment_received: immutable options only — never live proposal settlement.
+  const settlement = resolvePaymentReceivedSettlementForRetry(options);
+  if (!settlement.ok) {
+    return { ok: false, error: settlement.error };
+  }
+
+  const recordedLabel = amountLabel(settlement.amountRecordedPence);
+  const outstandingLabel = amountLabel(settlement.outstandingPence);
+  const email = settlement.fullySettled
+    ? buildPaymentReceivedEmail({
+        businessName,
+        customerName: source.customer_name,
+        jobTitle,
+        amountLabel: recordedLabel,
+        portalToken: tokenResult.token,
+        logoUrl,
+        tradeLabel: workspace?.trade_type,
+        fullyPaid: true,
+      })
+    : buildPaymentPartialReceivedEmail({
+        businessName,
+        customerName: source.customer_name,
+        jobTitle,
+        amountLabel: recordedLabel,
+        outstandingLabel,
+        portalToken: tokenResult.token,
+        logoUrl,
+        tradeLabel: workspace?.trade_type,
+      });
 
   return {
     ok: true,

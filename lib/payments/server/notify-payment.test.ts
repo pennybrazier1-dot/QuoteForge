@@ -12,6 +12,12 @@ import {
   paymentReceivedLedgerKey,
   paymentRequestedKey,
 } from "@/lib/outbound/keys";
+import {
+  buildPaymentReceivedOutboundMetadata,
+  isLatestLedgerPaymentForMissingReconcile,
+  resolvePaymentReceivedSettlementForRetry,
+} from "@/lib/payments/server/notify-payment";
+
 
 function readRepo(relativePath: string): string {
   return readFileSync(join(process.cwd(), relativePath), "utf8");
@@ -208,5 +214,145 @@ describe("Payment-request atomic CAS (Part 2W)", () => {
     expect(request).toContain("eventId = pendingEventId");
     expect(request).toContain("wroteNewRequest");
     expect(request).toContain("validatedProposed");
+  });
+});
+
+describe("Part 3C — immutable payment-received metadata", () => {
+  it("persists outstanding, amount and settlement for a £200 of £1000 partial", () => {
+    const built = buildPaymentReceivedOutboundMetadata({
+      paymentStatus: "partially_paid",
+      amountLabel: "£200.00",
+      methods: ["bank_transfer"],
+      ledgerPaymentId: "pay-ledger-partial-1",
+      fullySettled: false,
+      outstandingPence: 80_000,
+      amountRecordedPence: 20_000,
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.metadata.outstanding_pence).toBe(80_000);
+    expect(built.metadata.amount_recorded_pence).toBe(20_000);
+    expect(built.metadata.fully_settled).toBe(false);
+    expect(built.metadata.event_at).toBe("pay-ledger-partial-1");
+
+    // Later invoice balance changes must not affect frozen retry settlement.
+    const laterLiveProposalStatus = "paid";
+    const retry = resolvePaymentReceivedSettlementForRetry({
+      ledgerPaymentId: "pay-ledger-partial-1",
+      amountRecordedPence: built.metadata.amount_recorded_pence,
+      outstandingPence: built.metadata.outstanding_pence,
+      fullySettled: built.metadata.fully_settled,
+    });
+    expect(retry.ok).toBe(true);
+    if (!retry.ok) return;
+    expect(retry.fullySettled).toBe(false);
+    expect(retry.outstandingPence).toBe(80_000);
+    expect(retry.amountRecordedPence).toBe(20_000);
+    // Live status must not participate in settlement resolution.
+    expect(laterLiveProposalStatus).toBe("paid");
+    expect(retry.fullySettled).not.toBe(true);
+  });
+
+  it("persists zero outstanding for full settlement", () => {
+    const built = buildPaymentReceivedOutboundMetadata({
+      paymentStatus: "paid",
+      amountLabel: "£1,000.00",
+      methods: ["bank_transfer"],
+      ledgerPaymentId: "pay-ledger-full-1",
+      fullySettled: true,
+      outstandingPence: 0,
+      amountRecordedPence: 100_000,
+    });
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+    expect(built.metadata.outstanding_pence).toBe(0);
+    expect(built.metadata.fully_settled).toBe(true);
+    expect(built.metadata.amount_recorded_pence).toBe(100_000);
+
+    const retry = resolvePaymentReceivedSettlementForRetry({
+      amountRecordedPence: 100_000,
+      outstandingPence: 0,
+      fullySettled: true,
+    });
+    expect(retry.ok).toBe(true);
+    if (!retry.ok) return;
+    expect(retry.fullySettled).toBe(true);
+    expect(retry.outstandingPence).toBe(0);
+  });
+
+  it("refuses inconsistent or incomplete metadata", () => {
+    expect(
+      buildPaymentReceivedOutboundMetadata({
+        paymentStatus: "partially_paid",
+        amountLabel: "£200.00",
+        methods: [],
+        ledgerPaymentId: "x",
+        fullySettled: false,
+        outstandingPence: undefined,
+        amountRecordedPence: 20_000,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      buildPaymentReceivedOutboundMetadata({
+        paymentStatus: "paid",
+        amountLabel: "£200.00",
+        methods: [],
+        ledgerPaymentId: "x",
+        fullySettled: true,
+        outstandingPence: 50,
+        amountRecordedPence: 20_000,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      buildPaymentReceivedOutboundMetadata({
+        paymentStatus: "partially_paid",
+        amountLabel: "£200.00",
+        methods: [],
+        ledgerPaymentId: "x",
+        fullySettled: false,
+        outstandingPence: 0,
+        amountRecordedPence: 20_000,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      resolvePaymentReceivedSettlementForRetry({
+        fullySettled: false,
+        amountRecordedPence: 20_000,
+        // missing outstanding
+      }).ok
+    ).toBe(false);
+
+    expect(
+      resolvePaymentReceivedSettlementForRetry({
+        // missing fullySettled — must not fall back to live proposal
+        amountRecordedPence: 20_000,
+        outstandingPence: 80_000,
+      }).ok
+    ).toBe(false);
+  });
+
+  it("wires enqueue metadata and removes settlement-status drift in retry rebuild", () => {
+    const notify = readRepo("lib/payments/server/notify-payment.ts");
+    expect(notify).toContain("buildPaymentReceivedOutboundMetadata");
+    expect(notify).toContain("outstanding_pence");
+    expect(notify).toContain("amount_recorded_pence");
+    expect(notify).toContain("resolvePaymentReceivedSettlementForRetry");
+    expect(notify).not.toContain(
+      "options?.fullySettled === true || source.payment_status === \"paid\""
+    );
+    expect(notify).toContain("isLatestLedgerPaymentForMissingReconcile");
+  });
+
+  it("only allows missing-received reconcile for the latest ledger payment", () => {
+    expect(
+      isLatestLedgerPaymentForMissingReconcile("pay-1", "pay-1")
+    ).toBe(true);
+    expect(
+      isLatestLedgerPaymentForMissingReconcile("pay-old", "pay-latest")
+    ).toBe(false);
+    expect(isLatestLedgerPaymentForMissingReconcile("pay-1", "")).toBe(false);
   });
 });
