@@ -65,6 +65,22 @@ describe("adminDeleteUser action", () => {
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
+  it("blocks unauthenticated callers before service-role use", async () => {
+    getUserMock.mockResolvedValue({ data: { user: null } });
+
+    const result = await adminDeleteUser({
+      userId: "3f1b0f6a-1c2d-4e5f-8a9b-0c1d2e3f4a5b",
+      confirmEmail: "test@example.com",
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatch(/signed in|platform admin/i);
+    }
+    expect(createServiceRoleClientMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
   it("blocks deleting the signed-in admin", async () => {
     getUserMock.mockResolvedValue({
       data: {

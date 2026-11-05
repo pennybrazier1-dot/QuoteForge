@@ -27,14 +27,6 @@ export default async function OnboardingPage() {
   const resolvedEmail = resolveAuthEmail(user);
   const allowlisted = isPlatformAdminAllowlisted(resolvedEmail);
 
-  // TEMPORARY AUTH DEBUG — remove after diagnosing production allowlist bypass.
-  // Safe: does not log env values, secrets, passwords, or tokens.
-  console.info("[auth-admin-debug]", {
-    hasPlatformAdminEmailsEnv: Boolean(process.env.PLATFORM_ADMIN_EMAILS),
-    resolvedAuthEmail: resolvedEmail,
-    isPlatformAdminAllowlisted: allowlisted,
-  });
-
   // Admin bypass must run before showing the trader onboarding form.
   if (allowlisted) {
     await ensurePlatformAdminBootstrap(supabase, user);

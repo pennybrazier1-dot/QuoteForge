@@ -1,5 +1,3 @@
-import { isDevTestingEnabled } from "@/lib/env/dev-testing";
-
 type AuthUserLike = {
   email?: string | null;
   user_metadata?: Record<string, unknown> | null;
@@ -28,24 +26,22 @@ export function resolveAuthEmail(
 }
 
 /**
- * Temporary platform admin gate while the product is in development.
- * Replace with role-based auth from the database later.
+ * Stage 9K.2 — fail-closed platform administrator check.
  *
- * - Dev/preview builds: allow access (signed-in check happens in assertAdminAccess).
- * - Production: require email on PLATFORM_ADMIN_EMAILS allowlist.
+ * Platform admin requires an explicit allowlisted login email.
+ * Development, preview, NODE_ENV, and NEXT_PUBLIC_QF_DEV_TESTING never grant
+ * administrator privileges on their own.
+ *
+ * Temporary until role-based auth exists in the database.
  */
 export function isPlatformAdmin(email: string | null | undefined): boolean {
-  if (isDevTestingEnabled()) {
-    return true;
-  }
-
   return isPlatformAdminAllowlisted(email);
 }
 
 /**
  * True only when the email is on PLATFORM_ADMIN_EMAILS.
- * Unlike isPlatformAdmin(), this ignores local/preview "allow everyone" mode —
- * used to protect allowlisted accounts from the test-user delete tool.
+ * Same rule as isPlatformAdmin() — kept as a named helper for delete-protection
+ * and bootstrap paths that must never trust client/dev flags.
  */
 export function isPlatformAdminAllowlisted(
   email: string | null | undefined
@@ -63,7 +59,8 @@ export function isPlatformAdminAllowlisted(
   return allowlist.includes(normalized);
 }
 
-function getPlatformAdminAllowlist(): string[] {
+/** Parsed allowlist (lowercased). Empty when unset — fail closed. */
+export function getPlatformAdminAllowlist(): string[] {
   const fromEnv = process.env.PLATFORM_ADMIN_EMAILS;
   if (!fromEnv?.trim()) {
     return [];

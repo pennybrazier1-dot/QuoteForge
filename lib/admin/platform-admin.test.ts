@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  getPlatformAdminAllowlist,
   isPlatformAdmin,
   isPlatformAdminAllowlisted,
   resolveAuthEmail,
@@ -22,7 +23,7 @@ describe("resolveAuthEmail", () => {
   });
 });
 
-describe("isPlatformAdmin", () => {
+describe("isPlatformAdmin (Stage 9K.2 fail-closed)", () => {
   const originalAllowlist = process.env.PLATFORM_ADMIN_EMAILS;
   const originalVercelEnv = process.env.VERCEL_ENV;
   const originalDevFlag = process.env.NEXT_PUBLIC_QF_DEV_TESTING;
@@ -52,7 +53,18 @@ describe("isPlatformAdmin", () => {
     delete process.env.NEXT_PUBLIC_QF_DEV_TESTING;
   }
 
-  it("returns false when email is missing in production", () => {
+  function usePreviewSignals() {
+    process.env.VERCEL_ENV = "preview";
+    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
+  }
+
+  function useLocalDevSignals() {
+    // Prefer VERCEL_ENV/development + public flag — avoid mutating read-only NODE_ENV.
+    delete process.env.VERCEL_ENV;
+    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
+  }
+
+  it("returns false when email is missing", () => {
     useProductionSignals();
     process.env.PLATFORM_ADMIN_EMAILS = "owner@example.com";
 
@@ -60,11 +72,12 @@ describe("isPlatformAdmin", () => {
     expect(isPlatformAdmin("")).toBe(false);
   });
 
-  it("returns false when allowlist is not configured in production", () => {
+  it("returns false when allowlist is not configured", () => {
     useProductionSignals();
     delete process.env.PLATFORM_ADMIN_EMAILS;
 
     expect(isPlatformAdmin("owner@example.com")).toBe(false);
+    expect(getPlatformAdminAllowlist()).toEqual([]);
   });
 
   it("returns true for emails on the allowlist in production", () => {
@@ -82,13 +95,33 @@ describe("isPlatformAdmin", () => {
     expect(isPlatformAdmin("trader@example.com")).toBe(false);
   });
 
-  it("allows admin access in local development even without allowlist", () => {
+  it("never grants admin from local development flags alone", () => {
+    useLocalDevSignals();
     delete process.env.PLATFORM_ADMIN_EMAILS;
-    delete process.env.VERCEL_ENV;
-    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
 
-    expect(isPlatformAdmin("anyone@example.com")).toBe(true);
-    expect(isPlatformAdmin(null)).toBe(true);
+    expect(isPlatformAdmin("anyone@example.com")).toBe(false);
+    expect(isPlatformAdmin(null)).toBe(false);
+  });
+
+  it("never grants admin from preview / public flag alone", () => {
+    usePreviewSignals();
+    delete process.env.PLATFORM_ADMIN_EMAILS;
+
+    expect(isPlatformAdmin("anyone@example.com")).toBe(false);
+    expect(isPlatformAdmin("trader@example.com")).toBe(false);
+  });
+
+  it("still allows explicitly allowlisted fictional admins in local/preview", () => {
+    useLocalDevSignals();
+    process.env.PLATFORM_ADMIN_EMAILS = "platform.admin.local@example.test";
+
+    expect(isPlatformAdmin("platform.admin.local@example.test")).toBe(true);
+    expect(isPlatformAdmin("trader@example.com")).toBe(false);
+
+    usePreviewSignals();
+    process.env.PLATFORM_ADMIN_EMAILS = "platform.admin.local@example.test";
+    expect(isPlatformAdmin("platform.admin.local@example.test")).toBe(true);
+    expect(isPlatformAdmin("anyone@example.com")).toBe(false);
   });
 
   it("strips quotes from allowlist entries", () => {
@@ -98,13 +131,13 @@ describe("isPlatformAdmin", () => {
     expect(isPlatformAdmin("owner@example.com")).toBe(true);
   });
 
-  it("allowlist check ignores local open-admin mode", () => {
-    delete process.env.VERCEL_ENV;
-    process.env.NEXT_PUBLIC_QF_DEV_TESTING = "1";
+  it("isPlatformAdmin matches allowlist helper (no open-admin mode)", () => {
+    useLocalDevSignals();
     process.env.PLATFORM_ADMIN_EMAILS = "owner@example.com";
 
-    expect(isPlatformAdmin("anyone@example.com")).toBe(true);
+    expect(isPlatformAdmin("anyone@example.com")).toBe(false);
     expect(isPlatformAdminAllowlisted("anyone@example.com")).toBe(false);
+    expect(isPlatformAdmin("owner@example.com")).toBe(true);
     expect(isPlatformAdminAllowlisted("owner@example.com")).toBe(true);
   });
 });

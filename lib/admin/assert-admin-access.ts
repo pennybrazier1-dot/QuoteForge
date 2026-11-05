@@ -7,7 +7,9 @@ import { ensurePlatformAdminBootstrap } from "@/lib/admin/ensure-platform-admin-
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Requires a signed-in platform admin. Others are sent back to the trader app.
+ * Stage 9K.2 — requires a signed-in, explicitly allowlisted platform admin.
+ * Development/preview flags never satisfy this check.
+ * Unauthenticated → /login. Authenticated non-admin → /dashboard.
  */
 export async function assertAdminAccess(): Promise<void> {
   const supabase = await createClient();
@@ -21,13 +23,10 @@ export async function assertAdminAccess(): Promise<void> {
 
   const email = resolveAuthEmail(user);
 
-  if (!isPlatformAdmin(email)) {
+  // Fail closed: missing email or missing/invalid allowlist → not admin.
+  if (!email || !isPlatformAdmin(email)) {
     redirect("/dashboard");
   }
 
-  // Allowlisted admins must have workspace/profile before admin UI loads.
-  // (Local/dev "open admin" mode still benefits when email is allowlisted.)
-  if (email) {
-    await ensurePlatformAdminBootstrap(supabase, user);
-  }
+  await ensurePlatformAdminBootstrap(supabase, user);
 }

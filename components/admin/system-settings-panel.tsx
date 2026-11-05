@@ -77,11 +77,13 @@ export function SystemSettingsPanel() {
           description="Temporary allowlist until role-based auth is added."
         >
           <p className="qf-admin-settings-copy">
-            Platform admin access is granted when a signed-in user&apos;s email
-            appears in the{" "}
+            Platform admin access requires a signed-in user whose email appears
+            in the server-only{" "}
             <code className="qf-admin-code">PLATFORM_ADMIN_EMAILS</code>{" "}
-            environment variable. Other users cannot see the Admin sidebar link
-            or open <code className="qf-admin-code">/admin</code> routes.
+            allowlist. Development and preview mode never grant admin access by
+            themselves. Other users cannot see the Admin sidebar link or open{" "}
+            <code className="qf-admin-code">/admin</code> routes, and server
+            actions enforce the same rule.
           </p>
         </AdminSection>
       </div>
