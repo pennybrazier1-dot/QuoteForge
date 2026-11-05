@@ -1,10 +1,8 @@
 import { SettingsSection } from "@/components/settings/settings-section";
 
 const COMING_SOON_ITEMS = [
-  "Edit business details",
   "Subscription and billing",
   "Team members",
-  "Branding and logo",
   "Delete account",
 ] as const;
 

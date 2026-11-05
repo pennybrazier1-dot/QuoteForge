@@ -11,6 +11,7 @@ import { emptyPaymentSettings } from "@/lib/payments/settings";
 import type { WorkspacePaymentSettings } from "@/lib/payments/types";
 import { createClient } from "@/lib/supabase/server";
 import { getPlaceholderServicesFromTradeType } from "@/lib/settings/placeholder-services";
+import { createWorkspaceLogoSignedUrl } from "@/lib/workspace/branding-logo";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -36,7 +37,7 @@ export default async function SettingsPage() {
   const { data: workspace, error: workspaceError } = await supabase
     .from("workspaces")
     .select(
-      "business_name, trade_type, contact_email, phone, vat_number, default_payment_terms"
+      "business_name, trade_type, contact_email, phone, address_line_1, address_line_2, town, county, postcode, vat_number, website, company_number, default_payment_terms"
     )
     .eq("id", profile.workspace_id)
     .single();
@@ -44,6 +45,12 @@ export default async function SettingsPage() {
   if (workspaceError || !workspace) {
     redirect("/dashboard");
   }
+
+  const logoPreviewUrl = await createWorkspaceLogoSignedUrl(
+    supabase,
+    profile.workspace_id,
+    60 * 30
+  );
 
   const initialServices = getPlaceholderServicesFromTradeType(workspace.trade_type);
   const { data: paymentSettings } = await supabase
@@ -60,11 +67,14 @@ export default async function SettingsPage() {
         Settings
       </h1>
       <p className="mt-2 text-sm text-muted">
-        View your business and account details. Editing will be added soon.
+        Manage your business details, logo and payment methods.
       </p>
 
       <div className="mt-8 qf-stack">
-        <BusinessSettings workspace={workspace} />
+        <BusinessSettings
+          workspace={workspace}
+          logoPreviewUrl={logoPreviewUrl}
+        />
         <PaymentSettings
           settings={
             (paymentSettings as WorkspacePaymentSettings | null) ??

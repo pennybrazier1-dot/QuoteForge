@@ -7,6 +7,12 @@ import {
   type TransactionalEmailContent,
 } from "@/lib/email/transactional-email";
 
+export type NotificationEmailAttachment = {
+  filename: string;
+  /** Raw PDF/file bytes — Resend accepts Buffer. */
+  content: Buffer;
+};
+
 export type SendNotificationEmailInput = {
   to: string;
   subject: string;
@@ -21,6 +27,13 @@ export type SendNotificationEmailInput = {
   /** When set, send this already-rendered shared-shell HTML. */
   html?: string | null;
   content?: TransactionalEmailContent | null;
+  /** Optional attachments (e.g. invoice PDF). Same payload required on idempotent retries. */
+  attachments?: NotificationEmailAttachment[] | null;
+  /**
+   * Resend Idempotency-Key (1–256 chars). Passed as the SDK second-arg option.
+   * Retries within 24h with the same key and payload return the original message id.
+   */
+  idempotencyKey?: string | null;
 };
 
 export type SendNotificationEmailResult =
@@ -80,7 +93,7 @@ function buildNotificationText(input: SendNotificationEmailInput): string {
   return `${input.message}\n\n${input.ctaLabel?.trim() || "Open conversation"}:\n${ctaUrl}`;
 }
 
-/** Lightweight notification email — no PDF attachment. Always uses the dark shell. */
+/** Shared notification email — optional PDF attachments (invoice delivery). Always uses the dark shell. */
 export async function sendNotificationEmail(
   input: SendNotificationEmailInput
 ): Promise<SendNotificationEmailResult> {
@@ -106,14 +119,29 @@ export async function sendNotificationEmail(
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from,
-      to: [input.to],
-      replyTo: input.replyTo?.trim() || undefined,
-      subject: input.subject,
-      text: buildNotificationText(input),
-      html: buildNotificationHtml(input),
-    });
+    const idempotencyKey = input.idempotencyKey?.trim() || undefined;
+    const attachments =
+      input.attachments && input.attachments.length > 0
+        ? input.attachments.map((file) => ({
+            filename: file.filename,
+            content: file.content,
+          }))
+        : undefined;
+    // Resend Node SDK: second argument CreateEmailRequestOptions.idempotencyKey
+    // sets the Idempotency-Key header (retained ~24h). Same key + same payload
+    // returns the original id; different payload → 409 invalid_idempotent_request.
+    const { data, error } = await resend.emails.send(
+      {
+        from,
+        to: [input.to],
+        replyTo: input.replyTo?.trim() || undefined,
+        subject: input.subject,
+        text: buildNotificationText(input),
+        html: buildNotificationHtml(input),
+        ...(attachments ? { attachments } : {}),
+      },
+      idempotencyKey ? { idempotencyKey } : undefined
+    );
 
     if (error || !data?.id) {
       return {
