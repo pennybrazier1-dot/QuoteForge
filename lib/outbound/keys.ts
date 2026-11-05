@@ -61,6 +61,20 @@ export function paymentReceivedLedgerKey(ledgerPaymentId: string): string {
 }
 
 /**
+ * Parse ledger payment id from `payment_received/{ledgerPaymentId}`.
+ * Returns null for legacy `payment_received/{proposalId}/{paidAt}` keys.
+ */
+export function parsePaymentReceivedLedgerIdFromKey(
+  idempotencyKey: string
+): string | null {
+  const parts = idempotencyKey.trim().split("/");
+  if (parts.length === 2 && parts[0] === "payment_received" && parts[1]) {
+    return parts[1];
+  }
+  return null;
+}
+
+/**
  * Legacy full-settlement key (pre-ledger). Prefer paymentReceivedLedgerKey.
  * `paidAt` must be the proposal's paid_at when no ledger payment id exists.
  */

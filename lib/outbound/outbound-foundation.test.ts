@@ -412,9 +412,60 @@ describe("Stage 9G.1 outbound foundation — safety contracts", () => {
     );
   });
 
-  // Deferred (Thin B2): recovery-UI blind-resend contract lived here and read
-  // components/outbound/outbound-recovery.tsx. Restore and validate that case
-  // when outbound-recovery.tsx and lib/outbound/actions.ts ship together.
+  it("recovery UI and payment-only actions never blind-resend (Thin B2)", () => {
+    const recovery = readRepo("components/outbound/outbound-recovery.tsx");
+    const actions = readRepo("lib/outbound/actions.ts");
+
+    // Retry affordance only for needed/failed.
+    expect(recovery).toContain('status === "needed" || status === "failed"');
+    expect(recovery).toContain('status === "unknown"');
+    expect(recovery).toContain("Confirm sent without resending");
+    expect(recovery).toContain("Record provider id (no resend)");
+    expect(recovery).toContain("OUTBOUND_UNKNOWN_REVIEW_COPY");
+    // Terminal / sending must not expose Retry as their primary path.
+    expect(recovery).toContain('status === "sending"');
+    expect(recovery).toContain("No retry is available for this status");
+    expect(recovery).not.toMatch(
+      /status === "provider_accepted"[\s\S]{0,80}Retry email/
+    );
+    expect(recovery).not.toMatch(
+      /status === "simulated"[\s\S]{0,80}Retry email/
+    );
+    expect(recovery).not.toMatch(
+      /status === "unknown"[\s\S]{0,120}Retry email/
+    );
+
+    // Action rejects unknown and non-retryable statuses; payment kinds only.
+    expect(actions).toContain("OUTBOUND_UNKNOWN_REVIEW_COPY");
+    expect(actions).toContain('row.status === "unknown"');
+    expect(actions).toContain('row.status === "sending"');
+    expect(actions).toContain('row.status !== "needed" && row.status !== "failed"');
+    expect(actions).toContain("payment_requested");
+    expect(actions).toContain("payment_received");
+    expect(actions).toContain("Only payment notifications can be recovered here");
+    // Missing reconcile uses durable payment identities — no invented UUID.
+    expect(actions).toContain("payment_request_event_id");
+    expect(actions).toContain("paymentRequestedKey");
+    expect(actions).toContain("paymentReceivedLedgerKey");
+    expect(actions).not.toContain("randomUUID(");
+    // Timestamp may appear on proposal selects; must never key recovery.
+    expect(actions).not.toMatch(
+      /paymentRequestedKey\([\s\S]{0,80}payment_requested_at/
+    );
+    expect(actions).not.toContain(
+      "requestEventId: String(row.payment_requested_at"
+    );
+    // No unfinished domain notify modules.
+    expect(actions).not.toContain("notify-new-enquiry");
+    expect(actions).not.toContain("notify-quote-decision");
+    expect(actions).not.toContain("notify-conversation-message");
+    expect(actions).not.toContain("notify-visit-change");
+    expect(actions).not.toContain("notify-invoice-issued");
+    expect(actions).not.toContain("notify-invoice-cancelled");
+    expect(actions).not.toContain("notify-credit-note");
+    expect(actions).not.toContain("waiver");
+    expect(actions).not.toContain("refund");
+  });
 });
 
 describe("formatOutboundAttemptAtUtc", () => {
