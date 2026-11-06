@@ -19,9 +19,13 @@ describe("Batch A invoice PDF isolation", () => {
 
   it("freezes branding at approval and does not send email", () => {
     const actions = readRepo("lib/invoices/actions.ts");
+    const sendAt = actions.indexOf("export async function sendInvoiceEmailAction");
+    const retryAt = actions.indexOf(
+      "export async function retryPrepareInvoiceDraftAction"
+    );
     const approve = actions.slice(
       actions.indexOf("export async function approveInvoiceAction"),
-      actions.indexOf("export async function retryPrepareInvoiceDraftAction")
+      sendAt > -1 ? sendAt : retryAt
     );
     const snapshot = readRepo("lib/invoices/business-snapshot.ts");
     expect(approve).toContain("buildInvoiceBusinessSnapshotColumns");
@@ -30,7 +34,7 @@ describe("Batch A invoice PDF isolation", () => {
     expect(approve).toContain("email_sent: false");
     expect(approve).not.toContain("notifyCustomerOfInvoiceIssued");
     expect(approve).not.toContain("sendInvoiceEmailAction");
-    expect(actions).not.toContain("sendInvoiceEmailAction");
+    expect(actions).toContain("export async function sendInvoiceEmailAction");
     expect(actions).not.toContain("recordInvoicePayment");
     expect(actions).not.toContain("closeJobAction");
   });
@@ -53,6 +57,7 @@ describe("Batch A invoice PDF isolation", () => {
     expect(loader).not.toContain("credit-notes");
     expect(screen).toContain("Preview PDF");
     expect(screen).toContain("Opening the PDF does not send an email.");
-    expect(screen).not.toContain("sendInvoiceEmailAction");
+    expect(screen).toContain("Email invoice to customer");
+    expect(screen).toContain("Invoice approved. No email was sent.");
   });
 });

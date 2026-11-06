@@ -8,8 +8,13 @@ import { AuthError } from "@/components/auth/auth-shell";
 import {
   approveInvoiceAction,
   saveInvoiceDraftAction,
+  sendInvoiceEmailAction,
   type InvoiceActionState,
 } from "@/lib/invoices/actions";
+import {
+  canShowInvoiceEmailButton,
+  describeInvoiceEmailFeedback,
+} from "@/lib/invoices/email-issued";
 import type { InvoiceLineItem, InvoiceRecord } from "@/lib/invoices/types";
 import {
   invoiceFlagMessages,
@@ -61,10 +66,13 @@ export function InvoiceReviewScreen({
   invoice: initialInvoice,
   proposalNumber,
   businessVatNumber,
+  emailStatus = null,
 }: {
   invoice: InvoiceRecord;
   proposalNumber: string;
   businessVatNumber: string | null;
+  /** Latest invoice_issued outbound status, when the page has already loaded it. */
+  emailStatus?: { status: string; attemptAt: string | null } | null;
 }) {
   const router = useRouter();
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -87,6 +95,10 @@ export function InvoiceReviewScreen({
     approveInvoiceAction,
     initialState
   );
+  const [emailState, emailAction] = useActionState(
+    sendInvoiceEmailAction,
+    initialState
+  );
 
   useEffect(() => {
     if (!previewOpen) return;
@@ -99,15 +111,30 @@ export function InvoiceReviewScreen({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [previewOpen]);
 
-  const invoice = saveState.invoice ?? approveState.invoice ?? initialInvoice;
+  const invoice =
+    emailState.invoice ??
+    saveState.invoice ??
+    approveState.invoice ??
+    initialInvoice;
   const isDraft = invoice.status === "draft";
   const isApproved = invoice.status === "approved";
 
   useEffect(() => {
-    if (saveState.success || approveState.success) {
+    if (
+      saveState.success ||
+      approveState.success ||
+      emailState.success ||
+      emailState.emailDelivery
+    ) {
       router.refresh();
     }
-  }, [saveState.success, approveState.success, router]);
+  }, [
+    saveState.success,
+    approveState.success,
+    emailState.success,
+    emailState.emailDelivery,
+    router,
+  ]);
 
   const liveVat = Math.max(0, Math.round(Number(vatPounds || "0") * 100));
 
@@ -190,6 +217,23 @@ export function InvoiceReviewScreen({
     : saveState.success
       ? "Draft saved."
       : null;
+  const hasCustomerEmail = Boolean(invoice.customer_email?.includes("@"));
+  const showEmailButton = canShowInvoiceEmailButton({
+    status: invoice.status,
+    customerEmail: invoice.customer_email,
+    outboundStatus: emailStatus?.status,
+    session: emailState.emailDelivery,
+  });
+  const emailFeedback = describeInvoiceEmailFeedback(
+    emailState.emailDelivery || emailState.error
+      ? {
+          ...emailState.emailDelivery,
+          error: emailState.error,
+        }
+      : emailStatus?.status
+        ? { status: emailStatus.status }
+        : null
+  );
 
   return (
     <div className="qf-invoice-review">
@@ -236,6 +280,39 @@ export function InvoiceReviewScreen({
         <p className="qf-workspace-actions-success" role="status">
           {successMessage}
         </p>
+      ) : null}
+
+      {isApproved ? (
+        <form action={emailAction} className="qf-card qf-invoice-section">
+          <input type="hidden" name="proposalId" value={invoice.proposal_id} />
+          <input type="hidden" name="invoiceId" value={invoice.id} />
+          <h2 className="qf-card-heading">Email this invoice</h2>
+          {emailFeedback ? (
+            <div role="status">
+              <p>{emailFeedback.title}</p>
+              <p className="qf-invoice-muted">{emailFeedback.detail}</p>
+            </div>
+          ) : (
+            <p className="qf-invoice-muted">
+              Email is separate from approval. Provider acceptance is not proof
+              the customer opened the email.
+            </p>
+          )}
+          {showEmailButton ? (
+            <div className="qf-invoice-actions">
+              <PendingButton
+                label="Email invoice to customer"
+                pendingLabel="Sending…"
+              />
+            </div>
+          ) : null}
+          {!hasCustomerEmail ? (
+            <p className="qf-invoice-line-warn" role="status">
+              Add a customer email on the invoice before sending. No email was
+              sent.
+            </p>
+          ) : null}
+        </form>
       ) : null}
 
       <form

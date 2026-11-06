@@ -31,6 +31,14 @@ export type InvoiceActionState = {
   error?: string;
   success?: boolean;
   invoice?: InvoiceRecord;
+  emailDelivery?: {
+    skipped?: "no_recipient" | "already_terminal" | "not_notifiable";
+    status?: string;
+    unknownOutcome?: boolean;
+    providerAccepted?: boolean;
+    simulated?: boolean;
+    outboundId?: string;
+  };
 };
 
 function getString(formData: FormData, key: string): string {
@@ -364,6 +372,168 @@ export async function approveInvoiceAction(
   return {
     success: true,
     invoice: parseInvoiceRow(updated as Record<string, unknown>),
+  };
+}
+
+/**
+ * Email an approved invoice when the trader presses the button.
+ * Approval does not call this. The form cannot choose a different recipient.
+ * Does not record a payment, close the job, or change invoice totals.
+ */
+export async function sendInvoiceEmailAction(
+  _prev: InvoiceActionState,
+  formData: FormData
+): Promise<InvoiceActionState> {
+  const auth = await requireTrader();
+  if (!auth.ok) {
+    return { error: auth.error };
+  }
+
+  const proposalId = getString(formData, "proposalId");
+  const invoiceId = getString(formData, "invoiceId");
+  if (!proposalId || !invoiceId) {
+    return { error: "Invoice not found." };
+  }
+
+  const existing = await loadInvoiceForProposal(
+    auth.supabase,
+    proposalId,
+    auth.workspaceId
+  );
+  if (!existing || existing.id !== invoiceId) {
+    return { error: "Invoice not found." };
+  }
+  if (existing.status !== "approved") {
+    return { error: "Approve the invoice before emailing the customer." };
+  }
+
+  const snapshot = {
+    total_amount: existing.total_amount,
+    vat_amount: existing.vat_amount,
+    subtotal_amount: existing.subtotal_amount,
+    amount_paid: existing.amount_paid,
+    balance_due: existing.balance_due,
+    business_name: existing.business_name,
+    business_snapshot_at: existing.business_snapshot_at,
+  };
+
+  const { notifyCustomerOfInvoiceIssued } = await import(
+    "@/lib/invoices/server/notify-invoice-issued"
+  );
+  const result = await notifyCustomerOfInvoiceIssued(
+    auth.supabase,
+    invoiceId,
+    auth.workspaceId
+  );
+
+  const after = await loadInvoiceForProposal(
+    auth.supabase,
+    proposalId,
+    auth.workspaceId
+  );
+  if (
+    !after ||
+    after.total_amount !== snapshot.total_amount ||
+    after.vat_amount !== snapshot.vat_amount ||
+    after.subtotal_amount !== snapshot.subtotal_amount ||
+    after.amount_paid !== snapshot.amount_paid ||
+    after.balance_due !== snapshot.balance_due ||
+    after.business_name !== snapshot.business_name ||
+    after.business_snapshot_at !== snapshot.business_snapshot_at
+  ) {
+    return {
+      error: "Invoice amounts changed unexpectedly. Email was not confirmed.",
+      invoice: after ?? existing,
+    };
+  }
+
+  if (result.ok && result.skipped === "already_terminal") {
+    revalidateInvoicePaths(proposalId);
+    return {
+      success: true,
+      invoice: after,
+      emailDelivery: {
+        skipped: "already_terminal",
+        status: "provider_accepted",
+      },
+    };
+  }
+
+  if (result.ok && result.skipped) {
+    return {
+      success: false,
+      error: result.reason,
+      invoice: after,
+      emailDelivery: { skipped: result.skipped },
+    };
+  }
+
+  if (!result.ok) {
+    return {
+      error: result.error || "Could not email the invoice.",
+      invoice: after,
+    };
+  }
+
+  const delivery = result.delivery;
+  revalidateInvoicePaths(proposalId);
+
+  if (delivery.unknownOutcome) {
+    return {
+      success: false,
+      error:
+        delivery.error ||
+        "Email outcome is unknown. Do not resend until you confirm with the provider.",
+      invoice: after,
+      emailDelivery: {
+        status: delivery.status,
+        unknownOutcome: true,
+        outboundId: result.outboundId,
+      },
+    };
+  }
+
+  if (!delivery.ok) {
+    return {
+      success: false,
+      error: delivery.error || "Invoice email could not be sent.",
+      invoice: after,
+      emailDelivery: {
+        status: delivery.status,
+        outboundId: result.outboundId,
+      },
+    };
+  }
+
+  await recordProposalEvent(auth.supabase, {
+    workspaceId: auth.workspaceId,
+    proposalId,
+    userId: auth.user.id,
+    eventType: "status_change",
+    fromStatus: "completed",
+    toStatus: "completed",
+    note: delivery.simulated
+      ? "Invoice email simulated locally"
+      : "Invoice email accepted by the provider",
+    metadata: {
+      action: "invoice_emailed",
+      invoice_id: invoiceId,
+      invoice_number: existing.invoice_number,
+      outbound_id: result.outboundId,
+      email_status: delivery.status ?? null,
+      marked_paid: false,
+    },
+  });
+
+  return {
+    success: true,
+    invoice: after,
+    emailDelivery: {
+      status: delivery.status,
+      providerAccepted: delivery.providerAccepted,
+      simulated: delivery.simulated,
+      outboundId: result.outboundId,
+    },
   };
 }
 

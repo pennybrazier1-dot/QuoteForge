@@ -6,6 +6,7 @@ import {
   ensureInvoiceDraftForJob,
   loadInvoiceForProposal,
 } from "@/lib/invoices/ensure-draft";
+import { loadInvoiceEmailStatus } from "@/lib/invoices/server/load-invoice-email-status";
 import { normalizeProposalStatus } from "@/lib/proposals/status";
 import { createClient } from "@/lib/supabase/server";
 
@@ -95,13 +96,20 @@ export default async function ProposalInvoicePage({ params }: PageProps) {
     .eq("id", profile.workspace_id)
     .maybeSingle();
 
+  const emailStatus = await loadInvoiceEmailStatus(
+    supabase,
+    profile.workspace_id,
+    invoice.id
+  );
+
   return (
     <main className="qf-trader-page qf-invoice-page">
       <InvoiceReviewScreen
-        key={`${invoice.id}-${invoice.updated_at}-${invoice.status}`}
+        key={`${invoice.id}-${invoice.updated_at}-${invoice.status}-${emailStatus?.status ?? "none"}`}
         invoice={invoice}
         proposalNumber={proposal.proposal_number}
         businessVatNumber={workspace?.vat_number ?? null}
+        emailStatus={emailStatus}
       />
     </main>
   );
