@@ -278,6 +278,7 @@ function PortalShell({
     | "issuedLabel"
     | "token"
     | "isRevisedQuote"
+    | "approvedInvoicePdfPath"
   >;
   showHero?: boolean;
 }) {
@@ -305,41 +306,51 @@ function PortalShell({
   );
 }
 
-function PortalPaymentCard({
+function InvoiceMoneyBreakdown({
   payment,
 }: {
-  payment: PublicProposalViewModel["payment"];
+  payment: NonNullable<PublicProposalViewModel["payment"]>;
 }) {
-  if (!payment) {
-    return null;
-  }
-
-  if (payment.status === "paid" || payment.status === "waived") {
-    return (
-      <section className="cj-job-card" aria-label="Payment">
-        <p className="cj-job-eyebrow">Payment</p>
-        <h2 className="cj-job-title">
-          {payment.status === "waived" ? "No payment required" : "Payment received"}
-        </h2>
-        <p className="cj-job-copy">Thank you</p>
-        {payment.amountLabel ? (
-          <p className="cj-portal-summary-price">{payment.amountLabel}</p>
-        ) : null}
-      </section>
-    );
-  }
-
-  if (payment.status !== "requested") {
+  if (!payment.invoiceTotalLabel) {
     return null;
   }
 
   return (
-    <section className="cj-job-card cj-payment-due-card" aria-label="Payment due">
-      <p className="cj-job-eyebrow">Payment due</p>
-      <h2 className="cj-job-title">{payment.jobTitle}</h2>
-      {payment.amountLabel ? (
-        <p className="cj-portal-summary-price">{payment.amountLabel}</p>
-      ) : null}
+    <dl className="cj-payment-bank">
+      <div>
+        <dt>Invoice total</dt>
+        <dd>{payment.invoiceTotalLabel}</dd>
+      </div>
+      <div>
+        <dt>Already paid</dt>
+        <dd>{payment.amountPaidLabel}</dd>
+      </div>
+      <div>
+        <dt>Still to pay</dt>
+        <dd>{payment.balanceDueLabel}</dd>
+      </div>
+    </dl>
+  );
+}
+
+function PortalPaymentInstructions({
+  payment,
+}: {
+  payment: NonNullable<PublicProposalViewModel["payment"]>;
+}) {
+  const hasInstructions = Boolean(
+    payment.bank ||
+      payment.cardUrl ||
+      payment.cardInPerson ||
+      payment.cash ||
+      payment.otherLabel
+  );
+  if (!hasInstructions) {
+    return null;
+  }
+
+  return (
+    <>
       {payment.methodLabels.length > 0 ? (
         <p className="cj-job-copy">
           Payment method
@@ -381,6 +392,82 @@ function PortalPaymentCard({
       {payment.otherLabel ? (
         <p className="cj-job-copy">{payment.otherLabel}</p>
       ) : null}
+    </>
+  );
+}
+
+function PortalPaymentCard({
+  payment,
+}: {
+  payment: PublicProposalViewModel["payment"];
+}) {
+  if (!payment) {
+    return null;
+  }
+
+  if (payment.invoiceFiguresUnavailable && payment.status !== "waived") {
+    return (
+      <section className="cj-job-card" aria-label="Invoice balance unavailable">
+        <p className="cj-job-eyebrow">Payment</p>
+        <h2 className="cj-job-title">Invoice balance unavailable</h2>
+        <p className="cj-job-copy">
+          The saved invoice figures do not match, so the amount still to pay is
+          not shown.
+        </p>
+      </section>
+    );
+  }
+
+  if (payment.status === "paid" || payment.status === "waived") {
+    return (
+      <section className="cj-job-card" aria-label="Payment">
+        <p className="cj-job-eyebrow">Payment</p>
+        <h2 className="cj-job-title">
+          {payment.status === "waived" ? "No payment required" : "Payment received"}
+        </h2>
+        <p className="cj-job-copy">
+          {payment.status === "waived"
+            ? "No payment is required. This does not cancel the invoice."
+            : "Thank you. Nothing left to pay."}
+        </p>
+        {payment.status === "paid" && payment.amountLabel ? (
+          <p className="cj-portal-summary-price">{payment.amountLabel}</p>
+        ) : null}
+        {payment.status === "paid" ? (
+          <InvoiceMoneyBreakdown payment={payment} />
+        ) : null}
+      </section>
+    );
+  }
+
+  if (payment.status !== "requested" && payment.status !== "partially_paid") {
+    return null;
+  }
+
+  return (
+    <section className="cj-job-card cj-payment-due-card" aria-label="Payment due">
+      <p className="cj-job-eyebrow">Payment due</p>
+      <h2 className="cj-job-title">
+        {payment.status === "partially_paid"
+          ? "Part payment received"
+          : payment.jobTitle}
+      </h2>
+      {payment.status === "partially_paid" ? (
+        <p className="cj-job-copy">{payment.jobTitle}</p>
+      ) : null}
+      {payment.amountLabel ? (
+        <>
+          <p className="cj-job-copy">Still to pay</p>
+          <p className="cj-portal-summary-price">{payment.amountLabel}</p>
+        </>
+      ) : (
+        <p className="cj-job-copy">
+          A part payment has been recorded. The remaining balance is not
+          available on this page yet.
+        </p>
+      )}
+      <InvoiceMoneyBreakdown payment={payment} />
+      <PortalPaymentInstructions payment={payment} />
     </section>
   );
 }
@@ -396,6 +483,7 @@ function PortalHero({
     | "issuedLabel"
     | "token"
     | "isRevisedQuote"
+    | "approvedInvoicePdfPath"
   >;
 }) {
   const brand = buildPortalBrandPresentation({
@@ -434,12 +522,19 @@ function PortalHero({
         {view.isRevisedQuote ? (
           <p className="cj-portal-revised-badge">Updated quote</p>
         ) : null}
-        <a
-          className="cj-portal-pdf-quiet"
-          href={buildCustomerProposalPdfPath(view.token)}
-        >
-          Download PDF
-        </a>
+        <div className="cj-portal-pdf-links">
+          <a
+            className="cj-portal-pdf-quiet"
+            href={buildCustomerProposalPdfPath(view.token)}
+          >
+            Download quotation PDF
+          </a>
+          {view.approvedInvoicePdfPath ? (
+            <a className="cj-portal-pdf-quiet" href={view.approvedInvoicePdfPath}>
+              Download invoice PDF
+            </a>
+          ) : null}
+        </div>
       </aside>
     </header>
   );
@@ -599,12 +694,22 @@ export function CustomerProposalPortal({
               You kept your current confirmed booking. No changes were made.
             </p>
           ) : null}
-          <a
-            className="cj-btn-secondary cj-portal-pdf"
-            href={buildCustomerProposalPdfPath(view.token)}
-          >
-            Download PDF
-          </a>
+          <div className="cj-portal-pdf-links">
+            <a
+              className="cj-btn-secondary cj-portal-pdf"
+              href={buildCustomerProposalPdfPath(view.token)}
+            >
+              Download quotation PDF
+            </a>
+            {view.approvedInvoicePdfPath ? (
+              <a
+                className="cj-btn-secondary cj-portal-pdf"
+                href={view.approvedInvoicePdfPath}
+              >
+                Download invoice PDF
+              </a>
+            ) : null}
+          </div>
         </section>
         {showBookedChangeSuccess ? (
           <section className="cj-job-card" role="status">

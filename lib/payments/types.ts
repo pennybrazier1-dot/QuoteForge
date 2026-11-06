@@ -55,6 +55,14 @@ export type IssuedBankDetails = {
 export type CustomerPortalPaymentView = {
   status: PaymentStatus;
   amountLabel: string | null;
+  /** Saved invoice total. Null when no approved invoice was loaded. */
+  invoiceTotalLabel: string | null;
+  /** Saved amount already paid. Null when no approved invoice was loaded. */
+  amountPaidLabel: string | null;
+  /** Saved outstanding balance. Null when no approved invoice was loaded. */
+  balanceDueLabel: string | null;
+  /** Saved invoice figures do not add up, so no balance is shown. */
+  invoiceFiguresUnavailable: boolean;
   jobTitle: string;
   methodLabels: string[];
   bank: IssuedBankDetails | null;

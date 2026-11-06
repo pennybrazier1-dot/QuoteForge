@@ -21,6 +21,11 @@ import {
   buildCustomerPortalPaymentView,
   readJobPaymentState,
 } from "@/lib/payments/job-payment";
+import {
+  approvedInvoiceFiguresUnavailable,
+  customerApprovedInvoiceDownloadPath,
+  readApprovedInvoicePortalSnapshot,
+} from "@/lib/proposals/customer-portal/invoice-portal";
 import type { CustomerPortalPaymentView } from "@/lib/payments/types";
 import { formatPenceAsGbp } from "@/lib/proposals/money";
 import { resolveCustomerFacingBusinessName } from "@/lib/proposals/pdf/customer-branding";
@@ -62,6 +67,8 @@ export type PublicProposalViewModel = {
   isClosed: boolean;
   isJobClosed: boolean;
   payment: CustomerPortalPaymentView | null;
+  /** Approved customer invoice PDF. Null for drafts and missing invoices. */
+  approvedInvoicePdfPath: string | null;
   /** Trader proposed a provisional date or a pending alternative on a booked job. */
   canRespondToProposedDate: boolean;
   proposedDateLabel: string | null;
@@ -220,6 +227,36 @@ export async function loadPublicProposalByToken(
   const isClosed = isClosedProposalStatus(status);
   const isJobClosed = isFullyClosedJobStatus(status);
   const paymentState = readJobPaymentState(row);
+  const { data: invoiceData, error: invoiceError } = await supabase
+    .from("invoices")
+    .select("status, total_amount, amount_paid, balance_due")
+    .eq("proposal_id", row.id)
+    .eq("workspace_id", row.workspace_id)
+    .eq("status", "approved")
+    .maybeSingle();
+  const invoiceRow =
+    !invoiceError && invoiceData
+      ? (invoiceData as {
+          status?: string | null;
+          total_amount?: number | null;
+          amount_paid?: number | null;
+          balance_due?: number | null;
+        })
+      : null;
+  const invoiceAmounts = readApprovedInvoicePortalSnapshot(invoiceRow);
+  const invoiceFiguresUnavailable = approvedInvoiceFiguresUnavailable(invoiceRow);
+  const approvedInvoicePdfPath = customerApprovedInvoiceDownloadPath(
+    trimmed,
+    invoiceRow
+  );
+  const showIssuedInstructions = invoiceFiguresUnavailable
+    ? false
+    : paymentState.payment_status === "requested"
+      ? invoiceAmounts
+        ? invoiceAmounts.balanceDuePence > 0
+        : true
+      : paymentState.payment_status === "partially_paid" &&
+        (invoiceAmounts?.balanceDuePence ?? 0) > 0;
   const payment =
     paymentState.payment_status === "not_requested"
       ? null
@@ -227,8 +264,10 @@ export async function loadPublicProposalByToken(
           jobTitle: row.title?.trim() || `Proposal ${row.proposal_number}`,
           jobStatus: status,
           payment: paymentState,
+          invoiceAmounts,
+          invoiceFiguresUnavailable,
           bank:
-            paymentState.payment_status === "requested" &&
+            showIssuedInstructions &&
             row.issued_bank_account_name &&
             row.issued_bank_sort_code &&
             row.issued_bank_account_number
@@ -239,10 +278,7 @@ export async function loadPublicProposalByToken(
                   reference: row.issued_bank_reference ?? null,
                 }
               : null,
-          cardUrl:
-            paymentState.payment_status === "requested"
-              ? row.issued_payment_url ?? null
-              : null,
+          cardUrl: showIssuedInstructions ? row.issued_payment_url ?? null : null,
         });
 
   if (canRespond && !isClosed) {
@@ -372,6 +408,7 @@ export async function loadPublicProposalByToken(
       isClosed,
       isJobClosed,
       payment,
+      approvedInvoicePdfPath,
       canRespondToProposedDate,
       proposedDateLabel,
       hasPendingDateSuggestion,

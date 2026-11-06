@@ -9759,3 +9759,10 @@ html.qf-attention-scroll-lock body {
   display: block;
   margin-bottom: 0.25rem;
 }
+
+.cj-portal-pdf-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}

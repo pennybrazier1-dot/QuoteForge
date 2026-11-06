@@ -231,6 +231,27 @@ export function timelineContainsSensitiveBankDetails(note: string): boolean {
   return /\b\d{2}-?\d{2}-?\d{2}\b/.test(note) || /\b\d{6,8}\b/.test(note);
 }
 
+/**
+ * Bank, card, and cash details stay visible only while money is still due.
+ * A part-paid invoice must pass the saved balance. Without that balance the
+ * original request amount is not treated as still outstanding.
+ */
+export function customerPortalShowsPaymentInstructions(input: {
+  status: string;
+  balanceDuePence?: number | null;
+}): boolean {
+  if (input.status !== "requested" && input.status !== "partially_paid") {
+    return false;
+  }
+  if (input.balanceDuePence != null && input.balanceDuePence <= 0) {
+    return false;
+  }
+  if (input.status === "partially_paid" && input.balanceDuePence == null) {
+    return false;
+  }
+  return true;
+}
+
 export function buildCustomerPortalPaymentView(input: {
   jobTitle: string;
   jobStatus: string;
@@ -238,41 +259,86 @@ export function buildCustomerPortalPaymentView(input: {
   bank: IssuedBankDetails | null;
   cardUrl: string | null;
   otherLabel?: string | null;
+  /** Saved approved-invoice columns. Not calculated in the browser. */
+  invoiceAmounts?: {
+    totalPence: number;
+    amountPaidPence: number;
+    balanceDuePence: number;
+  } | null;
+  /** Approved invoice exists, but its saved figures must not be displayed. */
+  invoiceFiguresUnavailable?: boolean;
 }): CustomerPortalPaymentView {
   const closed =
     normalizeProposalStatus(input.jobStatus) === "closed" ||
     Boolean(input.payment.closed_at);
+  const status = input.payment.payment_status;
   const requestedOrPaid =
-    input.payment.payment_status === "requested" ||
-    input.payment.payment_status === "partially_paid" ||
-    input.payment.payment_status === "paid" ||
-    input.payment.payment_status === "waived";
+    status === "requested" ||
+    status === "partially_paid" ||
+    status === "paid" ||
+    status === "waived";
+  const supplied = input.invoiceAmounts ?? null;
+  const suppliedAgrees =
+    supplied != null &&
+    supplied.amountPaidPence + supplied.balanceDuePence === supplied.totalPence;
+  const invoiceFiguresUnavailable =
+    input.invoiceFiguresUnavailable === true ||
+    (supplied != null && !suppliedAgrees);
+  const invoice = suppliedAgrees && !invoiceFiguresUnavailable ? supplied : null;
+  const showInstructions =
+    !invoiceFiguresUnavailable &&
+    customerPortalShowsPaymentInstructions({
+      status,
+      balanceDuePence: invoice ? invoice.balanceDuePence : null,
+    });
   const methods = input.payment.payment_methods_issued;
-  const showBank =
-    input.payment.payment_status === "requested" &&
-    methods.includes("bank_transfer") &&
-    Boolean(input.bank);
+  const showBreakdown =
+    invoice != null && status !== "waived" && status !== "not_requested";
+
+  let amountLabel: string | null = null;
+  if (invoiceFiguresUnavailable) {
+    amountLabel = null;
+  } else if (status === "partially_paid") {
+    amountLabel = invoice ? formatPenceAsGbp(invoice.balanceDuePence) : null;
+  } else if (status === "requested" && invoice) {
+    amountLabel = formatPenceAsGbp(invoice.balanceDuePence);
+  } else if (status === "paid" && invoice) {
+    amountLabel = formatPenceAsGbp(invoice.amountPaidPence);
+  } else if (
+    requestedOrPaid &&
+    status !== "waived" &&
+    input.payment.payment_due_amount != null
+  ) {
+    amountLabel = formatPenceAsGbp(input.payment.payment_due_amount);
+  }
+
+  const invoiceTotalLabel =
+    showBreakdown && invoice ? formatPenceAsGbp(invoice.totalPence) : null;
+  const amountPaidLabel =
+    showBreakdown && invoice ? formatPenceAsGbp(invoice.amountPaidPence) : null;
+  const balanceDueLabel =
+    showBreakdown && invoice ? formatPenceAsGbp(invoice.balanceDuePence) : null;
+
   return {
-    status: input.payment.payment_status,
-    amountLabel:
-      requestedOrPaid && input.payment.payment_due_amount != null
-        ? formatPenceAsGbp(input.payment.payment_due_amount)
-        : null,
+    status,
+    amountLabel,
+    invoiceTotalLabel,
+    amountPaidLabel,
+    balanceDueLabel,
+    invoiceFiguresUnavailable,
     jobTitle: input.jobTitle,
     methodLabels: methods.map((method) => PAYMENT_METHOD_LABELS[method]),
-    bank: showBank ? input.bank : null,
-    cardUrl:
-      input.payment.payment_status === "requested" &&
-      methods.includes("card_link")
-        ? input.cardUrl
+    bank:
+      showInstructions && methods.includes("bank_transfer") && input.bank
+        ? input.bank
         : null,
+    cardUrl:
+      showInstructions && methods.includes("card_link") ? input.cardUrl : null,
     cardInPerson:
-      input.payment.payment_status === "requested" &&
-      methods.includes("card_in_person"),
-    cash:
-      input.payment.payment_status === "requested" && methods.includes("cash"),
+      showInstructions && methods.includes("card_in_person"),
+    cash: showInstructions && methods.includes("cash"),
     otherLabel:
-      input.payment.payment_status === "requested" && methods.includes("other")
+      showInstructions && methods.includes("other")
         ? input.otherLabel?.trim() || PAYMENT_METHOD_LABELS.other
         : null,
     closed,
