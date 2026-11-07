@@ -9666,6 +9666,28 @@ html.qf-attention-scroll-lock body {
   }
 }
 
+/*
+  The phone action bar sticks over the end of the invoice form.
+  This in-flow spacer is only shown on narrow screens so the notes
+  field can scroll clear of Save Draft. Desktop leaves it hidden.
+*/
+.qf-invoice-mobile-clearance {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .qf-invoice-mobile-clearance {
+    display: block;
+    height: calc(20rem + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+    pointer-events: none;
+  }
+
+  .qf-invoice-notes textarea {
+    scroll-margin-bottom: calc(20rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .qf-invoice-flag {
   padding: 0.9rem 1rem;
   border: 1px solid rgba(255, 106, 26, 0.35);

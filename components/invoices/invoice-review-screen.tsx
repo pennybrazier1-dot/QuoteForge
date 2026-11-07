@@ -663,6 +663,7 @@ export function InvoiceReviewScreen({
             </a>
           </div>
         )}
+        <div className="qf-invoice-mobile-clearance" aria-hidden="true" />
       </form>
 
       {previewOpen ? (

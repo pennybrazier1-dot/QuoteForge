@@ -105,7 +105,7 @@ export default async function ProposalInvoicePage({ params }: PageProps) {
   return (
     <main className="qf-trader-page qf-invoice-page">
       <InvoiceReviewScreen
-        key={`${invoice.id}-${invoice.updated_at}-${invoice.status}-${emailStatus?.status ?? "none"}`}
+        key={`${invoice.id}-${invoice.status}-${emailStatus?.status ?? "none"}`}
         invoice={invoice}
         proposalNumber={proposal.proposal_number}
         businessVatNumber={workspace?.vat_number ?? null}
