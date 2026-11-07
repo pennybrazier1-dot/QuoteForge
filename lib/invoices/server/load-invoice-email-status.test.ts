@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { describeRehearsalDb } from "@/lib/testing/rehearsal-db";
 import {
   canShowInvoiceEmailButton,
   describeInvoiceEmailFeedback,
@@ -182,49 +182,13 @@ describe("persisted invoice email status", () => {
   });
 });
 
-function psql(sql: string): string {
-  return execFileSync(
-    "psql",
-    [
-      "-h",
-      "127.0.0.1",
-      "-p",
-      "54322",
-      "-U",
-      "postgres",
-      "-d",
-      "postgres",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-t",
-      "-A",
-      "-c",
-      sql,
-    ],
-    {
-      encoding: "utf8",
-      env: { ...process.env, PGPASSWORD: "postgres" },
-      timeout: 15000,
-    }
-  ).trim();
-}
+describeRehearsalDb(
+  "persisted invoice email status disposable rehearsal",
+  (getPsql) => {
+    const psql = (sql: string) => getPsql()(sql);
 
-function localDbAvailable(): boolean {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    if (url && !/127\.0\.0\.1|localhost/.test(url)) return false;
-    const host = psql("select inet_server_addr()::text;");
-    return Boolean(host) && !host.includes("supabase.co");
-  } catch {
-    return false;
-  }
-}
-
-const describeLocal = localDbAvailable() ? describe : describe.skip;
-
-describeLocal("persisted invoice email status local database", () => {
   it("reads one workspace's invoice_issued status and not another workspace", () => {
-    expect(psql("select current_database();")).toBe("postgres");
+    expect(psql("select current_database();")).toBe("reanvil_rehearsal");
     const workspaceId = psql("select id::text from public.workspaces limit 1;");
     const otherId = psql(
       `select id::text from public.workspaces where id <> '${workspaceId}'::uuid limit 1;`
@@ -269,4 +233,7 @@ describeLocal("persisted invoice email status local database", () => {
       psql(cleanup);
     }
   });
-});
+
+  },
+  { describe, beforeAll }
+);

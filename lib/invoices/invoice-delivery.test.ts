@@ -1,7 +1,7 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describeRehearsalDb } from "@/lib/testing/rehearsal-db";
 import {
   buildInvoiceIssuedEmail,
   canShowInvoiceEmailButton,
@@ -908,50 +908,14 @@ describe("explicit invoice email", () => {
   });
 });
 
-function psql(sql: string): string {
-  return execFileSync(
-    "psql",
-    [
-      "-h",
-      "127.0.0.1",
-      "-p",
-      "54322",
-      "-U",
-      "postgres",
-      "-d",
-      "postgres",
-      "-v",
-      "ON_ERROR_STOP=1",
-      "-t",
-      "-A",
-      "-c",
-      sql,
-    ],
-    {
-      encoding: "utf8",
-      env: { ...process.env, PGPASSWORD: "postgres" },
-      timeout: 15000,
-    }
-  ).trim();
-}
+describeRehearsalDb(
+  "explicit invoice email disposable rehearsal",
+  (getPsql) => {
+    const psql = (sql: string) => getPsql()(sql);
 
-function localDbAvailable(): boolean {
-  try {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    if (url && !/127\.0\.0\.1|localhost/.test(url)) return false;
-    const host = psql("select inet_server_addr()::text;");
-    return Boolean(host) && !host.includes("supabase.co");
-  } catch {
-    return false;
-  }
-}
-
-const describeLocal = localDbAvailable() ? describe : describe.skip;
-
-describeLocal("explicit invoice email local database", () => {
   it("keeps one invoice_issued key and refuses a second claim while sending or unknown", () => {
     const db = psql("select current_database();");
-    expect(db).toBe("postgres");
+    expect(db).toBe("reanvil_rehearsal");
     const workspaceId = psql("select id::text from public.workspaces limit 1;");
     expect(workspaceId).toMatch(/^[0-9a-f-]{36}$/i);
     const sourceId = "11111111-1111-4111-8111-111111111111";
@@ -1010,4 +974,7 @@ describeLocal("explicit invoice email local database", () => {
       psql(cleanup);
     }
   });
-});
+
+  },
+  { describe, beforeAll }
+);
