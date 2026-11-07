@@ -97,6 +97,7 @@ export async function buildInvoiceIssuedEmailPayload(
     jobTitle,
     invoiceNumber: invoice.invoice_number,
     totalAmount: invoice.total_amount,
+    amountPaid: invoice.amount_paid,
     balanceDue: invoice.balance_due,
     portalToken: tokenResult.token,
     logoUrl: null,

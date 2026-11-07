@@ -41,9 +41,88 @@ function isOutboundStatus(value: string | null | undefined): value is OutboundSt
   );
 }
 
+const PAYMENT_NOT_CONFIRMED =
+  "This email does not confirm that a payment has been received.";
+
+/**
+ * A saved pence amount. Safe integers only, so the consistency check
+ * does not compare rounded floating-point money.
+ */
+function isSavedPence(value: number): boolean {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+/**
+ * Customer sentence from the saved total, payments and balance.
+ * A payment-state sentence is used only when all three figures agree.
+ */
+function invoicePaymentCopy(input: {
+  totalAmount: number;
+  amountPaid: number;
+  balanceDue: number;
+}): { totalLabel: string | null; balanceLabel: string | null; lead: string } {
+  const { totalAmount, amountPaid, balanceDue } = input;
+  const totalOk = isSavedPence(totalAmount);
+  const paidOk = isSavedPence(amountPaid);
+  const balanceOk = isSavedPence(balanceDue);
+  const consistent =
+    totalOk &&
+    paidOk &&
+    balanceOk &&
+    amountPaid <= Number.MAX_SAFE_INTEGER - balanceDue &&
+    amountPaid + balanceDue === totalAmount;
+
+  if (!balanceOk) {
+    return {
+      totalLabel: totalOk ? formatPenceAsGbp(totalAmount) : null,
+      balanceLabel: null,
+      lead: `Please see the invoice for the current balance. ${PAYMENT_NOT_CONFIRMED}`,
+    };
+  }
+
+  const balanceLabel = formatPenceAsGbp(balanceDue);
+  if (!consistent) {
+    return {
+      totalLabel: totalOk ? formatPenceAsGbp(totalAmount) : null,
+      balanceLabel,
+      lead: `Outstanding balance shown on this invoice: ${balanceLabel}. ${PAYMENT_NOT_CONFIRMED}`,
+    };
+  }
+
+  if (totalAmount === 0) {
+    return {
+      totalLabel: formatPenceAsGbp(0),
+      balanceLabel,
+      lead: "There is nothing left to pay on this invoice.",
+    };
+  }
+
+  if (amountPaid === 0) {
+    return {
+      totalLabel: formatPenceAsGbp(totalAmount),
+      balanceLabel,
+      lead: `Amount due: ${balanceLabel}. ${PAYMENT_NOT_CONFIRMED}`,
+    };
+  }
+
+  if (balanceDue === 0) {
+    return {
+      totalLabel: formatPenceAsGbp(totalAmount),
+      balanceLabel,
+      lead: `Payments of ${formatPenceAsGbp(amountPaid)} are recorded on this invoice. There is nothing left to pay.`,
+    };
+  }
+
+  return {
+    totalLabel: formatPenceAsGbp(totalAmount),
+    balanceLabel,
+    lead: `Payments of ${formatPenceAsGbp(amountPaid)} are recorded on this invoice. Amount still to pay: ${balanceLabel}. ${PAYMENT_NOT_CONFIRMED}`,
+  };
+}
+
 /**
  * Issued-invoice email only.
- * States the balance. Does not say a payment was received or that the customer opened the email.
+ * States the saved balance. Does not say a payment was received or that the customer opened the email.
  */
 export function buildInvoiceIssuedEmail(input: {
   businessName: string;
@@ -51,6 +130,7 @@ export function buildInvoiceIssuedEmail(input: {
   jobTitle: string;
   invoiceNumber: string;
   totalAmount: number;
+  amountPaid: number;
   balanceDue: number;
   portalToken: string;
   logoUrl?: string | null;
@@ -58,9 +138,17 @@ export function buildInvoiceIssuedEmail(input: {
   const firstName = input.customerName?.trim().split(/\s+/)[0] || "there";
   const ctaUrl = buildCustomerProposalPortalUrl(input.portalToken);
   const pdfUrl = buildCustomerInvoicePdfUrl(input.portalToken);
-  const totalLabel = formatPenceAsGbp(input.totalAmount);
-  const balanceLabel = formatPenceAsGbp(input.balanceDue);
-  const balanceCopy = `Balance still to pay: ${balanceLabel}.`;
+  const payment = invoicePaymentCopy(input);
+  const summaryRows = [
+    { label: "Invoice", value: input.invoiceNumber },
+    { label: "Job", value: input.jobTitle },
+    ...(payment.totalLabel
+      ? [{ label: "Total", value: payment.totalLabel }]
+      : []),
+    ...(payment.balanceLabel
+      ? [{ label: "Balance", value: payment.balanceLabel }]
+      : []),
+  ];
 
   return assembleTransactionalEmail({
     subject: input.businessName
@@ -74,16 +162,11 @@ export function buildInvoiceIssuedEmail(input: {
       greeting: buildProposalEmailGreeting(firstName),
       intro: `Your invoice for ${input.jobTitle} is ready to review. A PDF copy is attached.`,
       accentBorder: true,
-      summaryRows: [
-        { label: "Invoice", value: input.invoiceNumber },
-        { label: "Job", value: input.jobTitle },
-        { label: "Total", value: totalLabel },
-        { label: "Balance", value: balanceLabel },
-      ],
+      summaryRows,
       ctaLabel: "View invoice in portal",
       ctaUrl,
       fallbackLabel: "Open secure portal",
-      supportText: `${balanceCopy} This email does not confirm that a payment has been received. You can also download the PDF: ${pdfUrl}`,
+      supportText: `${payment.lead} You can also download the PDF: ${pdfUrl}`,
       preheader: `Invoice ${input.invoiceNumber} for ${input.jobTitle}`,
     },
   });

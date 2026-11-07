@@ -416,6 +416,10 @@ describe("explicit invoice email", () => {
     expect(sent.attachments[0].content.toString()).toContain("40000");
     expect(sent.html).toContain(`/p/${TOKEN}`);
     expect(sent.html).toContain(`/p/${TOKEN}/invoice/pdf`);
+    expect(sent.message).toContain(
+      "Amount due: £2,400.00. This email does not confirm that a payment has been received."
+    );
+    expect(sent.message).not.toContain("Balance still to pay");
     expect(sent.html).toContain("does not confirm that a payment has been received");
     expect(sent.html).not.toContain("We have received your payment");
     expect(JSON.stringify(harness.outbound[0].metadata)).not.toContain(TOKEN);
@@ -607,11 +611,15 @@ describe("explicit invoice email", () => {
       jobTitle: "Kitchen refresh",
       invoiceNumber: "INV-2026-0009",
       totalAmount: 240000,
+      amountPaid: 0,
       balanceDue: 240000,
       portalToken: TOKEN,
     });
     expect(email.subject).toContain("INV-2026-0009");
-    expect(email.text).toContain("Balance still to pay");
+    expect(email.text).toContain(
+      "Amount due: £2,400.00. This email does not confirm that a payment has been received."
+    );
+    expect(email.text).not.toContain("Balance still to pay");
     expect(email.text).not.toContain("We have received your payment");
 
     const screen = readRepo("components/invoices/invoice-review-screen.tsx");
@@ -763,10 +771,10 @@ describe("explicit invoice email", () => {
     expect(sent.message).toContain("Total\n£2,400.00");
     expect(sent.message).toContain("Balance\n£0.00");
     expect(sent.message).toContain(
-      "Balance still to pay: £0.00. This email does not confirm that a payment has been received."
+      "Payments of £2,400.00 are recorded on this invoice. There is nothing left to pay."
     );
+    expect(sent.message).not.toContain("Balance still to pay");
     expect(sent.message).not.toContain("We have received your payment");
-    expect(sent.message).not.toMatch(/Balance still to pay: £(?!0\.00)/);
     expect(sent.html).toContain(`/p/${TOKEN}`);
     expect(sent.html).toContain(`/p/${TOKEN}/invoice/pdf`);
     expect(sent.html).toContain("View invoice in portal");
@@ -775,6 +783,128 @@ describe("explicit invoice email", () => {
     expect(harness.invoiceUpdates).toBe(0);
     expect(harness.proposalUpdates).toBe(0);
     expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
+  function paymentEmail(amounts: {
+    totalAmount: number;
+    amountPaid: number;
+    balanceDue: number;
+  }) {
+    return buildInvoiceIssuedEmail({
+      businessName: "Frozen Snapshot Ltd",
+      customerName: "Morgan Pricecheck",
+      jobTitle: "Kitchen refresh",
+      invoiceNumber: "INV-2026-1200",
+      portalToken: TOKEN,
+      ...amounts,
+    }).text;
+  }
+
+  it("states the amount due on an unpaid invoice", () => {
+    const text = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 0,
+      balanceDue: 120000,
+    });
+    expect(text).toContain(
+      "Amount due: £1,200.00. This email does not confirm that a payment has been received."
+    );
+    expect(text).toContain("Total\n£1,200.00");
+    expect(text).toContain(`/p/${TOKEN}/invoice/pdf`);
+    expect(text).not.toContain("Balance still to pay");
+    expect(text).not.toContain("We have received your payment");
+  });
+
+  it("states recorded payments and the amount still due on a partly paid invoice", () => {
+    const text = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 40000,
+      balanceDue: 80000,
+    });
+    expect(text).toContain(
+      "Payments of £400.00 are recorded on this invoice. Amount still to pay: £800.00. This email does not confirm that a payment has been received."
+    );
+    expect(text).toContain("Total\n£1,200.00");
+    expect(text).not.toContain("Balance still to pay");
+    expect(text).not.toContain("We have received your payment");
+  });
+
+  it("states that a fully paid invoice has nothing left to pay", () => {
+    const text = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 120000,
+      balanceDue: 0,
+    });
+    expect(text).toContain(
+      "Payments of £1,200.00 are recorded on this invoice. There is nothing left to pay."
+    );
+    expect(text).not.toContain("Balance still to pay");
+    expect(text).not.toContain("This email does not confirm that a payment has been received.");
+    expect(text).not.toContain("We have received your payment");
+  });
+
+  it("states that a zero-value invoice has nothing left to pay", () => {
+    const text = paymentEmail({
+      totalAmount: 0,
+      amountPaid: 0,
+      balanceDue: 0,
+    });
+    expect(text).toContain("There is nothing left to pay on this invoice.");
+    expect(text).not.toContain("Payments of £0.00");
+    expect(text).not.toContain("Balance still to pay");
+    expect(text).not.toContain("We have received your payment");
+  });
+
+  it("does not choose a payment state when the saved figures do not agree", () => {
+    const text = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 10000,
+      balanceDue: 80000,
+    });
+    expect(text).toContain(
+      "Outstanding balance shown on this invoice: £800.00. This email does not confirm that a payment has been received."
+    );
+    expect(text).not.toContain("There is nothing left to pay");
+    expect(text).not.toContain("Amount due");
+    expect(text).not.toContain("Amount still to pay");
+    expect(text).not.toContain("We have received your payment");
+
+    const inconsistentZero = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 0,
+      balanceDue: 0,
+    });
+    expect(inconsistentZero).toContain(
+      "Outstanding balance shown on this invoice: £0.00. This email does not confirm that a payment has been received."
+    );
+    expect(inconsistentZero).not.toContain("There is nothing left to pay");
+    expect(inconsistentZero).not.toContain("Balance still to pay");
+  });
+
+  it("does not invent a balance when the saved balance is unusable", () => {
+    const missing = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 0,
+      balanceDue: Number.NaN,
+    });
+    expect(missing).toContain(
+      "Please see the invoice for the current balance. This email does not confirm that a payment has been received."
+    );
+    expect(missing).not.toContain("£NaN");
+    expect(missing).not.toContain("There is nothing left to pay");
+    expect(missing).not.toContain("We have received your payment");
+    expect(missing).not.toMatch(/\nBalance\n/);
+
+    const negative = paymentEmail({
+      totalAmount: 120000,
+      amountPaid: 0,
+      balanceDue: -1,
+    });
+    expect(negative).toContain(
+      "Please see the invoice for the current balance. This email does not confirm that a payment has been received."
+    );
+    expect(negative).not.toContain("£-");
+    expect(negative).not.toContain("There is nothing left to pay");
   });
 });
 
