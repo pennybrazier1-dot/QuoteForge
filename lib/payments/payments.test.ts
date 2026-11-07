@@ -125,9 +125,14 @@ describe("50H.1 payments and job closure", () => {
     const types = readRepo("lib/payments/types.ts");
     expect(types).not.toContain("card_number");
     expect(types).not.toContain("cvv");
-    expect(readRepo("lib/payments/actions.ts")).toContain(
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).toContain(
       "payment_provider_reference: null"
     );
+    expect(
+      readRepo(
+        "supabase/migrations/20261109020000_invoice_payment_writer_cutover.sql"
+      )
+    ).not.toContain("payment_provider_reference");
     expect(
       buildIssuedPaymentUrl(settings("ws-1"), ["card_link"])
     ).toBe("https://pay.example.com/abc");
@@ -185,8 +190,9 @@ describe("50H.1 payments and job closure", () => {
         accountNumber: "12345678",
       })
     ).toBe(false);
+    expect(email.html).not.toContain("12-34-56");
     expect(email.html).not.toContain("12345678");
-    expect(email.html).toContain("Secure customer portal");
+    expect(email.html).toContain("This is a secure customer portal");
   });
 
   it("marks paid with paid_at, updates portal copy, and sends confirmation", () => {
@@ -218,10 +224,14 @@ describe("50H.1 payments and job closure", () => {
       amountLabel: "£1,250.00",
       portalToken: "portal-token-example-abcdef",
     });
-    expect(email.heading).toBe("Payment received");
+    expect(email.heading).toBe("Paid in full");
     expect(email.ctaLabel).toBe("View job");
-    expect(readRepo("lib/payments/actions.ts")).toContain('payment_status: "paid"');
-    expect(readRepo("lib/payments/actions.ts")).toContain("paid_at: now");
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).toContain(
+      'payment_status: "paid"'
+    );
+    expect(readRepo("lib/payments/ensure-paid-lifecycle.ts")).toContain(
+      "paid_at: now"
+    );
   });
 
   it("allows close only after payment is resolved and preserves history", () => {
