@@ -660,6 +660,122 @@ describe("explicit invoice email", () => {
       "emails.send"
     );
   });
+
+  it("does not send again after a simulated invoice email", async () => {
+    const { notifyCustomerOfInvoiceIssued } = await import(
+      "@/lib/invoices/server/notify-invoice-issued"
+    );
+    const { enqueueOutboundMessage } = await import("@/lib/outbound/rpc");
+    const { simulateOutboundDelivery } = await import("@/lib/outbound/deliver");
+    const { invoiceIssuedKey } = await import("@/lib/outbound/keys");
+    const { outboundStatusLabel } = await import("@/lib/outbound/status-labels");
+
+    const harness = createHarness();
+    const enqueued = await enqueueOutboundMessage(harness.supabase as never, {
+      workspaceId: WS,
+      eventKind: "invoice_issued",
+      audience: "customer",
+      sourceType: "invoice",
+      sourceId: INVOICE,
+      recipientEmail: "morgan@example.test",
+      idempotencyKey: invoiceIssuedKey(INVOICE),
+      subject: "Invoice INV-2026-0009 from Frozen Snapshot Ltd",
+      proposalId: PROPOSAL,
+      invoiceId: INVOICE,
+    });
+    expect(enqueued.ok).toBe(true);
+    expect(enqueued.id).toBeTruthy();
+
+    const simulated = await simulateOutboundDelivery(
+      harness.supabase as never,
+      enqueued.id as string
+    );
+    expect(simulated.ok).toBe(true);
+    expect(simulated.simulated).toBe(true);
+    expect(simulated.status).toBe("simulated");
+    expect(outboundStatusLabel("simulated")).toBe("Simulated (no email sent)");
+    expect(harness.outbound).toHaveLength(1);
+    expect(harness.outbound[0].status).toBe("simulated");
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(pdfMock).not.toHaveBeenCalled();
+
+    const second = await notifyCustomerOfInvoiceIssued(
+      harness.supabase as never,
+      INVOICE,
+      WS
+    );
+    expect(second.ok && second.skipped).toBe("already_terminal");
+    expect(harness.outbound).toHaveLength(1);
+    expect(harness.outbound[0].id).toBe(enqueued.id);
+    expect(harness.outbound[0].status).toBe("simulated");
+    expect(sendEmailMock).not.toHaveBeenCalled();
+    expect(pdfMock).not.toHaveBeenCalled();
+    expect(harness.invoiceUpdates).toBe(0);
+    expect(harness.proposalUpdates).toBe(0);
+    expect(Boolean(process.env.RESEND_API_KEY?.trim())).toBe(false);
+    expect(
+      canShowInvoiceEmailButton({
+        status: "approved",
+        customerEmail: "morgan@example.test",
+        outboundStatus: "simulated",
+      })
+    ).toBe(false);
+    expect(
+      describeInvoiceEmailFeedback({ status: "simulated", simulated: true })
+        ?.title
+    ).toBe("Simulated (no email sent)");
+  });
+
+  it("states a zero balance for a fully paid invoice without saying payment was received", async () => {
+    const { buildInvoiceIssuedEmailPayload } = await import(
+      "@/lib/invoices/server/notify-invoice-issued"
+    );
+    const harness = createHarness(
+      invoiceRow({
+        amount_paid: 240000,
+        balance_due: 0,
+      })
+    );
+    const invoice = parseInvoiceRow(harness.row);
+    expect(invoice.balance_due).toBe(0);
+    expect(invoice.amount_paid).toBe(invoice.total_amount);
+
+    const built = await buildInvoiceIssuedEmailPayload(
+      harness.supabase as never,
+      invoice,
+      WS
+    );
+    expect(built.ok).toBe(true);
+    if (!built.ok) return;
+
+    const sent = built.payload;
+    expect(sent.to).toBe("morgan@example.test");
+    expect(sent.subject).toBe(
+      "Invoice INV-2026-0009 from Frozen Snapshot Ltd"
+    );
+    expect(sent.subject).not.toContain("Live Business Should Not Be Used");
+    expect(sent.attachments[0].filename).toBe("INV-2026-0009.pdf");
+    expect(sent.message).toContain("Hi Morgan,");
+    expect(sent.message).toContain(
+      "Your invoice for Kitchen refresh is ready to review. A PDF copy is attached."
+    );
+    expect(sent.message).toContain("INV-2026-0009");
+    expect(sent.message).toContain("Total\n£2,400.00");
+    expect(sent.message).toContain("Balance\n£0.00");
+    expect(sent.message).toContain(
+      "Balance still to pay: £0.00. This email does not confirm that a payment has been received."
+    );
+    expect(sent.message).not.toContain("We have received your payment");
+    expect(sent.message).not.toMatch(/Balance still to pay: £(?!0\.00)/);
+    expect(sent.html).toContain(`/p/${TOKEN}`);
+    expect(sent.html).toContain(`/p/${TOKEN}/invoice/pdf`);
+    expect(sent.html).toContain("View invoice in portal");
+    expect(sent.html).toContain("£0.00");
+    expect(sent.html).not.toContain("We have received your payment");
+    expect(harness.invoiceUpdates).toBe(0);
+    expect(harness.proposalUpdates).toBe(0);
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
 });
 
 function psql(sql: string): string {
